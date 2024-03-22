@@ -1,4 +1,4 @@
-# Hotspot-Watchdog
+# Esp8266 Remote
 
 The reason for this project was that I have internet provided at a remote off-grid cabin via a cellular hotspot made by a company named Moxee (the cellular provider is Cricket, which works better than Verizon in the southern Adirondacks).  The Moxee device works okay when it works, but occasionally something will happen and the hotspot loses its connection. At that point, the only way to restore service is to manually reboot the hotspot.  This normally requires an actual human being to be in the cabin and to know what to do.  This is inconvenient if it's in the middle of winter and I am on a beach in Costa Rica.  So I wanted a mechanism to automatically reboot the Moxee hotspot whenever it fails to provide internet to a wireless device located nearby. A good place to start with this project was my ESP8266-based Micro-Weather project (https://github.com/judasgutenberg/ESP8266-Micro-Weather), which already consists of a device that connects to the internet to log weather data. 
 
