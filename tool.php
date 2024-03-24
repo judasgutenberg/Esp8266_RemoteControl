@@ -144,6 +144,16 @@ if ($user) {
    }
  
  
+
+
+	} else if($table == "devices") {
+ 
+
+    $out .= devices($userId);
+
+      
+ 
+ 
   
   } else if ($action == "startcreate") {
   
@@ -703,11 +713,13 @@ function schemaArrayFromSchema($table, &$pk){
       }
       if($row["Type"] == "tinyint(4)" ){
         $type = "bool";
-      } else if(strtolower(beginsWith($row["Type"], "int"))){
-        $type = "number";
       }
       if($fieldName != "user_id") {
-        $headerData[] = ["label" => $fieldName, "name" => $fieldName, "type" => $type ];
+        $record = ["label" => $fieldName, "name" => $fieldName, "type" => $type ];
+        if($type == "bool"){
+          $record["liveChangeable"] = true;
+        }
+        $headerData[] = $record;
       }
       
     }
@@ -717,16 +729,13 @@ function schemaArrayFromSchema($table, &$pk){
 
 function genericEntityList($userId, $table) {
   Global $conn;
-  $out = "";
   $headerData = schemaArrayFromSchema($table, $pk);
-  $out .= "<div class='listtitle'>Your " . ucfirst($table) . "s</div>\n";
-  $out .= "<div class='listtools'><div class='basicbutton'><a href='?table=" . $table . "&action=startcreate'>Create</a></div> a new " . $table . "</div>\n";
+
   $thisDataSql = "SELECT * FROM " . $table . " WHERE user_id=" . intval($userId);
   $deviceId = gvfw("device_id");
   if($deviceId){
     $thisDataSql .= " AND device_id=" . intval($deviceId);
   }
- 
   $thisDataResult = mysqli_query($conn, $thisDataSql);
   if($thisDataResult) {
     $thisDataRows = mysqli_fetch_all($thisDataResult, MYSQLI_ASSOC); 
@@ -735,61 +744,35 @@ function genericEntityList($userId, $table) {
       $toolsTemplate .= " | <a href='?table=device_feature&device_id=<" . $table . "_id/>'>Device Features</a>";
 
     }
-    $out .= genericTable($thisDataRows, $headerData, $toolsTemplate, null, $table, $pk);
+    return genericTable($thisDataRows, $headerData, $toolsTemplate, null, $table, $pk);
   }
-  return $out;
 }
 
 function genericEntityForm($userId, $table, $errors){
   Global $conn;
   $data = schemaArrayFromSchema($table, $pk);
   $pkValue =  gvfa($pk, $_GET);
-  if(!$pkValue){
-    $data = removeRowForKey("created", $data);
-  }
   $thisDataSql = "SELECT * FROM " . $table . " WHERE " . $pk . " = '" . $pkValue . "' AND user_id=" . intval($userId);
-  
+
   $thisDataResult = mysqli_query($conn, $thisDataSql);
   if($thisDataResult) {
     $thisDataRows = mysqli_fetch_all($thisDataResult, MYSQLI_ASSOC);
-    if($thisDataRows && count($thisDataRows) >0) {
-      $data = updateDataWithRows($data, $thisDataRows[0]);
-    }
+
+    $data = updateDataWithRows($data, $thisDataRows[0]);
+
     return genericForm($data, "Save " . $table, "Saving...");
   }
 }
 
-function lookUpDataInfo($dataInfo, $fieldName){
  
-  foreach($dataInfo as $row){
-    if($row["name"]== $fieldName){
-      return $row;
-    }
-  }
-}
-
-function  fixData($dataIn, $dataInfo){
-  foreach($dataIn as $key => $value) {
-    $specificDataInfo = lookUpDataInfo($dataInfo, $key);
-    if(is_array($specificDataInfo) && array_key_exists("type", $specificDataInfo) && $specificDataInfo["type"] == "number" && $value==""){
-      //turn empties into NULL
-      $dataIn[$key] = "<NULL/>";
-    }
-  }
-  return $dataIn;
-} 
-
 function genericEntitySave($userId, $table) {
   Global $conn;
-  $dataInfo = schemaArrayFromSchema($table, $pk);
+  $data = schemaArrayFromSchema($table, $pk);
   $data = $_POST;
-  $data = fixData($data, $dataInfo);
   unset($data['action']);
   unset($data[$pk]);
-  $data["created"] = '2024';
-  $data["user_id"] = $userId;
- 
-  $sql = insertUpdateSql($conn, $table, array($pk => gvfw($table . '_id')), $data);
+  unset($data['created']);
+  $sql = insertUpdateSql($conn, $table, array($pk => $_GET[$table . '_id']), $data);
   //echo $sql;
   //die();
   $result = mysqli_query($conn, $sql);
@@ -812,17 +795,6 @@ function updateDataWithRows($data, $thisDataRows) {
       }
   }
   return $data;
-}
-
-function removeRowForKey($key, &$rows) {
-  // Iterate over each row in $thisDataRows
-  foreach ($rows as &$row) {
-      // Iterate over each associative array in $data
-      if($row["name"] == $key){
-        unset($row);
-      }
-  }
-  return $rows;
 }
 
 function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$data also includes any errors
@@ -904,7 +876,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
         $out .= "</select>";
       } else if ($type == "bool"){
         $checked = "";
-          if($value == 1) {
+          if($value) {
 
             $checked = "checked";
           }
@@ -1041,31 +1013,39 @@ function loginUser($source = NULL) {
       }
     }
     return false;
- 
+
+  //}  catch(Exception $e) {
+    //header("location: .");
+  //}
 }
 
 function tabNav() {
-  $tabData = [[
+	$tabData = array(
+  [
+    'label' => 'Locations',
+    'table' => 'location' 
+  ] ,
+  [
     'label' => 'Devices',
     'table' => 'device' 
-  ],
+  ] ,
   [
     'label' => 'Device Types',
     'table' => 'device_type' 
-  ],
+  ] ,
   [
     'label' => 'Feature Types',
     'table' => 'feature_type' 
-  ],
+  ] ,
   [
     'label' => 'Device Type Features',
     'table' => 'device_type_feature' 
-  ],
+  ] ,
   [
     'label' => 'Device Features',
     'table' => 'device_feature' 
   ] 
-	];
+	);
 	$out = "<div class='nav'>";
   $currentMode = gvfa('table', $_REQUEST);
   $deviceId = gvfa('device_id', $_REQUEST);
@@ -1105,7 +1085,7 @@ function devices($userId) {
   $result = mysqli_query($conn, $sql);
   $out = "";
   $out .= "<div class='listtitle'>Your " . ucfirst($table) . "s</div>\n";
-  $out .= "<div class='listtools'><div class='basicbutton'><a href='?table=" . $table . "&action=startcreate'>Create</a></div> a new " . $table . "</div>\n";
+  $out .= "<div class='listtools'><div class='basicbutton'><a href='?table=" . $table . "&mode=startcreate'>Create</a></div> a new " . $table . "<//div>\n";
   //$out .= "<hr style='width:100px;margin:0'/>\n";
   $headerData = array(
     [
@@ -1384,7 +1364,7 @@ function saveX($userId){
   //die($sql);
   $result = mysqli_query($conn, $sql);
   $id = mysqli_insert_id($conn);
-  header("Location: ?table=device");
+  header("Location: ?table=word_list");
 }
 
   
@@ -1393,7 +1373,7 @@ function deleteX($userId, $xxx){
   $sql = "DELETE FROM document WHERE document_id=" . intval($documentId) . "  AND user_id=" . intval($userId);
   //die($sql);
   $result = mysqli_query($conn, $sql);
-  header("Location: ?table=device");
+  header("Location: ?table=document");
 }
  
 function download($path, $friendlyName){
@@ -1433,84 +1413,80 @@ function eliminateExtraLinefeeds($input) {
  
 
 function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
-  //var_dump($_POST);
-  //die();
+  $_dataRaw = gvfa("_data", $data); 
+  if($_dataRaw){
+    $_data = json_decode($_dataRaw, true);
+  }
   // Check if a primary key is provided
   $sanitizedKeys = [];
-  $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
-  $formatedDateTime =  $date->format('Y-m-d H:i:s'); 
-  foreach ($data as $column => $value) {
+  $dataToScan = $_data;
+  if(!$_data){
+    $dataToScan = $data;
+    die();//don't worry about this case
+  }
+ 
+  foreach ($dataToScan as $datum) {
+    $column = $datum["name"];
+    $value = gvfa($column, $data, "");
     if($column  != "_data") {
-      if($column == "created" || $column == "modified" ) {
+      if($column == "created") {
 
-
+        $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
+        $formatedDateTime =  $date->format('Y-m-d H:i:s'); 
         $sanitizedData[] = $formatedDateTime;
         
       } else {
-
         $sanitized = mysqli_real_escape_string($conn, $value);
         $sanitizedData[] = $sanitized;
         
       }
+      //echo $column . "<BR>";
       $sanitizedKeys[] = $column;
     }
-    if (!empty($primaryKey) && implode(",", array_values($primaryKey)) != "") {
-        // Update the existing record
-        $sanitizedData = [];
-        $updateFields = [];
-        //$sanitizedKeys = [];
-        foreach ($data as $column => $value) {
-          if($column != "_data") {
-              $sanitized = mysqli_real_escape_string($conn, $value);
-              if($column == "created" ) {
-              
-              } else if($column == "modified" ) {
-                $updateFields[] = "`$column` =  '$formatedDateTime'";
-              } else {
-              if($value == "<NULL/>") {
-                $updateFields[] = "`$column` =  NULL";
-              } else {
-                $updateFields[] = "`$column` =  '$sanitized'";
-              }
-            }
-            
+  }
+ 
+  if (!empty($primaryKey) && implode(",", array_values($primaryKey)) != "") {
+      // Update the existing record
+      $sanitizedData = [];
+      $updateFields = [];
+      //$sanitizedKeys = [];
+      foreach ($dataToScan as $datum) {
+        $column = $datum["name"];
+        $type =  gvfa("type", $datum, "");
+        $value = gvfa($column, $data, "");
+
+        //echo  $column . "=" . $value . ", " . $type . "<BR>";
+        if($column != "created" && $column != "_data" && array_key_exists($column, $primaryKey) == false) {
+          if(($type == "bool"  || $type == "checkbox") && !$value){
+            $sanitized = '0';
+          } else {
+            $sanitized = mysqli_real_escape_string($conn, $value);
           }
+
+          $updateFields[] = "`$column` =  '$sanitized'";
         }
+      }
 
-        $updateFieldsString = implode(', ', $updateFields);
+      $updateFieldsString = implode(', ', $updateFields);
 
-        $whereClause = [];
-        foreach ($primaryKey as $key => $value) {
-            $whereClause[] = "`$key` = '$value'";
-        }
+      $whereClause = [];
+      foreach ($primaryKey as $key => $value) {
+          $whereClause[] = "`$key` = '$value'";
+      }
 
-        $whereClauseString = implode(' AND ', $whereClause);
+      $whereClauseString = implode(' AND ', $whereClause);
 
-        $sql = "UPDATE `$tableName` SET $updateFieldsString WHERE $whereClauseString;";
-    } else {
-        // Insert a new record
-        $columns = implode(', ', $sanitizedKeys);
-        $values = sqlCommaify($sanitizedData);
+      $sql = "UPDATE `$tableName` SET $updateFieldsString WHERE $whereClauseString;";
+  } else {
+      // Insert a new record
+      $columns = implode(', ', $sanitizedKeys);
+      $values = implode("', '", $sanitizedData);
 
-        $sql = "INSERT INTO `$tableName` ($columns) VALUES ($values);";
-    }
+      $sql = "INSERT INTO `$tableName` ($columns) VALUES ('$values');";
   }
+  
+  //die($sql);
   return $sql;
-}
-
-function sqlCommaify($vals){
-  $out = "";
-  foreach($vals as $val){
-    if($val == "<NULL/>") {
-      $out .= "NULL,";
-    } else {
-      $out .= "'" . $val . "',";
-    }
-    
-  }
-  $out = substr($out, 0, strlen($out)-1);
-  return $out;
-
 }
 
 function blendColors($color1, $color2) {
