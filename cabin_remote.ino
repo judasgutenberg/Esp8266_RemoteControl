@@ -10,20 +10,33 @@
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
-
-
 #include <NTPClient.h>
 #include <WiFiUdp.h>
-
+#include "config.h"
 
 #include "Zanshin_BME680.h"  // Include the BME680 Sensor library
-StaticJsonDocument<2200> jsonBuffer;
+StaticJsonDocument<1000> jsonBuffer;
  
 long connectionFailureTime = 0;
 BME680_Class BME680;  ///< Create an instance of the BME680 class
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
+
+int timeSkewAmount = 0; //i had it as much as 20000 for 20 seconds, but serves no purpose that I can tell
+long pinValues[22];
+long moxeeRebootTimes[] = {0,0,0,0,0,0,0,0,0,0,0};
+
+int timeOffset = 0;
+bool glblRemote = false;
+
+
+bool connectionFailureMode = true;  //when we're in connectionFailureMode, we check connection much more than secondsGranularity. otherwise, we check it every secondsGranularity
+int moxeeRebootCount = 0;
+
+
+ESP8266WebServer server(80); //Server on port 80
+
 
 float altitude(const int32_t press, const float seaLevel = 1013.25);
 
@@ -43,22 +56,9 @@ float altitude(const int32_t press, const float seaLevel) {
 
 }
 
-#include "config.h"
 
 
 
-int timeSkewAmount = 0; //i had it as much as 20000 for 20 seconds, but serves no purpose that I can tell
-long moxeeRebootTimes[] = {0,0,0,0,0,0,0,0,0,0,0};
-
-int timeOffset = 0;
-bool glblRemote = false;
-
-
-bool connectionFailureMode = true;  //when we're in connectionFailureMode, we check connection much more than secondsGranularity. otherwise, we check it every secondsGranularity
-int moxeeRebootCount = 0;
-
-
-ESP8266WebServer server(80); //Server on port 80
 
 
 
@@ -124,7 +124,7 @@ void handleWeatherData() {
   transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue); //using delimited data instead of JSON to keep things simple
   
   transmissionString = transmissionString + "|" + JoinValsOnDelimiter(moxeeRebootTimes, "*");
-  
+  transmissionString = transmissionString + "|" + JoinValsOnDelimiter(pinValues, "*"); //also send pin as they are known back to the server
   Serial.println(transmissionString);
   //had to use a global, died a little inside
   if(glblRemote) {
@@ -325,6 +325,7 @@ void setLocalHardwareToServerStateFromJson(char * json){
       Serial.println();
       pinMode(pinNumber, OUTPUT);
       if(enabled) {
+        pinValues[pinNumber] = value;
         if(canBeAnalog) {
           analogWrite(pinNumber, value);
         } else {
