@@ -117,6 +117,9 @@ void handleWeatherData() {
   pressureValue = (double)pressureRaw/100;
   gasValue = (double)gasRaw/100;
 
+  if(sensorType == 0) {
+    temperatureValue = 9999999;//don't want to save data from no sensor, so force temperature out of range
+  }
   
   transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue); //using delimited data instead of JSON to keep things simple
   
@@ -217,7 +220,8 @@ void sendRemoteData(String datastring) {
   String url;
   String storagePasswordToUse = storagePassword;
   if(sensorType == 0) {
-    storagePasswordToUse = "notgonnawork";//don't want to save data from no sensor;
+    //seemed like a good idea at the time
+    //storagePasswordToUse = "notgonnawork";//don't want to save data from no sensor;
   }
   url =  (String)urlGet + "?storagePassword=" + (String)storagePasswordToUse + "&locationId=" + locationId + "&mode=saveData&data=" + datastring;
   Serial.println("\r>>> Connecting to host: ");
@@ -275,6 +279,7 @@ void sendRemoteData(String datastring) {
      } //while (client
    
      //just checks the 1st line of the server response. Could be expanded if needed;
+    delay(100); //see if this improved data reception. OMG IT TOTALLY WORKED!!!
     while(clientGet.available()){
       String retLine = clientGet.readStringUntil('\n');
       retLine.trim();
