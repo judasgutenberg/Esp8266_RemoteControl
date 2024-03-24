@@ -84,7 +84,9 @@ CREATE TABLE device_feature(
   device_feature ADD enabled TINYINT DEFAULT 0,
   user_id INT NULL,
   created DATETIME,
-  modified DATETIME
+  modified DATETIME,
+  last_known_device_value INT NULL,
+  last_known_device_modified DATETIME
   
 );
 
@@ -100,6 +102,8 @@ CREATE TABLE device_feature(
 --ALTER TABLE feature_type ADD user_id INT NULL;
 --ALTER TABLE device_type_feature ADD user_id INT NULL;
 --ALTER TABLE device_feature ADD user_id INT NULL;
+--ALTER TABLE device_feature ADD last_known_device_value INT NULL;
+--ALTER TABLE device_feature ADD last_known_device_modified DATETIME;
  
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
