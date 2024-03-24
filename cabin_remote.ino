@@ -279,7 +279,7 @@ void sendRemoteData(String datastring) {
      } //while (client
    
      //just checks the 1st line of the server response. Could be expanded if needed;
-    delay(100); //see if this improved data reception. OMG IT TOTALLY WORKED!!!
+    delay(1); //see if this improved data reception. OMG IT TOTALLY WORKED!!!
     while(clientGet.available()){
       String retLine = clientGet.readStringUntil('\n');
       retLine.trim();
