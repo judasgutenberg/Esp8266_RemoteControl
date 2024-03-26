@@ -9,7 +9,8 @@ extern const char* urlGet;
 extern const char* hostGet;
 extern const int sensorType; //for BME680 -- we may support others
 extern const int locationId; //3 really is watchdog
-extern const int secondsGranularity; //how often to store data in the backend in seconds //300 makes sense
+extern const int pollingGranularity; //how often to poll backend in seconds, 4 makes sense
+extern const int dataLoggingGranularity; //how often to store data in backend, 300 makes sense
 extern const int connectionFailureRetrySeconds;
 extern const int connectionRetryNumber;
 
@@ -20,5 +21,11 @@ extern const int hotspotLimitedTimeFrame; //seconds
 extern const int hotspotLimitedTimeFrame; //seconds
 
 extern const int moxeePowerSwitch; //seconds
+extern const int dhtPin; //usually 14
+extern const int dhtPower; //usually 14
+// #define dhType DHT11 // DHT 11
+// #define dhType DHT22 // DHT 22, AM2302, AM2321
+extern const int dhtType;
+ 
 
  
