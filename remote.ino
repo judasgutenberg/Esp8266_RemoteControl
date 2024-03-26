@@ -81,24 +81,12 @@ float altitude(const int32_t press, const float seaLevel) {
 void handleRoot() {
  server.send(200, "text/html", "nothing"); //Send web page
 }
-
-
-String JoinValsOnDelimiter(long vals[], String delimiter) {
-  String out = "";
-  for(int i=0; i<10; i++){
-    out = out + (String)vals[i] + delimiter;
-  }
-  return out;
-}
-
-
 void handleWeatherData() {
   double humidityValue;
   double temperatureValue;
   double pressureValue;
   double gasValue;
   String transmissionString = "";
-
   int32_t humidityRaw;
   int32_t temperatureRaw;
   int32_t pressureRaw;
@@ -130,9 +118,12 @@ void handleWeatherData() {
     pressureValue = (double)pressureRaw/100;
     gasValue = (double)gasRaw/100;
   } else if (sensorType == 2301) {
+    digitalWrite(dhtPower, HIGH); //turn on DHT power. 
+    delay(10);
     humidityValue = (double)dht.readHumidity();
     temperatureValue = (double)dht.readTemperature();
     pressureValue = 0; //really should set unknown values as null
+    digitalWrite(dhtPower, LOW);//turn off DHT power. maybe it saves energy, and that's why MySpool did it this way
   } else if(sensorType == 180) {
     //BMP180 code:
     char status;
@@ -174,7 +165,6 @@ void handleWeatherData() {
     humidityValue = NULL; //really should set unknown values as null
   } else {
     humidityValue = NULL;
-    
     temperatureValue = NULL;//don't want to save data from no sensor, so force temperature out of range
     pressureValue = NULL;
   }
@@ -198,6 +188,14 @@ void handleWeatherData() {
   } else {
     server.send(200, "text/plain", transmissionString); //Send values only to client ajax request
   }
+}
+
+String JoinValsOnDelimiter(long vals[], String delimiter) {
+  String out = "";
+  for(int i=0; i<10; i++){
+    out = out + (String)vals[i] + delimiter;
+  }
+  return out;
 }
 
 String NullifyOrNumber(double inVal) {
@@ -268,8 +266,7 @@ void setup(void){
   } else if (sensorType == 2301) {
     Serial.print(F("Initializing DHT AM2301 sensor...\n"));
     pinMode(dhtPower, OUTPUT);
-    digitalWrite(dhtPower, HIGH);
-    delay(200);
+    digitalWrite(dhtPower, LOW);
     dht.begin();
   } else if (sensorType == 180) { //BMP180
     pressure.begin();
@@ -343,7 +340,7 @@ void sendRemoteData(String datastring) {
        clientGet.println("Connection: close\r\n\r\n");
       }//if (clientGet.connect(
       //clientGet.stop();
-      return;
+      //return;
      } //if( millis() -  
    }
   //just checks the 1st line of the server response. Could be expanded if needed;
