@@ -164,8 +164,11 @@ if($_REQUEST) {
 				}
 				if(count($lines) > 3) {
 					$extraInfo = explode("*", $lines[3]);
-					$lastCommandId = $extraInfo[0];
-					$specificPin = $extraInfo[1];
+					if(count($extraInfo)>1){
+						$lastCommandId = $extraInfo[0];
+						
+						$specificPin = $extraInfo[1];
+					}
 				}
 			
 			} 
@@ -179,12 +182,13 @@ if($_REQUEST) {
 				$pinCursor = 0;
 				foreach($rows as $row) {
 					$pinNumber = $row["pin_number"];
-					if($specificPin == -1 || $specificPin ==  $pinNumber ){
+					if($specificPin == -1 || $specificPin ==  $pinCursor){
 						if(count($pinValuesKnownToDevice)>0) {
 							//this part update device_feature so we can tell from the server if the device has taken on the server's value
 							$sqlToUpdateDeviceFeature = "UPDATE device_feature SET last_known_device_value =  " . $pinValuesKnownToDevice[$pinCursor];
 							$sqlToUpdateDeviceFeature .= ", last_known_device_modified='" . $formatedDateTime . "'";
 							$sqlToUpdateDeviceFeature .= " WHERE device_feature_id=" . $row["device_feature_id"];
+							//echo $sqlToUpdateDeviceFeature  . "<BR>";
 							$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
 						}
 						unset($row["device_feature_id"]);//make things as lean as possible for IoT device
