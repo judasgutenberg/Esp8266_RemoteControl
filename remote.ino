@@ -23,17 +23,13 @@
 #include <SFE_BMP180.h>
 
 //specific for DHT stuff
-DHT dht(dhtPin, dhtType);
-
+DHT dht(dhtData, dhtType);
 SFE_BMP180 pressure;
+BME680_Class BME680;
 
 StaticJsonDocument<1000> jsonBuffer;
-
-BME680_Class BME680;  ///< Create an instance of the BME680 class
-
-WiFiUDP ntpUDP;
+WiFiUDP ntpUDP; //i guess i need this for time lookup
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
-
 
 long connectionFailureTime = 0;
 long lastDataLogTime = 0;
@@ -42,23 +38,17 @@ int pinTotal = 8;
 long* pinValues = new long[pinTotal];
 long* pinList = new long[pinTotal];
 long moxeeRebootTimes[] = {0,0,0,0,0,0,0,0,0,0,0};
-
+int moxeeRebootCount = 0;
 int timeOffset = 0;
 long lastCommandId = 0;
 bool glblRemote = false;
 bool onePinAtATimeMode = false; //used when the server starts gzipping data and we can't make sense of it
 int pinCursor = -1;
-
-
 bool connectionFailureMode = true;  //when we're in connectionFailureMode, we check connection much more than pollingGranularity. otherwise, we check it every pollingGranularity
-int moxeeRebootCount = 0;
-
 
 ESP8266WebServer server(80); //Server on port 80
 
-
 float altitude(const int32_t press, const float seaLevel = 1013.25);
-
 float altitude(const int32_t press, const float seaLevel) {
   /*!
   @brief     This converts a pressure measurement into a height in meters
@@ -72,10 +62,7 @@ float altitude(const int32_t press, const float seaLevel) {
   static float Altitude;
   Altitude = 44330.0 * (1.0 - pow(((float)press / 100.0) / seaLevel, 0.1903));  // Convert into meters
   return (Altitude);
-
 }
-
-
 
 
 //ESP8266's home page:----------------------------------------------------
