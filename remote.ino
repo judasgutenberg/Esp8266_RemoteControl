@@ -1,3 +1,5 @@
+
+
 /*
  * ESP8266 NodeMCU Real Time Data Graph 
  * Updates and Gets data from webpage without page refresh
@@ -12,26 +14,42 @@
 #include <ESP8266WebServer.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
+ 
+
 #include "config.h"
 
 #include "Zanshin_BME680.h"  // Include the BME680 Sensor library
+#include <DHT.h>
+#include <SFE_BMP180.h>
+
+//specific for DHT stuff
+DHT dht(dhtPin, dhtType);
+
+SFE_BMP180 pressure;
+
 StaticJsonDocument<1000> jsonBuffer;
- 
-long connectionFailureTime = 0;
+
 BME680_Class BME680;  ///< Create an instance of the BME680 class
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
+
+long connectionFailureTime = 0;
+long lastDataLogTime = 0;
 int timeSkewAmount = 0; //i had it as much as 20000 for 20 seconds, but serves no purpose that I can tell
-long pinValues[22];
+const int pinNumber = 22;
+long pinValues[pinNumber];
 long moxeeRebootTimes[] = {0,0,0,0,0,0,0,0,0,0,0};
 
 int timeOffset = 0;
+long lastCommandId = 0;
 bool glblRemote = false;
+bool onePinAtATimeMode = false; //used when the server starts gzipping data and we can't make sense of it
+int pinCursor = -1;
 
 
-bool connectionFailureMode = true;  //when we're in connectionFailureMode, we check connection much more than secondsGranularity. otherwise, we check it every secondsGranularity
+bool connectionFailureMode = true;  //when we're in connectionFailureMode, we check connection much more than pollingGranularity. otherwise, we check it every pollingGranularity
 int moxeeRebootCount = 0;
 
 
@@ -59,12 +77,8 @@ float altitude(const int32_t press, const float seaLevel) {
 
 
 
-
-
-
 //ESP8266's home page:----------------------------------------------------
 void handleRoot() {
-
  server.send(200, "text/html", "nothing"); //Send web page
 }
 
@@ -79,7 +93,6 @@ String JoinValsOnDelimiter(long vals[], String delimiter) {
 
 
 void handleWeatherData() {
-  
   double humidityValue;
   double temperatureValue;
   double pressureValue;
@@ -96,35 +109,88 @@ void handleWeatherData() {
   static uint16_t loopCounter = 0;                // Display iterations
   if (sensorType == 680) {
     BME680.getSensorData(temperatureRaw, humidityRaw, pressureRaw, gasRaw);
-  } 
-  sprintf(buf, "%4d %3d.%02d", (loopCounter - 1) % 9999,  // Clamp to 9999,
-          (int8_t)(temperatureRaw / 100), (uint8_t)(temperatureRaw % 100));   // Temp in decidegrees
-  //Serial.print(buf);
-  sprintf(buf, "%3d.%03d", (int8_t)(humidityRaw / 1000),
-          (uint16_t)(humidityRaw % 1000));  // Humidity milli-pct
-  //Serial.print(buf);
-  sprintf(buf, "%7d.%02d", (int16_t)(pressureRaw / 100),
-          (uint8_t)(pressureRaw % 100));  // Pressure Pascals
-  //Serial.print(buf);
-  alt = altitude(pressureRaw);                                                // temp altitude
-  sprintf(buf, "%5d.%02d", (int16_t)(alt), ((uint8_t)(alt * 100) % 100));  // Altitude meters
-  //Serial.print(buf);
-  sprintf(buf, "%4d.%02d\n", (int16_t)(gasRaw / 100), (uint8_t)(gasRaw % 100));  // Resistance milliohms
-  //Serial.print(buf);
-
-  humidityValue = (double)humidityRaw/1000;
-  temperatureValue = (double)temperatureRaw/100;
-  pressureValue = (double)pressureRaw/100;
-  gasValue = (double)gasRaw/100;
-
-  if(sensorType == 0) {
-    temperatureValue = 9999999;//don't want to save data from no sensor, so force temperature out of range
+    
+    sprintf(buf, "%4d %3d.%02d", (loopCounter - 1) % 9999,  // Clamp to 9999,
+            (int8_t)(temperatureRaw / 100), (uint8_t)(temperatureRaw % 100));   // Temp in decidegrees
+    //Serial.print(buf);
+    sprintf(buf, "%3d.%03d", (int8_t)(humidityRaw / 1000),
+            (uint16_t)(humidityRaw % 1000));  // Humidity milli-pct
+    //Serial.print(buf);
+    sprintf(buf, "%7d.%02d", (int16_t)(pressureRaw / 100),
+            (uint8_t)(pressureRaw % 100));  // Pressure Pascals
+    //Serial.print(buf);
+    alt = altitude(pressureRaw);                                                // temp altitude
+    sprintf(buf, "%5d.%02d", (int16_t)(alt), ((uint8_t)(alt * 100) % 100));  // Altitude meters
+    //Serial.print(buf);
+    sprintf(buf, "%4d.%02d\n", (int16_t)(gasRaw / 100), (uint8_t)(gasRaw % 100));  // Resistance milliohms
+    //Serial.print(buf);
+  
+    humidityValue = (double)humidityRaw/1000;
+    temperatureValue = (double)temperatureRaw/100;
+    pressureValue = (double)pressureRaw/100;
+    gasValue = (double)gasRaw/100;
+  } else if (sensorType == 2301) {
+    humidityValue = (double)dht.readHumidity();
+    temperatureValue = (double)dht.readTemperature();
+    pressureValue = 0; //really should set unknown values as null
+  } else if(sensorType == 180) {
+    //BMP180 code:
+    char status;
+    double p0,a;
+    status = pressure.startTemperature();
+    if (status != 0)
+    {
+      // Wait for the measurement to complete:
+      delay(status);   
+      // Retrieve the completed temperature measurement:
+      // Note that the measurement is stored in the variable T.
+      // Function returns 1 if successful, 0 if failure.
+      status = pressure.getTemperature(temperatureValue);
+      if (status != 0)
+      {
+        status = pressure.startPressure(3);
+        if (status != 0)
+        {
+          // Wait for the measurement to complete:
+          delay(status);
+          // Retrieve the completed pressure measurement:
+          // Note that the measurement is stored in the variable P.
+          // Note also that the function requires the previous temperature measurement (temperatureValue).
+          // (If temperature is stable, you can do one temperature measurement for a number of pressure measurements.)
+          // Function returns 1 if successful, 0 if failure.
+          status = pressure.getPressure(pressureValue,temperatureValue);
+          if (status != 0)
+          {
+            a = pressure.altitude(pressureValue,p0);
+          }
+          else Serial.println("error retrieving pressure measurement\n");
+        }
+        else Serial.println("error starting pressure measurement\n");
+      }
+      else Serial.println("error retrieving temperature measurement\n");
+    } else {
+      Serial.println("error starting temperature measurement\n");
+    }
+    humidityValue = NULL; //really should set unknown values as null
+  } else {
+    humidityValue = NULL;
+    
+    temperatureValue = NULL;//don't want to save data from no sensor, so force temperature out of range
+    pressureValue = NULL;
+  }
+  if(onePinAtATimeMode) {
+    pinCursor++;
+    if(pinCursor >= pinNumber) {
+      pinCursor = 0;
+    }
   }
   
   transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue); //using delimited data instead of JSON to keep things simple
   
   transmissionString = transmissionString + "|" + JoinValsOnDelimiter(moxeeRebootTimes, "*");
   transmissionString = transmissionString + "|" + JoinValsOnDelimiter(pinValues, "*"); //also send pin as they are known back to the server
+  //other server-relevant info as needed:
+  transmissionString = transmissionString + "|" + lastCommandId + "|" + pinCursor;
   Serial.println(transmissionString);
   //had to use a global, died a little inside
   if(glblRemote) {
@@ -184,14 +250,14 @@ void setup(void){
   server.on("/weatherdata", handleWeatherData); //This page is called by java Script AJAX
   server.begin();                  //Start server
   Serial.println("HTTP server started");
-
-  Serial.print(F("- Initializing BME680 sensor\n"));
-  while (!BME680.begin(I2C_STANDARD_MODE) && sensorType == 680) {  // Start BME680 using I2C, use first device found
-    Serial.print(F("-  Unable to find BME680. Trying again in 5 seconds.\n"));
-    delay(5000);
-  }  // of loop until device is located
-  Serial.print(F("- Setting 16x oversampling for all sensors\n"));
+ 
   if(sensorType == 680) {
+    Serial.print(F("Initializing BME680 sensor...\n"));
+    while (!BME680.begin(I2C_STANDARD_MODE) && sensorType == 680) {  // Start BME680 using I2C, use first device found
+      Serial.print(F(" - Unable to find BME680. Trying again in 5 seconds.\n"));
+      delay(5000);
+    }  // of loop until device is located
+    Serial.print(F("- Setting 16x oversampling for all sensors\n"));
     BME680.setOversampling(TemperatureSensor, Oversample16);  // Use enumerated type values
     BME680.setOversampling(HumiditySensor, Oversample16);     // Use enumerated type values
     BME680.setOversampling(PressureSensor, Oversample16);     // Use enumerated type values
@@ -199,9 +265,15 @@ void setup(void){
     BME680.setIIRFilter(IIR4);  // Use enumerated type values
     //Serial.print(F("- Setting gas measurement to 320\xC2\xB0\x43 for 150ms\n"));  // "�C" symbols
     BME680.setGas(320, 150);  // 320�c for 150 milliseconds
+  } else if (sensorType == 2301) {
+    Serial.print(F("Initializing DHT AM2301 sensor...\n"));
+    pinMode(dhtPower, OUTPUT);
+    digitalWrite(dhtPower, HIGH);
+    delay(200);
+    dht.begin();
+  } else if (sensorType == 180) { //BMP180
+    pressure.begin();
   }
-  
-  
   //initialize NTP client
   timeClient.begin();
   // Set offset time in seconds to adjust for your timezone, for example:
@@ -210,7 +282,6 @@ void setup(void){
   // GMT -1 = -3600
   // GMT 0 = 0
   timeClient.setTimeOffset(0);
-  
 }
 
 //SEND DATA TO A REMOTE SERVER TO STORE IN A DATABASE----------------------------------------------------
@@ -218,12 +289,18 @@ void sendRemoteData(String datastring) {
   WiFiClient clientGet;
   const int httpGetPort = 80;
   String url;
+  String mode = "getDeviceData";
   String storagePasswordToUse = storagePassword;
   if(sensorType == 0) {
     //seemed like a good idea at the time
     //storagePasswordToUse = "notgonnawork";//don't want to save data from no sensor;
   }
-  url =  (String)urlGet + "?storagePassword=" + (String)storagePasswordToUse + "&locationId=" + locationId + "&mode=saveData&data=" + datastring;
+  //most of the time we want to getDeviceData, not saveData. the former picks up remote control activity. the latter sends sensor data
+  if(millis() - lastDataLogTime > dataLoggingGranularity * 1000) {
+    mode = "saveData";
+    lastDataLogTime = millis();
+  }
+  url =  (String)urlGet + "?storagePassword=" + (String)storagePasswordToUse + "&locationId=" + locationId + "&mode=" + mode + "&data=" + datastring;
   Serial.println("\r>>> Connecting to host: ");
   //Serial.println(hostGet);
   int attempts = 0;
@@ -264,35 +341,33 @@ void sendRemoteData(String datastring) {
        clientGet.println("User-Agent: ESP8266/1.0");
        clientGet.println("Accept-Encoding: identity");
        clientGet.println("Connection: close\r\n\r\n");
-       //this part looks sus, under what circumstances would timeoutP2 accumulate 10000 milliseconds here:
-       unsigned long timeoutP2 = millis();
-       if (millis() - timeoutP2 > 10000) {
-        Serial.println(">>> Client Timeout: moxee rebooted: ");
-        Serial.println(hostGet);
-        rebootMoxee();
-        clientGet.stop();
-        return; 
-       }//if (millis()...
       }//if (clientGet.connect(
       //clientGet.stop();
       return;
-     } //while (client
-   
-     //just checks the 1st line of the server response. Could be expanded if needed;
-    delay(1); //see if this improved data reception. OMG IT TOTALLY WORKED!!!
-    while(clientGet.available()){
-      String retLine = clientGet.readStringUntil('\n');
-      retLine.trim();
-      if(retLine.charAt(0) == '{') {
-        Serial.println(retLine);
-        setLocalHardwareToServerStateFromJson((char *)retLine.c_str());
-        break; 
-      } else {
-        Serial.print("non-JSON line returned: ");
-        Serial.println(retLine);
-      }
-    }
+     } //if( millis() -  
    }
+  //just checks the 1st line of the server response. Could be expanded if needed;
+  //delay(1); //see if this improved data reception. OMG IT TOTALLY WORKED!!!
+  bool receivedData = false;
+  bool receivedDataJson = false;
+  while(clientGet.available()){
+    receivedData = true;
+    String retLine = clientGet.readStringUntil('\n');
+    retLine.trim();
+    if(retLine.charAt(0) == '{') {
+      Serial.println(retLine);
+      setLocalHardwareToServerStateFromJson((char *)retLine.c_str());
+      receivedDataJson = true;
+      break; 
+    } else {
+      Serial.print("non-JSON line returned: ");
+      Serial.println(retLine);
+    }
+  }
+  if(receivedData && !receivedDataJson) { //an indication our server is gzipping data needed for remote control.  So instead pull it down one pin at a time and hopefully get under the gzip cutoff
+    onePinAtATimeMode = true;
+  }
+   
   } //end client connection if else             
   Serial.println("\r>>> Closing host: ");
   Serial.println(hostGet);
@@ -301,23 +376,24 @@ void sendRemoteData(String datastring) {
 
 //this will set any pins specified in the JSON
 void setLocalHardwareToServerStateFromJson(char * json){
+  char * nodeName="device_data";
   int pinNumber = 0;
   int value = -1;
   int canBeAnalog = 0;
   int enabled = 0;
   DeserializationError error = deserializeJson(jsonBuffer, json);
-  if(jsonBuffer["device_data"]) {
+  if(jsonBuffer[nodeName]) {
     Serial.print("number of device pins: ");
-    Serial.print(jsonBuffer["device_data"].size());
+    Serial.print(jsonBuffer[nodeName].size());
     Serial.println();
-    for(int i=0; i<jsonBuffer["device_data"].size(); i++) {
+    for(int i=0; i<jsonBuffer[nodeName].size(); i++) {
       Serial.print("number of pin: ");
       Serial.print(i);
       Serial.println();
-      pinNumber = (int)jsonBuffer["device_data"][i]["pin_number"];
-      value = (int)jsonBuffer["device_data"][i]["value"];
-      canBeAnalog = (int)jsonBuffer["device_data"][i]["can_be_analog"];
-      enabled = (int)jsonBuffer["device_data"][i]["enabled"];
+      pinNumber = (int)jsonBuffer[nodeName][i]["pin_number"];
+      value = (int)jsonBuffer[nodeName][i]["value"];
+      canBeAnalog = (int)jsonBuffer["nodeName"][i]["can_be_analog"];
+      enabled = (int)jsonBuffer[nodeName][i]["enabled"];
       Serial.print("pin: ");
       Serial.print(pinNumber);
       Serial.print("; value: ");
@@ -336,6 +412,33 @@ void setLocalHardwareToServerStateFromJson(char * json){
           }
         }
       }
+    }
+  }
+}
+
+//this will run commands sent to the sertver
+void runCommands(char * json){
+  String command;
+  int commandId;
+  char * nodeName="commands";
+  DeserializationError error = deserializeJson(jsonBuffer, json);
+  if(jsonBuffer[nodeName]) {
+    Serial.print("number of commands: ");
+    Serial.print(jsonBuffer[nodeName].size());
+    Serial.println();
+    Serial.println();
+    for(int i=0; i<jsonBuffer[nodeName].size(); i++) {
+      command = (String)jsonBuffer[nodeName][i]["command"];
+      commandId = (int)jsonBuffer[nodeName][i]["commandId"];
+      //still have to run command!
+      if(command == "reboot") {
+        rebootEsp();
+      }
+
+
+
+
+      lastCommandId = commandId;
     }
   }
 }
@@ -371,7 +474,7 @@ void loop(void){
   long nowTime = millis() + timeOffset;
   timeClient.update();
   
-  int granularityToUse = secondsGranularity;
+  int granularityToUse = pollingGranularity;
   if(connectionFailureMode) {
     granularityToUse = granularityWhenInConnectionFailureMode;
   }
@@ -383,7 +486,7 @@ void loop(void){
     rebootEsp();
   }
   
-  if(nowTime - ((nowTime/(1000 * granularityToUse) )*(1000 * granularityToUse)) == 0 || connectionFailureTime>0 && connectionFailureTime + connectionFailureRetrySeconds * 1000 > millis()) {  //send data to backend server every <secondsGranularity> seconds or so
+  if(nowTime - ((nowTime/(1000 * granularityToUse) )*(1000 * granularityToUse)) == 0 || connectionFailureTime>0 && connectionFailureTime + connectionFailureRetrySeconds * 1000 > millis()) {  //send data to backend server every <pollingGranularity> seconds or so
     Serial.print("Connection failure time: ");
     Serial.print(connectionFailureTime);
     //Serial.print("  Connection failure calculation: ");
@@ -395,7 +498,6 @@ void loop(void){
     handleWeatherData();
     glblRemote = false;
   }
-  //Serial.println(dht.readTemperature());
   server.handleClient();          //Handle client requests
   //digitalWrite(0, HIGH );
   //delay(100);
