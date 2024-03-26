@@ -7,7 +7,7 @@ extern const char* storagePassword; //to ensure someone doesn't store bogus data
 //url will be in the form: http://your-server.com:80/weather/data.php?data=
 extern const char* urlGet;
 extern const char* hostGet;
-extern const int sensorType; //for BME680 -- we may support others
+extern const int sensorType; //SENSORS! -- we support these: 180 for BMP180, 2301 for DHT 2301, 680 for BME680.  0 for no sensor.  No support for multiple sensors for now.
 extern const int locationId; //3 really is watchdog
 extern const int pollingGranularity; //how often to poll backend in seconds, 4 makes sense
 extern const int dataLoggingGranularity; //how often to store data in backend, 300 makes sense
