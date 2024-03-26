@@ -96,6 +96,7 @@ void handleWeatherData() {
   static char     buf[16];                        // sprintf text buffer
   static uint16_t loopCounter = 0;                // Display iterations
   if (sensorType == 680) {
+    //BME680 code:
     BME680.getSensorData(temperatureRaw, humidityRaw, pressureRaw, gasRaw);
     
     sprintf(buf, "%4d %3d.%02d", (loopCounter - 1) % 9999,  // Clamp to 9999,
@@ -116,8 +117,9 @@ void handleWeatherData() {
     humidityValue = (double)humidityRaw/1000;
     temperatureValue = (double)temperatureRaw/100;
     pressureValue = (double)pressureRaw/100;
-    gasValue = (double)gasRaw/100;
+    gasValue = (double)gasRaw/100;  //all i ever get for this is 129468.6 and 8083.7
   } else if (sensorType == 2301) {
+    //DHT2301 code:
     digitalWrite(dhtPower, HIGH); //turn on DHT power. 
     delay(10);
     humidityValue = (double)dht.readHumidity();
@@ -164,6 +166,7 @@ void handleWeatherData() {
     }
     humidityValue = NULL; //really should set unknown values as null
   } else {
+    //no sensor at all
     humidityValue = NULL;
     temperatureValue = NULL;//don't want to save data from no sensor, so force temperature out of range
     pressureValue = NULL;
