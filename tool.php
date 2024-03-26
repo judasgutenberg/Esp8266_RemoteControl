@@ -714,9 +714,12 @@ function schemaArrayFromSchema($table, &$pk){
       if($row["Type"] == "tinyint(4)" ){
         $type = "bool";
       }
+      if(beginswith($row["Type"] , "int") || beginswith($row["Type"] , "decim")|| beginswith($row["Type"] , "float")  ){
+        $type = "number";
+      }
       if($fieldName != "user_id") {
         $record = ["label" => $fieldName, "name" => $fieldName, "type" => $type ];
-        if($type == "bool"){
+        if($type == "bool" || $type == "number" ){
           $record["liveChangeable"] = true;
         }
         $headerData[] = $record;
@@ -1220,7 +1223,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
           
         }
 
-        if($type == "color"  || $type == "text"){
+        if($type == "color"  || $type == "text"  || $type == "number" || $type == "string"){
           $out .= "<input onchange='genericListActionBackend(\"" . $name . "\",  this.value ,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName]  . "\")' value='" . $value . "'  name='" . $name . "' type='" . $type . "' />\n";
         } else if($type == "checkbox" || $type == "bool") {
 
