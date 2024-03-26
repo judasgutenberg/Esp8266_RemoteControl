@@ -38,8 +38,9 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org");
 long connectionFailureTime = 0;
 long lastDataLogTime = 0;
 int timeSkewAmount = 0; //i had it as much as 20000 for 20 seconds, but serves no purpose that I can tell
-const int pinNumber = 22;
-long pinValues[pinNumber];
+int pinTotal = 8;
+long* pinValues = new long[pinTotal];
+long* pinList = new long[pinTotal];
 long moxeeRebootTimes[] = {0,0,0,0,0,0,0,0,0,0,0};
 
 int timeOffset = 0;
@@ -173,18 +174,18 @@ void handleWeatherData() {
   }
   if(onePinAtATimeMode) {
     pinCursor++;
-    if(pinCursor >= pinNumber) {
+    if(pinCursor >= pinTotal) {
       pinCursor = 0;
     }
   }
   
   transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue); //using delimited data instead of JSON to keep things simple
   
-  transmissionString = transmissionString + "|" + JoinValsOnDelimiter(moxeeRebootTimes, "*");
-  transmissionString = transmissionString + "|" + JoinValsOnDelimiter(pinValues, "*"); //also send pin as they are known back to the server
+  transmissionString = transmissionString + "|" + JoinValsOnDelimiter(moxeeRebootTimes, "*", 10);
+  transmissionString = transmissionString + "|" + JoinValsOnDelimiter( pinValues, "*", pinTotal); //also send pin as they are known back to the server
   //other server-relevant info as needed:
   transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor;
-  Serial.println(transmissionString);
+  //Serial.println(transmissionString);
   //had to use a global, died a little inside
   if(glblRemote) {
     sendRemoteData(transmissionString);
@@ -193,10 +194,13 @@ void handleWeatherData() {
   }
 }
 
-String JoinValsOnDelimiter(long vals[], String delimiter) {
+String JoinValsOnDelimiter(long vals[], String delimiter, int numberToDo) {
   String out = "";
-  for(int i=0; i<10; i++){
-    out = out + (String)vals[i] + delimiter;
+  for(int i=0; i<numberToDo; i++){
+    out = out + (String)vals[i];
+    if(i < numberToDo-1) {
+      out = out + delimiter;
+    }
   }
   return out;
 }
@@ -380,15 +384,11 @@ void setLocalHardwareToServerStateFromJson(char * json){
   int value = -1;
   int canBeAnalog = 0;
   int enabled = 0;
+  int pinCounter = 0;
   DeserializationError error = deserializeJson(jsonBuffer, json);
   if(jsonBuffer[nodeName]) {
-    Serial.print("number of device pins: ");
-    Serial.print(jsonBuffer[nodeName].size());
-    Serial.println();
+    pinCounter = 0;
     for(int i=0; i<jsonBuffer[nodeName].size(); i++) {
-      Serial.print("number of pin: ");
-      Serial.print(i);
-      Serial.println();
       pinNumber = (int)jsonBuffer[nodeName][i]["pin_number"];
       value = (int)jsonBuffer[nodeName][i]["value"];
       canBeAnalog = (int)jsonBuffer["nodeName"][i]["can_be_analog"];
@@ -400,7 +400,7 @@ void setLocalHardwareToServerStateFromJson(char * json){
       Serial.println();
       pinMode(pinNumber, OUTPUT);
       if(enabled) {
-        pinValues[pinNumber] = value;
+        pinValues[pinCounter] = value;
         if(canBeAnalog) {
           analogWrite(pinNumber, value);
         } else {
@@ -411,8 +411,19 @@ void setLocalHardwareToServerStateFromJson(char * json){
           }
         }
       }
+      pinCounter++;
     }
   }
+  nodeName="pin_list";
+  if(jsonBuffer[nodeName]) {
+    pinCounter = 0;
+    for(int i=0; i<jsonBuffer[nodeName].size(); i++) {
+      pinNumber = (int)jsonBuffer[nodeName][i];
+      pinList[pinCounter] = pinNumber;
+      pinCounter++;
+    }
+  }
+  pinTotal = pinCounter;
 }
 
 //this will run commands sent to the sertver
