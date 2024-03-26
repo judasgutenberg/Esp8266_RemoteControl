@@ -21,10 +21,9 @@ extern const int hotspotLimitedTimeFrame; //seconds
 extern const int hotspotLimitedTimeFrame; //seconds
 
 extern const int moxeePowerSwitch; //usually 14
-extern const int dhtPin;  
+extern const int dhtData;  
 extern const int dhtPower;  
 // #define dhType DHT11 // DHT 11
 // #define dhType DHT22 // DHT 22, AM2302, AM2321
 extern const int dhtType;
-
  
