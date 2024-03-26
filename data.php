@@ -143,6 +143,7 @@ if($_REQUEST) {
 
 		}
 		if($mode == "getDeviceData" || $mode == "saveData" ) {
+			$pinValuesKnownToDevice = [];
 			$specificPin = -1;
 			if(count($lines)>1) {
 				$recentReboots = explode("*", $lines[1]);
@@ -170,17 +171,27 @@ if($_REQUEST) {
 			} 
 
 			//the part where we include any data from our remote control system:
-			$deviceSql = "SELECT pin_number, value, enabled, can_be_analog  FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=" . intval($deviceId) . ";";
+			$deviceSql = "SELECT pin_number, value, enabled, can_be_analog, device_feature_id  FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=" . intval($deviceId) . ";";
 			//echo $deviceSql;
 			$result = mysqli_query($conn, $deviceSql);
 			if($result) {
 				$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+				$pinCursor = 0;
 				foreach($rows as $row) {
 					$pinNumber = $row["pin_number"];
 					if($specificPin == -1 || $specificPin ==  $pinNumber ){
+						if(count($pinValuesKnownToDevice)>0) {
+							//this part update device_feature so we can tell from the server if the device has taken on the server's value
+							$sqlToUpdateDeviceFeature = "UPDATE device_feature SET last_known_device_value =  " . $pinValuesKnownToDevice[$pinCursor];
+							$sqlToUpdateDeviceFeature .= ", last_known_device_modified='" . $formatedDateTime . "'";
+							$sqlToUpdateDeviceFeature .= " WHERE device_feature_id=" . $row["device_feature_id"];
+							$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
+						}
+						unset($row["device_feature_id"]);//make things as lean as possible for IoT device
 						$out["device_data"][] = $row;
 					}
 					$out["pin_list"][] = $pinNumber ;
+					$pinCursor++;
 				}
 			}
 			
