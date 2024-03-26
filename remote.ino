@@ -183,7 +183,7 @@ void handleWeatherData() {
   transmissionString = transmissionString + "|" + JoinValsOnDelimiter(moxeeRebootTimes, "*");
   transmissionString = transmissionString + "|" + JoinValsOnDelimiter(pinValues, "*"); //also send pin as they are known back to the server
   //other server-relevant info as needed:
-  transmissionString = transmissionString + "|" + lastCommandId + "|" + pinCursor;
+  transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor;
   Serial.println(transmissionString);
   //had to use a global, died a little inside
   if(glblRemote) {
@@ -343,11 +343,10 @@ void sendRemoteData(String datastring) {
        clientGet.println("Connection: close\r\n\r\n");
       }//if (clientGet.connect(
       //clientGet.stop();
-      //return;
+      return;
      } //if( millis() -  
    }
-  //just checks the 1st line of the server response. Could be expanded if needed;
-  //delay(1); //see if this improved data reception. OMG IT TOTALLY WORKED!!!
+  delay(1); //see if this improved data reception. OMG IT TOTALLY WORKED!!!
   bool receivedData = false;
   bool receivedDataJson = false;
   while(clientGet.available()){
