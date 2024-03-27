@@ -20,7 +20,9 @@ extern const int hotspotLimitedTimeFrame; //seconds
 
 extern const int hotspotLimitedTimeFrame; //seconds
 
+extern const int hotspotLimitedTimeFrame; //seconds
 extern const int moxeePowerSwitch; //usually 14
+extern const int deepSleepTimePerLoop; //seconds. doesn't yet work
 extern const int dhtData;  
 extern const int dhtPower;  
 // #define dhType DHT11 // DHT 11
