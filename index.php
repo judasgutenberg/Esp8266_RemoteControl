@@ -250,12 +250,8 @@ function getData(locationId) {
 					pressureValues.push(pressure); 
 				}
 				timeStamp.push(time);
-				
- 
 			}
- 
 			glblChart = showGraph(locationId);  //Update Graphs
-	
 	    }
 	  };
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
