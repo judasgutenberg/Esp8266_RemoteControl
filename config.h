@@ -28,4 +28,4 @@ extern const int dhtPower;
 // #define dhType DHT11 // DHT 11
 // #define dhType DHT22 // DHT 22, AM2302, AM2321
 extern const int dhtType;
- 
+extern const char pinsToStartLow[];
