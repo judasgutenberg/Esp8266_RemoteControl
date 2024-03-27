@@ -1,6 +1,7 @@
 <!doctype html>
 <?php 
-include("./functions.php");
+include("config.php");
+include("site_functions.php");
 //ini_set('display_errors', 1);
 //ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
@@ -30,6 +31,26 @@ if(array_key_exists( "locationId", $_REQUEST)) {
 
 }
 
+$conn = mysqli_connect($servername, $username, $password, $database);
+$user = logIn();
+$content = "";
+$action = gvfw("action");
+if ($action == "login") {
+	loginUser();
+} else if ($action == "logout") {
+	logOut();
+	header("Location: ?action=login");
+	die();
+}
+if(!$user) {
+	if(gvfa("password", $_POST) != "") {
+		$content .= "<div class='genericformerror'>The credentials you entered have failed.</div>";
+	}
+	$content .= loginForm();
+	echo bodyWrap($content, $user, "", null);
+	die();
+}
+ 
 ?>
 <html>
 
@@ -203,7 +224,7 @@ function getData(locationId) {
 	//console.log("got data");
 	let scale = document.getElementById('scaleDropdown')[document.getElementById('scaleDropdown').selectedIndex].value;
 	let xhttp = new XMLHttpRequest();
-	let endpointUrl = "http://randomsprocket.com/weather/data.php?scale=" + scale + "&mode=getData&locationId=" + locationId;
+	let endpointUrl = "http://randomsprocket.com/weather/data.php?storagePassword=<?php echo $user['storage_password'];?>&scale=" + scale + "&mode=getData&locationId=" + locationId;
 	xhttp.onreadystatechange = function() {
 	    if (this.readyState == 4 && this.status == 200) {
 	     //Push the data in array
