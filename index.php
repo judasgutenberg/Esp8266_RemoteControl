@@ -251,15 +251,7 @@ function getData(locationId) {
 				}
 				timeStamp.push(time);
 				
-				/*
-				let row = tbody.insertRow(0); //Add after headings
-				let cell1 = row.insertCell(0);
-				let cell2 = row.insertCell(1);
-				let cell3 = row.insertCell(2);
-				cell1.innerHTML = time;
-				cell2.innerHTML = temperature;
-				cell3.innerHTML = humidity;
-				*/
+ 
 			}
  
 			glblChart = showGraph(locationId);  //Update Graphs
