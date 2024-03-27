@@ -10,9 +10,8 @@ function genericSelect($id, $name, $defaultValue, $data, $event = "", $handler= 
 	$out = "";
 	$out .= "<select name='" . $name. "' id='" . $id . "' " . $event . "=\"" . $handler . "\">\n";
 	foreach($data as $datum) {
-		//echo $datum;
-		$value = $datum->value;
-		$text = $datum->text;
+		$value = $datum["value"];
+		$text = $datum["text"];
 		$selected = "";
 		if($defaultValue == $value) {
 			$selected = " selected='true'";
@@ -30,7 +29,9 @@ if(array_key_exists( "locationId", $_REQUEST)) {
 	$locationId = 1;
 
 }
-
+$poser = null;
+$poserString = "";
+$out = "";
 $conn = mysqli_connect($servername, $username, $password, $database);
 $user = logIn();
 $content = "";
@@ -58,35 +59,37 @@ if(!$user) {
   <title>Weather Information</title>
   <!--For offline ESP graphs see this tutorial https://circuits4you.com/2018/03/10/esp8266-jquery-and-ajax-web-server/ -->
   <script src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>  
-  <style>
-  canvas{
-    -moz-user-select: none;
-    -webkit-user-select: none;
-    -ms-user-select: none;
-  }
-  /* Data Table Styling */
-  #dataTable {
-    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
-    border-collapse: collapse;
-    width: 100%;
-  }
-  #dataTable td, #dataTable th {
-    border: 1px solid #ddd;
-    padding: 8px;
-  }
-  #dataTable tr:nth-child(even){background-color: #f2f2f2;}
-  #dataTable tr:hover {background-color: #ddd;}
-  #dataTable th {
-    padding-top: 12px;
-    padding-bottom: 12px;
-    text-align: left;
-    background-color: #4CAF50;
-    color: white;
-  }
-  </style>
+  <link rel='stylesheet' href='tool.css?version=1711570359'>
 </head>
 
 <body>
+<?php
+  if($user) {
+    if($poser) {
+      $poserString = " posing as <span class='poserindication'>" . $poser["email"] . "</span> (<a href='?action=disimpersonate'>unpose</a>)";
+
+    }
+    $out .= "<div class='loggedin'>You are logged in as <b>" . $user["email"] . "</b>" .  $poserString . " <div class='basicbutton'><a href=\"?action=logout\">logout</a></div></div>\n";
+	}
+	else
+	{
+    //$out .= "<div class='loggedin'>You are logged out.  </div>\n";
+	} 
+	$out .= "<div>\n";
+    $out .= "<div class='documentdescription'>";
+	echo $out; 
+  /*
+  if($documentId){
+    $document = getDocumentFromDocumentId($documentId);
+    $out .= "Current xxxx: <em>" . $document["name"] . "</em> (" . $document["file_name"] . ")";
+  } else {
+    $out .= "No xxxx selected\n";
+
+  }
+  */
+  $out .= "</div>";
+  ?>
+
     <div style="text-align:center;"><b>Weather Information Log</b></div>
     <div class="chart-container" position: relative; height:350px; width:100%">
         <canvas id="Chart" width="400" height="700"></canvas>
@@ -95,7 +98,14 @@ if(!$user) {
 <table id="dataTable">
 <?php 
 //lol, it's easier to specify an object in json and decode it than it is just specify it in PHP
-$selectData = json_decode('[{"text":"Outside Cabin","value":1},{"text":"Cabin Downstairs","value":2},{"text":"Cabin Watchdog","value":3}]');
+
+$thisDataSql = "SELECT location_name as text, device_id as value FROM device WHERE user_id=" . intval($user["user_id"]) . " ORDER BY location_name ASC;";
+$result = mysqli_query($conn, $thisDataSql);
+if($result) {
+  $selectData = mysqli_fetch_all($result, MYSQLI_ASSOC); 
+}
+
+//$selectData = json_decode('[{"text":"Outside Cabin","value":1},{"text":"Cabin Downstairs","value":2},{"text":"Cabin Watchdog","value":3}]');
 //var_dump($selectData);
 //echo  json_last_error_msg();
 $selectId = "locationDropdown";
@@ -105,30 +115,17 @@ echo "<tr><td>Location:</td><td>" . genericSelect($selectId, "locationId", $loca
 
 $handler = "getData(document.getElementById('" . $selectId . "')[document.getElementById('" . $selectId  . "').selectedIndex].value)";
 
-$scaleData = json_decode('[{"text":"detailed","value":"fine"},{"text":"hourly","value":"hour"}, {"text":"daily","value":"day"}]');
+$scaleData = json_decode('[{"text":"detailed","value":"fine"},{"text":"hourly","value":"hour"}, {"text":"daily","value":"day"}]', true);
 echo "<tr><td>Time Scale:</td><td>" . genericSelect("scaleDropdown", "scale", "fine", $scaleData, "onchange", $handler) . "</td></tr>";
 ?>
 </table>
-<!--
-	<table id="dataTable">
-		<thead>
-			<tr>
-				<th>Time</th>
-				<th>Temperature</th>
-				<th>Humidity</th>
-			</tr>
-		</thead>
-		<tbody id='tableBody'>
-		</tbody>
-	</table>
-	-->
 </div>
 <br>
 <br>  
 
 <script>
 let glblChart = null;
-//Graphs visit: https://www.chartjs.org
+//For graphs info, visit: https://www.chartjs.org
 let temperatureValues = [];
 let humidityValues = [];
 let pressureValues = [];
