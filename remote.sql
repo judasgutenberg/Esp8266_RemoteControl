@@ -76,7 +76,6 @@ CREATE TABLE device_type_feature(
 CREATE TABLE device_feature(
   device_feature_id INT AUTO_INCREMENT PRIMARY KEY,
   device_type_feature_id INT,
-  
   device_type_id INT,
   value INT NULL,
   name VARCHAR(100) NULL,
@@ -87,7 +86,16 @@ CREATE TABLE device_feature(
   modified DATETIME,
   last_known_device_value INT NULL,
   last_known_device_modified DATETIME
-  
+);
+
+CREATE TABLE user(
+  user_id INT AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(100) NULL,
+  password VARCHAR(100) NULL,
+  expired DATETIME NULL,
+  preferences TEXT NULL,
+  storage_password VARCHAR(100) NULL;
+  created DATETIME
 );
 
 --fixes for older versions of the schema:
@@ -104,7 +112,8 @@ CREATE TABLE device_feature(
 --ALTER TABLE device_feature ADD user_id INT NULL;
 --ALTER TABLE device_feature ADD last_known_device_value INT NULL;
 --ALTER TABLE device_feature ADD last_known_device_modified DATETIME;
- 
+--ALTER TABLE user ADD preferences TEXT NULL;
+--ALTER TABLE user ADD storage_password VARCHAR(100) NULL;
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
 INSERT INTO device (name, device_type_id, created) VALUES ('Hotspot Watchdog', 1, NOW());
