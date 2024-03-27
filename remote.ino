@@ -8,6 +8,7 @@
  * now also resets a Moxee Cellular hotspot if there are network problems
  * since those do not include watchdog behaviors
  */
+ 
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
@@ -15,7 +16,6 @@
 #include <NTPClient.h>
 #include <WiFiUdp.h>
  
-
 #include "config.h"
 
 #include "Zanshin_BME680.h"  // Include the BME680 Sensor library
@@ -64,11 +64,11 @@ float altitude(const int32_t press, const float seaLevel) {
   return (Altitude);
 }
 
-
 //ESP8266's home page:----------------------------------------------------
 void handleRoot() {
  server.send(200, "text/html", "nothing"); //Send web page
 }
+
 void handleWeatherData() {
   double humidityValue;
   double temperatureValue;
@@ -212,32 +212,21 @@ void ShiftArrayUp(long array[], long newValue, int arraySize) {
 
 //SETUP----------------------------------------------------
 void setup(void){
-  //pinMode(0, OUTPUT);
+  //set specified pins to start low immediately, keeping devices from turning on
+  for(int i=0; i<10; i++) {
+    if((int)pinsToStartLow[i] == -1) {
+      break;
+    }
+    pinMode((int)pinsToStartLow[i], OUTPUT);
+    digitalWrite((int)pinsToStartLow[i], LOW);
+  }
+  
   if(moxeePowerSwitch > 0) {
     pinMode(moxeePowerSwitch, OUTPUT);
     digitalWrite(moxeePowerSwitch, HIGH);
   }
   Serial.begin(115200);
-  WiFi.begin(ssid, password);     //Connect to your WiFi router
-  Serial.println();
-  // Wait for connection
-  int wiFiSeconds = 0;
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.print(".");
-    wiFiSeconds++;
-    if(wiFiSeconds > 80) {
-      Serial.println("WiFi taking too long, rebooting Moxee");
-      rebootMoxee();
-      wiFiSeconds = 0; //if you don't do this, you'll be stuck in a rebooting loop if WiFi fails once
-    }
-  }
-  //If connection successful show IP address in serial monitor
-  Serial.println("");
-  Serial.print("Connected to ");
-  Serial.println(ssid);
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());  //IP address assigned to your ESP
+  WiFiConnect();
   server.on("/", handleRoot);      //Which routine to handle at root location. This is display page
   server.on("/weatherdata", handleWeatherData); //This page is called by java Script AJAX
   server.begin();                  //Start server
@@ -273,6 +262,28 @@ void setup(void){
   // GMT -1 = -3600
   // GMT 0 = 0
   timeClient.setTimeOffset(0);
+}
+
+void WiFiConnect() {
+  WiFi.begin(ssid, password);     //Connect to your WiFi router
+  Serial.println();
+  // Wait for connection
+  int wiFiSeconds = 0;
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.print(".");
+    wiFiSeconds++;
+    if(wiFiSeconds > 80) {
+      Serial.println("WiFi taking too long, rebooting Moxee");
+      rebootMoxee();
+      wiFiSeconds = 0; //if you don't do this, you'll be stuck in a rebooting loop if WiFi fails once
+    }
+  }
+  Serial.println("");
+  Serial.print("Connected to ");
+  Serial.println(ssid);
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());  //IP address assigned to your ESP
 }
 
 //SEND DATA TO A REMOTE SERVER TO STORE IN A DATABASE----------------------------------------------------
@@ -499,5 +510,15 @@ void loop(void){
   //digitalWrite(0, HIGH );
   //delay(100);
   //digitalWrite(0, LOW);
-  
+  //so far, this does not work:
+  /*
+  if(millis() > 10000) {
+    if(deepSleepTimePerLoop) {
+      Serial.println("sleeping...");
+      ESP.deepSleep(12e6); 
+      Serial.println("awake...");
+      WiFiConnect();
+    }
+  }
+  */
 }
