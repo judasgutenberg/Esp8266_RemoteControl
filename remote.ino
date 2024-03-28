@@ -500,7 +500,7 @@ void loop(void){
  
   if(millis() > 10000) {
     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
-    if(deepSleepTimePerLoop) {
+    if(deepSleepTimePerLoop > 0) {
       Serial.println("sleeping...");
       ESP.deepSleep(deepSleepTimePerLoop * 1e6); 
       Serial.println("awake...");
