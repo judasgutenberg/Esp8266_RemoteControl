@@ -492,7 +492,7 @@ void loop(void){
     handleWeatherData();
     glblRemote = false;
   }
-  server.handleClient();          //Handle client requests
+  server.handleClient();          
   //digitalWrite(0, HIGH );
   //delay(100);
   //digitalWrite(0, LOW);
