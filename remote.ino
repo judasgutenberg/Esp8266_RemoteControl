@@ -496,14 +496,15 @@ void loop(void){
   //delay(100);
   //digitalWrite(0, LOW);
   //so far, this does not work:
-  /*
+ 
   if(millis() > 10000) {
+    //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
     if(deepSleepTimePerLoop) {
       Serial.println("sleeping...");
-      ESP.deepSleep(12e6); 
+      ESP.deepSleep(deepSleepTimePerLoop * 1e6); 
       Serial.println("awake...");
       WiFiConnect();
     }
   }
-  */
+ 
 }
