@@ -19,7 +19,6 @@
 #include <DHT.h>
 #include <SFE_BMP180.h>
 
-//specific for DHT stuff
 DHT dht(dhtData, dhtType);
 SFE_BMP180 pressure;
 BME680_Class BME680;
@@ -195,6 +194,8 @@ void setup(void){
     digitalWrite(moxeePowerSwitch, HIGH);
   }
   Serial.begin(115200);
+  Serial.println();
+  Serial.println("Just started up...");
   WiFiConnect();
   server.on("/", handleRoot);      //Which routine to handle at root location. This is display page
   server.on("/weatherdata", handleWeatherData); //This page is called by java Script AJAX
