@@ -1,11 +1,8 @@
-
-
 /*
- * ESP8266 NodeMCU Real Time Data Graph 
- * Updates and Gets data from webpage without page refresh
+ * ESP8266 Remote Control. Also sends weather data from three different kinds of sensors (configured in config.c) 
  * based on something from https://circuits4you.com
- * reorganized and extended by Gus Mueller, April 24 2022
- * now also resets a Moxee Cellular hotspot if there are network problems
+ * reorganized and extended by Gus Mueller, April 24 2022 - March 27 2024
+ * Also resets a Moxee Cellular hotspot if there are network problems
  * since those do not include watchdog behaviors
  */
  
@@ -86,7 +83,7 @@ void handleWeatherData() {
   if (sensorType == 680) {
     //BME680 code:
     BME680.getSensorData(temperatureRaw, humidityRaw, pressureRaw, gasRaw);
-    
+    //i'm not sure what all this is about, since i just copied it from the BME680 example:
     sprintf(buf, "%4d %3d.%02d", (loopCounter - 1) % 9999,  // Clamp to 9999,
             (int8_t)(temperatureRaw / 100), (uint8_t)(temperatureRaw % 100));   // Temp in decidegrees
     //Serial.print(buf);
@@ -101,7 +98,6 @@ void handleWeatherData() {
     //Serial.print(buf);
     sprintf(buf, "%4d.%02d\n", (int16_t)(gasRaw / 100), (uint8_t)(gasRaw % 100));  // Resistance milliohms
     //Serial.print(buf);
-  
     humidityValue = (double)humidityRaw/1000;
     temperatureValue = (double)temperatureRaw/100;
     pressureValue = (double)pressureRaw/100;
@@ -165,12 +161,14 @@ void handleWeatherData() {
       pinCursor = 0;
     }
   }
-  
+  //i don't send the data to the server with JSON because it's pretty simple and can just be * and | delimited
+  //the weather data part of the string, delimited by *
   transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue); //using delimited data instead of JSON to keep things simple
-  
+  //the time-stamps of connection failures, delimited by *
   transmissionString = transmissionString + "|" + JoinValsOnDelimiter(moxeeRebootTimes, "*", 10);
+  //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
   transmissionString = transmissionString + "|" + JoinValsOnDelimiter( pinValues, "*", pinTotal); //also send pin as they are known back to the server
-  //other server-relevant info as needed:
+  //other server-relevant info as needed, delimited by *
   transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor;
   //Serial.println(transmissionString);
   //had to use a global, died a little inside
@@ -179,35 +177,6 @@ void handleWeatherData() {
   } else {
     server.send(200, "text/plain", transmissionString); //Send values only to client ajax request
   }
-}
-
-String JoinValsOnDelimiter(long vals[], String delimiter, int numberToDo) {
-  String out = "";
-  for(int i=0; i<numberToDo; i++){
-    out = out + (String)vals[i];
-    if(i < numberToDo-1) {
-      out = out + delimiter;
-    }
-  }
-  return out;
-}
-
-String NullifyOrNumber(double inVal) {
-  if(inVal == NULL) {
-    return "NULL";
-  } else {
-
-    return String(inVal);
-  }
-}
-
-void ShiftArrayUp(long array[], long newValue, int arraySize) {
-    // Shift elements down by one index
-    for (int i =  1; i < arraySize ; i++) {
-        array[i - 1] = array[i];
-    }
-    // Insert the new value at the beginning
-    array[arraySize - 1] = newValue;
 }
 
 //SETUP----------------------------------------------------
@@ -231,7 +200,6 @@ void setup(void){
   server.on("/weatherdata", handleWeatherData); //This page is called by java Script AJAX
   server.begin();                  //Start server
   Serial.println("HTTP server started");
- 
   if(sensorType == 680) {
     Serial.print(F("Initializing BME680 sensor...\n"));
     while (!BME680.begin(I2C_STANDARD_MODE) && sensorType == 680) {  // Start BME680 using I2C, use first device found
@@ -286,6 +254,35 @@ void WiFiConnect() {
   Serial.println(WiFi.localIP());  //IP address assigned to your ESP
 }
 
+String JoinValsOnDelimiter(long vals[], String delimiter, int numberToDo) {
+  String out = "";
+  for(int i=0; i<numberToDo; i++){
+    out = out + (String)vals[i];
+    if(i < numberToDo-1) {
+      out = out + delimiter;
+    }
+  }
+  return out;
+}
+
+String NullifyOrNumber(double inVal) {
+  if(inVal == NULL) {
+    return "NULL";
+  } else {
+
+    return String(inVal);
+  }
+}
+
+void ShiftArrayUp(long array[], long newValue, int arraySize) {
+    // Shift elements down by one index
+    for (int i =  1; i < arraySize ; i++) {
+        array[i - 1] = array[i];
+    }
+    // Insert the new value at the beginning
+    array[arraySize - 1] = newValue;
+}
+
 //SEND DATA TO A REMOTE SERVER TO STORE IN A DATABASE----------------------------------------------------
 void sendRemoteData(String datastring) {
   WiFiClient clientGet;
@@ -321,55 +318,55 @@ void sendRemoteData(String datastring) {
     Serial.print(hostGet);
     Serial.println();
   } else {
-   connectionFailureTime = 0;
-   connectionFailureMode = false;
-   Serial.println(url);
-   clientGet.println("GET " + url + " HTTP/1.1");
-   clientGet.print("Host: ");
-   clientGet.println(hostGet);
-   clientGet.println("User-Agent: ESP8266/1.0");
-   clientGet.println("Accept-Encoding: identity");
-   clientGet.println("Connection: close\r\n\r\n");
-   unsigned long timeoutP = millis();
-   while (clientGet.available() == 0) {
-     if (millis() - timeoutP > 10000) {
-      //let's try a simpler connection and if that fails, then reboot moxee
-      //clientGet.stop();
-      if(clientGet.connect(hostGet, httpGetPort)){
-       //timeOffset = timeOffset + timeSkewAmount; //in case two probes are stepping on each other, make this one skew a 20 seconds from where it tried to upload data
-       clientGet.println("GET / HTTP/1.1");
-       clientGet.print("Host: ");
-       clientGet.println(hostGet);
-       clientGet.println("User-Agent: ESP8266/1.0");
-       clientGet.println("Accept-Encoding: identity");
-       clientGet.println("Connection: close\r\n\r\n");
-      }//if (clientGet.connect(
-      //clientGet.stop();
-      return;
-     } //if( millis() -  
-   }
-  delay(1); //see if this improved data reception. OMG IT TOTALLY WORKED!!!
-  bool receivedData = false;
-  bool receivedDataJson = false;
-  while(clientGet.available()){
-    receivedData = true;
-    String retLine = clientGet.readStringUntil('\n');
-    retLine.trim();
-    if(retLine.charAt(0) == '{') {
-      Serial.println(retLine);
-      setLocalHardwareToServerStateFromJson((char *)retLine.c_str());
-      receivedDataJson = true;
-      break; 
-    } else {
-      Serial.print("non-JSON line returned: ");
-      Serial.println(retLine);
+     connectionFailureTime = 0;
+     connectionFailureMode = false;
+     Serial.println(url);
+     clientGet.println("GET " + url + " HTTP/1.1");
+     clientGet.print("Host: ");
+     clientGet.println(hostGet);
+     clientGet.println("User-Agent: ESP8266/1.0");
+     clientGet.println("Accept-Encoding: identity");
+     clientGet.println("Connection: close\r\n\r\n");
+     unsigned long timeoutP = millis();
+     while (clientGet.available() == 0) {
+       if (millis() - timeoutP > 10000) {
+        //let's try a simpler connection and if that fails, then reboot moxee
+        //clientGet.stop();
+        if(clientGet.connect(hostGet, httpGetPort)){
+         //timeOffset = timeOffset + timeSkewAmount; //in case two probes are stepping on each other, make this one skew a 20 seconds from where it tried to upload data
+         clientGet.println("GET / HTTP/1.1");
+         clientGet.print("Host: ");
+         clientGet.println(hostGet);
+         clientGet.println("User-Agent: ESP8266/1.0");
+         clientGet.println("Accept-Encoding: identity");
+         clientGet.println("Connection: close\r\n\r\n");
+        }//if (clientGet.connect(
+        //clientGet.stop();
+        return;
+       } //if( millis() -  
+     }
+    delay(1); //see if this improved data reception. OMG IT TOTALLY WORKED!!!
+    bool receivedData = false;
+    bool receivedDataJson = false;
+    while(clientGet.available()){
+      receivedData = true;
+      String retLine = clientGet.readStringUntil('\n');
+      retLine.trim();
+      if(retLine.charAt(0) == '{') {
+        Serial.println(retLine);
+        setLocalHardwareToServerStateFromJson((char *)retLine.c_str());
+        receivedDataJson = true;
+        break; 
+      } else {
+        Serial.print("non-JSON line returned: ");
+        Serial.println(retLine);
+      }
     }
-  }
-  if(receivedData && !receivedDataJson) { //an indication our server is gzipping data needed for remote control.  So instead pull it down one pin at a time and hopefully get under the gzip cutoff
-    onePinAtATimeMode = true;
-  }
+    if(receivedData && !receivedDataJson) { //an indication our server is gzipping data needed for remote control.  So instead pull it down one pin at a time and hopefully get under the gzip cutoff
+      onePinAtATimeMode = true;
+    }
    
-  } //end client connection if else             
+  } //if (attempts >= connectionRetryNumber)....else....    
   Serial.println("\r>>> Closing host: ");
   Serial.println(hostGet);
   clientGet.stop();
@@ -424,7 +421,8 @@ void setLocalHardwareToServerStateFromJson(char * json){
   pinTotal = pinCounter;
 }
 
-//this will run commands sent to the sertver
+//this will run commands sent to the server
+//still needs to be implemented on the backend. but if i need it, it's here
 void runCommands(char * json){
   String command;
   int commandId;
@@ -442,10 +440,6 @@ void runCommands(char * json){
       if(command == "reboot") {
         rebootEsp();
       }
-
-
-
-
       lastCommandId = commandId;
     }
   }
@@ -462,18 +456,9 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
     delay(7000);
     digitalWrite(moxeePowerSwitch, HIGH);
   }
-  //only do one reboot!
-   /*
-  delay(4000);
-  digitalWrite(moxeePowerSwitch, LOW);
-  delay(4000);
-  digitalWrite(moxeePowerSwitch, HIGH);
-  */
-  
- 
+  //only do one reboot!  it usually takes two, but this thing can be made to cycle so fast that this same function can handle both reboots, which is important if the reboot happens to 
+  //be out of phase with the cellular hotspot
   ShiftArrayUp(moxeeRebootTimes,  timeClient.getEpochTime(), 10);
- 
- 
   moxeeRebootCount++;
 }
 
