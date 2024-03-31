@@ -537,7 +537,7 @@ function schemaArrayFromSchema($table, &$pk){
 function genericEntityList($userId, $table) {
   Global $conn;
   $headerData = schemaArrayFromSchema($table, $pk);
-
+  $out = "<div class='listtools'><div class='basicbutton'><a href='?table=" . $table . "&action=startcreate'>Create</a></div> a new " . $table . "<//div>\n";
   $thisDataSql = "SELECT * FROM " . $table . " WHERE user_id=" . intval($userId);
   $deviceId = gvfw("device_id");
   if($deviceId){
@@ -551,7 +551,9 @@ function genericEntityList($userId, $table) {
       $toolsTemplate .= " | <a href='?table=device_feature&device_id=<" . $table . "_id/>'>Device Features</a>";
 
     }
-    return genericTable($thisDataRows, $headerData, $toolsTemplate, null, $table, $pk);
+   
+    $out .= genericTable($thisDataRows, $headerData, $toolsTemplate, null, $table, $pk);
+    return $out;
   }
 }
 
@@ -564,8 +566,10 @@ function genericEntityForm($userId, $table, $errors){
   $thisDataResult = mysqli_query($conn, $thisDataSql);
   if($thisDataResult) {
     $thisDataRows = mysqli_fetch_all($thisDataResult, MYSQLI_ASSOC);
-
-    $data = updateDataWithRows($data, $thisDataRows[0]);
+    if($thisDataRows && count($thisDataRows) > 0) {
+      $data = updateDataWithRows($data, $thisDataRows[0]);
+    }
+    
 
     return genericForm($data, "Save " . $table, "Saving...");
   }
@@ -574,12 +578,14 @@ function genericEntityForm($userId, $table, $errors){
  
 function genericEntitySave($userId, $table) {
   Global $conn;
-  $data = schemaArrayFromSchema($table, $pk);
+  //$data = schemaArrayFromSchema($table, $pk);
+  $pk = $table . "_id";
   $data = $_POST;
   unset($data['action']);
   unset($data[$pk]);
   unset($data['created']);
-  $sql = insertUpdateSql($conn, $table, array($pk => $_GET[$table . '_id']), $data);
+  $data["user_id"] = $userId;
+  $sql = insertUpdateSql($conn, $table, array($pk => gvfw($table . '_id')), $data);
   //echo $sql;
   //die();
   $result = mysqli_query($conn, $sql);
@@ -1223,6 +1229,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
   $_dataRaw = gvfa("_data", $data); 
   if($_dataRaw){
     $_data = json_decode($_dataRaw, true);
+    $_data[] = array("name"=>"user_id", "type"=>"hidden");
   }
   // Check if a primary key is provided
   $sanitizedKeys = [];
@@ -1234,20 +1241,23 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
  
   foreach ($dataToScan as $datum) {
     $column = $datum["name"];
+    $type =  gvfa("type", $datum, "");
     $value = gvfa($column, $data, "");
-    if($column  != "_data") {
-      if($column == "created") {
+    if($column  != "_data"  && !array_key_exists($column, $primaryKey)) {
+      if($column == "created" || $column == "modified") {
 
         $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
         $formatedDateTime =  $date->format('Y-m-d H:i:s'); 
-        $sanitizedData[] = $formatedDateTime;
-        
+        $sanitized = $formatedDateTime;
+         
+      } else if(($type == "bool"  || $type == "checkbox") && !$value){
+        $sanitized = '0';
       } else {
         $sanitized = mysqli_real_escape_string($conn, $value);
-        $sanitizedData[] = $sanitized;
-        
       }
+      $sanitizedData[] = $sanitized;
       //echo $column . "<BR>";
+      //echo  $column . "=" . $sanitized . ", " . $type . "<BR>";
       $sanitizedKeys[] = $column;
     }
   }
