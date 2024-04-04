@@ -66,6 +66,7 @@ CREATE TABLE device_type_feature(
   can_be_output TINYINT,
   can_be_analog TINYINT,
   pin_number INT,
+  via_i2c_address INT,
   name VARCHAR(100) NULL,
   description VARCHAR(2000) NULL,
   user_id INT NULL,
@@ -114,6 +115,7 @@ CREATE TABLE user(
 --ALTER TABLE device_feature ADD last_known_device_modified DATETIME;
 --ALTER TABLE user ADD preferences TEXT NULL;
 --ALTER TABLE user ADD storage_password VARCHAR(100) NULL;
+--ALTER TABLE device_type_feature ADD via_i2c_address INT NULL;
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
 INSERT INTO device (name, device_type_id, created) VALUES ('Hotspot Watchdog', 1, NOW());
