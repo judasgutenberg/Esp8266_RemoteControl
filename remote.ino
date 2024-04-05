@@ -35,8 +35,8 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org");
 long connectionFailureTime = 0;
 long lastDataLogTime = 0;
 int timeSkewAmount = 0; //i had it as much as 20000 for 20 seconds, but serves no purpose that I can tell
-int pinTotal = 8;
-String pinList[8];
+int pinTotal = 12;
+String pinList[12];
 
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
   if (a == b) return 0;      // a and b are equal
@@ -175,19 +175,16 @@ void handleWeatherData() {
     pressureValue = NULL;
     humidityValue = NULL;
   }
-  bool clearPinMap = false;
   if(onePinAtATimeMode) {
     pinCursor++;
-    if(pinCursor >= pinTotal) {
+    if(pinCursor > pinTotal) {
       pinCursor = 0;
-      clearPinMap = true;
-
     }
   }
-  Serial.print("Pin total: ");
-  Serial.print(pinTotal);
-  Serial.print(" ");
-  Serial.println(pinMap->size());
+  //Serial.print("Pin total: ");
+  //Serial.print(pinTotal);
+  //Serial.print(" ");
+  //Serial.println(pinMap->size());
   //i don't send the data to the server with JSON because it's pretty simple and can just be * and | delimited
   //the weather data part of the string, delimited by *
   transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue); //using delimited data instead of JSON to keep things simple
@@ -204,9 +201,7 @@ void handleWeatherData() {
   } else {
     server.send(200, "text/plain", transmissionString); //Send values only to client ajax request
   }
-  if(clearPinMap) {
-    pinMap->clear();
-  }
+ 
 }
 
 //SETUP----------------------------------------------------
@@ -450,17 +445,20 @@ void setLocalHardwareToServerStateFromJson(char * json){
       Serial.println();
       pinMode(pinNumber, OUTPUT);
       if(enabled) {
-        String key = (String)i2c + "." + (String)pinNumber;
-        if(i2c == 0){
-          key = (String)pinNumber;
-        }
-        if((String)pinList[pinCounter] == key) {
-          pinMap->put(key, value);
+        for(char i=0; i<pinTotal; i++){
+          String key = (String)i2c + "." + (String)pinNumber;
+          if(i2c == 0){
+            key = (String)pinNumber;
+          }
+          //Serial.println("! " + (String)pinList[i] +  " =?: " + key +  " correcto? " + (int((String)pinList[pinCounter] == key)));
+          if((String)pinList[i] == key) {
+            pinMap->remove(key);
+            pinMap->put(key, value);
+          }
         }
         if(i2c > 0) {
           setPinValueOnSlave(i2c, (char)pinNumber, (char)value); 
         } else {
-
           if(canBeAnalog) {
             analogWrite(pinNumber, value);
           } else {
@@ -474,6 +472,7 @@ void setLocalHardwareToServerStateFromJson(char * json){
       }
       pinCounter++;
     }
+  
   }
   nodeName="pin_list";
   String pinString;
@@ -558,8 +557,8 @@ void loop(void){
  
  
   if(nowTime - ((nowTime/(1000 * granularityToUse) )*(1000 * granularityToUse)) == 0 || connectionFailureTime>0 && connectionFailureTime + connectionFailureRetrySeconds * 1000 > millis()) {  //send data to backend server every <pollingGranularity> seconds or so
-    Serial.print("Connection failure time: ");
-    Serial.println(connectionFailureTime);
+    //Serial.print("Connection failure time: ");
+    //Serial.println(connectionFailureTime);
     //Serial.print("  Connection failure calculation: ");
     //Serial.print(connectionFailureTime>0 && connectionFailureTime + connectionFailureRetrySeconds * 1000);
     //Serial.println("Epoch time:");
