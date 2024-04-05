@@ -185,7 +185,7 @@ if($_REQUEST) {
 				} 
 
 				//the part where we include any data from our remote control system:
-				$deviceSql = "SELECT pin_number, value, enabled, can_be_analog, device_feature_id  FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=" . intval($deviceId) . ";";
+				$deviceSql = "SELECT pin_number, value, enabled, can_be_analog, via_i2c_address as i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=" . intval($deviceId) . ";";
 				//echo $deviceSql;
 				$result = mysqli_query($conn, $deviceSql);
 				if($result) {
@@ -194,8 +194,8 @@ if($_REQUEST) {
 					foreach($rows as $row) {
 						$pinNumber = $row["pin_number"];
 						if($specificPin == -1 || $specificPin ==  $pinCursor){
-							if(count($pinValuesKnownToDevice)>0) {
-								//this part update device_feature so we can tell from the server if the device has taken on the server's value
+							//this part update device_feature so we can tell from the server if the device has taken on the server's value
+							if(count($pinValuesKnownToDevice) > $pinCursor) {
 								$sqlToUpdateDeviceFeature = "UPDATE device_feature SET last_known_device_value =  " . $pinValuesKnownToDevice[$pinCursor];
 								$sqlToUpdateDeviceFeature .= ", last_known_device_modified='" . $formatedDateTime . "'";
 								$sqlToUpdateDeviceFeature .= " WHERE device_feature_id=" . $row["device_feature_id"];
