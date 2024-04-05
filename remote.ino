@@ -36,8 +36,7 @@ long connectionFailureTime = 0;
 long lastDataLogTime = 0;
 int timeSkewAmount = 0; //i had it as much as 20000 for 20 seconds, but serves no purpose that I can tell
 int pinTotal = 8;
-long* pinValues = new long[pinTotal];
-long* pinList = new long[pinTotal];
+String pinList[8];
 
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
   if (a == b) return 0;      // a and b are equal
@@ -185,6 +184,10 @@ void handleWeatherData() {
 
     }
   }
+  Serial.print("Pin total: ");
+  Serial.print(pinTotal);
+  Serial.print(" ");
+  Serial.println(pinMap->size());
   //i don't send the data to the server with JSON because it's pretty simple and can just be * and | delimited
   //the weather data part of the string, delimited by *
   transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue); //using delimited data instead of JSON to keep things simple
@@ -447,13 +450,17 @@ void setLocalHardwareToServerStateFromJson(char * json){
       Serial.println();
       pinMode(pinNumber, OUTPUT);
       if(enabled) {
+        String key = (String)i2c + "." + (String)pinNumber;
+        if(i2c == 0){
+          key = (String)pinNumber;
+        }
+        if((String)pinList[pinCounter] == key) {
+          pinMap->put(key, value);
+        }
         if(i2c > 0) {
           setPinValueOnSlave(i2c, (char)pinNumber, (char)value); 
         } else {
-          if(pinList[pinCounter] == (long)pinNumber) {  //you have to do this for when it goes into one-pin-at-a-time mode
-            pinValues[pinCounter] = value;
-            pinMap->put((String)i2c + "." + (String)pinNumber, value);
-          }
+
           if(canBeAnalog) {
             analogWrite(pinNumber, value);
           } else {
@@ -469,11 +476,12 @@ void setLocalHardwareToServerStateFromJson(char * json){
     }
   }
   nodeName="pin_list";
+  String pinString;
   if(jsonBuffer[nodeName]) {
     pinCounter = 0;
     for(int i=0; i<jsonBuffer[nodeName].size(); i++) {
-      pinNumber = (int)jsonBuffer[nodeName][i];
-      pinList[pinCounter] = pinNumber;
+      pinString = (String)jsonBuffer[nodeName][i];
+      pinList[pinCounter] = (String)pinString;
       pinCounter++;
     }
   }
