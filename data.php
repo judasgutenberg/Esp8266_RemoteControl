@@ -205,7 +205,11 @@ if($_REQUEST) {
 							unset($row["device_feature_id"]);//make things as lean as possible for IoT device
 							$out["device_data"][] = $row;
 						}
-						$out["pin_list"][] = $pinNumber ;
+						if($row["i2c"] > 0){
+							$out["pin_list"][] = $row["i2c"] . "." . $pinNumber ;
+						} else {
+							$out["pin_list"][] = $pinNumber ;
+						}
 						$pinCursor++;
 					}
 				}
