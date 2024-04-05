@@ -12,16 +12,21 @@
 #include <ESP8266WebServer.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
+#include <SimpleMap.h>
  
 #include "config.h"
 
 #include "Zanshin_BME680.h"  // Include the BME680 Sensor library
 #include <DHT.h>
 #include <SFE_BMP180.h>
+#include <Adafruit_BMP085.h>
+#include <Temperature_LM75_Derived.h>
 
 DHT dht(dhtData, dhtType);
-SFE_BMP180 pressure;
+SFE_BMP180 BMP180;
 BME680_Class BME680;
+Adafruit_BMP085 BMP085d;
+Generic_LM75 LM75;
 
 StaticJsonDocument<1000> jsonBuffer;
 WiFiUDP ntpUDP; //i guess i need this for time lookup
@@ -33,6 +38,13 @@ int timeSkewAmount = 0; //i had it as much as 20000 for 20 seconds, but serves n
 int pinTotal = 8;
 long* pinValues = new long[pinTotal];
 long* pinList = new long[pinTotal];
+
+SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
+  if (a == b) return 0;      // a and b are equal
+  else if (a > b) return 1;  // a is bigger than b
+  else return -1;            // a is smaller than b
+});
+
 long moxeeRebootTimes[] = {0,0,0,0,0,0,0,0,0,0,0};
 int moxeeRebootCount = 0;
 int timeOffset = 0;
@@ -113,7 +125,7 @@ void handleWeatherData() {
     //BMP180 code:
     char status;
     double p0,a;
-    status = pressure.startTemperature();
+    status = BMP180.startTemperature();
     if (status != 0)
     {
       // Wait for the measurement to complete:
@@ -121,10 +133,10 @@ void handleWeatherData() {
       // Retrieve the completed temperature measurement:
       // Note that the measurement is stored in the variable T.
       // Function returns 1 if successful, 0 if failure.
-      status = pressure.getTemperature(temperatureValue);
+      status = BMP180.getTemperature(temperatureValue);
       if (status != 0)
       {
-        status = pressure.startPressure(3);
+        status = BMP180.startPressure(3);
         if (status != 0)
         {
           // Wait for the measurement to complete:
@@ -134,10 +146,10 @@ void handleWeatherData() {
           // Note also that the function requires the previous temperature measurement (temperatureValue).
           // (If temperature is stable, you can do one temperature measurement for a number of pressure measurements.)
           // Function returns 1 if successful, 0 if failure.
-          status = pressure.getPressure(pressureValue,temperatureValue);
+          status = BMP180.getPressure(pressureValue,temperatureValue);
           if (status != 0)
           {
-            a = pressure.altitude(pressureValue,p0);
+            a = BMP180.altitude(pressureValue,p0);
           }
           else Serial.println("error retrieving pressure measurement\n");
         }
@@ -148,16 +160,29 @@ void handleWeatherData() {
       Serial.println("error starting temperature measurement\n");
     }
     humidityValue = NULL; //really should set unknown values as null
+  } else if (sensorType == 85) {
+    //https://github.com/adafruit/Adafruit-BMP085-Library
+    temperatureValue = BMP085d.readTemperature();
+    pressureValue = BMP085d.readPressure()/100; //to get millibars!
+    humidityValue = NULL; //really should set unknown values as null
+  } else if (sensorType == 75) { //LM75
+    //https://electropeak.com/learn/interfacing-lm75-temperature-sensor-with-arduino/
+    temperatureValue = LM75.readTemperatureC();
+    pressureValue = NULL;
+    humidityValue = NULL;
   } else {
     //no sensor at all
-    humidityValue = NULL;
     temperatureValue = NULL;//don't want to save data from no sensor, so force temperature out of range
     pressureValue = NULL;
+    humidityValue = NULL;
   }
+  bool clearPinMap = false;
   if(onePinAtATimeMode) {
     pinCursor++;
     if(pinCursor >= pinTotal) {
       pinCursor = 0;
+      clearPinMap = true;
+
     }
   }
   //i don't send the data to the server with JSON because it's pretty simple and can just be * and | delimited
@@ -166,7 +191,7 @@ void handleWeatherData() {
   //the time-stamps of connection failures, delimited by *
   transmissionString = transmissionString + "|" + JoinValsOnDelimiter(moxeeRebootTimes, "*", 10);
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
-  transmissionString = transmissionString + "|" + JoinValsOnDelimiter( pinValues, "*", pinTotal); //also send pin as they are known back to the server
+  transmissionString = transmissionString + "|" + JoinMapValsOnDelimiter(pinMap, "*", pinTotal); //also send pin as they are known back to the server
   //other server-relevant info as needed, delimited by *
   transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor;
   //Serial.println(transmissionString);
@@ -175,6 +200,9 @@ void handleWeatherData() {
     sendRemoteData(transmissionString);
   } else {
     server.send(200, "text/plain", transmissionString); //Send values only to client ajax request
+  }
+  if(clearPinMap) {
+    pinMap->clear();
   }
 }
 
@@ -196,6 +224,7 @@ void setup(void){
   Serial.begin(115200);
   Serial.println();
   Serial.println("Just started up...");
+  Wire.begin();
   WiFiConnect();
   server.on("/", handleRoot);      //Which routine to handle at root location. This is display page
   server.on("/weatherdata", handleWeatherData); //This page is called by java Script AJAX
@@ -221,7 +250,10 @@ void setup(void){
     digitalWrite(dhtPower, LOW);
     dht.begin();
   } else if (sensorType == 180) { //BMP180
-    pressure.begin();
+    BMP180.begin();
+  } else if (sensorType == 85) { //BMP085
+    Serial.print(F("Initializing BMP085...\n"));
+    BMP085d.begin();
   }
   //initialize NTP client
   timeClient.begin();
@@ -259,6 +291,17 @@ String JoinValsOnDelimiter(long vals[], String delimiter, int numberToDo) {
   String out = "";
   for(int i=0; i<numberToDo; i++){
     out = out + (String)vals[i];
+    if(i < numberToDo-1) {
+      out = out + delimiter;
+    }
+  }
+  return out;
+}
+
+String JoinMapValsOnDelimiter(SimpleMap<String, int> *pinMap, String delimiter, int numberToDo) {
+  String out = "";
+  for (int i = 0; i < pinMap->size(); i++) {
+    out = out + (String)pinMap->getData(i);
     if(i < numberToDo-1) {
       out = out + delimiter;
     }
@@ -381,14 +424,22 @@ void setLocalHardwareToServerStateFromJson(char * json){
   int canBeAnalog = 0;
   int enabled = 0;
   int pinCounter = 0;
+  char i2c = 0;
   DeserializationError error = deserializeJson(jsonBuffer, json);
   if(jsonBuffer[nodeName]) {
     pinCounter = 0;
+    if(!onePinAtATimeMode) {
+      pinMap->clear(); //this won't work
+    }
     for(int i=0; i<jsonBuffer[nodeName].size(); i++) {
       pinNumber = (int)jsonBuffer[nodeName][i]["pin_number"];
       value = (int)jsonBuffer[nodeName][i]["value"];
       canBeAnalog = (int)jsonBuffer["nodeName"][i]["can_be_analog"];
       enabled = (int)jsonBuffer[nodeName][i]["enabled"];
+      i2c = (int)jsonBuffer[nodeName][i]["i2c"];
+      if(i2c == NULL) {
+        i2c = 0;
+      }
       Serial.print("pin: ");
       Serial.print(pinNumber);
       Serial.print("; value: ");
@@ -396,16 +447,21 @@ void setLocalHardwareToServerStateFromJson(char * json){
       Serial.println();
       pinMode(pinNumber, OUTPUT);
       if(enabled) {
-        if(pinList[pinCounter] == (long)pinNumber) {  //you have to do this for when it goes into one-pin-at-a-time mode
-          pinValues[pinCounter] = value;
-        }
-        if(canBeAnalog) {
-          analogWrite(pinNumber, value);
+        if(i2c > 0) {
+          setPinValueOnSlave(i2c, (char)pinNumber, (char)value); 
         } else {
-          if(value > 0) {
-            digitalWrite(pinNumber, HIGH);
+          if(pinList[pinCounter] == (long)pinNumber) {  //you have to do this for when it goes into one-pin-at-a-time mode
+            pinValues[pinCounter] = value;
+            pinMap->put((String)i2c + "." + (String)pinNumber, value);
+          }
+          if(canBeAnalog) {
+            analogWrite(pinNumber, value);
           } else {
-            digitalWrite(pinNumber, LOW);
+            if(value > 0) {
+              digitalWrite(pinNumber, HIGH);
+            } else {
+              digitalWrite(pinNumber, LOW);
+            }
           }
         }
       }
@@ -422,6 +478,17 @@ void setLocalHardwareToServerStateFromJson(char * json){
     }
   }
   pinTotal = pinCounter;
+}
+
+void setPinValueOnSlave(char i2cAddress, char pinNumber, char pinValue) {
+  //if you have a slave Arduino set up with this code:
+  //https://github.com/judasgutenberg/Generic_Arduino_I2C_Slave
+  //and a device_type_feature specifies an i2c address
+  //then this code will send the data to that slave Arduino
+  Wire.beginTransmission(i2cAddress);
+  Wire.write(pinNumber);
+  Wire.write(pinValue);
+  Wire.endTransmission();
 }
 
 //this will run commands sent to the server
@@ -467,9 +534,8 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
 
 //LOOP----------------------------------------------------
 void loop(void){
-  long nowTime = millis() + timeOffset;
   timeClient.update();
-  
+  long nowTime = millis() + timeOffset;
   int granularityToUse = pollingGranularity;
   if(connectionFailureMode) {
     granularityToUse = granularityWhenInConnectionFailureMode;
@@ -481,13 +547,13 @@ void loop(void){
     Serial.println();
     rebootEsp();
   }
-  
+ 
+ 
   if(nowTime - ((nowTime/(1000 * granularityToUse) )*(1000 * granularityToUse)) == 0 || connectionFailureTime>0 && connectionFailureTime + connectionFailureRetrySeconds * 1000 > millis()) {  //send data to backend server every <pollingGranularity> seconds or so
     Serial.print("Connection failure time: ");
-    Serial.print(connectionFailureTime);
+    Serial.println(connectionFailureTime);
     //Serial.print("  Connection failure calculation: ");
     //Serial.print(connectionFailureTime>0 && connectionFailureTime + connectionFailureRetrySeconds * 1000);
-    Serial.println();
     //Serial.println("Epoch time:");
     //Serial.println(timeClient.getEpochTime());
     glblRemote = true;
@@ -509,5 +575,4 @@ void loop(void){
       WiFiConnect();
     }
   }
- 
 }
