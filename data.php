@@ -185,7 +185,7 @@ if($_REQUEST) {
 				} 
 
 				//the part where we include any data from our remote control system:
-				$deviceSql = "SELECT pin_number, value, enabled, can_be_analog, via_i2c_address as i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=" . intval($deviceId) . ";";
+				$deviceSql = "SELECT pin_number, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
 				//echo $deviceSql;
 				$result = mysqli_query($conn, $deviceSql);
 				if($result) {
