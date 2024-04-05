@@ -199,7 +199,7 @@ if($_REQUEST) {
 								$sqlToUpdateDeviceFeature = "UPDATE device_feature SET last_known_device_value =  " . $pinValuesKnownToDevice[$pinCursor];
 								$sqlToUpdateDeviceFeature .= ", last_known_device_modified='" . $formatedDateTime . "'";
 								$sqlToUpdateDeviceFeature .= " WHERE device_feature_id=" . $row["device_feature_id"];
-								//echo $sqlToUpdateDeviceFeature  . "<BR> " . $specificPin  . "<BR>";
+								//echo $sqlToUpdateDeviceFeature  . "<BR> " . $specificPin  . "<BR>"; 
 								$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
 							}
 							unset($row["device_feature_id"]);//make things as lean as possible for IoT device
