@@ -516,6 +516,8 @@ void runCommands(char * json){
       //still have to run command!
       if(command == "reboot") {
         rebootEsp();
+      } else if(command == "allpinsatonce") {
+        onePinAtATimeMode = 0;
       }
       lastCommandId = commandId;
     }
