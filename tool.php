@@ -12,14 +12,13 @@ error_reporting(E_ALL);
 
 include("config.php");
 include("site_functions.php");
-
+include("device_functions.php");
 //var_dump($_POST);
-$words = array();
-$wordlists = array();
+ 
 
 $conn = mysqli_connect($servername, $username, $password, $database);
 
-$table = strtolower(gvfw('table', "document"));
+$table = strtolower(gvfw('table', "device"));
 $action = strtolower(gvfw('action', "list"));
 $user = logIn();
 $deviceId = gvfa('device_id', $_GET);
@@ -34,14 +33,11 @@ $out = "";
 $errors = NULL;
  
  
-$scanId = gvfw('scan_id');
-$testId = gvfw('test_id');
-$wordListId = gvfw('word_list_id');
+ 
 $page = gvfw('page');
 $datatype = gvfw('datatype'); 
 //echo $table  . "*" . $action. "*" .  $datatype;
 //$formatedDateTime =  $date->format('H:i');
-
  
 if ($action == "logout") {
   logOut();
@@ -62,12 +58,8 @@ if($_POST || gvfw("table")) { //gvfw("table")
 		$errors = createUser();
 	}  else if (strtolower($table) == "run") {
     //oh, we're a utility, though we never get here
-
   } else if(beginsWith(strtolower($action), "save") || beginsWith(strtolower($action), "create")) {
-
     $errors = genericEntitySave($userId, $table);
-
-    
   }
 } else {
  
@@ -94,6 +86,32 @@ if ($user) {
     var_dump($result);
     die($sql);
   
+  } else if ($action == "runencryptedsql") {
+ 
+    $headerData = json_decode(gvfw('headerData'), true);
+    $currentSortColumn = gvfw('sortColumn');
+    $sortAddendum = "";
+    if($currentSortColumn  > -1){
+      $sortDatum = $headerData[$currentSortColumn];
+      $sortAddendum = " ORDER BY ". $sortDatum["name"];
+      $direction = gvfw('direction');
+      if($direction == "true"){
+        $sortAddendum .= " DESC";
+
+      }
+    }
+ 
+    $sql = decryptLongString(gvfw('value'), $encryptionPassword);
+    $sql .= $sortAddendum  ;
+    //echo $sql . "\n\n";
+    //die();
+    $result = mysqli_query($conn, $sql);
+    if($result) {
+      $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+      echo json_encode($rows);
+      die();
+    }
+    die();
   }
   if ($table == "utilities") {
     $action = $_GET['action']; //$_POST will have this as "run"
@@ -143,18 +161,9 @@ if ($user) {
     $out .= utilities($user, "list");
    }
  
- 
-
 
 	} else if($table == "devices") {
- 
-
     $out .= devices($userId);
-
-      
- 
- 
-  
   } else if ($action == "startcreate") {
   
     if ($table == "test") {
@@ -169,15 +178,17 @@ if ($user) {
     }
  
  
-      
-
- 
   } else {
     if(gvfw($table . '_id')) {
       $out .= genericEntityForm($userId, $table, $errors);
 
     } else {
-      $out .= genericEntityList($userId, $table);
+      if($table == "device_feature") {
+        $out .= deviceFeatures($userId, $deviceId);
+      } else {
+        $out .= genericEntityList($userId, $table);
+      }
+      
     }
     
   }
