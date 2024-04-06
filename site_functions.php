@@ -66,16 +66,8 @@ function bodyWrap($content, $user, $deviceId, $poser = null) {
     //$out .= "<div class='loggedin'>You are logged out.  </div>\n";
 	} 
 	$out .= "<div>\n";
-  $out .= "<div class='documentdescription'>";
-  /*
-  if($documentId){
-    $document = getDocumentFromDocumentId($documentId);
-    $out .= "Current xxxx: <em>" . $document["name"] . "</em> (" . $document["file_name"] . ")";
-  } else {
-    $out .= "No xxxx selected\n";
-
-  }
-  */
+  $out .= "<div class='devicedescriptiopn'>";
+ 
   $out .= "</div>";
 	$out .= tabNav();
   $out .= "<div class='innercontent'>\n";
@@ -888,8 +880,6 @@ function tabNav() {
   return $out;
 }
 
-
-
 function devices($userId) {
   Global $conn;
   $table = "device";
@@ -924,39 +914,11 @@ function devices($userId) {
   }
   return $out;
 }
-
-
-function xLists($userId) {
-  Global $conn;
-  $sql = "SELECT * FROM `word_list`  WHERE user_id = " . intval($userId) . " ORDER BY name ASC limit 0,22";
-  //echo $sql;
-  $result = mysqli_query($conn, $sql);
-  $out = "";
-  $out .= "<div class='listtitle'>Your Word Lists</div>\n";
-  $out .= "<div class='listtools'><div class='basicbutton'><a href='?table=word_list&mode=startcreate'>Create</a></div> a new word list<//div>\n";
-  //$out .= "<hr style='width:100px;margin:0'/>\n";
-  $headerData = array(
-    [
-      'label' => 'name',
-      'name' => 'name' 
-    ]
-    );
-
-  $toolsTemplate = "<a href='?table=word_list&word_list_id=<word_list_id/>'>Edit Info</a> | <a href='?table=word&word_list_id=<word_list_id/>'>see words</a>";
-  if($result) {
-	  $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
-	  
-	  if($rows) {
-      $out .= genericTable($rows, $headerData, $toolsTemplate, $searchData, null, "word_list", "word_list_id");
-    }
-  }
-  return $out;
-}
-
- 
  
 
-function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "") { //aka genericList
+function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null) { //aka genericList
+  Global $encryptionPassword;
+
   if($headerData == NULL  && $rows  && $rows[0]) {
     foreach(array_keys(rows[0]) as &$key) {
       array_push($headerData, array("label"=>$key, "name"=>$key));
@@ -1058,6 +1020,11 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
   }
   //$out .= "</div>\n";
   $out .= "</div>\n";
+  if($autoRefreshSql) {
+    $encryptedSql = encryptLongString($autoRefreshSql, $encryptionPassword);
+    $out .= "<script>autoUpdate('" . $encryptedSql . "','" . addslashes(json_encode($headerData)) . "','list');</script>";
+
+  }
   return $out;
 }
 
@@ -1321,3 +1288,34 @@ function blendColors($color1, $color2) {
 }
 
  
+function encryptLongString($plaintext, $password) {
+    // Generate a random initialization vector
+    $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('aes-256-cbc'));
+    
+    // Encrypt the plaintext using AES-256-CBC algorithm
+    $ciphertext = openssl_encrypt($plaintext, 'aes-256-cbc', $password, 0, $iv);
+ 
+    $iv = str_pad($iv, 16, "\0");
+    // Encode the ciphertext and IV as base64 strings
+    $ivBase64 = base64_encode($iv);
+    $ciphertextBase64 = base64_encode($ciphertext);
+    
+    // Concatenate IV and ciphertext with a separator
+    return $ivBase64 . ':' . $ciphertextBase64;
+}
+
+function decryptLongString($encryptedData, $password) {
+    // Split the IV and ciphertext from the encrypted data
+    list($ivBase64, $ciphertextBase64) = explode(':', $encryptedData, 2);
+    
+    // Decode the IV and ciphertext from base64 strings
+    $iv = base64_decode($ivBase64);
+    $ciphertext = base64_decode($ciphertextBase64);
+    $iv = str_pad($iv, 16, "\0");
+    //echo($iv . "|" . strlen($iv));
+    // Decrypt the ciphertext using AES-256-CBC algorithm
+    $plaintext = openssl_decrypt($ciphertext, 'aes-256-cbc', $password, 0, $iv);
+    
+    // Return the decrypted plaintext
+    return $plaintext;
+}
