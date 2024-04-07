@@ -14,7 +14,7 @@ function deviceFeatures($userId, $deviceId) {
   $result = mysqli_query($conn, $sql);
   $out = "";
   $out .= "<div class='listtitle'>Your " . $table . "s</div>\n";
-  $out .= "<div class='listtools'><div class='basicbutton'><a href='?mode=startcreatedocument'>Upload</a></div> a new document<//div>\n";
+  $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a new " . $table  . "</div>\n";
   //$out .= "<hr style='width:100px;margin:0'/>\n";
   $headerData = array(
     [
