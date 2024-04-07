@@ -446,11 +446,15 @@ void setLocalHardwareToServerStateFromJson(char * json){
       pinMode(pinNumber, OUTPUT);
       if(enabled) {
         for(char j=0; j<pinTotal; j++){
-          String key = (String)i2c + "." + (String)pinNumber;
+          String key;
+          char sprintBuffer[6];
+          
+          sprintf(sprintBuffer, "%d.%d", i2c, pinNumber);
+          key = (String)sprintBuffer;
           if(i2c == 0){
             key = (String)pinNumber;
           }
-          //Serial.println("! " + (String)pinList[j] +  " =?: " + key +  " correcto? " + (int((String)pinList[pinCounter] == key)));
+          //Serial.println("! " + (String)pinList[j] +  " =?: " + key +  " correcto? " + (int((String)pinList[j] == key)));
           if((String)pinList[j] == key) {
             pinMap->remove(key);
             pinMap->put(key, value);
