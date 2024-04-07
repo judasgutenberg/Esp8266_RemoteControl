@@ -858,7 +858,7 @@ function tabNav() {
   foreach($tabData as &$tab) {
 
     if($currentMode == "") {
-      $currentMode  = "document";
+      $currentMode  = "device";
     }
     $label = gvfa("label", $tab);
     $table = gvfa("table", $tab); 
@@ -1208,16 +1208,19 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
  
   foreach ($dataToScan as $datum) {
     $column = $datum["name"];
-    $type =  gvfa("type", $datum, "");
+    $type =  strtolower(gvfa("type", $datum, ""));
     $value = gvfa($column, $data, "");
     if($column  != "_data"  && !array_key_exists($column, $primaryKey)) {
-      if($column == "created" || $column == "modified") {
+      //echo  $column . "=" . $value . ", " . $type . "<BR>";
+      if($column == "last_known_device_modified" || $column == "created" || $column == "modified") {
 
         $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
         $formatedDateTime =  $date->format('Y-m-d H:i:s'); 
         $sanitized = $formatedDateTime;
          
       } else if(($type == "bool"  || $type == "checkbox") && !$value){
+        $sanitized = '0';
+      } else if (beginsWith($type, "number") && !$value) {
         $sanitized = '0';
       } else {
         $sanitized = mysqli_real_escape_string($conn, $value);
@@ -1236,12 +1239,14 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
       //$sanitizedKeys = [];
       foreach ($dataToScan as $datum) {
         $column = $datum["name"];
-        $type =  gvfa("type", $datum, "");
+        $type =  strtolower(gvfa("type", $datum, ""));
         $value = gvfa($column, $data, "");
 
         //echo  $column . "=" . $value . ", " . $type . "<BR>";
         if($column != "created" && $column != "_data" && array_key_exists($column, $primaryKey) == false) {
           if(($type == "bool"  || $type == "checkbox") && !$value){
+            $sanitized = '0';
+          } else if (beginsWith($type, "number") && !$value) {
             $sanitized = '0';
           } else {
             $sanitized = mysqli_real_escape_string($conn, $value);
@@ -1263,7 +1268,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
       $sql = "UPDATE `$tableName` SET $updateFieldsString WHERE $whereClauseString;";
   } else {
       // Insert a new record
-      $columns = implode(', ', $sanitizedKeys);
+      $columns = "`" . implode('`, `', $sanitizedKeys) . "`";
       $values = implode("', '", $sanitizedData);
 
       $sql = "INSERT INTO `$tableName` ($columns) VALUES ('$values');";
