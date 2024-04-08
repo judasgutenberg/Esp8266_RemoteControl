@@ -9,4 +9,11 @@ One caveat: this system is one where the server tells the microcontroller what p
 To expand the number of pins usable for remote control, you can add a slave Arduino with my slave software:
 https://github.com/judasgutenberg/Generic_Arduino_I2C_Slave and just add the I2C address to the device_type_feature record.
 
-This system is actually multi-user and supports multiple user accounts, each with multiple devices.  Most of the microcontroller work is done and I am in the process of improving the interface for someone performing remote control.
+This system is actually multi-user and supports multiple user accounts, each with multiple devices.  Most of the microcontroller work is done and I am in the process of improving the interface for someone performing remote control.  Until that is complete, here's an overview of how to set up control for a particular device:
+
+1. Connect the device to the ESP8266 somehow.  Usually this involves a relay and a relay driver circuit such as the ULN2003 (there are lots of examples of this online, for example https://microcontrollerslab.com/relay-driver-circuit-using-uln2003/).
+2. Add a record to the device table to represent your particular ESP8266.  At this point device_id and location_id are the same. Your ESP8266 will send that id to the server whenever it polls it to get updates on what values its pins should have.  You will need to set locationId to this value in config.c before compiling the code for you ESP8266.
+3. Add a record to the device_type table describing your particular type of device (in this case, ESP8266).  Details for this don't matter much.
+4. Add a record to the device_type_feature table describing the pin (mostly the pin number and perhaps the I2C address if it is on a slave).
+5. Add a record to the device_feature table describing the specific pin (here a human readable name would be useful).
+6. Now you can change the state of a particular ESP8266's pin by changing the state of the value column in the device_feature record.  Make sure to set enabled to 1 as well.
