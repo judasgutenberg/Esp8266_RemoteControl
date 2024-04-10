@@ -17,3 +17,5 @@ This system is actually multi-user and supports multiple user accounts, each wit
 4. Add a record to the device_type_feature table describing the pin (mostly the pin number and perhaps the I2C address if it is on a slave).
 5. Add a record to the device_feature table describing the specific pin (here a human readable name would be useful).
 6. Now you can change the state of a particular ESP8266's pin by changing the state of the value column in the device_feature record.  Make sure to set enabled to 1 as well.
+
+This system actually tracks whether or not data makes it to the ESP8266 that it is sent to via the last)known_device_value and last_known_device_modified columns.  This is important when a remote control action needs to be verified as having happened.
