@@ -165,10 +165,7 @@ if ($user) {
 	} else if($table == "devices") {
     $out .= devices($userId);
   } else if ($action == "startcreate") {
-  
     if ($table == "test") {
-
-      
       $out .= wordForm($errors, NULL, $userId, $wordListId);
     } else if ($table == "user" || !is_null($errors)) {
       $out .= newUserForm($errors);
@@ -177,7 +174,11 @@ if ($user) {
       $out .= genericEntityForm($userId, $table, $errors);
     }
  
- 
+  } else if ($action == "delete") {
+    $sql = "DELETE FROM " . $table . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "' AND user_id='" . $userId . "'";
+    //die($sql);
+    $result = mysqli_query($conn, $sql);
+    header('Location: '.$_SERVER['PHP_SELF'] . "?table=" . $table);
   } else {
     if(gvfw($table . '_id')) {
       $out .= genericEntityForm($userId, $table, $errors);
