@@ -52,7 +52,6 @@ function deviceFeatures($userId, $deviceId) {
     ],
     );
     $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a>  | ";
- 
     $toolsTemplate .= "<a onclick='return confirm(\"Are you sure you want to delete this " . $table . "?\")' href='?table=" . $table . "&action=delete&" . $table . "_id=<" . $table . "_id/>'>Delete</a>";
     if($result) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
