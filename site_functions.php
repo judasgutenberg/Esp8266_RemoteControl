@@ -532,17 +532,18 @@ function genericEntityList($userId, $table) {
   $out = "<div class='listtools'><div class='basicbutton'><a href='?table=" . $table . "&action=startcreate'>Create</a></div> a new " . $table . "<//div>\n";
   $thisDataSql = "SELECT * FROM " . $table . " WHERE user_id=" . intval($userId);
   $deviceId = gvfw("device_id");
-  if($deviceId){
+  if($deviceId && $table== "device_feature" ){
     $thisDataSql .= " AND device_id=" . intval($deviceId);
   }
   $thisDataResult = mysqli_query($conn, $thisDataSql);
   if($thisDataResult) {
     $thisDataRows = mysqli_fetch_all($thisDataResult, MYSQLI_ASSOC); 
     $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a>";
-    if($table == "device") {
-      $toolsTemplate .= " | <a href='?table=device_feature&device_id=<" . $table . "_id/>'>Device Features</a>";
+    $toolsTemplate .= " | <a onclick='return(confirm(\"Are you sure you want to delete this " . $table . "?\"))' href='?action=delete&table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Delete</a>";
+    //if($table == "device") {
+      //$toolsTemplate .= " | <a href='?table=device_feature&device_id=<" . $table . "_id/>'>Device Features</a>";
 
-    }
+    //}
    
     $out .= genericTable($thisDataRows, $headerData, $toolsTemplate, null, $table, $pk);
     return $out;
