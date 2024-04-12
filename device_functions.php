@@ -63,3 +63,43 @@ function deviceFeatures($userId, $deviceId) {
     return $out;
 
 }
+
+function devices($userId) {
+  Global $conn;
+  $table = "device";
+  $sql = "SELECT *  FROM " . $table . "  ";
+  //echo $sql;
+  $result = mysqli_query($conn, $sql);
+  $out = "";
+  $out .= "<div class='listtitle'>Your " . $table . "s</div>\n";
+  $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a new " . $table  . "</div>\n";
+  
+  //$out .= "<hr style='width:100px;margin:0'/>\n";
+  $headerData = array(
+ 
+    [
+      'label' => 'name',
+      'name' => 'name' 
+    ],
+    [
+      'label' => 'name',
+      'name' => 'name' 
+    ],
+    [
+      'label' => 'location name',
+      'name' => 'location_name' 
+    ] 
+    );
+    $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
+    $toolsTemplate .= " | <a href='?table=device_feature&device_id=<" . $table . "_id/>'>Device Features</a>";
+    $toolsTemplate .= " | <a onclick='return confirm(\"Are you sure you want to delete this " . $table . "?\")' href='?table=" . $table . "&action=delete&" . $table . "_id=<" . $table . "_id/>'>Delete</a>";
+    if($result) {
+      $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+      
+      if($rows) {
+        $out .= genericTable($rows, $headerData, $toolsTemplate, null,  $table, $table . "_id", $sql);
+      }
+    }
+    return $out;
+
+}
