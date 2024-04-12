@@ -20,7 +20,11 @@ $formatedDateTime =  $date->format('Y-m-d H:i:s');
 //$formatedDateTime =  $date->format('H:i');
 $deviceId = "";
 $locationId = "";
+$deviceIds = [];
 if($_REQUEST) {
+	if(array_key_exists("storagePassword", $_REQUEST)) {
+		$deviceIds = deriveDeviceIdsFromStoragePassword($_REQUEST["storagePassword"]);
+	}
 	if(array_key_exists("mode", $_REQUEST)) {
 		$mode = $_REQUEST["mode"];
 	} else {
@@ -40,6 +44,9 @@ if($_REQUEST) {
 	if(!$deviceId) {
 		$deviceId = $locationId;
 	}
+	if($locationId == ""){
+		$locationId = 1;
+	}
 	if(!$conn) {
         $out = ["error"=>"bad database connection"];
       } else {
@@ -52,7 +59,8 @@ if($_REQUEST) {
 			$lines = [];
 			$arrWeatherData = [0,0,0,0,0,0,0,0,0,0,0,0];
 		}
-		$canAccessData = array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
+		//var_dump($deviceIds);
+		$canAccessData = array_search($locationId, $deviceIds) !== false;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
 
 		if($canAccessData) {
 			if($mode=="kill") {
@@ -107,11 +115,13 @@ if($_REQUEST) {
 					wind_increment, 
 					*/
 					//echo $sql;
-					$result = mysqli_query($conn, $sql);
-					$out = [];
-					if($result && $canAccessData) {
-						while($row = mysqli_fetch_array($result)) {
-							array_push($out, $row);
+					if($sql) {
+						$result = mysqli_query($conn, $sql);
+						$out = [];
+						if($result && $canAccessData) {
+							while($row = mysqli_fetch_array($result)) {
+								array_push($out, $row);
+							}
 						}
 					}
 				}
@@ -159,7 +169,7 @@ if($_REQUEST) {
 				if(count($lines)>1) {
 					$recentReboots = explode("*", $lines[1]);
 					foreach($recentReboots as $rebootOccasion) {
-						if(intval($rebootOccasion) > 0 && array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"]) {
+						if(intval($rebootOccasion) > 0 && $canAccessData) {
 						$dt = new DateTime();
 						$dt->setTimestamp($rebootOccasion);
 						$rebootOccasionSql = $dt->format('Y-m-d H:i:s');
@@ -199,7 +209,7 @@ if($_REQUEST) {
 								$sqlToUpdateDeviceFeature = "UPDATE device_feature SET last_known_device_value =  " . $pinValuesKnownToDevice[$pinCursor];
 								$sqlToUpdateDeviceFeature .= ", last_known_device_modified='" . $formatedDateTime . "'";
 								$sqlToUpdateDeviceFeature .= " WHERE device_feature_id=" . $row["device_feature_id"];
-								//echo $sqlToUpdateDeviceFeature  . "<BR> " . $specificPin  . "<BR>"; 
+								//echo $sqlToUpdateDeviceFeature  . "<BR> " . $specificPin  . "<BR>";
 								$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
 							}
 							unset($row["device_feature_id"]);//make things as lean as possible for IoT device
@@ -236,6 +246,25 @@ function disable_gzip() {
 	@ini_set('fastcgi_pass_request_headers', 'Off');
 	@apache_setenv('no-gzip', 1);	
 }
+
+
+//this only works if you make sure your users all have distinct storagePasswords!
+function deriveDeviceIdsFromStoragePassword($storagePassword) {
+	Global $conn;
+	$deviceIds = [];
+	$sql = "SELECT device_id FROM user u JOIN device d ON u.user_id=d.user_id WHERE storage_password='" . mysqli_real_escape_string($conn, $storagePassword)  . "' ORDER BY device_id ASC";
+	$result = mysqli_query($conn, $sql);
+	if($result) {
+		$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+		foreach($rows as $row){
+			$deviceIds[] = $row["device_id"];
+		}
+		//var_dump($deviceIds);
+		return $deviceIds;
+	}
+}
+
+ 
 
 //some helpful sql examples for creating sql users:
 //CREATE USER 'weathertron'@'localhost' IDENTIFIED  BY 'your_password';
