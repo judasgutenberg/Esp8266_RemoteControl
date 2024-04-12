@@ -69,7 +69,7 @@ function bodyWrap($content, $user, $deviceId, $poser = null) {
   $out .= "<div class='devicedescriptiopn'>";
  
   $out .= "</div>";
-	$out .= tabNav();
+	$out .= tabNav($user);
   $out .= "<div class='innercontent'>\n";
   $out .= $content;
   $out .= "</div>\n";
@@ -825,12 +825,9 @@ function loginUser($source = NULL) {
   //}
 }
 
-function tabNav() {
+function tabNav($user) {
 	$tabData = array(
-  [
-    'label' => 'Locations',
-    'table' => 'location' 
-  ] ,
+ 
   [
     'label' => 'Devices',
     'table' => 'device' 
@@ -852,6 +849,12 @@ function tabNav() {
     'table' => 'device_feature' 
   ] 
 	);
+  if($user["role"] == "super") {
+    $tabData[] =   [
+      'label' => 'Users',
+      'table' => 'user' 
+    ];
+  }
 	$out = "<div class='nav'>";
   $currentMode = gvfa('table', $_REQUEST);
   $deviceId = gvfa('device_id', $_REQUEST);
@@ -881,40 +884,6 @@ function tabNav() {
   return $out;
 }
 
-function devices($userId) {
-  Global $conn;
-  $table = "device";
-  $sql = "SELECT * FROM `" . $table . "` WHERE user_id = '" . intval($userId) . "' ORDER BY created DESC ";
-  //echo $sql;
-  $result = mysqli_query($conn, $sql);
-  $out = "";
-  $out .= "<div class='listtitle'>Your " . ucfirst($table) . "s</div>\n";
-  $out .= "<div class='listtools'><div class='basicbutton'><a href='?table=" . $table . "&mode=startcreate'>Create</a></div> a new " . $table . "<//div>\n";
-  //$out .= "<hr style='width:100px;margin:0'/>\n";
-  $headerData = array(
-    [
-      'label' => 'name',
-      'name' => 'name' 
-    ],
-    [
-      'label' => 'created',
-      'name' => 'created' 
-    ] 
-
-    );
-  $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
-
-  
-  $toolsTemplate .= "<a onclick='return confirm(\"Are you sure you want to delete this " . $table . "?\")' href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>&action=delete'>Delete</a>";
-  if($result) {
-	  $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
-	  
-	  if($rows) {
-      $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id");
-    }
-  }
-  return $out;
-}
  
 
 function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null) { //aka genericList
