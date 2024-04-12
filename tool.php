@@ -18,7 +18,7 @@ include("device_functions.php");
 
 $conn = mysqli_connect($servername, $username, $password, $database);
 
-$table = strtolower(gvfw('table', "device"));
+$table = strtolower(filterStringForSqlEntities(gvfw('table', "device"))); //make sure this table name doesn't contain injected SQL
 $action = strtolower(gvfw('action', "list"));
 $user = logIn();
 $deviceId = gvfa('device_id', $_GET);
@@ -179,13 +179,15 @@ if ($user) {
     //die($sql);
     $result = mysqli_query($conn, $sql);
     header('Location: '.$_SERVER['PHP_SELF'] . "?table=" . $table);
-  } else {
+  } else if($table!= "user" || $user["role"]  == "super") {
     if(gvfw($table . '_id')) {
       $out .= genericEntityForm($userId, $table, $errors);
 
     } else {
       if($table == "device_feature") {
         $out .= deviceFeatures($userId, $deviceId);
+      } else if($table == "device") {
+          $out .= devices($userId, $deviceId);
       } else {
         $out .= genericEntityList($userId, $table);
       }
