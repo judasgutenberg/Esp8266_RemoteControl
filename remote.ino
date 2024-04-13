@@ -10,6 +10,7 @@
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
+
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <SimpleMap.h>
@@ -34,11 +35,14 @@ StaticJsonDocument<1000> jsonBuffer;
 WiFiUDP ntpUDP; //i guess i need this for time lookup
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
+bool localSource = false; //turns true when a local edit to the data is done. at that point we have to send local upstream to the server
 long connectionFailureTime = 0;
 long lastDataLogTime = 0;
+long localChangeTime = 0;
 int timeSkewAmount = 0; //i had it as much as 20000 for 20 seconds, but serves no purpose that I can tell
 int pinTotal = 12;
-String pinList[12];
+String pinList[12]; //just a list of pins
+String pinName[12]; //for friendly names
 
 //https://github.com/spacehuhn/SimpleMap
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
@@ -46,6 +50,7 @@ SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String
   else if (a > b) return 1;  // a is bigger than b
   else return -1;            // a is smaller than b
 });
+
 
 long moxeeRebootTimes[] = {0,0,0,0,0,0,0,0,0,0,0};
 int moxeeRebootCount = 0;
@@ -76,7 +81,8 @@ float altitude(const int32_t press, const float seaLevel) {
 
 //ESP8266's home page:----------------------------------------------------
 void handleRoot() {
- server.send(200, "text/html", "nothing"); //Send web page
+ String s = MAIN_page; //Read HTML contents
+ server.send(200, "text/html", s); //Send web page
 }
 
 void handleWeatherData() {
@@ -196,7 +202,7 @@ void handleWeatherData() {
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
   transmissionString = transmissionString + "|" + JoinMapValsOnDelimiter(pinMap, "*", pinTotal); //also send pin as they are known back to the server
   //other server-relevant info as needed, delimited by *
-  transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor;
+  transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource;
   //Serial.println(transmissionString);
   //had to use a global, died a little inside
   if(glblRemote) {
@@ -228,7 +234,11 @@ void setup(void){
   Wire.begin();
   WiFiConnect();
   server.on("/", handleRoot);      //Which routine to handle at root location. This is display page
+  server.on("/readLocalData", localShowData);
   server.on("/weatherdata", handleWeatherData); //This page is called by java Script AJAX
+  server.on("/writeLocalData", localSetData);
+ 
+  
   server.begin();                  //Start server
   Serial.println("HTTP server started");
   if(sensorType == 680) {
@@ -419,12 +429,17 @@ void sendRemoteData(String datastring) {
 
 //this will set any pins specified in the JSON
 void setLocalHardwareToServerStateFromJson(char * json){
+  if(millis() - localChangeTime < 1000) { //don't accept any server values withing 5 seconds of a local change
+    return;
+  }
   char * nodeName="device_data";
   int pinNumber = 0;
   int value = -1;
   int canBeAnalog = 0;
   int enabled = 0;
   int pinCounter = 0;
+  int serverSaved = 0;
+  String friendlyPinName = "";
   char i2c = 0;
   DeserializationError error = deserializeJson(jsonBuffer, json);
   if(jsonBuffer[nodeName]) {
@@ -433,10 +448,12 @@ void setLocalHardwareToServerStateFromJson(char * json){
       pinMap->clear(); //this won't work
     }
     for(int i=0; i<jsonBuffer[nodeName].size(); i++) {
+      friendlyPinName = (String)jsonBuffer[nodeName][i]["name"];
       pinNumber = (int)jsonBuffer[nodeName][i]["pin_number"];
       value = (int)jsonBuffer[nodeName][i]["value"];
       canBeAnalog = (int)jsonBuffer["nodeName"][i]["can_be_analog"];
       enabled = (int)jsonBuffer[nodeName][i]["enabled"];
+      serverSaved = (int)jsonBuffer[nodeName][i]["ss"];
       i2c = (int)jsonBuffer[nodeName][i]["i2c"];
       if(i2c == NULL) {
         i2c = 0;
@@ -458,9 +475,18 @@ void setLocalHardwareToServerStateFromJson(char * json){
             key = (String)pinNumber;
           }
           //Serial.println("! " + (String)pinList[j] +  " =?: " + key +  " correcto? " + (int((String)pinList[j] == key)));
-          if((String)pinList[j] == key) {
-            pinMap->remove(key);
-            pinMap->put(key, value);
+          if(!localSource || serverSaved == 1){
+            if((String)pinList[j] == key) {
+
+              if(serverSaved == 1) {//confirmation of serverSaved, so localSource flag is no longer needed
+                Serial.println("SERVER SAVED==1!!");
+                localSource = false;
+              } else { //this will have the wrong value if serverSaved == 1
+                pinMap->remove(key);
+                pinMap->put(key, value);
+              }
+              pinName[i] = friendlyPinName;
+            }
           }
         }
         if(i2c > 0) {
@@ -591,4 +617,51 @@ void loop(void){
       WiFiConnect();
     }
   }
+}
+
+ 
+//this is the easiest way I could find to read querystring parameters on an ESP8266
+void localSetData() {
+  localChangeTime = millis();
+  String id = "";
+  int onValue = 0;
+  for (int i = 0; i < server.args(); i++) {
+    if(server.argName(i) == "id") {
+      id = server.arg(i);
+      Serial.print(id);
+      Serial.print( " : ");
+    } else if (server.argName(i) == "on") {
+      onValue = (int)(server.arg(i) == "1");  
+      
+      
+    }
+    Serial.print(onValue);
+    Serial.println();
+  } 
+  for (int i = 0; i < pinMap->size(); i++) {
+    String key = pinList[i];
+    Serial.print(key);
+    Serial.print(" ?= ");
+    Serial.println(id);
+    if(key == id) {
+      pinMap->remove(key);
+      pinMap->put(key, onValue);
+      Serial.print("LOCAL SOURCE TRUE :");
+      Serial.println(onValue);
+      localSource = true; //sets the NodeMCU into a mode it cannot get out of until the server sends back confirmation it got the data
+    }
+  }
+  server.send(200, "text/plain", "Data received"); //Send ADC value, temperature and humidity JSON to client ajax request
+}
+
+void localShowData() {
+  if(millis() - localChangeTime < 1000) {
+    return;
+  }
+  String out = "[";
+  for (int i = 0; i < pinMap->size(); i++) {
+    out = out + "{\"id\": \"" + pinList[i] +  "\",\"name\": \"" + pinName[i] +  "\", \"value\": \"" + (String)pinMap->getData(i) + "\"}";
+  }
+  out += "]";
+  server.send(200, "text/plain", out); //Send ADC value, temperature and humidity JSON to client ajax request
 }
