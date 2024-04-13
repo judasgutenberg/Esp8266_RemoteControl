@@ -163,6 +163,7 @@ if($_REQUEST) {
 
 			}
 			if($mode == "getDeviceData" || $mode == "saveData" ) {
+				$mustSaveLastKnownDeviceValueAsValue = 0;
 				$method = "getDeviceData";
 				$pinValuesKnownToDevice = [];
 				$specificPin = -1;
@@ -190,12 +191,15 @@ if($_REQUEST) {
 							
 							$specificPin = $extraInfo[1];
 						}
+						if(count($extraInfo)>2){
+							$mustSaveLastKnownDeviceValueAsValue = $extraInfo[2];
+						}
 					}
 				
 				} 
 
 				//the part where we include any data from our remote control system:
-				$deviceSql = "SELECT pin_number, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
+				$deviceSql = "SELECT pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
 				//echo $deviceSql;
 				$result = mysqli_query($conn, $deviceSql);
 				if($result) {
@@ -204,13 +208,24 @@ if($_REQUEST) {
 					foreach($rows as $row) {
 						$pinNumber = $row["pin_number"];
 						if($specificPin == -1 || $specificPin ==  $pinCursor){
+							$sqlIfDataGoingUpstream = "";
 							//this part update device_feature so we can tell from the server if the device has taken on the server's value
 							if(count($pinValuesKnownToDevice) > $pinCursor) {
 								$sqlToUpdateDeviceFeature = "UPDATE device_feature SET last_known_device_value =  " . $pinValuesKnownToDevice[$pinCursor];
-								$sqlToUpdateDeviceFeature .= ", last_known_device_modified='" . $formatedDateTime . "'";
+								$sqlToUpdateDeviceFeature .= ", last_known_device_modified='" . $formatedDateTime . "' <additional/>";
 								$sqlToUpdateDeviceFeature .= " WHERE device_feature_id=" . $row["device_feature_id"];
 								//echo $sqlToUpdateDeviceFeature  . "<BR> " . $specificPin  . "<BR>";
+								$sqlIfDataGoingUpstream = " ,value =" . $pinValuesKnownToDevice[$pinCursor];
+								if($mustSaveLastKnownDeviceValueAsValue){ //actually update the pin values here too!
+									$sqlToUpdateDeviceFeature = str_replace("<additional/>", $sqlIfDataGoingUpstream, $sqlToUpdateDeviceFeature);
+									$row["ss"] = 1;
+								} else {
+									$sqlToUpdateDeviceFeature = str_replace("<additional/>", "", $sqlToUpdateDeviceFeature);
+									$row["ss"] = 0;
+								}
+								
 								$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
+
 							}
 							unset($row["device_feature_id"]);//make things as lean as possible for IoT device
 							$out["device_data"][] = $row;
