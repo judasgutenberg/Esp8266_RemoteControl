@@ -22,6 +22,8 @@
 #include <Adafruit_BMP085.h>
 #include <Temperature_LM75_Derived.h>
 
+#include "index.h" //Our HTML webpage contents with javascriptrons
+
 DHT dht(dhtData, dhtType);
 SFE_BMP180 BMP180;
 BME680_Class BME680;
@@ -38,6 +40,7 @@ int timeSkewAmount = 0; //i had it as much as 20000 for 20 seconds, but serves n
 int pinTotal = 12;
 String pinList[12];
 
+//https://github.com/spacehuhn/SimpleMap
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
   if (a == b) return 0;      // a and b are equal
   else if (a > b) return 1;  // a is bigger than b
