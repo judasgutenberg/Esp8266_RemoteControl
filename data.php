@@ -68,10 +68,10 @@ if($_REQUEST) {
 				$method  = "kill";
 			
 			} else if ($mode=="getDeviceData") {
-				$sql = "SELECT name, location_name FROM device WHERE device_id = " . $deviceId;
-				$result = mysqli_query($conn, $sql);
-				if($result) {
-					$deviceRow = mysqli_fetch_array($result);
+				$deviceSql = "SELECT name, location_name FROM device WHERE device_id = " . $deviceId;
+				$getDeviceResult = mysqli_query($conn, $deviceSql);
+				if($getDeviceResult) {
+					$deviceRow = mysqli_fetch_array($getDeviceResult);
 					$deviceName = $deviceRow["name"];
 				}
 
@@ -168,7 +168,7 @@ if($_REQUEST) {
 
 			}
 			if($mode == "getDeviceData" || $mode == "saveData" ) {
-
+				$out["device"] = $deviceName;
 				$ipAddress = "192.168.1.X";
 				$mustSaveLastKnownDeviceValueAsValue = 0;
 				$method = "getDeviceData";
@@ -261,7 +261,7 @@ if($_REQUEST) {
 			$out = ["error"=>"you lack permissions"];
 	}
 }
-	$out["device"] = $deviceName;
+	
 	echo json_encode($out);
 	
 	
