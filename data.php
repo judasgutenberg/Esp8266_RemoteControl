@@ -168,6 +168,8 @@ if($_REQUEST) {
 
 			}
 			if($mode == "getDeviceData" || $mode == "saveData" ) {
+
+				$ipAddress = "192.168.1.X";
 				$mustSaveLastKnownDeviceValueAsValue = 0;
 				$method = "getDeviceData";
 				$pinValuesKnownToDevice = [];
@@ -193,12 +195,22 @@ if($_REQUEST) {
 						$extraInfo = explode("*", $lines[3]);
 						if(count($extraInfo)>1){
 							$lastCommandId = $extraInfo[0];
-							
 							$specificPin = $extraInfo[1];
 						}
 						if(count($extraInfo)>2){
 							$mustSaveLastKnownDeviceValueAsValue = $extraInfo[2];
 						}
+						if(count($extraInfo)>3){
+							$ipAddress = $extraInfo[3];
+			 
+							if($ipAddress) {
+								$deviceSql= "UPDATE device SET ip_address='" . $ipAddress . "' WHERE device_id=" . intval($deviceId);
+								$deviceResult = mysqli_query($conn, $deviceSql);
+								//echo $deviceSql;
+							}
+							
+						} 
+					 
 					}
 				
 				} 
