@@ -44,6 +44,8 @@ int pinTotal = 12;
 String pinList[12]; //just a list of pins
 String pinName[12]; //for friendly names
 
+String deviceName;
+
 //https://github.com/spacehuhn/SimpleMap
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
   if (a == b) return 0;      // a and b are equal
@@ -440,8 +442,12 @@ void setLocalHardwareToServerStateFromJson(char * json){
   int pinCounter = 0;
   int serverSaved = 0;
   String friendlyPinName = "";
+ 
   char i2c = 0;
   DeserializationError error = deserializeJson(jsonBuffer, json);
+  if(jsonBuffer["device"]) { //deviceName is a global
+    deviceName = (String)jsonBuffer["device"];
+  }
   if(jsonBuffer[nodeName]) {
     pinCounter = 0;
     if(!onePinAtATimeMode) {
@@ -658,10 +664,10 @@ void localShowData() {
   if(millis() - localChangeTime < 1000) {
     return;
   }
-  String out = "[";
+  String out = "{\"device\":\"" + deviceName + "\", \"pins\": [";
   for (int i = 0; i < pinMap->size(); i++) {
     out = out + "{\"id\": \"" + pinList[i] +  "\",\"name\": \"" + pinName[i] +  "\", \"value\": \"" + (String)pinMap->getData(i) + "\"}";
   }
-  out += "]";
+  out += "]}";
   server.send(200, "text/plain", out); //Send ADC value, temperature and humidity JSON to client ajax request
 }
