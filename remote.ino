@@ -43,6 +43,7 @@ int timeSkewAmount = 0; //i had it as much as 20000 for 20 seconds, but serves n
 int pinTotal = 12;
 String pinList[12]; //just a list of pins
 String pinName[12]; //for friendly names
+String ipAddress;
 
 String deviceName;
 
@@ -204,7 +205,7 @@ void handleWeatherData() {
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
   transmissionString = transmissionString + "|" + JoinMapValsOnDelimiter(pinMap, "*", pinTotal); //also send pin as they are known back to the server
   //other server-relevant info as needed, delimited by *
-  transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource;
+  transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddress;
   //Serial.println(transmissionString);
   //had to use a global, died a little inside
   if(glblRemote) {
@@ -297,6 +298,7 @@ void WiFiConnect() {
   Serial.print("Connected to ");
   Serial.println(ssid);
   Serial.print("IP address: ");
+  ipAddress =  WiFi.localIP().toString();
   Serial.println(WiFi.localIP());  //IP address assigned to your ESP
 }
 
