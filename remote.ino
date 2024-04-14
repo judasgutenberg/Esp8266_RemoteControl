@@ -493,7 +493,7 @@ void setLocalHardwareToServerStateFromJson(char * json){
                 pinMap->remove(key);
                 pinMap->put(key, value);
               }
-              pinName[i] = friendlyPinName;
+              pinName[j] = friendlyPinName;
             }
           }
         }
@@ -669,6 +669,9 @@ void localShowData() {
   String out = "{\"device\":\"" + deviceName + "\", \"pins\": [";
   for (int i = 0; i < pinMap->size(); i++) {
     out = out + "{\"id\": \"" + pinList[i] +  "\",\"name\": \"" + pinName[i] +  "\", \"value\": \"" + (String)pinMap->getData(i) + "\"}";
+    if(i < pinMap->size()-1) {
+      out = out + ", ";
+    }
   }
   out += "]}";
   server.send(200, "text/plain", out); //Send ADC value, temperature and humidity JSON to client ajax request
