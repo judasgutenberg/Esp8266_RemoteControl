@@ -31,19 +31,16 @@ h2{
   height:130px;
   width:100%;
 }
-
-a{
- text-align: center;
- text-decoration: none;
- color: white;
- font-size: 15px;
- font-weight: 500;
+#deviceName {
+  text-align: center;
+  color:white
 }
+ 
 </style>
 <body>
 
 <div class="widget"> 
-  <div style="text-align: center;color:white">Pins on the Remote Controller</div>
+  <div id='deviceName' style="text-align: center;color:white">Your Device</div>
   <div class="lower" id="lower">    
   </div>
 </div>
@@ -52,11 +49,11 @@ a{
 setInterval(showPinValues, 7000);
 
 function updateLocalValues(id, value) {
-    var xhttp = new XMLHttpRequest();
+    let xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function() {
     }
     console.log(value);
-    var onValue = "0";
+    let onValue = "0";
     if(value) {
       onValue = "1";
     }
@@ -65,26 +62,29 @@ function updateLocalValues(id, value) {
 }
     
 function showPinValues(){
-    var xhttp = new XMLHttpRequest();
+    let xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function() {
       if (this.readyState == 4 && this.status == 200) {
-        var txt = this.responseText;
-        var arr = JSON.parse(txt);  
-        if(arr.length> 0) {
+        let txt = this.responseText;
+        let arr = JSON.parse(txt);  
+        let deviceName = arr.device;
+        let pins = arr.pins;
+        if(pins.length> 0) {
          document.getElementById("lower").innerHTML = "";
         }
+        document.getElementById("deviceName").innerHTML = deviceName;
         let pinCursor = 0;
         //console.log(arr);
-        for(let obj of arr) {
+        for(let obj of pins) {
           //console.log(obj);
-          var checked = "";
-          var i2cString = "";
-          var id = obj["id"];
-          var pin = id;
-          var friendlyName = obj["name"];
+          let checked = "";
+          let i2cString = "";
+          let id = obj["id"];
+          let pin = id;
+          let friendlyName = obj["name"];
           if(id.indexOf(".")>-1) {
-            var pinInfo = id.split(".");
-            var i2c = pinInfo[0];
+            let pinInfo = id.split(".");
+            let i2c = pinInfo[0];
             pin = pinInfo[1];
             i2cString = " via I2C: " + i2c;
           }
