@@ -235,7 +235,11 @@ if($_REQUEST) {
 								$sqlIfDataGoingUpstream = " ,value =" . $pinValuesKnownToDevice[$pinCursor];
 								if($mustSaveLastKnownDeviceValueAsValue){ //actually update the pin values here too!
 									$sqlToUpdateDeviceFeature = str_replace("<additional/>", $sqlIfDataGoingUpstream, $sqlToUpdateDeviceFeature);
-									$row["ss"] = 1;
+									if($pinCursor == count($rows)-1) {
+										$row["ss"] = 1; //only do this on the last pin!
+									} else {
+										$row["ss"] = 0;
+									}
 								} else {
 									$sqlToUpdateDeviceFeature = str_replace("<additional/>", "", $sqlToUpdateDeviceFeature);
 									$row["ss"] = 0;
