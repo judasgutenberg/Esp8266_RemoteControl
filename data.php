@@ -20,6 +20,7 @@ $formatedDateTime =  $date->format('Y-m-d H:i:s');
 //$formatedDateTime =  $date->format('H:i');
 $deviceId = "";
 $locationId = "";
+$deviceName = "Your device";
 $deviceIds = [];
 if($_REQUEST) {
 	if(array_key_exists("storagePassword", $_REQUEST)) {
@@ -67,8 +68,12 @@ if($_REQUEST) {
 				$method  = "kill";
 			
 			} else if ($mode=="getDeviceData") {
-
-
+				$sql = "SELECT name, location_name FROM device WHERE device_id = " . $deviceId;
+				$result = mysqli_query($conn, $sql);
+				if($result) {
+					$deviceRow = mysqli_fetch_array($result);
+					$deviceName = $deviceRow["name"];
+				}
 
 			} else if ($mode=="getData") {
 				if(array_key_exists("scale", $_REQUEST)) {
@@ -244,6 +249,7 @@ if($_REQUEST) {
 			$out = ["error"=>"you lack permissions"];
 	}
 }
+	$out["device"] = $deviceName;
 	echo json_encode($out);
 	
 	
