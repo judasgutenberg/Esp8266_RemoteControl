@@ -222,35 +222,45 @@ if($_REQUEST) {
 				if($result) {
 					$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
 					$pinCursor = 0;
+					logSql($mustSaveLastKnownDeviceValueAsValue . "^" . $lines[2] . "^" . "------------------------------");
 					foreach($rows as $row) {
 						$pinNumber = $row["pin_number"];
-						if($specificPin == -1 || $specificPin ==  $pinCursor){
+						
 							$sqlIfDataGoingUpstream = "";
-							//this part update device_feature so we can tell from the server if the device has taken on the server's value
-							if(count($pinValuesKnownToDevice) > $pinCursor) {
-								$sqlToUpdateDeviceFeature = "UPDATE device_feature SET last_known_device_value =  " . $pinValuesKnownToDevice[$pinCursor];
-								$sqlToUpdateDeviceFeature .= ", last_known_device_modified='" . $formatedDateTime . "' <additional/>";
-								$sqlToUpdateDeviceFeature .= " WHERE device_feature_id=" . $row["device_feature_id"];
-								//echo $sqlToUpdateDeviceFeature  . "<BR> " . $specificPin  . "<BR>";
-								$sqlIfDataGoingUpstream = " ,value =" . $pinValuesKnownToDevice[$pinCursor];
-								if($mustSaveLastKnownDeviceValueAsValue){ //actually update the pin values here too!
-									$sqlToUpdateDeviceFeature = str_replace("<additional/>", $sqlIfDataGoingUpstream, $sqlToUpdateDeviceFeature);
-									if($pinCursor == count($rows)-1) {
-										$row["ss"] = 1; //only do this on the last pin!
-									} else {
-										$row["ss"] = 0;
-									}
-								} else {
-									$sqlToUpdateDeviceFeature = str_replace("<additional/>", "", $sqlToUpdateDeviceFeature);
-									$row["ss"] = 0;
-								}
-								
-								$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
+							if($pinValuesKnownToDevice[$pinCursor] == ""){
 
+							} else {
+								//this part update device_feature so we can tell from the server if the device has taken on the server's value
+								if(count($pinValuesKnownToDevice) > $pinCursor) {
+									$sqlToUpdateDeviceFeature = "UPDATE device_feature SET last_known_device_value =  " . $pinValuesKnownToDevice[$pinCursor];
+									$sqlToUpdateDeviceFeature .= ", last_known_device_modified='" . $formatedDateTime . "' <additional/>";
+									$sqlToUpdateDeviceFeature .= " WHERE device_feature_id=" . $row["device_feature_id"];
+									//echo $sqlToUpdateDeviceFeature  . "<BR> " . $specificPin  . "<BR>";
+									$sqlIfDataGoingUpstream = ", value =" . $pinValuesKnownToDevice[$pinCursor];
+									if($mustSaveLastKnownDeviceValueAsValue){ //actually update the pin values here too!
+										$sqlToUpdateDeviceFeature = str_replace("<additional/>", $sqlIfDataGoingUpstream, $sqlToUpdateDeviceFeature);
+										if($pinCursor == count($rows)-1 || $specificPin > -1) {
+											$row["ss"] = 1; //only do this on the last pin!
+										} else {
+											$row["ss"] = 0;
+										}
+									} else {
+										$sqlToUpdateDeviceFeature = str_replace("<additional/>", "", $sqlToUpdateDeviceFeature);
+										$row["ss"] = 0;
+										
+									}
+									if($specificPin == -1 || $specificPin ==  $pinCursor){
+										unset($row["device_feature_id"]);//make things as lean as possible for IoT device
+										$out["device_data"][] = $row;
+									}
+									logSql($sqlToUpdateDeviceFeature);
+									$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
+
+								}
+							
+								
 							}
-							unset($row["device_feature_id"]);//make things as lean as possible for IoT device
-							$out["device_data"][] = $row;
-						}
+						 
 						if($row["i2c"] > 0){
 							$out["pin_list"][] = $row["i2c"] . "." . $pinNumber ;
 						} else {
@@ -301,6 +311,10 @@ function deriveDeviceIdsFromStoragePassword($storagePassword) {
 	}
 }
 
+function logSql($sql){
+	global $formatedDateTime;
+	$myfile = file_put_contents('sql.txt', "\n\n" . $formatedDateTime . ": " . $sql, FILE_APPEND | LOCK_EX);
+}
  
 
 //some helpful sql examples for creating sql users:
