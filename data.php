@@ -1,8 +1,8 @@
 <?php 
-//temperaturebot backend. 
+//remote control and weather monitoring backend. 
 //i've tried to keep all the code vanilla and old school
 //of course in php it's all kind of bleh
-//gus mueller, April 7 2022
+//gus mueller, April 14 2024
 //////////////////////////////////////////////////////////////
 
 //ini_set('display_errors', 1);
@@ -312,6 +312,7 @@ function deriveDeviceIdsFromStoragePassword($storagePassword) {
 }
 
 function logSql($sql){
+	return; //for when you don't actually want to log
 	global $formatedDateTime;
 	$myfile = file_put_contents('sql.txt', "\n\n" . $formatedDateTime . ": " . $sql, FILE_APPEND | LOCK_EX);
 }
