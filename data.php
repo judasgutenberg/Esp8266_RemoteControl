@@ -133,7 +133,7 @@ if($_REQUEST) {
 				$method  = "read";	
 			} else if ($mode == "saveData") { //save data
 			//test url;:
-			// //http://randomsprocket.com/weather/data.php?storagePassword=butterfly&locationId=3&mode=saveData&data=10736712.76*12713103.20*1075869.28*NULL|0*0*1710464489*1710464504*1710464519*1710464534*1710464549*1710464563*1710464579*1710464593*
+			// //http://randomsprocket.com/weather/data.php?storagePassword=xxxx&locationId=3&mode=saveData&data=10736712.76*12713103.20*1075869.28*NULL|0*0*1710464489*1710464504*1710464519*1710464534*1710464549*1710464563*1710464579*1710464593*
 
 				
 				
