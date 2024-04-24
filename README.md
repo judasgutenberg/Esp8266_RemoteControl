@@ -18,7 +18,7 @@ This system is actually multi-user and supports multiple user accounts, each wit
 5. Add a record to the device_feature table describing the specific pin (here a human readable name would be useful).
 6. Now you can change the state of a particular ESP8266's pin by changing the state of the value column in the device_feature record.  Make sure to set enabled to 1 as well.
 
-Here is the user interface, which allows you to turn items on and off in the list by checking the on column.
+Here is the user interface, which allows you to turn items on and off in the list by checking the "power on" column.
 ![alt text](remotecontrolscreen.jpg?raw=true)
 
 This system actually tracks whether or not data makes it to the ESP8266 that it is sent to via the last_known_device_value and last_known_device_modified columns.  This is important when a remote control action needs to be verified as having happened. Otherwise you end up looking for a change of temperature or power consumption at your off-grid cabin for such confirmation.  I use a string hash table as a very simple database to store this information on the microcontroller, which might be overkill. But the ESP8266 has enough storage and memory to be a little wasteful of resources.
