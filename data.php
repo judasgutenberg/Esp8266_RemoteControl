@@ -133,7 +133,7 @@ if($_REQUEST) {
 				$method  = "read";	
 			} else if ($mode == "saveData") { //save data
 			//test url;:
-			// //http://randomsprocket.com/weather/data.php?storagePassword=xxxx&locationId=3&mode=saveData&data=10736712.76*12713103.20*1075869.28*NULL|0*0*1710464489*1710464504*1710464519*1710464534*1710464549*1710464563*1710464579*1710464593*
+			// //http://randomsprocket.com/weather/data.php?storagePassword=vvvvvvv&locationId=3&mode=saveData&data=10736712.76*12713103.20*1075869.28*NULL|0*0*1710464489*1710464504*1710464519*1710464534*1710464549*1710464563*1710464579*1710464593*
 
 				
 				
@@ -214,9 +214,9 @@ if($_REQUEST) {
 					}
 				
 				} 
-
+				//SELECT pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=11 ORDER BY i2c, pin_number;
 				//the part where we include any data from our remote control system:
-				$deviceSql = "SELECT pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
+				$deviceSql = "SELECT pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE pin_number IS NOT NULL AND device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
 				//echo $deviceSql;
 				$result = mysqli_query($conn, $deviceSql);
 				if($result) {
