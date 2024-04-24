@@ -66,7 +66,14 @@ if($_REQUEST) {
 		if($canAccessData) {
 			if($mode=="kill") {
 				$method  = "kill";
-			
+			} else if ($mode=="getDevices") {
+				$sql = "SELECT * FROM device  WHERE device_id IN (" . implode("," , $deviceIds) . ") ORDER BY NAME ASC";
+				//echo $sql;
+  				$result = mysqli_query($conn, $sql);
+  				if($result) {
+	  				$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+					$out["devices"] = $rows;
+				}
 			} else if ($mode=="getDeviceData") {
 				$deviceSql = "SELECT name, location_name FROM device WHERE device_id = " . $deviceId;
 				$getDeviceResult = mysqli_query($conn, $deviceSql);
