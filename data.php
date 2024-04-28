@@ -67,7 +67,7 @@ if($_REQUEST) {
 			if($mode=="kill") {
 				$method  = "kill";
 			} else if ($mode=="getDevices") {
-				$sql = "SELECT * FROM device  WHERE device_id IN (" . implode("," , $deviceIds) . ") ORDER BY NAME ASC";
+				$sql = "SELECT ip_address, name, device_id FROM device  WHERE device_id IN (" . implode("," , $deviceIds) . ") ORDER BY NAME ASC";
 				//echo $sql;
   				$result = mysqli_query($conn, $sql);
   				if($result) {
