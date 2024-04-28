@@ -2,7 +2,7 @@ const char MAIN_page[] PROGMEM = R"=====(
 <!DOCTYPE html>
 <html>
 <head>
-<title>circuits4you.com</title>
+<title>local data</title>
 </head>
 <style>
 @import url(https://fonts.googleapis.com/css?family=Montserrat);
@@ -43,11 +43,40 @@ h2{
   <div id='deviceName' style="text-align: center;color:white">Your Device</div>
   <div class="lower" id="lower">    
   </div>
+   <div id='temperature' style="display:inline-block;text-align: center;color:white"></div>
+   <div id='pressure' style="display:inline-block;text-align: center;color:white"></div>
+   <div id='humidity' style="display:inline-block;text-align: center;color:white"></div>
+  
 </div>
 
 <script>
 setInterval(showPinValues, 7000);
 
+function updateWeatherDisplay() {
+    let xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+      if (this.readyState == 4 && this.status == 200) {
+        let txt = this.responseText;
+        let firstLine = txt.split("|")[0];
+        console.log(firstLine);
+        let weatherData = firstLine.split("*");
+        temperature = weatherData[0];
+        pressure = weatherData[1];
+        humidity = weatherData[2];
+        document.getElementById("temperature").innerHTML = (parseFloat(temperature) * 1.8 + 32).toFixed(2) + "&deg; F"; 
+        if(pressure != "NULL" && pressure != "NULL") {
+          document.getElementById("pressure").innerHTML = parseFloat(pressure).toFixed(2) + "mm Hg";
+        }
+        if(humidity != "NULL") {
+          document.getElementById("humidity").innerHTML = parseFloat(humidity).toFixed(2) + "% rel";
+        }
+      }
+  
+    };
+    xhttp.open("GET", "/weatherdata", true);
+    xhttp.send();
+}
+    
 function updateLocalValues(id, value) {
     let xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function() {
@@ -94,7 +123,8 @@ function showPinValues(){
           document.getElementById("lower").innerHTML  +=  " <input onchange='updateLocalValues(this.name, this.checked)' " + checked + " type='checkbox' name=\"" + id +  "\" value='1' > <b>" + friendlyName +  "</b>, pin " + pin + " " + i2cString + "<br/>";
           pinCursor++;
         }
-      }  
+      } 
+      updateWeatherDisplay(); 
     };
    xhttp.open("GET", "readLocalData", true); //Handle readADC server on ESP8266
    xhttp.send();
