@@ -63,8 +63,9 @@ function updateWeatherDisplay() {
         temperature = weatherData[0];
         pressure = weatherData[1];
         humidity = weatherData[2];
-        if(temperature != "NULL" && !isNaN(temperature) {
-        document.getElementById("temperature").innerHTML = (parseFloat(temperature) * 1.8 + 32).toFixed(2) + "&deg; F"; 
+        if(temperature != "NULL" && !isNaN(temperature)) {
+          document.getElementById("temperature").innerHTML = (parseFloat(temperature) * 1.8 + 32).toFixed(2) + "&deg; F"; 
+        }
         if(pressure != "NULL" ) {
           document.getElementById("pressure").innerHTML = parseFloat(pressure).toFixed(2) + "mm Hg";
         }
