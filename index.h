@@ -66,10 +66,10 @@ function updateWeatherDisplay() {
         if(temperature != "NULL" && !isNaN(temperature)) {
           document.getElementById("temperature").innerHTML = (parseFloat(temperature) * 1.8 + 32).toFixed(2) + "&deg; F"; 
         }
-        if(pressure != "NULL" ) {
+        if(pressure != "NULL"  && !isNaN(pressure)) {
           document.getElementById("pressure").innerHTML = parseFloat(pressure).toFixed(2) + "mm Hg";
         }
-        if(humidity != "NULL") {
+        if(humidity != "NULL" && !isNaN(humidity)) {
           document.getElementById("humidity").innerHTML = parseFloat(humidity).toFixed(2) + "% rel";
         }
       }
