@@ -23,7 +23,7 @@ h2{
   width: 500px;
 }
 
-.lower{
+.devices{
   background:#00A8A9;
   border-radius:0 0 5px 5px;
   font-family:'Advent Pro';
@@ -31,21 +31,29 @@ h2{
   height:130px;
   width:100%;
 }
-#deviceName {
+
+.weatherdata {
+  display:inline-block;
   text-align: center;
   color:white
+}
+ 
+#deviceName {
+  text-align: center;
+  color:white;
+  font-size: 14px;
 }
  
 </style>
 <body>
 
 <div class="widget"> 
-  <div id='deviceName' style="text-align: center;color:white">Your Device</div>
-  <div class="lower" id="lower">    
+  <div id='deviceName'>Your Device</div>
+  <div class="devices" id="devices">    
   </div>
-   <div id='temperature' style="display:inline-block;text-align: center;color:white"></div>
-   <div id='pressure' style="display:inline-block;text-align: center;color:white"></div>
-   <div id='humidity' style="display:inline-block;text-align: center;color:white"></div>
+   <div id='temperature' class='weatherdata'></div>
+   <div id='pressure' class='weatherdata'></div>
+   <div id='humidity' class='weatherdata'></div>
   
 </div>
 
@@ -58,7 +66,7 @@ function updateWeatherDisplay() {
       if (this.readyState == 4 && this.status == 200) {
         let txt = this.responseText;
         let firstLine = txt.split("|")[0];
-        console.log(firstLine);
+        //console.log(firstLine);
         let weatherData = firstLine.split("*");
         temperature = weatherData[0];
         pressure = weatherData[1];
@@ -101,7 +109,7 @@ function showPinValues(){
         let deviceName = arr.device;
         let pins = arr.pins;
         if(pins.length> 0) {
-         document.getElementById("lower").innerHTML = "";
+         document.getElementById("devices").innerHTML = "";
         }
         document.getElementById("deviceName").innerHTML = deviceName;
         let pinCursor = 0;
@@ -122,7 +130,7 @@ function showPinValues(){
           if(obj["value"] == '1') {
             checked = "checked";
           }
-          document.getElementById("lower").innerHTML  +=  " <input onchange='updateLocalValues(this.name, this.checked)' " + checked + " type='checkbox' name=\"" + id +  "\" value='1' > <b>" + friendlyName +  "</b>, pin " + pin + " " + i2cString + "<br/>";
+          document.getElementById("devices").innerHTML  +=  " <input onchange='updateLocalValues(this.name, this.checked)' " + checked + " type='checkbox' name=\"" + id +  "\" value='1' > <b>" + friendlyName +  "</b>, pin " + pin + " " + i2cString + "<br/>";
           pinCursor++;
         }
       } 
