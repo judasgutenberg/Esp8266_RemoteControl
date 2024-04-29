@@ -22,6 +22,8 @@
 #include <SFE_BMP180.h>
 #include <Adafruit_BMP085.h>
 #include <Temperature_LM75_Derived.h>
+#include "BME280I2C.h"
+#include <Wire.h>
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
@@ -30,6 +32,7 @@ SFE_BMP180 BMP180;
 BME680_Class BME680;
 Adafruit_BMP085 BMP085d;
 Generic_LM75 LM75;
+BME280I2C BMP280;
 
 StaticJsonDocument<1000> jsonBuffer;
 WiFiUDP ntpUDP; //i guess i need this for time lookup
@@ -132,6 +135,15 @@ void handleWeatherData() {
     temperatureValue = (double)dht.readTemperature();
     pressureValue = NULL; //really should set unknown values as null
     digitalWrite(dhtPower, LOW);//turn off DHT power. maybe it saves energy, and that's why MySpool did it this way
+  } else if(sensorType == 280) {
+    BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
+    BME280::PresUnit presUnit(BME280::PresUnit_Pa);
+    float temp(NAN), hum(NAN), pres(NAN);
+    //so dumb:
+    BMP280.read(pres, temp, hum,  tempUnit,  presUnit);
+    humidityValue = (double)hum;
+    temperatureValue = (double)temp;
+    pressureValue = (double)pres/100;
   } else if(sensorType == 180) {
     //BMP180 code:
     char status;
@@ -187,7 +199,6 @@ void handleWeatherData() {
     pressureValue = NULL;
     humidityValue = NULL;
   }
- 
   if(onePinAtATimeMode) {
     pinCursor++;
     if(pinCursor > pinTotal) {
@@ -269,6 +280,23 @@ void setup(void){
   } else if (sensorType == 85) { //BMP085
     Serial.print(F("Initializing BMP085...\n"));
     BMP085d.begin();
+  } else if (sensorType == 280) {
+    
+    if(!BMP280.begin()){
+      Serial.println("Couldn't find BMX280!");
+    }
+    
+    switch(BMP280.chipModel())
+    {
+       case BME280::ChipModel_BME280:
+         Serial.println("Found BME280 sensor! Success.");
+         break;
+       case BME280::ChipModel_BMP280:
+         Serial.println("Found BMP280 sensor! No Humidity available.");
+         break;
+       default:
+         Serial.println("Found UNKNOWN sensor! Error!");
+    }
   }
   //initialize NTP client
   timeClient.begin();
