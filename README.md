@@ -25,4 +25,6 @@ This system actually tracks whether or not data makes it to the ESP8266 that it 
 
 In addition to supporting the changing of pin states using a server, this system now also implements a local API with two ESP8266-served endpoints (first you have to know its local address, now being saved in the device table as ip_address). These endpoints are /readLocalData and /writeLocalData. The former gives a JSON object with info about the pins and their current state.  The other accepts two querystring params:  id and on.  id is usually the pin number, unless it's a pin on a slave Arduino, in which case it is [I2C address of slave].[pin number].  On is just a 1 for on and 0 for off.  Using that second API, you can turn on circuits directly and then the ESP8266 will update the server with the new value information.  This is useful when building a local control panel, which is my next project.
 
+(see https://github.com/judasgutenberg/Local_Remote)
+
 index.h has the HTML for a locally-served front-end to take advantage of the local API, though my intention is to build an actual device to do this instead of relying on the massive computational overhead of a modern web browser. 
