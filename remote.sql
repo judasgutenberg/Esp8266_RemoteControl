@@ -1,17 +1,17 @@
 
 
 CREATE TABLE weather_data(
-weather_data_id INT AUTO_INCREMENT PRIMARY KEY,
-location_id INT NULL,
-recorded DATETIME,
-temperature DECIMAL(6,3) NULL,
-pressure DECIMAL(9,4) NULL,
-humidity DECIMAL(6,3) NULL,
-wind_direction INT NULL,
-precipitation INT NULL,
-wind_speed DECIMAL(8,3) NULL,
-wind_increment INT NULL,
-gas_metric DECIMAL(15,4) NULL
+  weather_data_id INT AUTO_INCREMENT PRIMARY KEY,
+  location_id INT NULL,
+  recorded DATETIME,
+  temperature DECIMAL(6,3) NULL,
+  pressure DECIMAL(9,4) NULL,
+  humidity DECIMAL(6,3) NULL,
+  wind_direction INT NULL,
+  precipitation INT NULL,
+  wind_speed DECIMAL(8,3) NULL,
+  wind_increment INT NULL,
+  gas_metric DECIMAL(15,4) NULL
 );
 
 CREATE TABLE reboot_log(
@@ -96,6 +96,9 @@ CREATE TABLE user(
   expired DATETIME NULL,
   preferences TEXT NULL,
   storage_password VARCHAR(100) NULL;
+  energy_api_username VARCHAR(100) NULL;
+  energy_api_password VARCHAR(100) NULL;
+  energy_api_plant_id INT NULL;
   created DATETIME
 );
 
@@ -116,6 +119,9 @@ CREATE TABLE user(
 --ALTER TABLE user ADD preferences TEXT NULL;
 --ALTER TABLE user ADD storage_password VARCHAR(100) NULL;
 --ALTER TABLE device_type_feature ADD via_i2c_address INT NULL;
+--ALTER TABLE user ADD energy_api_username VARCHAR(100) NULL;
+--ALTER TABLE user ADD energy_api_password VARCHAR(100) NULL;
+--ALTER TABLE user ADD energy_api_plant_id INT NULL;
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
 INSERT INTO device (name, device_type_id, created) VALUES ('Hotspot Watchdog', 1, NOW());
