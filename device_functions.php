@@ -165,36 +165,32 @@ function getCurrentSolarData($user) {
 
     curl_close($ch);
 
-    try {
-        $bodyData = json_decode($response, true);
-        $data = $bodyData["data"];
-        $access_token = $data['access_token'];
-        $currentDateTime = new DateTime('now', new DateTimeZone('America/New_York')); 
-        //echo $currentDateTime->format('Y-m-d h:i:s');
-        $currentDate =  $currentDateTime->format('Y-m-d');
-        $actionUrl = 'https://pv.inteless.com/api/v1/plant/energy/' . $plantId  . '/day?date=' . $currentDate . "&id=" . $plantId . "&lan=en";
-        $actionUrl = 'https://pv.inteless.com/api/v1/plant/energy/' . $plantId  . '/flow?date=' . $currentDate . "&id=" . $plantId . "&lan=en"; 
-        $actionUrl = 'https://pv.inteless.com/api/v1/plant/energy/' . $plantId  . '/flow';
-        $userParams =   [
-                'access_token' => $access_token,
-                'date' => $currentDate,
-                'id' => 16588,
-                'lan' => 'en'         
-        ];
+    $bodyData = json_decode($response, true);
+    $data = $bodyData["data"];
+    $access_token = $data['access_token'];
+    $currentDateTime = new DateTime('now', new DateTimeZone('America/New_York')); 
+    //echo $currentDateTime->format('Y-m-d h:i:s');
+    $currentDate =  $currentDateTime->format('Y-m-d');
+    $actionUrl = 'https://pv.inteless.com/api/v1/plant/energy/' . $plantId  . '/day?date=' . $currentDate . "&id=" . $plantId . "&lan=en";
+    $actionUrl = 'https://pv.inteless.com/api/v1/plant/energy/' . $plantId  . '/flow?date=' . $currentDate . "&id=" . $plantId . "&lan=en"; 
+    $actionUrl = 'https://pv.inteless.com/api/v1/plant/energy/' . $plantId  . '/flow';
+    $userParams =   [
+            'access_token' => $access_token,
+            'date' => $currentDate,
+            'id' => 16588,
+            'lan' => 'en'         
+    ];
 
-        // Make GET request to user endpoint
-        $queryString = http_build_query($userParams);
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $actionUrl . "?" . $queryString);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    // Make GET request to user endpoint
+    $queryString = http_build_query($userParams);
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $actionUrl . "?" . $queryString);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-        $dataResponse = curl_exec($ch);
-        curl_close($ch);
+    $dataResponse = curl_exec($ch);
+    curl_close($ch);
 
-        $dataBody = json_decode($dataResponse, true);
+    $dataBody = json_decode($dataResponse, true);
 
-        return $dataBody["data"];
-    } catch (\GuzzleHttp\Exception\BadResponseException $e) {
-        //return $e->getResponse()->getBody()->getContents();
-    }
+    return $dataBody["data"];
 }
