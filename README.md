@@ -29,4 +29,4 @@ In addition to supporting the changing of pin states using a server, this system
 
 index.h has the HTML for a locally-served front-end to take advantage of the local API, though the Local Remote is better for this instead of relying on the massive computational overhead of a modern web browser. 
 
-The plan now is to implement a system to monitor power and battery levels in the photovoltaic system and use it to make decisions about what circuits to turn on.
+The plan now is to implement a system to monitor power and battery levels in the photovoltaic system and use it to make decisions about what circuits to turn on. I've already added an inverter-related endpoint to data.php.
