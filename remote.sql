@@ -11,7 +11,8 @@ CREATE TABLE weather_data(
   precipitation INT NULL,
   wind_speed DECIMAL(8,3) NULL,
   wind_increment INT NULL,
-  gas_metric DECIMAL(15,4) NULL
+  gas_metric DECIMAL(15,4) NULL,
+  sensor_id INT NULL
 );
 
 CREATE TABLE reboot_log(
@@ -86,7 +87,9 @@ CREATE TABLE device_feature(
   created DATETIME,
   modified DATETIME,
   last_known_device_value INT NULL,
-  last_known_device_modified DATETIME
+  last_known_device_modified DATETIME,
+  allow_automatic_management TINY INTO DEFAULT 1
+  management_priority INT NULL
 );
 
 CREATE TABLE user(
@@ -122,6 +125,7 @@ CREATE TABLE user(
 --ALTER TABLE user ADD energy_api_username VARCHAR(100) NULL;
 --ALTER TABLE user ADD energy_api_password VARCHAR(100) NULL;
 --ALTER TABLE user ADD energy_api_plant_id INT NULL;
+--ALTER TABLE weather_data ADD sensor_id INT NULL;
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
 INSERT INTO device (name, device_type_id, created) VALUES ('Hotspot Watchdog', 1, NOW());
