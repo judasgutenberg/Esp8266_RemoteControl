@@ -211,7 +211,7 @@ void handleWeatherData() {
   //Serial.println(pinMap->size());
   //i don't send the data to the server with JSON because it's pretty simple and can just be * and | delimited
   //the weather data part of the string, delimited by *
-  transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue); //using delimited data instead of JSON to keep things simple
+  transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue) + "*" + NullifyOrNumber(sensorType); //using delimited data instead of JSON to keep things simple
   //the time-stamps of connection failures, delimited by *
   transmissionString = transmissionString + "|" + JoinValsOnDelimiter(moxeeRebootTimes, "*", 10);
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
