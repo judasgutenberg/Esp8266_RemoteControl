@@ -99,7 +99,7 @@ if(!$user) {
 <?php 
 //lol, it's easier to specify an object in json and decode it than it is just specify it in PHP
 
-$thisDataSql = "SELECT location_name as text, device_id as value FROM device WHERE user_id=" . intval($user["user_id"]) . " ORDER BY location_name ASC;";
+$thisDataSql = "SELECT location_name as text, device_id as value FROM device WHERE location_name <> '' AND location_name IS NOT NULL AND user_id=" . intval($user["user_id"]) . " ORDER BY location_name ASC;";
 $result = mysqli_query($conn, $thisDataSql);
 if($result) {
   $selectData = mysqli_fetch_all($result, MYSQLI_ASSOC); 
@@ -230,7 +230,7 @@ function getData(locationId) {
 			pressureValues = [];
 			timeStamp = [];
 			let time = new Date().toLocaleTimeString();
-			//console.log(this.responseText);
+			console.log(this.responseText);
 			let dataObject = JSON.parse(this.responseText); 
 			//let tbody = document.getElementById("tableBody");
 			//tbody.innerHTML = '';
