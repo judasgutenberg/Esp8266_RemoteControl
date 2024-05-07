@@ -75,6 +75,19 @@ CREATE TABLE device_type_feature(
   
 );
 
+CREATE TABLE user(
+  user_id INT AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(100) NULL,
+  password VARCHAR(100) NULL,
+  expired DATETIME NULL,
+  preferences TEXT NULL,
+  storage_password VARCHAR(100) NULL;
+  energy_api_username VARCHAR(100) NULL;
+  energy_api_password VARCHAR(100) NULL;
+  energy_api_plant_id INT NULL;
+  created DATETIME
+);
+
 CREATE TABLE device_feature(
   device_feature_id INT AUTO_INCREMENT PRIMARY KEY,
   device_type_feature_id INT,
@@ -88,22 +101,39 @@ CREATE TABLE device_feature(
   modified DATETIME,
   last_known_device_value INT NULL,
   last_known_device_modified DATETIME,
-  allow_automatic_management TINY INTO DEFAULT 1
+  allow_automatic_management TINY DEFAULT 1
   management_priority INT NULL
 );
 
-CREATE TABLE user(
-  user_id INT AUTO_INCREMENT PRIMARY KEY,
-  email VARCHAR(100) NULL,
-  password VARCHAR(100) NULL,
-  expired DATETIME NULL,
-  preferences TEXT NULL,
-  storage_password VARCHAR(100) NULL;
-  energy_api_username VARCHAR(100) NULL;
-  energy_api_password VARCHAR(100) NULL;
-  energy_api_plant_id INT NULL;
+CREATE TABLE device_feature_management_rule(
+  device_feature_id INT,
+  management_rule_id INT,
+  user_id INT,
   created DATETIME
-);
+)
+
+
+CREATE TABLE device_feature_log(
+  device_feature_log_id INT AUTO_INCREMENT PRIMARY KEY,
+  device_feature_id INT,
+  user_id INT,
+  recorded DATETIME,
+  beginning_state INT,
+  end_state INT,
+  management_rule_id INT NULL,
+  mechanism VARCHAR(20) NULL
+)
+
+CREATE TABLE management_rule(
+  management_rule_id  INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT,
+  name VARCHAR(50),
+  description VARCHAR(2000),
+  time_valid_start TIME,
+  time_valid_end TIME,
+  management_script TEXT,
+  created DATETIME
+)
 
 --fixes for older versions of the schema:
 --ALTER TABLE device_feature ADD enabled TINYINT DEFAULT 0;
@@ -126,6 +156,8 @@ CREATE TABLE user(
 --ALTER TABLE user ADD energy_api_password VARCHAR(100) NULL;
 --ALTER TABLE user ADD energy_api_plant_id INT NULL;
 --ALTER TABLE weather_data ADD sensor_id INT NULL;
+--ALTER TABLE device_feature ADD allow_automatic_management TINY DEFAULT 1;
+--ALTER TABLE device_feature ADD management_priority INT NULL;
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
 INSERT INTO device (name, device_type_id, created) VALUES ('Hotspot Watchdog', 1, NOW());
