@@ -198,6 +198,7 @@ if($_REQUEST) {
 				$method = "getDeviceData";
 				$pinValuesKnownToDevice = [];
 				$specificPin = -1;
+				 
 				if(count($lines)>1) {
 					$recentReboots = explode("*", $lines[1]);
 					foreach($recentReboots as $rebootOccasion) {
@@ -226,11 +227,16 @@ if($_REQUEST) {
 						}
 						if(count($extraInfo)>3){
 							$ipAddress = $extraInfo[3];
-							if($ipAddress) {					
+							if($ipAddress) {			
 								if(strpos($ipAddress, " ") > 0){ //was getting crap from some esp8266s here
 									$ipAddress = explode(" ", $ipAddress)[0];
 								}
-								$deviceSql= "UPDATE device SET ip_address='" . $ipAddress . "' WHERE device_id=" . intval($deviceId);
+								$deviceSql = "UPDATE device SET ip_address='" . $ipAddress . "' ";
+								if($sensorId){
+									$deviceSql .= ", sensor_id=" . intval($sensorId);
+								}
+								
+								$deviceSql .= " WHERE device_id=" . intval($deviceId);
 								$deviceResult = mysqli_query($conn, $deviceSql);
 								//echo $deviceSql;
 							}
