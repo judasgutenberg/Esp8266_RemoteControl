@@ -159,6 +159,13 @@ function managementRuleForm($error,  $userId) {
       'error' => gvfa('description', $error)
 	  ],
     [
+	    'label' => 'change to',
+      'name' => 'result_value',
+      'width' => 100,
+	    'value' => gvfa("result_value", $source), 
+      'error' => gvfa('result_value', $error)
+	  ],
+    [
 	    'label' => 'time start',
       'name' => 'time_valid_start',
       'width' => 100,
@@ -175,8 +182,8 @@ function managementRuleForm($error,  $userId) {
       'error' => gvfa('time_valid_end', $error)
 	  ],
     [
-	    'label' => 'script',
-      'name' => 'management_script',
+	    'label' => 'conditions',
+      'name' => 'conditions',
       'width' => 400,
       'height'=> 200,
 	    'value' => gvfa("management_script", $source), 
