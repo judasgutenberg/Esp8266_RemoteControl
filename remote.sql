@@ -40,7 +40,6 @@ CREATE TABLE device_type(
   architecture VARCHAR(100) NULL,
   power_voltage DECIMAL(9,3) NULL,
   user_id INT NULL,
-  sensor_id INT NULL,
   created DATETIME
 );
 
@@ -50,6 +49,7 @@ CREATE TABLE device(
   name VARCHAR(100) NULL,
   description VARCHAR(2000) NULL,
   user_id INT NULL,
+  sensor_id INT NULL,
   created DATETIME
 );
 
@@ -159,7 +159,7 @@ CREATE TABLE management_rule(
 --ALTER TABLE weather_data ADD sensor_id INT NULL;
 --ALTER TABLE device_feature ADD allow_automatic_management TINY DEFAULT 1;
 --ALTER TABLE device_feature ADD management_priority INT NULL;
-ALTER TABLE device_type ADD sensor_id INT NULL;
+--ALTER TABLE device ADD sensor_id INT NULL;
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
 INSERT INTO device (name, device_type_id, created) VALUES ('Hotspot Watchdog', 1, NOW());
