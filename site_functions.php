@@ -848,6 +848,11 @@ function tabNav($user) {
     'label' => 'Device Features',
     'table' => 'device_feature' 
   ] 
+  ,
+  [
+    'label' => 'Management Rules',
+    'table' => 'management_rule' 
+  ] 
 	);
   if($user["role"] == "super") {
     $tabData[] =   [
@@ -893,7 +898,6 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
     foreach(array_keys(rows[0]) as &$key) {
       array_push($headerData, array("label"=>$key, "name"=>$key));
     }
-  
   }
   $out = "";
   if($searchData) {
@@ -956,8 +960,6 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
           //echo $err;
 
         }
-        ;
-        
       }
       if (gvfa("liveChangeable", $headerItem)) {
         if($row[$name] == 1){
@@ -965,11 +967,13 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
           
         }
 
-        if($type == "color"  || $type == "text"  || $type == "number" || $type == "string"){
+        if(($type == "color"  || $type == "text"  || $type == "number" || $type == "string") &&  $primaryKeyName != $name){
           $out .= "<input onchange='genericListActionBackend(\"" . $name . "\",  this.value ,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName]  . "\")' value='" . $value . "'  name='" . $name . "' type='" . $type . "' />\n";
-        } else if($type == "checkbox" || $type == "bool") {
+        } else if(($type == "checkbox" || $type == "bool")  &&  $primaryKeyName != $name) {
 
           $out .= "<input onchange='genericListActionBackend(\"" . $name . "\",this.checked,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName]  . "\")' name='" . $name . "' type='checkbox' value='1' " . $checkedString . "/>\n";
+        } else {
+          $out .= $row[$name];
         }
       } else {
         if($template != "") {
@@ -979,7 +983,6 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
         }
         
       }
-      
       $out .= "</span>\n";
     }
     if($toolsTemplate) {
@@ -998,16 +1001,12 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
   return $out;
 }
 
-
 function tokenReplace($template, $data, $strDelimiterBegin = "<", $strDelimiterEnd = "/>"){
   foreach($data as $key => $value) {
     $template = str_replace($strDelimiterBegin . $key . $strDelimiterEnd, $value, $template);
   }
   return $template;
 }
-
-
- 
 
 function gvfw($name, $fail = false){ //get value from wherever
   $out = gvfa($name, $_REQUEST, $fail);
@@ -1073,58 +1072,6 @@ function createUser(){
   return false;
  
 }
-
-
-function saveX($userId){
-  Global $conn;
-  $sql = "SELECT * from word_list WHERE user_id=" . intval($userId) . " AND name='" . mysqli_real_escape_string($conn, $_POST["name"])   . "'";
-
- 
-  $result = mysqli_query($conn, $sql);
-  $wordListId = gvfa("word_id", $_POST);
-  if($result) {
- 
-	  $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
-
-    if(count($rows) > 0) {
-      $row = $rows[0];
-      //die($row["word_id"] . "*" . $wordListId);
-      if($row["word_list_id"] != $wordListId){
-        $errors["name" ] = "The word list '" . $_POST["name"] . "' already exists.";
-        return $errors;
-      }
-
-    }
-    if( $_POST["name"] == ""){
-      $errors["name" ] = "The word list needs an actual name.";
-
-    }
-  }
-	  
-  
-  $data = $_POST;
-  $data["user_id"] = $userId;
-  unset($data["word_list_id"]);
-  unset($data["action"]);
-  $pk = NULL;
-  if($wordId){
-    $pk = array("word_list_id"=>$wordListId);
-  }
-  $sql = insertUpdateSql($conn, "word_list", $pk , $data);
-  //die($sql);
-  $result = mysqli_query($conn, $sql);
-  $id = mysqli_insert_id($conn);
-  header("Location: ?table=word_list");
-}
-
-  
-function deleteX($userId, $xxx){
-  Global $conn;
-  $sql = "DELETE FROM document WHERE document_id=" . intval($documentId) . "  AND user_id=" . intval($userId);
-  //die($sql);
-  $result = mysqli_query($conn, $sql);
-  header("Location: ?table=document");
-}
  
 function download($path, $friendlyName){
     $file = file_get_contents($path);
@@ -1137,7 +1084,6 @@ function download($path, $friendlyName){
     echo $file;
     exit;
 }
- 
 
 function stringToAscii($input) {
   $asciiCodes = [];
@@ -1160,7 +1106,6 @@ function eliminateExtraLinefeeds($input) {
   $input = preg_replace("/\n{3,}/", "\n\n", $input);
   return $input;
 }
- 
 
 function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
   $_dataRaw = gvfa("_data", $data); 
@@ -1175,19 +1120,20 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
     $dataToScan = $data;
     die();//don't worry about this case
   }
- 
   foreach ($dataToScan as $datum) {
     $column = $datum["name"];
     $type =  strtolower(gvfa("type", $datum, ""));
     $value = gvfa($column, $data, "");
     if($column  != "_data"  && !array_key_exists($column, $primaryKey)) {
       //echo  $column . "=" . $value . ", " . $type . "<BR>";
+      $skip = false;
       if($column == "last_known_device_modified" || $column == "created" || $column == "modified") {
 
         $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
         $formatedDateTime =  $date->format('Y-m-d H:i:s'); 
         $sanitized = $formatedDateTime;
-         
+      } else if ($column == "expired"){
+        $skip = true;
       } else if(($type == "bool"  || $type == "checkbox") && !$value){
         $sanitized = '0';
       } else if (beginsWith($type, "number") && !$value) {
@@ -1195,10 +1141,12 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
       } else {
         $sanitized = mysqli_real_escape_string($conn, $value);
       }
-      $sanitizedData[] = $sanitized;
-      //echo $column . "<BR>";
-      //echo  $column . "=" . $sanitized . ", " . $type . "<BR>";
-      $sanitizedKeys[] = $column;
+      if(!$skip ){
+        $sanitizedData[] = $sanitized;
+        //echo $column . "<BR>";
+        //echo  $column . "=" . $sanitized . ", " . $type . "<BR>";
+        $sanitizedKeys[] = $column;
+      }
     }
   }
  
@@ -1213,7 +1161,9 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
         $value = gvfa($column, $data, "");
 
         //echo  $column . "=" . $value . ", " . $type . "<BR>";
-        if($column != "created" && $column != "_data" && array_key_exists($column, $primaryKey) == false) {
+        if($column == "expired"  && $value == ""){
+
+        } else if ($column != "created" && $column != "_data" && array_key_exists($column, $primaryKey) == false) {
           if(($type == "bool"  || $type == "checkbox") && !$value){
             $sanitized = '0';
           } else if (beginsWith($type, "number") && !$value) {
