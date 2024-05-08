@@ -10,6 +10,7 @@
 //error_reporting(E_ALL);
 
 include("config.php");
+include("device_functions.php");
 disable_gzip();
 $conn = mysqli_connect($servername, $username, $password, $database);
 $method = "none";
@@ -64,6 +65,7 @@ if($_REQUEST) {
 		$canAccessData = array_search($locationId, $deviceIds) !== false;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
 
 		if($canAccessData) {
+			$user = deriveUserFromStoragePassword($storagePassword);
 			if($mode=="kill") {
 				$method  = "kill";
 			} else if ($mode=="getDevices") {
@@ -74,6 +76,15 @@ if($_REQUEST) {
 	  				$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
 					$out["devices"] = $rows;
 				}
+			} else if ($mode=="getEnergyInfo"){ //this gets critical SolArk data for possible use automating certain things
+				
+				$energyInfo = getCurrentSolarData($user);
+				$out["energy_info"] = [];
+				$out["energy_info"]["pv_power"] = $energyInfo["pvPower"];
+				$out["energy_info"]["bat_power"] = $energyInfo["battPower"];
+				$out["energy_info"]["gen_power"] = $energyInfo["gridOrMeterPower"];
+				$out["energy_info"]["load_power"] = $energyInfo["loadOrEpsPower"];
+				$out["energy_info"]["bat_percent"] = $energyInfo["soc"];
 			} else if ($mode=="getDeviceData") {
 				$deviceSql = "SELECT name, location_name FROM device WHERE device_id = " . $deviceId;
 				$getDeviceResult = mysqli_query($conn, $deviceSql);
@@ -149,19 +160,25 @@ if($_REQUEST) {
 				$pressure = $arrWeatherData[1];
 				$humidity = $arrWeatherData[2];
 				$gasMetric = "NULL";
+				$sensorId = "NULL";
 				if(count($arrWeatherData)>3) {
-				$gasMetric = $arrWeatherData[3];
+					$gasMetric = $arrWeatherData[3];
+				}
+				if(count($arrWeatherData)>4) {
+					$sensorId = $arrWeatherData[4];
 				}
 				
 				//select * from weathertron.weather_data where location_id=3 order by recorded desc limit 0,10;
-				$weatherSql = "INSERT INTO weather_data(location_id, recorded, temperature, pressure, humidity, gas_metric, wind_direction, precipitation, wind_speed, wind_increment) VALUES (" . 
+				$weatherSql = "INSERT INTO weather_data(location_id, recorded, temperature, pressure, humidity, gas_metric, wind_direction, precipitation, wind_speed, wind_increment, sensor_id) VALUES (" . 
 				mysqli_real_escape_string($conn, $locationId) . ",'" .  
 				mysqli_real_escape_string($conn, $formatedDateTime)  . "'," . 
 				mysqli_real_escape_string($conn, $temperature) . "," . 
 				mysqli_real_escape_string($conn, $pressure) . "," . 
 				mysqli_real_escape_string($conn, $humidity) . "," . 
 				mysqli_real_escape_string($conn, $gasMetric) .
-				",NULL,NULL,NULL,NULL)";
+				",NULL,NULL,NULL,NULL," .
+				mysqli_real_escape_string($conn, $sensorId) .
+				")";
 				//echo $weatherSql;
 
 				if($temperature != "NULL") { //if temperature is null, do not attempt to store!
@@ -209,8 +226,10 @@ if($_REQUEST) {
 						}
 						if(count($extraInfo)>3){
 							$ipAddress = $extraInfo[3];
-			 
-							if($ipAddress) {
+							if($ipAddress) {					
+								if(strpos($ipAddress, " ") > 0){ //was getting crap from some esp8266s here
+									$ipAddress = explode(" ", $ipAddress)[0];
+								}
 								$deviceSql= "UPDATE device SET ip_address='" . $ipAddress . "' WHERE device_id=" . intval($deviceId);
 								$deviceResult = mysqli_query($conn, $deviceSql);
 								//echo $deviceSql;
@@ -220,55 +239,82 @@ if($_REQUEST) {
 					 
 					}
 				
-				} 
+				}
+
 				//SELECT pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=11 ORDER BY i2c, pin_number;
 				//the part where we include any data from our remote control system:
-				$deviceSql = "SELECT pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE pin_number IS NOT NULL AND device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
+				$deviceSql = "SELECT last_known_device_value, pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE pin_number IS NOT NULL AND device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
 				//echo $deviceSql;
 				$result = mysqli_query($conn, $deviceSql);
 				if($result) {
 					$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
 					$pinCursor = 0;
-					logSql($mustSaveLastKnownDeviceValueAsValue . "^" . $lines[2] . "^" . "------------------------------");
+					//logSql($mustSaveLastKnownDeviceValueAsValue . "^" . $lines[2] . "^" . "------------------------------");
 					foreach($rows as $row) {
 						$pinNumber = $row["pin_number"];
 						$sqlIfDataGoingUpstream = "";
 						//echo count($pinValuesKnownToDevice) . "*" . $pinCursor . "<BR>";
  
-				 
-							//this part update device_feature so we can tell from the server if the device has taken on the server's value
+						
+						//this part update device_feature so we can tell from the server if the device has taken on the server's value
+ 
+						if(count($pinValuesKnownToDevice) > $pinCursor && $pinValuesKnownToDevice[$pinCursor] != "") {
+							$lastModified = "last_known_device_modified='" . $formatedDateTime . "'";
+							$sqlToUpdateDeviceFeature = "UPDATE device_feature SET last_known_device_value =  " . $pinValuesKnownToDevice[$pinCursor];
+							$sqlToUpdateDeviceFeature .= ", <lastmodified/> <additional/>";
+							$sqlToUpdateDeviceFeature .= " WHERE device_feature_id=" . $row["device_feature_id"];
+							//echo $sqlToUpdateDeviceFeature  . "<BR> " . $specificPin  . "<BR>";
+							$sqlIfDataGoingUpstream = ", value =" . $pinValuesKnownToDevice[$pinCursor];
+
+						}
+						if($mustSaveLastKnownDeviceValueAsValue){ //actually update the pin values here too!
 							if(count($pinValuesKnownToDevice) > $pinCursor && $pinValuesKnownToDevice[$pinCursor] != "") {
-								$sqlToUpdateDeviceFeature = "UPDATE device_feature SET last_known_device_value =  " . $pinValuesKnownToDevice[$pinCursor];
-								$sqlToUpdateDeviceFeature .= ", last_known_device_modified='" . $formatedDateTime . "' <additional/>";
-								$sqlToUpdateDeviceFeature .= " WHERE device_feature_id=" . $row["device_feature_id"];
-								//echo $sqlToUpdateDeviceFeature  . "<BR> " . $specificPin  . "<BR>";
-								$sqlIfDataGoingUpstream = ", value =" . $pinValuesKnownToDevice[$pinCursor];
+								$sqlToUpdateDeviceFeature = str_replace("<additional/>", $sqlIfDataGoingUpstream, $sqlToUpdateDeviceFeature);
+
 							}
-							if($mustSaveLastKnownDeviceValueAsValue){ //actually update the pin values here too!
-								if(count($pinValuesKnownToDevice) > $pinCursor && $pinValuesKnownToDevice[$pinCursor] != "") {
-									$sqlToUpdateDeviceFeature = str_replace("<additional/>", $sqlIfDataGoingUpstream, $sqlToUpdateDeviceFeature);
-								}
-								if($pinCursor == count($rows)-1 || $specificPin > -1) {
-									$row["ss"] = 1; //only do this on the last pin!
-								} else {
-									$row["ss"] = 0;
-								}
+							if($pinCursor == count($rows)-1 || $specificPin > -1) {
+								$row["ss"] = 1; //only do this on the last pin!
 							} else {
-								if(count($pinValuesKnownToDevice) > $pinCursor  && $pinValuesKnownToDevice[$pinCursor] != "") {
-									$sqlToUpdateDeviceFeature = str_replace("<additional/>", "", $sqlToUpdateDeviceFeature);
-								}
 								$row["ss"] = 0;
-								
 							}
-							if($specificPin == -1 || $specificPin ==  $pinCursor){
-								unset($row["device_feature_id"]);//make things as lean as possible for IoT device
-								$out["device_data"][] = $row;
-							}
+						} else {
 							if(count($pinValuesKnownToDevice) > $pinCursor  && $pinValuesKnownToDevice[$pinCursor] != "") {
-								logSql($sqlToUpdateDeviceFeature);
-							
-								$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
+								$sqlToUpdateDeviceFeature = str_replace("<additional/>", "", $sqlToUpdateDeviceFeature);
 							}
+							$row["ss"] = 0;
+							
+						}
+						if(count($pinValuesKnownToDevice) > $pinCursor) { //do all the logging and the lastModified part
+							if($row["value"] != $pinValuesKnownToDevice[$pinCursor] || $row["last_known_device_value"] !=  $row["value"]) { //we're changing a value by sending one upstream. otherwise we shouldn't change last_known_device_modified
+								$sqlToUpdateDeviceFeature = str_replace("<lastmodified/>", $lastModified, $sqlToUpdateDeviceFeature);
+								$mechanism = $ipAddress;
+								$oldValue = $row["value"];
+								$newValue = $pinValuesKnownToDevice[$pinCursor];
+								if($row["last_known_device_value"] !=  $row["value"]) {
+									$mechanism = "server-side";
+									$oldValue = $row["last_known_device_value"];
+									$newValue = $row["value"];
+								} 
+								//also log this change in the new device_feature_log table!  we're going to need that for when device_features get changed automatically based on data as well!
+								$loggingSql = "INSERT INTO device_feature_log (device_feature_id, user_id, recorded, beginning_state, end_state, management_rule_id, mechanism) VALUES (";
+								$loggingSql .= $row["device_feature_id"] . "," . $user["user_id"] . ",'" . $formatedDateTime . "'," .$oldValue . "," . $newValue  . ",NULL,'" . $mechanism . "')";
+								//echo $loggingSql;
+								//logSql($loggingSql);
+								if($specificPin > -1 && $specificPin == $pinCursor  || $specificPin == -1){ //otherwise we get too much logging if we're in one-pin-at-a-mode time
+									$loggingResult = mysqli_query($conn, $loggingSql);
+								}
+							}
+						}
+						if($specificPin == -1 || $specificPin ==  $pinCursor){
+							unset($row["device_feature_id"]);//make things as lean as possible for IoT device
+							unset($row["last_known_device_value"]);//make things as lean as possible for IoT device
+							$out["device_data"][] = $row;
+						}
+						if(count($pinValuesKnownToDevice) > $pinCursor  && $pinValuesKnownToDevice[$pinCursor] != "") {
+							//logSql($sqlToUpdateDeviceFeature);
+						
+							$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
+						}
 							
 					 
 					 
@@ -322,8 +368,18 @@ function deriveDeviceIdsFromStoragePassword($storagePassword) {
 	}
 }
 
+function deriveUserFromStoragePassword($storagePassword) {
+	Global $conn;
+	$sql = "SELECT * FROM user WHERE storage_password='" . mysqli_real_escape_string($conn, $storagePassword)  . "'";
+	$result = mysqli_query($conn, $sql);
+	if($result) {
+		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
+		return $row;
+	}
+}
+
 function logSql($sql){
-	return; //for when you don't actually want to log
+	//return; //for when you don't actually want to log
 	global $formatedDateTime;
 	$myfile = file_put_contents('sql.txt', "\n\n" . $formatedDateTime . ": " . $sql, FILE_APPEND | LOCK_EX);
 }
