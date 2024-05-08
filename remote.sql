@@ -129,10 +129,11 @@ CREATE TABLE management_rule(
   management_rule_id  INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT,
   name VARCHAR(50),
+  result_value INT DEFAULT 1,
   description VARCHAR(2000),
   time_valid_start TIME,
   time_valid_end TIME,
-  management_script TEXT,
+  conditions TEXT,
   created DATETIME
 )
 
@@ -160,6 +161,8 @@ CREATE TABLE management_rule(
 --ALTER TABLE device_feature ADD allow_automatic_management TINY DEFAULT 1;
 --ALTER TABLE device_feature ADD management_priority INT NULL;
 --ALTER TABLE device ADD sensor_id INT NULL;
+--ALTER TABLE management_rule ADD result_value INT NULL;
+--ALTER TABLE management_rule RENAME COLUMN management_script TO conditions;
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
 INSERT INTO device (name, device_type_id, created) VALUES ('Hotspot Watchdog', 1, NOW());
