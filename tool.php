@@ -166,9 +166,11 @@ if ($user) {
     $out .= devices($userId);
   } else if ($action == "startcreate") {
     if ($table == "test") {
-      $out .= wordForm($errors, NULL, $userId, $wordListId);
+       
     } else if ($table == "user" || !is_null($errors)) {
       $out .= newUserForm($errors);
+    } else  if($table == "management_rule") {
+      $out .=  managementRuleForm($errors,  $userId);
     } else {
 
       $out .= genericEntityForm($userId, $table, $errors);
@@ -181,7 +183,21 @@ if ($user) {
     header('Location: '.$_SERVER['PHP_SELF'] . "?table=" . $table);
   } else if($table!= "user" || $user["role"]  == "super") {
     if(gvfw($table . '_id')) {
-      $out .= genericEntityForm($userId, $table, $errors);
+      
+
+
+      if($action == "log") {
+        if($table == "device_feature"){
+          $out .= deviceFeatureLog(gvfw($table . '_id'), $userId);
+        }
+      } else {
+
+        if($table == "management_rule"){
+          $out .= managementRuleForm($errors,  $userId);
+        } else {
+          $out .= genericEntityForm($userId, $table, $errors);
+        }
+      }
 
     } else {
       if($table == "device_feature") {
