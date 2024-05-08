@@ -60,6 +60,7 @@ function deviceFeatures($userId, $deviceId) {
     ],
     );
     $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a>  | ";
+    $toolsTemplate .= "<a href='?action=log&table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>View Log</a>  | ";
     $toolsTemplate .= "<a onclick='return confirm(\"Are you sure you want to delete this " . $table . "?\")' href='?table=" . $table . "&action=delete&" . $table . "_id=<" . $table . "_id/>'>Delete</a>";
     if($result) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
@@ -84,7 +85,10 @@ function devices($userId) {
   
   //$out .= "<hr style='width:100px;margin:0'/>\n";
   $headerData = array(
- 
+    [
+	    'label' => 'id',
+      'name' => $table . "_id"
+	  ],
     [
       'label' => 'name',
       'name' => 'name' 
@@ -116,6 +120,121 @@ function devices($userId) {
 
 }
 
+function managementRuleForm($error,  $userId) {
+  Global $conn;
+  $table = "management_rule";
+  $pk = gvfw($table . "_id");
+  
+  $submitLabel = "save management rule";
+  if($pk  == "") {
+    $submitLabel = "create management rule";
+    $source = $_POST;
+  } else {
+    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND user_id=" . intval($userId);
+    $result = mysqli_query($conn, $sql);
+    if($result) {
+      $source = mysqli_fetch_array($result);
+    }
+  }
+  $formData = array(
+    [
+	    'label' => '',
+      'name' => $table . "_id",
+      'type' => 'hidden',
+	    'value' => gvfa($table . "_id", $source)
+	  ],
+		[
+	    'label' => 'name',
+      'name' => 'name',
+      'width' => 400,
+	    'value' => gvfa("name", $source), 
+      'error' => gvfa('name', $error)
+	  ],
+		[
+	    'label' => 'description',
+      'name' => 'description',
+      'width' => 400,
+      'height'=> 50,
+	    'value' => gvfa("description", $source), 
+      'error' => gvfa('description', $error)
+	  ],
+    [
+	    'label' => 'time start',
+      'name' => 'time_valid_start',
+      'width' => 100,
+      'type' => "time",
+	    'value' => gvfa("time_valid_start", $source), 
+      'error' => gvfa('time_valid_start', $error)
+	  ],
+    [
+	    'label' => 'time end',
+      'name' => 'time_valid_end',
+      'width' => 100,
+      'type' => "time",
+	    'value' => gvfa("time_valid_end", $source), 
+      'error' => gvfa('time_valid_end', $error)
+	  ],
+    [
+	    'label' => 'script',
+      'name' => 'management_script',
+      'width' => 400,
+      'height'=> 200,
+	    'value' => gvfa("management_script", $source), 
+      'error' => gvfa('management_script', $error)
+	  ],
+    );
+  $form = genericForm($formData, $submitLabel);
+  return $form;
+}
+
+function deviceFeatureLog($deviceFeatureId, $userId){
+  Global $conn;
+  $headerData = array(
+    [
+	    'label' => 'recorded',
+      'name' => "recorded"
+	  ],
+    [
+      'label' => 'was',
+      'name' => 'beginning_state' 
+    ],
+    [
+      'label' => 'became',
+      'name' => 'end_state' 
+    ],
+    [
+      'label' => 'mechanism',
+      'name' => 'mechanism' 
+    ]
+    );
+  $deviceFeatureName = getDeviceFeature($deviceFeatureId, $userId)["name"];
+  $sql = "SELECT * FROM device_feature_log WHERE user_id =" . intval($userId) . " AND device_feature_id=" . intval($deviceFeatureId) . " ORDER BY recorded DESC";
+  $result = mysqli_query($conn, $sql);
+  $out = "<div class='listheader'>Device Feature Log: " . $deviceFeatureName . "</div>";
+  if($result) {
+    $rows = $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    //var_dump($rows);
+    if($rows) {
+      $out .= genericTable($rows, $headerData, null, null);
+    }
+    
+  }
+  return $out;
+}
+
+function getDeviceFeature($deviceFeatureId, $userId){
+  return getGeneric("device_feature", $deviceFeatureId, $userId);
+}
+
+function getGeneric($table, $pk, $userId){
+  Global $conn;
+  $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id='" . mysqli_real_escape_string($conn, $pk)  . "' AND user_id=" . intval($userId);
+	$result = mysqli_query($conn, $sql);
+	if($result) {
+		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
+		return $row;
+	}
+}
 
 //reads data from the cloud about our particular solar installation
 function getCurrentSolarData($user) {
