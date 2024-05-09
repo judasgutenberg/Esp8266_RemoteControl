@@ -137,6 +137,17 @@ CREATE TABLE management_rule(
   created DATETIME
 )
 
+CREATE TABLE inverter_log(
+  inverter_log_id  INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT,
+  recorded DATETIME,
+  solar_power INT NULL,
+  load_power INT NULL,
+  grid_power INT NULL,
+  battery_percentage INT NULL,
+  battery_power INT NULL
+)
+
 --fixes for older versions of the schema:
 --ALTER TABLE device_feature ADD enabled TINYINT DEFAULT 0;
 --ALTER TABLE location ADD device_id INT NULL;
