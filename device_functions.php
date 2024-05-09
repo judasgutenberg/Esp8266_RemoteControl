@@ -326,7 +326,7 @@ function getGeneric($table, $pk, $userId){
 //reads data from the cloud about our particular solar installation
 function getCurrentSolarData($user) {
   Global $conn;
-  $mostRecentInverterRecord = getMostRecentInverterRecord();
+  $mostRecentInverterRecord = getMostRecentInverterRecord($user);
   $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
   $nowTime = strtotime($formatedDateTime);
@@ -336,6 +336,9 @@ function getCurrentSolarData($user) {
     $minutesSinceLastRecord = round(abs($nowTime - $lastRecordTime) / 60,2);
   }
   //i decoupled the API call to pv.inteless.com from the API call made by the ESP8266s so that they won't create a DoS attack on pv.inteless.com if i have a lot of devices.  we only hit it once every five minutes now
+  //var_dump($mostRecentInverterRecord);
+  //echo $minutesSinceLastRecord;
+  
   if($minutesSinceLastRecord > 5) {
     $plantId = $user["energy_api_plant_id"];
     $url = 'https://pv.inteless.com/oauth/token';
@@ -428,9 +431,9 @@ function getCurrentSolarData($user) {
   }
 }
 
-function getMostRecentInverterRecord(){
+function getMostRecentInverterRecord($user){
   Global $conn;
-  $sql = "SELECT * FROM inverter_log WHERE inverter_log_id = (SELECT MAX(inverter_log_id))";
+  $sql = "SELECT * FROM inverter_log WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE user_id=" . $user["user_id"] . ") LIMIT 0,1";
 	$result = mysqli_query($conn, $sql);
 	if($result) {
 		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
