@@ -14,7 +14,13 @@ function deviceFeatures($userId, $deviceId) {
   $result = mysqli_query($conn, $sql);
   $out = "";
   $out .= "<div class='listtitle'>Your " . $table . "s</div>\n";
-  $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a new " . $table  . "</div>\n";
+  $additionalValueQueryString = "";
+  foreach($_REQUEST as $key=>$value){ //slurp up values passed in
+    if(endsWith($key, "_id")){
+      $additionalValueQueryString .= "&" . $key . "=" . urlencode($value);
+    }
+  }
+  $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . $additionalValueQueryString . "'>Create</a></div> a new device feature</div>\n";
   //$out .= "<hr style='width:100px;margin:0'/>\n";
   $headerData = array(
     [
@@ -118,6 +124,80 @@ function devices($userId) {
     }
     return $out;
 
+}
+
+function DeviceFeatureForm($error,  $userId) {
+  Global $conn;
+  $table = "device_feature";
+  $pk = gvfw($table . "_id");
+  
+  $submitLabel = "save management rule";
+  if($pk  == "") {
+    $submitLabel = "create management rule";
+    $source = $_POST;
+  } else {
+    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND user_id=" . intval($userId);
+    $result = mysqli_query($conn, $sql);
+    if($result) {
+      $source = mysqli_fetch_array($result);
+    }
+  }
+  $formData = array(
+    [
+	    'label' => '',
+      'name' => $table . "_id",
+      'type' => 'hidden',
+	    'value' => gvfa($table . "_id", $source)
+	  ],
+		[
+	    'label' => 'name',
+      'name' => 'name',
+      'width' => 400,
+	    'value' => gvfa("name", $source), 
+      'error' => gvfa('name', $error)
+	  ],
+		[
+	    'label' => 'description',
+      'name' => 'description',
+      'width' => 400,
+      'height'=> 50,
+	    'value' => gvfa("description", $source), 
+      'error' => gvfa('description', $error)
+	  ],
+    [
+	    'label' => 'enabled',
+      'name' => 'enabled',
+      'type' => 'bool',
+	    'value' => gvfa("enabled", $source), 
+      'error' => gvfa('enabled', $error)
+	  ],
+    [
+	    'label' => 'value',
+      'name' => 'value',
+      'width' => 100,
+	    'value' => gvfa("value", $source), 
+      'error' => gvfa('value', $error)
+	  ],
+    [
+	    'label' => 'device',
+      'name' => 'device_id',
+      'type' => 'select',
+	    'value' => gvfa("device_id", $source), 
+      'error' => gvfa("device_id", $error),
+      'values' => "SELECT device_id, name as 'text' FROM device WHERE user_id='" . $userId  . "' ORDER BY name ASC",
+	  ] ,
+    [
+	    'label' => 'management rules',
+      'name' => 'management_rule_id',
+      'type' => 'many-to-many',
+	    'value' => gvfa("management_rule_id", $source), 
+      'error' => gvfa("management_rule_id", $error),
+      'values' => "SELECT m.management_rule_id, name as 'text', d.device_feature_id IS NOT NULL AS has FROM management_rule m LEFT JOIN device_feature_management_rule d ON m.management_rule_id=d.management_rule_id AND   m.user_id=d.user_id WHERE d.device_feature_id is null or d.device_feature_id=" .  $pk . " AND m.user_id='" . $userId  . "'  ORDER BY m.name ASC"
+
+	  ] 
+    );
+  $form = genericForm($formData, $submitLabel);
+  return $form;
 }
 
 function managementRuleForm($error,  $userId) {
@@ -245,6 +325,18 @@ function getGeneric($table, $pk, $userId){
 
 //reads data from the cloud about our particular solar installation
 function getCurrentSolarData($user) {
+  Global $conn;
+  $mostRecentInverterRecord = getMostRecentInverterRecord();
+  $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
+  $formatedDateTime =  $date->format('Y-m-d H:i:s');
+  $nowTime = strtotime($formatedDateTime);
+  $minutesSinceLastRecord = 10000;
+  if($mostRecentInverterRecord){
+    $lastRecordTime = strtotime($mostRecentInverterRecord["recorded"]);
+    $minutesSinceLastRecord = round(abs($nowTime - $lastRecordTime) / 60,2);
+  }
+  //i decoupled the API call to pv.inteless.com from the API call made by the ESP8266s so that they won't create a DoS attack on pv.inteless.com if i have a lot of devices.  we only hit it once every five minutes now
+  if($minutesSinceLastRecord > 5) {
     $plantId = $user["energy_api_plant_id"];
     $url = 'https://pv.inteless.com/oauth/token';
     $headers = [
@@ -301,7 +393,7 @@ function getCurrentSolarData($user) {
     $actionUrl = 'https://pv.inteless.com/api/v1/plant/energy/' . $plantId  . '/flow?date=' . $currentDate . "&id=" . $plantId . "&lan=en"; 
     $actionUrl = 'https://pv.inteless.com/api/v1/plant/energy/' . $plantId  . '/flow';
     $userParams =   [
-            'access_token' => $access_token,
+            //'access_token' => $access_token,
             'date' => $currentDate,
             'id' => 16588,
             'lan' => 'en'         
@@ -312,11 +404,36 @@ function getCurrentSolarData($user) {
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $actionUrl . "?" . $queryString);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+      "Authorization: Bearer " . $access_token,  //had been sending the token in the querystring, but that stopped working the morning of April 9, 2024
+      "Accept: application/json",
+    ));
 
     $dataResponse = curl_exec($ch);
     curl_close($ch);
 
     $dataBody = json_decode($dataResponse, true);
 
-    return $dataBody["data"];
+    $data = $dataBody["data"];
+
+    $loggingSql = "INSERT INTO inverter_log ( user_id, recorded, solar_power, load_power, grid_power, battery_percentage, battery_power) VALUES (";
+    $loggingSql .= $user["user_id"] . ",'" . $formatedDateTime . "'," . $data["pvPower"] . "," . $data["loadOrEpsPower"] . "," . $data["gridOrMeterPower"] . "," . $data["soc"] . "," . $data["battPower"]    . ")";
+    $loggingResult = mysqli_query($conn, $loggingSql);
+    //echo $loggingSql;
+    return Array("user_id"=>$user["user_id"], "recorded" => $formatedDateTime, "solar_power" => $data["pvPower"], "load_power" => $data["loadOrEpsPower"] ,
+    "grid_power" =>  $data["gridOrMeterPower"], "battery_percentage" => $data["soc"], "battery_power" => $data["battPower"]); 
+  } else {
+    return $mostRecentInverterRecord;
+
+  }
+}
+
+function getMostRecentInverterRecord(){
+  Global $conn;
+  $sql = "SELECT * FROM inverter_log WHERE inverter_log_id = (SELECT MAX(inverter_log_id))";
+	$result = mysqli_query($conn, $sql);
+	if($result) {
+		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
+		return $row;
+	}
 }
