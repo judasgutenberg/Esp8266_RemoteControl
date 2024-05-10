@@ -529,7 +529,13 @@ function schemaArrayFromSchema($table, &$pk){
 function genericEntityList($userId, $table) {
   Global $conn;
   $headerData = schemaArrayFromSchema($table, $pk);
-  $out = "<div class='listtools'><div class='basicbutton'><a href='?table=" . $table . "&action=startcreate'>Create</a></div> a new " . $table . "<//div>\n";
+  $additionalValueQueryString = "";
+  foreach($_REQUEST as $key=>$value){ //slurp up values passed in
+    if(endsWith($key, "_id")){
+      $additionalValueQueryString .= "&" . $key . "=" . urlencode($value);
+    }
+  }
+  $out = "<div class='listtools'><div class='basicbutton'><a href='?table=" . $table . "&action=startcreate" . $additionalValueQueryString . "'>Create</a></div> a new " . $table . "<//div>\n";
   $thisDataSql = "SELECT * FROM " . $table . " WHERE user_id=" . intval($userId);
   $deviceId = gvfw("device_id");
   if($deviceId && $table== "device_feature" ){
@@ -659,6 +665,9 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
           $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
           foreach($rows as $row){
             $selected = "";
+            if(!$value){
+              $value = gvfw($name);
+            }
             if($row[$name] == $value) {
               $selected = " selected='selected' ";
 
@@ -680,7 +689,56 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
           }
         }
         $out .= "</select>";
-      } else if ($type == "bool"){
+      } else if ($type == "many-to-many") {
+        //echo $values;
+        $result = mysqli_query($conn, $values); //REALLY NEED TO SANITIZE $values since it contains RAW SQL!!!
+        $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        $out .= "<div class='destinationitems'>\n";
+        $out .= "attached:<br/>";
+        $out .= "<select name='" . $name . "' id='dest_" . $name . "' size='15'/>";
+        foreach($rows as $row){
+          $selected = "";
+          if(!$value){
+            $value = gvfw($name);
+          }
+          if($row[$name] == $value) {
+            $selected = " selected='selected' ";
+
+          }
+          if($row["has"] ){
+            $out .= "<option " . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>\n";
+          }
+
+        }
+        $out .= "</select>";
+        $out .= "</div>\n"; 
+        $out .= "<div class='manytomanytools'>\n";
+        $out .= "<button onclick='return copyManyToMany(\"source_" . $name ."\", \"dest_" . $name ."\")'>&lt;</button>";
+        $out .= "<button onclick='return copyManyToMany(\"dest_" . $name ."\", \"source_" . $name ."\")'>&gt;</button>";
+        $out .= "</div>\n"; 
+        $out .= "<div class='sourceitems'>\n";
+        $out .= "available:<br/>";
+        $out .= "<select name='source_" . $name . "' id='source_" . $name . "' size='15'/>";
+        foreach($rows as $row){
+          $selected = "";
+          if(!$value){
+            $value = gvfw($name);
+          }
+          if($row[$name] == $value) {
+            $selected = " selected='selected' ";
+
+          }
+          if(!$row["has"] ){
+            $out .= "<option " . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>\n";
+          }
+
+        }
+        $out .= "</select>";
+        $out .= "</div>\n"; 
+
+
+
+      } else if ($type == "bool" || $type == "checkbox"){
         $checked = "";
           if($value) {
 
