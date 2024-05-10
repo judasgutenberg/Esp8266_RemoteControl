@@ -58,17 +58,18 @@ function autoUpdate(encryptedSql, headerData, tableId){
 
 }
 
-
-
-
- 
-
-
-
-
-
-
-
+function copyManyToMany(sourceId, destinationId){
+  let source = document.getElementById(sourceId);
+  let dest = document.getElementById(destinationId);
+  for(var i = source.options.length - 1; i >= 0; i--) {
+    var option = source.options[i];
+    if(option.selected) {
+        dest.appendChild(option.cloneNode(true)); // Clone the option before appending
+        source.remove(i);
+    }
+  }
+  return false;
+}
 
 function copy(id){
   var href = document.getElementById("href" + id.toString());
@@ -86,8 +87,6 @@ function copy(id){
     setTimeout(function () {document.body.style.backgroundColor = backgroundColor}, 200);
   }
 }
-
-
 
 function copyHack(value){ //such a hack!!
     var copyTextarea = document.createElement("textarea");
