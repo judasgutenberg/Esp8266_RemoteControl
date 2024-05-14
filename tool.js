@@ -1,3 +1,21 @@
+function formSubmitTasks() {
+  if(onSubmitManyToManyItems){
+    for(const item of onSubmitManyToManyItems){
+      if(document.getElementById("dest_" + item)){
+        for(const option of document.getElementById("dest_" + item).options) {
+          //values.push(option.value);
+          option.selected = true;
+          console.log(option);
+        }
+      }
+    }
+  }
+  
+}
+
+
+
+
 function autoUpdate(encryptedSql, headerData, tableId){
   var decodedHeaderData = JSON.parse(headerData);
   var xmlhttp = new XMLHttpRequest();
