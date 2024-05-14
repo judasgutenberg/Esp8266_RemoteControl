@@ -29,4 +29,16 @@ In addition to supporting the changing of pin states using a server, this system
 
 index.h has the HTML for a locally-served front-end to take advantage of the local API, though the Local Remote is better for this than relying on the massive computational overhead of a modern web browser. 
 
-The plan now is to implement a system to monitor power and battery levels in the photovoltaic system and use it to make decisions about what circuits to turn on. I've already added an inverter-related endpoint to data.php.
+There is now an inverter-related endpoint in data.php to return this information to the local remote.  This inverter data is also available to a conditions-processing system that automatically turns device_features on or off depending on values.  Such conditions go into the table management_rule in the conditions column.   Conditions include tokens that take the form <tablename[location_id].columnName>.  An example token would be <inverter_log[].battery_percentage>.  A condition made with that token would be
+
+
+<inverter_log[].battery_percentage> > 80
+
+which would set the connected device_feature's value to result_value if the condition is met.  Management_rules can be added to device_features in the device_feature editor, which looks like this:
+
+![alt text](devicefeature.jpg?raw=true)
+
+Management_rules can be edited in the management_rule editor, which looks like this:
+
+
+![alt text](managementrule.jpg?raw=true)
