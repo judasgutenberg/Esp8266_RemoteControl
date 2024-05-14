@@ -271,8 +271,8 @@ function managementRuleForm($error,  $userId) {
       'name' => 'conditions',
       'width' => 400,
       'height'=> 200,
-	    'value' => gvfa("management_script", $source), 
-      'error' => gvfa('management_script', $error)
+	    'value' => gvfa("conditions", $source), 
+      'error' => gvfa('conditions', $error)
 	  ],
     );
   $form = genericForm($formData, $submitLabel);
@@ -297,10 +297,14 @@ function deviceFeatureLog($deviceFeatureId, $userId){
     [
       'label' => 'mechanism',
       'name' => 'mechanism' 
+    ],
+    [
+      'label' => 'rule',
+      'name' => 'rule_name' 
     ]
     );
   $deviceFeatureName = getDeviceFeature($deviceFeatureId, $userId)["name"];
-  $sql = "SELECT * FROM device_feature_log WHERE user_id =" . intval($userId) . " AND device_feature_id=" . intval($deviceFeatureId) . " ORDER BY recorded DESC";
+  $sql = "SELECT recorded, beginning_state, end_state, mechanism, m.name AS rule_name FROM device_feature_log f LEFT JOIN management_rule m ON m.management_rule_id=f.management_rule_id  AND m.user_id=f.user_id WHERE f.user_id =" . intval($userId) . " AND device_feature_id=" . intval($deviceFeatureId) . " ORDER BY recorded DESC";
   $result = mysqli_query($conn, $sql);
   $out = "<div class='listheader'>Device Feature Log: " . $deviceFeatureName . "</div>";
   if($result) {
