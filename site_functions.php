@@ -587,7 +587,26 @@ function genericEntitySave($userId, $table) {
   $sql = insertUpdateSql($conn, $table, array($pk => gvfw($table . '_id')), $data);
   //echo $sql;
   //die();
-  $result = mysqli_query($conn, $sql);
+
+
+  if (mysqli_multi_query($conn, $sql)) {
+    do {
+      // Store first result set
+      if ($result = mysqli_store_result($conn)) {
+        while ($row = mysqli_fetch_row($result)) {
+          printf("%s\n", $row[0]);
+        }
+        mysqli_free_result($result);
+      }
+      // if there are more result-sets, the print a divider
+      if (mysqli_more_results($conn)) {
+        printf("-------------\n");
+      }
+       //Prepare next result set
+    } while (mysqli_next_result($conn));
+  }
+
+
   $id = mysqli_insert_id($conn);
   header("Location: ?table=" . $table);
 }
@@ -612,6 +631,7 @@ function updateDataWithRows($data, $thisDataRows) {
 function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$data also includes any errors
   Global $conn;
 	$out = "";
+  $onSubmitManyToManyItems = [];
 	$out .= "<div class='genericform'>\n";
 	foreach($data as &$datum) {
 		$label = gvfa("label", $datum);
@@ -657,7 +677,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
     
       } else if($type == 'select') {
 
-        $out .= "<select name='" . $name . "' />";
+        $out .= "<select  name='" . $name . "' />";
         if(is_string($values)) {
           $out .= "<option value='0'>none</option>";
           //echo $values;
@@ -692,25 +712,34 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
       } else if ($type == "many-to-many") {
         //echo $values;
         $result = mysqli_query($conn, $values); //REALLY NEED TO SANITIZE $values since it contains RAW SQL!!!
-        $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        $rows = null;
+        if($result) {
+          $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        }
         $out .= "<div class='destinationitems'>\n";
         $out .= "attached:<br/>";
-        $out .= "<select name='" . $name . "' id='dest_" . $name . "' size='15'/>";
-        foreach($rows as $row){
-          $selected = "";
-          if(!$value){
-            $value = gvfw($name);
-          }
-          if($row[$name] == $value) {
-            $selected = " selected='selected' ";
+        if($height == ""){
+          $height = 5;
+        }
+        $out .= "<select multiple='multiple' name='" . $name . "[]' id='dest_" . $name . "' size='" . intval($height) . "'/>";
+        if($rows) {
+          foreach($rows as $row){
+            $selected = "";
+            if(!$value){
+              $value = gvfw($name);
+            }
+            if($row[$name] == $value) {
+              $selected = " selected='selected' ";
+
+            }
+            if($row["has"] ){
+              $out .= "<option " . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>\n";
+            }
 
           }
-          if($row["has"] ){
-            $out .= "<option " . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>\n";
-          }
-
         }
         $out .= "</select>";
+        $onSubmitManyToManyItems[] = $name;
         $out .= "</div>\n"; 
         $out .= "<div class='manytomanytools'>\n";
         $out .= "<button onclick='return copyManyToMany(\"source_" . $name ."\", \"dest_" . $name ."\")'>&lt;</button>";
@@ -718,20 +747,22 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
         $out .= "</div>\n"; 
         $out .= "<div class='sourceitems'>\n";
         $out .= "available:<br/>";
-        $out .= "<select name='source_" . $name . "' id='source_" . $name . "' size='15'/>";
-        foreach($rows as $row){
-          $selected = "";
-          if(!$value){
-            $value = gvfw($name);
-          }
-          if($row[$name] == $value) {
-            $selected = " selected='selected' ";
+        $out .= "<select name='source_" . $name . "' id='source_" . $name . "' size='" . intval($height) . "'/>";
+        if($rows) {
+          foreach($rows as $row){
+            $selected = "";
+            if(!$value){
+              $value = gvfw($name);
+            }
+            if($row[$name] == $value) {
+              $selected = " selected='selected' ";
+
+            }
+            if(!$row["has"] ){
+              $out .= "<option " . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>\n";
+            }
 
           }
-          if(!$row["has"] ){
-            $out .= "<option " . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>\n";
-          }
-
         }
         $out .= "</select>";
         $out .= "</div>\n"; 
@@ -763,8 +794,8 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
   
 	$out .= "</div>\n";
 	$out .= "</form>\n";
-
-  $out = "<form onsubmit='startWaiting(\"" . $waitingMesasage . "\")' method='post' name='genericform' id='genericform' enctype='multipart/form-data'>\n" . $out;
+  $out .= "\n<script>let onSubmitManyToManyItems=['" . implode("','", $onSubmitManyToManyItems) . "'];</script>\n";
+  $out = "<form name='genericForm' onsubmit='formSubmitTasks();startWaiting(\"" . $waitingMesasage . "\")' method='post' name='genericform' id='genericform' enctype='multipart/form-data'>\n" . $out;
 	return $out;
 }
 
@@ -1155,7 +1186,7 @@ function stringToAscii($input) {
 }
 
 function eliminateExtraLinefeeds($input) {
-  // Convert all line endings to Unix style (LF)
+  // Convert all line endings to Unix style (LF)inputinsertUpdateSql
   $input = str_replace("\r", "\n", $input);
   //$input = str_replace(chr(10), "X", $input);
   //$input = str_replace(["\r\n", "\r"], "\n", $input);
@@ -1166,7 +1197,12 @@ function eliminateExtraLinefeeds($input) {
 }
 
 function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
+  //this function is a serious mess and makes assumptions about your naming convention, but it can do amazing things, including add records to mapping tables to create many-to-many relationships
+  //var_dump($_POST);
+  $sql = "";
+  $laterSql = "";
   $_dataRaw = gvfa("_data", $data); 
+  $whereClauseString = "<whereclause/>";
   if($_dataRaw){
     $_data = json_decode($_dataRaw, true);
     $_data[] = array("name"=>"user_id", "type"=>"hidden");
@@ -1174,6 +1210,8 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
   // Check if a primary key is provided
   $sanitizedKeys = [];
   $dataToScan = $_data;
+  $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
+  $formatedDateTime =  $date->format('Y-m-d H:i:s'); 
   if(!$_data){
     $dataToScan = $data;
     die();//don't worry about this case
@@ -1185,10 +1223,14 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
     if($column  != "_data"  && !array_key_exists($column, $primaryKey)) {
       //echo  $column . "=" . $value . ", " . $type . "<BR>";
       $skip = false;
-      if($column == "last_known_device_modified" || $column == "created" || $column == "modified") {
+      if($type == "many-to-many") {
+      } else if($type == "time" && $value == "") {
+        $skip  = true;
 
-        $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
-        $formatedDateTime =  $date->format('Y-m-d H:i:s'); 
+
+      } else if($column == "last_known_device_modified" || $column == "created" || $column == "modified") {
+
+
         $sanitized = $formatedDateTime;
       } else if ($column == "expired"){
         $skip = true;
@@ -1219,7 +1261,16 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
         $value = gvfa($column, $data, "");
 
         //echo  $column . "=" . $value . ", " . $type . "<BR>";
-        if($column == "expired"  && $value == ""){
+        if($type == "many-to-many") {
+          $mappingTable = $datum["mapping_table"];
+          $laterSql .= "\nDELETE FROM " . $mappingTable . " WHERE user_id='".  $data["user_id"] .  "' AND <whereclause/>;";
+          foreach($value as $valueItem){
+            $laterSql .= "\nINSERT INTO " . $mappingTable . "(user_id, " . implode(",", array_keys($primaryKey)) . "," . $column . ",created) VALUES('" . $data["user_id"] . "','" . implode("','", array_values($primaryKey)) . "','" . $valueItem . "','" .  $formatedDateTime . "');\n";
+          }
+        } else if($column == "expired"  && $value == ""){
+        } else if($type == "time" && $value == "") {
+ 
+
 
         } else if ($column != "created" && $column != "_data" && array_key_exists($column, $primaryKey) == false) {
           if(($type == "bool"  || $type == "checkbox") && !$value){
@@ -1242,18 +1293,18 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
       }
 
       $whereClauseString = implode(' AND ', $whereClause);
-
-      $sql = "UPDATE `$tableName` SET $updateFieldsString WHERE $whereClauseString;";
+      
+      $sql .= "UPDATE `$tableName` SET $updateFieldsString WHERE $whereClauseString;";
   } else {
       // Insert a new record
       $columns = "`" . implode('`, `', $sanitizedKeys) . "`";
       $values = implode("', '", $sanitizedData);
-
-      $sql = "INSERT INTO `$tableName` ($columns) VALUES ('$values');";
+      
+      $sql .= "INSERT INTO `$tableName` ($columns) VALUES ('$values');";
   }
-  
-  //die($sql);
-  return $sql;
+  $laterSql = str_replace("<whereclause/>", $whereClauseString, $laterSql);
+  //die($sql . $laterSql );
+  return $sql . $laterSql ;
 }
 
 function blendColors($color1, $color2) {
