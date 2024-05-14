@@ -131,9 +131,9 @@ function DeviceFeatureForm($error,  $userId) {
   $table = "device_feature";
   $pk = gvfw($table . "_id");
   
-  $submitLabel = "save management rule";
+  $submitLabel = "save device feature";
   if($pk  == "") {
-    $submitLabel = "create management rule";
+    $submitLabel = "create device feature";
     $source = $_POST;
   } else {
     $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND user_id=" . intval($userId);
@@ -141,6 +141,9 @@ function DeviceFeatureForm($error,  $userId) {
     if($result) {
       $source = mysqli_fetch_array($result);
     }
+  }
+  if(!$pk){
+    $pk = "NULL";
   }
   $formData = array(
     [
@@ -190,8 +193,10 @@ function DeviceFeatureForm($error,  $userId) {
 	    'label' => 'management rules',
       'name' => 'management_rule_id',
       'type' => 'many-to-many',
+      'mapping_table' => 'device_feature_management_rule',
 	    'value' => gvfa("management_rule_id", $source), 
       'error' => gvfa("management_rule_id", $error),
+
       'values' => "SELECT m.management_rule_id, name as 'text', d.device_feature_id IS NOT NULL AS has FROM management_rule m LEFT JOIN device_feature_management_rule d ON m.management_rule_id=d.management_rule_id AND   m.user_id=d.user_id WHERE d.device_feature_id is null or d.device_feature_id=" .  $pk . " AND m.user_id='" . $userId  . "'  ORDER BY m.name ASC"
 
 	  ] 
