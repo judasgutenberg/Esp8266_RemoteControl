@@ -131,8 +131,8 @@ CREATE TABLE management_rule(
   name VARCHAR(50),
   result_value INT DEFAULT 1,
   description VARCHAR(2000),
-  time_valid_start TIME,
-  time_valid_end TIME,
+  time_valid_start TIME NULL,
+  time_valid_end TIME NULL,
   conditions TEXT,
   created DATETIME
 )
