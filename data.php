@@ -335,12 +335,12 @@ if($_REQUEST) {
 											logSql($conditions);
 											$managementJudgment = eval('return ' . $conditions . ';');
 											logSql($managementJudgment);
-											if($managementJudgment == 1 && row["value"] != $managementResultValue){
+											if($managementJudgment == 1 && $row["value"] != $managementResultValue){
 												$mechanism = "automation";
 												$managementRuleId = $managementRuleIdIfNeeded;
 												$pinValuesKnownToDevice[$pinCursor] =  $managementResultValue;
 												$automatedChangeMade = true;
-												//logSql("setting #" . $deviceFeatureId . " to " . $pinValuesKnownToDevice[$pinCursor]);
+												logSql("setting #" . $deviceFeatureId . " to " . $pinValuesKnownToDevice[$pinCursor]);
 											}
 										}
 									}
