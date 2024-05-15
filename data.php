@@ -254,6 +254,7 @@ if($_REQUEST) {
 				
 				}
 
+				$managementCache = []; //save us some database lookups
 				//SELECT pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=11 ORDER BY i2c, pin_number;
 				//the part where we include any data from our remote control system:
 				$deviceSql = "SELECT last_known_device_value, pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE pin_number IS NOT NULL AND device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
@@ -268,6 +269,7 @@ if($_REQUEST) {
 						$pinNumber = $row["pin_number"];
 						$sqlIfDataGoingUpstream = "";
 						$managementRuleId = "NULL";
+						$managementRuleName = "";
 						$mechanism = $ipAddress; //we will overwrite this if we end up making a change automatically
 						$automatedChangeMade = false;
 						//a good place to put automation code!  if an automated change happens, we will change $pinValuesKnownToDevice[$pinCursor] as if it happened via local remote, but then alter $mechanism and $managementRuleId
@@ -295,43 +297,52 @@ if($_REQUEST) {
 									preg_match_all($tagFindingPattern, $conditions, $matches);
 									//now we have all our tags! we need to look up their respective data and substitute in!
 									$tokenContents = $matches[0];
+									$lookedUpValue = NULL;
 									foreach ($tokenContents as $tokenContent) {
-										$tokenContent = substr($tokenContent, 1, -1); //chatgpt gave me too much with the regex
-										$dotParts = explode(".", $tokenContent);
-										$managmentColumn = "";
-										$managementLocationId = "";
-										if(count($dotParts) > 1){
-											$managmentColumn = $dotParts[1];
+										$tokenContent = substr($tokenContent, 1, -1); //chatgpt gave me too many chars with the regex
+										if(array_key_exists($tokenContent, $managementCache)) {
+											$lookedUpValue = $managementCache[$tokenContent];
+										} else {
+											$dotParts = explode(".", $tokenContent);
+											$managmentColumn = "";
+											$managementLocationId = "";
+											if(count($dotParts) > 1){
+												$managmentColumn = $dotParts[1];
+											}
+											$bracketParts = explode("[", $dotParts[0]);
+											$managementTableName = $bracketParts[0];
+											if(count($bracketParts > 1)){
+												$managementLocationId =  str_replace("]", "", $bracketParts[1]);
+											}
+											$extraManagementWhereClause = "";
+											if($managementLocationId != ""){
+												$extraManagementWhereClause = " AND location_id=" . intval($managementLocationId);
+											}
+											$managmentValueLookupSql = "SELECT " . $managmentColumn . " As value FROM " . $managementTableName . " WHERE recorded >= '" . $formatedDateTime20MinutesAgo . "' AND " . $managementTableName . "_id = (SELECT MAX(" . $managementTableName. "_id) FROM " . $managementTableName . " WHERE 1=1 " . $extraManagementWhereClause . ") " . $extraManagementWhereClause;
+											logSql($managmentValueLookupSql);
+											$managementValueResult = mysqli_query($conn, $managmentValueLookupSql);
+
+											if($managementValueResult) {
+												$valueArray = mysqli_fetch_array($managementValueResult);
+												$lookedUpValue = $valueArray["value"];
+											}
 										}
-										$bracketParts = explode("[", $dotParts[0]);
-										$managementTableName = $bracketParts[0];
-										if(count($bracketParts > 1)){
-											$managementLocationId =  str_replace("]", "", $bracketParts[1]);
-										}
-										$extraManagementWhereClause = "";
-										if($managementLocationId != ""){
-											$extraManagementWhereClause = " AND location_id=" . intval($managementLocationId);
-										}
-										$managmentValueLookupSql = "SELECT " . $managmentColumn . " As value FROM " . $managementTableName . " WHERE recorded >= '" . $formatedDateTime20MinutesAgo . "' AND " . $managementTableName . "_id = (SELECT MAX(" . $managementTableName. "_id) FROM " . $managementTableName . " WHERE 1=1 " . $extraManagementWhereClause . ") " . $extraManagementWhereClause;
-										logSql($managmentValueLookupSql);
-										$managementValueResult = mysqli_query($conn, $managmentValueLookupSql);
-										if($managementValueResult) {
-											$valueArray = mysqli_fetch_array($managementValueResult);
-											$lookedUpValue = $valueArray["value"];
+										if($lookedUpValue != NULL) {
 											//after all that, replace the token with the value in the condition!
 											$conditions = str_replace("<" . $managementTableName . "[" . $managementLocationId . "]." . $managmentColumn . ">", $lookedUpValue, $conditions);
 											//also handle true-XML-style self-closed tokens
 											$conditions = str_replace("<" . $managementTableName . "[" . $managementLocationId . "]." . $managmentColumn . "/>", $lookedUpValue, $conditions);
-
-											$result = eval('return ' . $conditions . ';');
-											if($result){
+											logSql($conditions);
+											$managementJudgment = eval('return ' . $conditions . ';');
+											logSql($managementJudgment);
+											if($managementJudgment == 1 && row["value"] != $managementResultValue){
 												$mechanism = "automation";
 												$managementRuleId = $managementRuleIdIfNeeded;
-												$pinValuesKnownToDevice[$pinCursor] = $managementResultValue;
+												$pinValuesKnownToDevice[$pinCursor] =  $managementResultValue;
 												$automatedChangeMade = true;
+												//logSql("setting #" . $deviceFeatureId . " to " . $pinValuesKnownToDevice[$pinCursor]);
 											}
 										}
-										//for now just log the conditions to see how messed-up they end up!
 									}
 								}
 							}
