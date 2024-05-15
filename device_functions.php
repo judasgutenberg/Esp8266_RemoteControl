@@ -190,10 +190,18 @@ function DeviceFeatureForm($error,  $userId) {
       'values' => "SELECT device_id, name as 'text' FROM device WHERE user_id='" . $userId  . "' ORDER BY name ASC",
 	  ] ,
     [
+	    'label' => 'allow automation',
+      'name' => 'allow_automatic_management',
+      'type' => 'bool',
+	    'value' => gvfa("allow_automatic_management", $source), 
+      'error' => gvfa('allow_automatic_management', $error)
+	  ],
+    [
 	    'label' => 'management rules',
       'name' => 'management_rule_id',
       'type' => 'many-to-many',
       'mapping_table' => 'device_feature_management_rule',
+      'counting_column' => 'management_priority',
 	    'value' => gvfa("management_rule_id", $source), 
       'error' => gvfa("management_rule_id", $error),
       //SELECT m.management_rule_id, name as 'text', (d.device_feature_id IS NOT NULL) AS has FROM management_rule m LEFT JOIN device_feature_management_rule d ON m.management_rule_id=d.management_rule_id AND   m.user_id=d.user_id WHERE d.device_feature_id IS NULL OR d.device_feature_id=3 AND m.user_id='1'  ORDER BY m.name ASC
@@ -212,7 +220,7 @@ function DeviceFeatureForm($error,  $userId) {
           GROUP BY 
               m.management_rule_id, m.name
           ORDER BY 
-              m.name ASC;"
+              d.management_priority ASC, m.name ASC;"
 	  ] 
     );
   $form = genericForm($formData, $submitLabel);
