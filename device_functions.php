@@ -196,8 +196,8 @@ function DeviceFeatureForm($error,  $userId) {
       'mapping_table' => 'device_feature_management_rule',
 	    'value' => gvfa("management_rule_id", $source), 
       'error' => gvfa("management_rule_id", $error),
-
-      'values' => "SELECT m.management_rule_id, name as 'text', d.device_feature_id IS NOT NULL AS has FROM management_rule m LEFT JOIN device_feature_management_rule d ON m.management_rule_id=d.management_rule_id AND   m.user_id=d.user_id WHERE d.device_feature_id is null or d.device_feature_id=" .  $pk . " AND m.user_id='" . $userId  . "'  ORDER BY m.name ASC"
+      //SELECT m.management_rule_id, name as 'text', (d.device_feature_id IS NOT NULL) AS has FROM management_rule m LEFT JOIN device_feature_management_rule d ON m.management_rule_id=d.management_rule_id AND   m.user_id=d.user_id WHERE d.device_feature_id IS NULL OR d.device_feature_id=3 AND m.user_id='1'  ORDER BY m.name ASC
+      'values' => "SELECT m.management_rule_id, name as 'text', (d.device_feature_id = " . $pk . ") AS has FROM management_rule m LEFT JOIN device_feature_management_rule d ON m.management_rule_id=d.management_rule_id AND   m.user_id=d.user_id ORDER BY m.name ASC"
 
 	  ] 
     );
