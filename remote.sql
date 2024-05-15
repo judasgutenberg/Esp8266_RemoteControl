@@ -102,14 +102,14 @@ CREATE TABLE device_feature(
   modified DATETIME,
   last_known_device_value INT NULL,
   last_known_device_modified DATETIME,
-  allow_automatic_management TINY DEFAULT 1
-  management_priority INT NULL
+  allow_automatic_management TINYINT DEFAULT 1
 );
 
 CREATE TABLE device_feature_management_rule(
   device_feature_id INT,
   management_rule_id INT,
   user_id INT,
+  management_priority INT DEFAULT 1,
   created DATETIME
 )
 
@@ -169,11 +169,13 @@ CREATE TABLE inverter_log(
 --ALTER TABLE user ADD energy_api_password VARCHAR(100) NULL;
 --ALTER TABLE user ADD energy_api_plant_id INT NULL;
 --ALTER TABLE weather_data ADD sensor_id INT NULL;
---ALTER TABLE device_feature ADD allow_automatic_management TINY DEFAULT 1;
+--ALTER TABLE device_feature ADD allow_automatic_management TINYINT DEFAULT 1;
 --ALTER TABLE device_feature ADD management_priority INT NULL;
 --ALTER TABLE device ADD sensor_id INT NULL;
 --ALTER TABLE management_rule ADD result_value INT NULL;
 --ALTER TABLE management_rule RENAME COLUMN management_script TO conditions;
+
+ALTER TABLE device_feature_management_rule ADD management_priority INT DEFAULT 1;
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
 INSERT INTO device (name, device_type_id, created) VALUES ('Hotspot Watchdog', 1, NOW());
