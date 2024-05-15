@@ -201,7 +201,7 @@ void handleWeatherData() {
   }
   if(onePinAtATimeMode) {
     pinCursor++;
-    if(pinCursor > pinTotal) {
+    if(pinCursor >= pinTotal) {
       pinCursor = 0;
     }
   }
