@@ -381,8 +381,8 @@ body
 .genericform {
 	display: grid;
 	gap: 10px;
-	grid-template-columns: 1fr 1fr;
-	width:300px;
+	grid-template-columns: 20% 80%;
+	width:1000px;
 }
 
 .genericformelementlabel {
@@ -390,6 +390,7 @@ body
 }
 .genericformelementinput {
  	text-align: left;
+	width: 800px;
 }
 
 .genericformerror {
