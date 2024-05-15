@@ -1262,10 +1262,19 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
 
         //echo  $column . "=" . $value . ", " . $type . "<BR>";
         if($type == "many-to-many") {
-          $mappingTable = $datum["mapping_table"];
+          $mappingTable = gvfa("mapping_table", $datum);
+          $countingColumn = gvfa("counting_column", $datum);
           $laterSql .= "\nDELETE FROM " . $mappingTable . " WHERE user_id='".  $data["user_id"] .  "' AND <whereclause/>;";
+          $count = 1;
+          $extraM2MColumns = "";
+          $extraM2MValues = "";
           foreach($value as $valueItem){
-            $laterSql .= "\nINSERT INTO " . $mappingTable . "(user_id, " . implode(",", array_keys($primaryKey)) . "," . $column . ",created) VALUES('" . $data["user_id"] . "','" . implode("','", array_values($primaryKey)) . "','" . $valueItem . "','" .  $formatedDateTime . "');\n";
+            if($countingColumn) {
+              $extraM2MColumns = ", " .$countingColumn;
+              $extraM2MValues = ", " . $count;
+            }
+            $laterSql .= "\nINSERT INTO " . $mappingTable . "(user_id, " . implode(",", array_keys($primaryKey)) . "," . $column . ",created" . $extraM2MColumns  . ") VALUES('" . $data["user_id"] . "','" . implode("','", array_values($primaryKey)) . "','" . $valueItem . "','" .  $formatedDateTime . "'" . $extraM2MValues . ");\n";
+            $count++;
           }
         } else if($column == "expired"  && $value == ""){
         } else if($type == "time" && $value == "") {
