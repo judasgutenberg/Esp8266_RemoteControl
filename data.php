@@ -10,6 +10,7 @@
 //error_reporting(E_ALL);
 
 include("config.php");
+include("site_functions.php");
 include("device_functions.php");
 disable_gzip();
 $conn = mysqli_connect($servername, $username, $password, $database);
@@ -70,6 +71,7 @@ if($_REQUEST) {
 
 		if($canAccessData) {
 			$user = deriveUserFromStoragePassword($storagePassword);
+			$sensorId = "NULL";
 			if($mode=="kill") {
 				$method  = "kill";
 			} else if ($mode=="getDevices") {
@@ -167,7 +169,7 @@ if($_REQUEST) {
 				$pressure = $arrWeatherData[1];
 				$humidity = $arrWeatherData[2];
 				$gasMetric = "NULL";
-				$sensorId = "NULL";
+				
 				if(count($arrWeatherData)>3) {
 					$gasMetric = $arrWeatherData[3];
 				}
@@ -221,7 +223,9 @@ if($_REQUEST) {
 					}
 					if(count($lines) > 2) {
 						$pinValuesKnownToDevice = explode("*", $lines[2]);
-
+						//var_dump($pinValuesKnownToDevice);
+						//echo "<P>" . $pinValuesKnownToDevice[3];
+						//echo "<P>" .count($pinValuesKnownToDevice);
 					}
 					if(count($lines) > 3) {
 						$extraInfo = explode("*", $lines[3]);
@@ -257,7 +261,7 @@ if($_REQUEST) {
 				$managementCache = []; //save us some database lookups
 				//SELECT pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=11 ORDER BY i2c, pin_number;
 				//the part where we include any data from our remote control system:
-				$deviceSql = "SELECT last_known_device_value, pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE pin_number IS NOT NULL AND device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
+				$deviceSql = "SELECT allow_automatic_management, last_known_device_value, pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE pin_number IS NOT NULL AND device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
 				//echo $deviceSql;
 				$result = mysqli_query($conn, $deviceSql);
 				if($result) {
@@ -265,82 +269,99 @@ if($_REQUEST) {
 					$pinCursor = 0;
 					//logSql($mustSaveLastKnownDeviceValueAsValue . "^" . $lines[2] . "^" . "------------------------------");
 					foreach($rows as $row) {
+						$allowAutomaticManagement = $row["allow_automatic_management"];
 						$deviceFeatureId = $row["device_feature_id"];
 						$pinNumber = $row["pin_number"];
 						$sqlIfDataGoingUpstream = "";
 						$managementRuleId = "NULL";
 						$managementRuleName = "";
+						$managementRuleIdIfNeeded = "";
 						$mechanism = $ipAddress; //we will overwrite this if we end up making a change automatically
 						$automatedChangeMade = false;
 						//a good place to put automation code!  if an automated change happens, we will change $pinValuesKnownToDevice[$pinCursor] as if it happened via local remote, but then alter $mechanism and $managementRuleId
 						//we also have to set $automatedChangeMade to true but TOTALLY SKIP the setting of $row['ss'], since from the local remote's perspective, the change happened server-side
+						if($allowAutomaticManagement) {
+							$automationSql = "SELECT m.* FROM management_rule m JOIN device_feature_management_rule d ON m.management_rule_id = d.management_rule_id AND m.user_id=d.user_id WHERE d.device_feature_id = " . $deviceFeatureId . " ORDER BY management_priority DESC";
+							//logSql("management sql:" .  $automationSql);
+							$automationResult = mysqli_query($conn, $automationSql);
+							if($automationResult) {
+								$automationRows = mysqli_fetch_all($automationResult, MYSQLI_ASSOC);
+								$tagFindingPattern = '/<[^>]+>/';
+								foreach($automationRows as $automationRow) {
+									$managementRuleIdIfNeeded = $automationRow["management_rule_id"];
+									$timeValidStart = $automationRow["time_valid_start"];
+									$timeValidEnd = $automationRow["time_valid_end"];
+									$conditions = $automationRow["conditions"];
+									$managementResultValue = $automationRow["result_value"];
+									$managementRuleName = $automationRow["name"];
 
-						$automationSql = "SELECT m.* FROM management_rule m JOIN device_feature_management_rule d ON m.management_rule_id = d.management_rule_id AND m.user_id=d.user_id WHERE d.device_feature_id = " . $deviceFeatureId;
-						$automationResult = mysqli_query($conn, $automationSql);
-						if($automationResult) {
-							$automationRows = mysqli_fetch_all($automationResult, MYSQLI_ASSOC);
-							$tagFindingPattern = '/<[^>]*>/';
-							foreach($automationRows as $automationRow) {
-								$managementRuleIdIfNeeded = $automationRow["management_rule_id"];
-								$timeValidStart = $automationRow["time_valid_start"];
-								$timeValidEnd = $automationRow["time_valid_end"];
-								$conditions = $automationRow["conditions"];
-								$managementResultValue = $automationRow["result_value"];
-								$managementRuleName = $automationRow["name"];
-								if($timeValidStart == NULL || $timeValidEnd == NULL || $currentTime >= $timeValidStart  && $currentTime <=  $timeValidEnd ) {
-									//now all we need to do is worry about the conditions.  but these can be complicated!
-									//the way a condition works is as follows:
-									//you specify tokens of the form <logTableName[location_id_if_appropriate].columnName>, and these are replaced with values automatically
-									//so <weather_data[1].temperatureValue> is replaced with the most recent temperatureValue for location_id=1
-									//for inverter_log, there is no location_id (at least not yet!), so <inverter_log[].solar_power> provides the latest solar_power
-									//if any log value is more than 20 minutes stale, automation does not happen (might want to log it though somehow!)
-									preg_match_all($tagFindingPattern, $conditions, $matches);
-									//now we have all our tags! we need to look up their respective data and substitute in!
-									$tokenContents = $matches[0];
-									$lookedUpValue = NULL;
-									foreach ($tokenContents as $tokenContent) {
-										$tokenContent = substr($tokenContent, 1, -1); //chatgpt gave me too many chars with the regex
-										if(array_key_exists($tokenContent, $managementCache)) {
-											$lookedUpValue = $managementCache[$tokenContent];
-										} else {
-											$dotParts = explode(".", $tokenContent);
-											$managmentColumn = "";
-											$managementLocationId = "";
-											if(count($dotParts) > 1){
-												$managmentColumn = $dotParts[1];
-											}
-											$bracketParts = explode("[", $dotParts[0]);
-											$managementTableName = $bracketParts[0];
-											if(count($bracketParts > 1)){
-												$managementLocationId =  str_replace("]", "", $bracketParts[1]);
-											}
-											$extraManagementWhereClause = "";
-											if($managementLocationId != ""){
-												$extraManagementWhereClause = " AND location_id=" . intval($managementLocationId);
-											}
-											$managmentValueLookupSql = "SELECT " . $managmentColumn . " As value FROM " . $managementTableName . " WHERE recorded >= '" . $formatedDateTime20MinutesAgo . "' AND " . $managementTableName . "_id = (SELECT MAX(" . $managementTableName. "_id) FROM " . $managementTableName . " WHERE 1=1 " . $extraManagementWhereClause . ") " . $extraManagementWhereClause;
-											logSql($managmentValueLookupSql);
-											$managementValueResult = mysqli_query($conn, $managmentValueLookupSql);
+									$conditions = trim($conditions); // Remove any leading/trailing whitespace
+									$conditions = mb_convert_encoding($conditions, 'UTF-8', 'auto'); 
+					
+									if($timeValidStart == NULL || $timeValidEnd == NULL || $currentTime >= $timeValidStart  && $currentTime <=  $timeValidEnd ) {
+										//now all we need to do is worry about the conditions.  but these can be complicated!
+										//the way a condition works is as follows:
+										//you specify tokens of the form <logTableName[location_id_if_appropriate].columnName>, and these are replaced with values automatically
+										//so <weather_data[1].temperatureValue> is replaced with the most recent temperatureValue for location_id=1
+										//for inverter_log, there is no location_id (at least not yet!), so <inverter_log[].solar_power> provides the latest solar_power
+										//if any log value is more than 20 minutes stale, automation does not happen (might want to log it though somehow!)
+										preg_match_all($tagFindingPattern, $conditions, $matches);
+										//now we have all our tags! we need to look up their respective data and substitute in!
+										$tokenContents = $matches[0];
+										
+										
+										foreach ($tokenContents as $tokenContent) {
+											$lookedUpValue = NULL;
+											//logSql("management token:" .  $tokenContent);
+											$tokenContent = substr($tokenContent, 1, -1); //chatgpt gave me too many chars with the regex
+											//logSql("management token:" .  $tokenContent);
+											if(array_key_exists($tokenContent, $managementCache)) {
+												$lookedUpValue = $managementCache[$tokenContent];
+											} else {
+												$dotParts = explode(".", $tokenContent);
+												$managmentColumn = "";
+												$managementLocationId = "";
+												if(count($dotParts) > 1){
+													$managmentColumn = $dotParts[1];
+												}
+												$bracketParts = explode("[", $dotParts[0]);
+												$managementTableName = $bracketParts[0];
+												if(count($bracketParts) > 1){
+													$managementLocationId =  str_replace("]", "", $bracketParts[1]);
+												}
+												$extraManagementWhereClause = "";
+												if($managementLocationId != ""){
+													$extraManagementWhereClause = " AND location_id=" . intval($managementLocationId);
+												}
+												$managmentValueLookupSql = "SELECT " . $managmentColumn . " As value FROM " . $managementTableName . " WHERE recorded >= '" . $formatedDateTime20MinutesAgo . "' AND " . $managementTableName . "_id = (SELECT MAX(" . $managementTableName. "_id) FROM " . $managementTableName . " WHERE 1=1 " . $extraManagementWhereClause . ") " . $extraManagementWhereClause;
+												//logSql("lookup sql:" . $managmentValueLookupSql);
+												$managementValueResult = mysqli_query($conn, $managmentValueLookupSql);
 
-											if($managementValueResult) {
-												$valueArray = mysqli_fetch_array($managementValueResult);
-												$lookedUpValue = $valueArray["value"];
+												if($managementValueResult) {
+													$valueArray = mysqli_fetch_array($managementValueResult);
+													$lookedUpValue = $valueArray["value"];
+												}
 											}
+											if($lookedUpValue != NULL) {
+												//after all that, replace the token with the value in the condition!
+												$conditions = str_replace("<" . $managementTableName . "[" . $managementLocationId . "]." . $managmentColumn . ">", $lookedUpValue, $conditions);
+												//also handle true-XML-style self-closed tokens
+												$conditions = str_replace("<" . $managementTableName . "[" . $managementLocationId . "]." . $managmentColumn . "/>", $lookedUpValue, $conditions);
+
+											}
+
+											
 										}
-										if($lookedUpValue != NULL) {
-											//after all that, replace the token with the value in the condition!
-											$conditions = str_replace("<" . $managementTableName . "[" . $managementLocationId . "]." . $managmentColumn . ">", $lookedUpValue, $conditions);
-											//also handle true-XML-style self-closed tokens
-											$conditions = str_replace("<" . $managementTableName . "[" . $managementLocationId . "]." . $managmentColumn . "/>", $lookedUpValue, $conditions);
-											logSql($conditions);
+										if(count($tokenContents) > 0 ) {
+											//logSql("management conditions:" .  $conditions);
 											$managementJudgment = eval('return ' . $conditions . ';');
-											logSql($managementJudgment);
-											if($managementJudgment == 1 && $row["value"] != $managementResultValue){
+											//logSql("management judgment:" . $managementJudgment);
+											if($managementJudgment == 1  && $row["value"] != $managementResultValue){
 												$mechanism = "automation";
 												$managementRuleId = $managementRuleIdIfNeeded;
 												$pinValuesKnownToDevice[$pinCursor] =  $managementResultValue;
 												$automatedChangeMade = true;
-												logSql("setting #" . $deviceFeatureId . " to " . $pinValuesKnownToDevice[$pinCursor]);
+												//logSql($managementRuleName . "; setting #" . $deviceFeatureId . " to " . $pinValuesKnownToDevice[$pinCursor]);
 											}
 										}
 									}
@@ -351,12 +372,17 @@ if($_REQUEST) {
 						//echo count($pinValuesKnownToDevice) . "*" . $pinCursor . "<BR>";
 						//this part update device_feature so we can tell from the server if the device has taken on the server's value
 						if(count($pinValuesKnownToDevice) > $pinCursor && $pinValuesKnownToDevice[$pinCursor] != "") {
-							$lastModified = "last_known_device_modified='" . $formatedDateTime . "'";
-							$sqlToUpdateDeviceFeature = "UPDATE device_feature SET last_known_device_value =  " . $pinValuesKnownToDevice[$pinCursor];
-							$sqlToUpdateDeviceFeature .= ", <lastmodified/> <additional/>";
-							$sqlToUpdateDeviceFeature .= " WHERE device_feature_id=" . $deviceFeatureId;
+							$lastModified = " last_known_device_modified='" . $formatedDateTime . "',";
+							$lastKnownDevice = " last_known_device_value =  " . $pinValuesKnownToDevice[$pinCursor] . ","; //only do this when we actually have data from the microcontroller
+							$sqlToUpdateDeviceFeature = "UPDATE device_feature SET <lastknowndevice/><lastmodified/><additional/>";
+							
 							//echo $sqlToUpdateDeviceFeature  . "<BR> " . $specificPin  . "<BR>";
-							$sqlIfDataGoingUpstream = ", value =" . $pinValuesKnownToDevice[$pinCursor];
+							$sqlIfDataGoingUpstream = " value =" . $pinValuesKnownToDevice[$pinCursor] . ",";
+							if($automatedChangeMade) {
+								$sqlToUpdateDeviceFeature = str_replace("<lastknowndevice/>", "", $sqlToUpdateDeviceFeature); 
+							} else {
+								$sqlToUpdateDeviceFeature = str_replace("<lastknowndevice/>", $lastKnownDevice, $sqlToUpdateDeviceFeature);
+							}
 						}
 						if($mustSaveLastKnownDeviceValueAsValue || $automatedChangeMade){ //actually update the pin values here too!
 							if(count($pinValuesKnownToDevice) > $pinCursor && $pinValuesKnownToDevice[$pinCursor] != "") {
@@ -389,20 +415,33 @@ if($_REQUEST) {
 								//also log this change in the new device_feature_log table!  we're going to need that for when device_features get changed automatically based on data as well!
 								$loggingSql = "INSERT INTO device_feature_log (device_feature_id, user_id, recorded, beginning_state, end_state, management_rule_id, mechanism) VALUES (";
 								$loggingSql .= $row["device_feature_id"] . "," . $user["user_id"] . ",'" . $formatedDateTime . "'," .$oldValue . "," . $newValue  . "," . $managementRuleId  . ",'" . $mechanism . "')";
+								//if($mechanism == "automation"){
+									//logSql("logging sql: " . $loggingSql);
+									//logSql("update sql: " . $sqlToUpdateDeviceFeature);
+								//}
 								//echo $loggingSql;
-								//logSql($loggingSql);
+								logSql($loggingSql);
+								logSql("specific pin: ".$specificPin . " pinCursor:" . $pinCursor  );
+								logSql("querystring: ". $_SERVER['QUERY_STRING']  );
 								if($automatedChangeMade || $specificPin > -1 && $specificPin == $pinCursor  || $specificPin == -1){ //otherwise we get too much logging if we're in one-pin-at-a-mode time
 									$loggingResult = mysqli_query($conn, $loggingSql);
 								}
+							} else {
+								$sqlToUpdateDeviceFeature = str_replace("<lastmodified/>", "", $sqlToUpdateDeviceFeature);
 							}
 						}
 						if($specificPin == -1 || $specificPin ==  $pinCursor){
 							unset($row["device_feature_id"]);//make things as lean as possible for IoT device
 							unset($row["last_known_device_value"]);//make things as lean as possible for IoT device
+							unset($row["allow_automatic_management"]);//make things as lean as possible for IoT device
 							$out["device_data"][] = $row;
 						}
 						if(count($pinValuesKnownToDevice) > $pinCursor  && $pinValuesKnownToDevice[$pinCursor] != "") {
-							//logSql($sqlToUpdateDeviceFeature);
+							if(endsWith($sqlToUpdateDeviceFeature, ",")) {
+								$sqlToUpdateDeviceFeature = substr($sqlToUpdateDeviceFeature, 0, -1);
+							}
+							$sqlToUpdateDeviceFeature .= " WHERE device_feature_id=" . $deviceFeatureId;
+							logSql($sqlToUpdateDeviceFeature);
 							$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
 						}
 							
