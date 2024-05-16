@@ -1,3 +1,21 @@
+function managementRuleTool(item) {
+  let xmlhttp = new XMLHttpRequest();
+  xmlhttp.onreadystatechange = function() {
+    console.log(xmlhttp.responseText);
+    let data = JSON.parse(xmlhttp.responseText);
+    showDataInPanelTool(data);
+    //console.log(data);
+  }
+
+  let url = "?table=management_rule&action=json&management_rule_id=" + item.value;
+  xmlhttp.open("GET", url, true);
+  xmlhttp.send();
+ 
+}
+
+
+
+
 function formSubmitTasks() {
   if(onSubmitManyToManyItems){
     for(const item of onSubmitManyToManyItems){
@@ -14,7 +32,18 @@ function formSubmitTasks() {
 }
 
 
-
+function showDataInPanelTool(data){
+  let html = "";
+  let panelId = "";
+  for (let key in data) {
+    console.log(key);
+    html += "<b>" + key + "</b>:" + data[key] + "<br/>";
+    if(document.getElementById("panel_" + key)) {
+      panelId = "panel_" + key;
+    }
+  }
+  document.getElementById(panelId).innerHTML = html;
+}
 
 function autoUpdate(encryptedSql, headerData, tableId){
   var decodedHeaderData = JSON.parse(headerData);
