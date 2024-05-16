@@ -5,7 +5,10 @@
 function deviceFeatures($userId, $deviceId) {
   Global $conn;
   $table = "device_feature";
-  $sql = "SELECT df.name as name, pin_number, df.enabled, df.device_type_feature_id, df.device_feature_id, df.created, last_known_device_value, last_known_device_modified, df.value  FROM " . $table . " df JOIN device_type_feature dtf ON df.device_type_feature_id=dtf.device_type_feature_id ";
+  $sql = "SELECT df.name as name, pin_number, df.enabled, df.device_type_feature_id, df.device_feature_id, df.created, last_known_device_value, last_known_device_modified, df.value  
+          FROM " . $table . " df 
+          JOIN device_type_feature dtf 
+            ON df.device_type_feature_id=dtf.device_type_feature_id ";
   //echo $sql;
   if($deviceId){
     $sql .= "WHERE df.device_id=" . intval($deviceId);
@@ -126,7 +129,7 @@ function devices($userId) {
 
 }
 
-function DeviceFeatureForm($error,  $userId) {
+function deviceFeatureForm($error,  $userId) {
   Global $conn;
   $table = "device_feature";
   $pk = gvfw($table . "_id");
@@ -147,9 +150,9 @@ function DeviceFeatureForm($error,  $userId) {
   }
   $formData = array(
     [
-	    'label' => '',
+	    'label' => 'id',
       'name' => $table . "_id",
-      'type' => 'hidden',
+      'type' => 'read_only',
 	    'value' => gvfa($table . "_id", $source)
 	  ],
 		[
@@ -227,6 +230,88 @@ function DeviceFeatureForm($error,  $userId) {
   return $form;
 }
  
+function deviceForm($error,  $userId) {
+  Global $conn;
+  $table = "device";
+  $pk = gvfw($table . "_id");
+  
+  $submitLabel = "save device";
+  if($pk  == ""  && $_POST) {
+ 
+    $submitLabel = "create device";
+    $source = $_POST;
+  } else {
+    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND user_id=" . intval($userId);
+    $result = mysqli_query($conn, $sql);
+    if($result) {
+      $source = mysqli_fetch_array($result);
+    }
+  }
+  if(!$pk){
+    $pk = "NULL";
+  }
+  $formData = array(
+    [
+	    'label' => 'id',
+      'name' => $table . "_id",
+      'type' => 'read_only',
+	    'value' => gvfa($table . "_id", $source)
+	  ],
+		[
+	    'label' => 'name',
+      'name' => 'name',
+      'width' => 400,
+	    'value' => gvfa("name", $source), 
+      'error' => gvfa('name', $error)
+	  ],
+		[
+	    'label' => 'description',
+      'name' => 'description',
+      'width' => 400,
+      'height'=> 50,
+	    'value' => gvfa("description", $source), 
+      'error' => gvfa('description', $error)
+	  ],
+    [
+	    'label' => 'created',
+      'name' => 'created',
+      'type' => 'read_only',
+	    'value' => gvfa("created", $source), 
+      'error' => gvfa('created', $error)
+	  ],
+    [
+	    'label' => 'device type',
+      'name' => 'device_type_id',
+      'type' => 'select',
+	    'value' => gvfa("device_type_id", $source), 
+      'error' => gvfa('device_type_id', $error),
+      'values' => "SELECT device_type_id, name as 'text' FROM device_type WHERE user_id='" . $userId  . "' ORDER BY name ASC",
+	  ],
+    [
+	    'label' => 'location name',
+      'name' => 'location_name',
+      'width' => 200,
+	    'value' => gvfa("location_name", $source), 
+      'error' => gvfa('location_name', $error)
+	  ],
+    [
+	    'label' => 'ip address',
+      'name' => 'ip_address',
+      'width' => 200,
+	    'value' => gvfa("ip_address", $source), 
+      'error' => gvfa('ip_address', $error)
+	  ],
+    [
+	    'label' => 'sensor',
+      'name' => 'sensor_id',
+      'width' => 200,
+	    'value' => gvfa("sensor_id", $source), 
+      'error' => gvfa('sensor_id', $error)
+	  ] 
+    );
+  $form = genericForm($formData, $submitLabel);
+  return $form;
+}
 
 function managementRuleForm($error,  $userId) {
   Global $conn;
