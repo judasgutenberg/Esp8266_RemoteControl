@@ -87,12 +87,15 @@ if($_REQUEST) {
 				$energyInfo = getCurrentSolarData($user);
 				$out["energy_info"] = [];
 				if($energyInfo){
-					
-					$out["energy_info"]["pv_power"] = $energyInfo["solar_power"];
-					$out["energy_info"]["bat_power"] = $energyInfo["battery_power"];
-					$out["energy_info"]["gen_power"] = $energyInfo["grid_power"];
-					$out["energy_info"]["load_power"] = $energyInfo["load_power"];
-					$out["energy_info"]["bat_percent"] = $energyInfo["battery_percentage"];
+					if(gvfa("errors", $energyInfo)){
+						$out["error"] = $energyInfo["errors"];
+					} else {
+						$out["energy_info"]["pv_power"] = $energyInfo["solar_power"];
+						$out["energy_info"]["bat_power"] = $energyInfo["battery_power"];
+						$out["energy_info"]["gen_power"] = $energyInfo["grid_power"];
+						$out["energy_info"]["load_power"] = $energyInfo["load_power"];
+						$out["energy_info"]["bat_percent"] = $energyInfo["battery_percentage"];
+					}
 				}
 			} else if ($mode=="getDeviceData") {
 				$deviceSql = "SELECT name, location_name FROM device WHERE device_id = " . $deviceId;
