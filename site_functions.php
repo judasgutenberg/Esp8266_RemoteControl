@@ -713,6 +713,11 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
         //echo $values;
         $result = mysqli_query($conn, $values); //REALLY NEED TO SANITIZE $values since it contains RAW SQL!!!
         $rows = null;
+        $itemTool = gvfa("item_tool", $datum);
+        $itemToolString = "";
+        if($itemTool){
+          $itemToolString = " onmouseup='" . $itemTool . "(this)' ";
+        }
         if($result) {
           $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
         }
@@ -732,8 +737,9 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
               $selected = " selected='selected' ";
 
             }
+
             if($row["has"] ){
-              $out .= "<option " . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>\n";
+              $out .= "<option " . $itemToolString . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>\n";
             }
 
           }
@@ -759,15 +765,15 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
 
             }
             if(!$row["has"] ){
-              $out .= "<option " . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>\n";
+              $out .= "<option " . $itemToolString . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>\n";
             }
 
           }
         }
         $out .= "</select>";
         $out .= "</div>\n"; 
-
-
+        $out .= "<div class='toolpanel' id='panel_" . $name . "'>\n"; 
+        $out .= "</div>\n"; 
 
       } else if ($type == "bool" || $type == "checkbox"){
         $checked = "";
@@ -1363,4 +1369,37 @@ function decryptLongString($encryptedData, $password) {
     
     // Return the decrypted plaintext
     return $plaintext;
+}
+
+function isValidPHP($code) {
+  // Wrap the code with PHP tags if they are not already present
+  if (strpos($code, '<?php') === false) {
+      $code = '<?php ' . $code;
+  }
+  
+  // Use token_get_all to tokenize the PHP code
+  $tokens = token_get_all($code);
+  
+  // Remove the first token if it's T_OPEN_TAG, to allow parsing in a block
+  if ($tokens[0][0] === T_OPEN_TAG) {
+      array_shift($tokens);
+  }
+  
+  // Rebuild the code without the opening PHP tag
+  $codeWithoutTags = '';
+  foreach ($tokens as $token) {
+      if (is_array($token)) {
+          $codeWithoutTags .= $token[1];
+      } else {
+          $codeWithoutTags .= $token;
+      }
+  }
+
+  // Use linting to check if the code is valid
+  $tempFile = tempnam(sys_get_temp_dir(), 'php');
+  file_put_contents($tempFile, '<?php ' . $codeWithoutTags);
+  $result = shell_exec('php -l ' . escapeshellarg($tempFile));
+  unlink($tempFile);
+
+  return strpos($result, 'No syntax errors detected') !== false;
 }
