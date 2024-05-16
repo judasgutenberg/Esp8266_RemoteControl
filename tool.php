@@ -169,8 +169,13 @@ if ($user) {
        
     } else if ($table == "user" || !is_null($errors)) {
       $out .= newUserForm($errors);
+
+    } else if($table == "device") {
+      $out .=  deviceForm($errors,  $userId);
     } else  if($table == "management_rule") {
       $out .=  managementRuleForm($errors,  $userId);
+    } else if ($table == "device_feature") {
+      $out .= deviceFeatureForm($errors,  $userId);
     } else {
 
       $out .= genericEntityForm($userId, $table, $errors);
@@ -194,6 +199,10 @@ if ($user) {
 
         if($table == "management_rule"){
           $out .= managementRuleForm($errors,  $userId);
+        } else if($table == "device") {
+          $out .=  deviceForm($errors,  $userId);
+        } else if ($table == "device_feature") {
+          $out .= deviceFeatureForm($errors,  $userId);
         } else {
           $out .= genericEntityForm($userId, $table, $errors);
         }
