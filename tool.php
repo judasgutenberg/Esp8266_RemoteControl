@@ -177,7 +177,6 @@ if ($user) {
     } else if ($table == "device_feature") {
       $out .= deviceFeatureForm($errors,  $userId);
     } else {
-
       $out .= genericEntityForm($userId, $table, $errors);
     }
  
@@ -196,15 +195,22 @@ if ($user) {
           $out .= deviceFeatureLog(gvfw($table . '_id'), $userId);
         }
       } else {
-
-        if($table == "management_rule"){
-          $out .= managementRuleForm($errors,  $userId);
-        } else if($table == "device") {
-          $out .=  deviceForm($errors,  $userId);
-        } else if ($table == "device_feature") {
-          $out .= deviceFeatureForm($errors,  $userId);
+        if($action == "json"){
+          $sql = "SELECT * FROM " .  $table  . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "' AND user_id='" . $userId . "'";
+          $result = mysqli_query($conn, $sql);
+          $valueArray = mysqli_fetch_assoc($result);
+          die(json_encode($valueArray, JSON_FORCE_OBJECT));
         } else {
-          $out .= genericEntityForm($userId, $table, $errors);
+        if($table == "management_rule"){
+            $out .= managementRuleForm($errors,  $userId);
+          } else if($table == "device") {
+            $out .=  deviceForm($errors,  $userId);
+          } else if ($table == "device_feature") {
+            $out .= deviceFeatureForm($errors,  $userId);
+          } else {
+  
+            $out .= genericEntityForm($userId, $table, $errors);
+          }
         }
       }
 
