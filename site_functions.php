@@ -776,6 +776,8 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
             $checked = "checked";
           }
         $out .= "<input value='1' name='" . $name . "'  " . $checked . " type='checkbox'/>\n";
+      } else if ($type == "read_only"){
+        $out .= $value . "\n";
       } else {
         if($height){
           $out .= "<textarea " .  $idString . " style='width:" . $width . "px;height:" . $height . "px' name='" . $name . "'  />" .  $value  . "</textarea>\n";
