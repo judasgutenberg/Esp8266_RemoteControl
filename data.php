@@ -261,6 +261,7 @@ if($_REQUEST) {
 				
 				}
 
+ 
 				$managementCache = []; //save us some database lookups
 				//SELECT pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=11 ORDER BY i2c, pin_number;
 				//the part where we include any data from our remote control system:
@@ -289,12 +290,13 @@ if($_REQUEST) {
 							$automationResult = mysqli_query($conn, $automationSql);
 							if($automationResult) {
 								$automationRows = mysqli_fetch_all($automationResult, MYSQLI_ASSOC);
-								$tagFindingPattern = '/<[^>]+>/';
+								$tagFindingPattern = '/<[a-zA-Z][^>]*?>/'; 
 								foreach($automationRows as $automationRow) {
 									$managementRuleIdIfNeeded = $automationRow["management_rule_id"];
 									$timeValidStart = $automationRow["time_valid_start"];
 									$timeValidEnd = $automationRow["time_valid_end"];
 									$conditions = $automationRow["conditions"];
+									$originalConditions = $conditions;
 									$managementResultValue = $automationRow["result_value"];
 									$managementRuleName = $automationRow["name"];
 
@@ -313,13 +315,16 @@ if($_REQUEST) {
 										$tokenContents = $matches[0];
 										
 										
-										foreach ($tokenContents as $tokenContent) {
+										foreach ($tokenContents as $originalToken) {
+											$tokenReplaced = false;
 											$lookedUpValue = NULL;
 											//logSql("management token:" .  $tokenContent);
-											$tokenContent = substr($tokenContent, 1, -1); //chatgpt gave me too many chars with the regex
+											$tokenContent = substr($originalToken, 1, -1); //chatgpt gave me too many chars with the regex
 											//logSql("management token:" .  $tokenContent);
+											//echo $tokenContent . "\n";
 											if(array_key_exists($tokenContent, $managementCache)) {
 												$lookedUpValue = $managementCache[$tokenContent];
+												//echo "cache: " . $tokenContent . "=" .  $lookedUpValue . "\n";
 											} else {
 												$dotParts = explode(".", $tokenContent);
 												$managmentColumn = "";
@@ -337,27 +342,46 @@ if($_REQUEST) {
 													$extraManagementWhereClause = " AND location_id=" . intval($managementLocationId);
 												}
 												$managmentValueLookupSql = "SELECT " . $managmentColumn . " As value FROM " . $managementTableName . " WHERE recorded >= '" . $formatedDateTime20MinutesAgo . "' AND " . $managementTableName . "_id = (SELECT MAX(" . $managementTableName. "_id) FROM " . $managementTableName . " WHERE 1=1 " . $extraManagementWhereClause . ") " . $extraManagementWhereClause;
+												//echo $managmentValueLookupSql . "\n";
+												
 												//logSql("lookup sql:" . $managmentValueLookupSql);
 												$managementValueResult = mysqli_query($conn, $managmentValueLookupSql);
 
 												if($managementValueResult) {
 													$valueArray = mysqli_fetch_array($managementValueResult);
 													$lookedUpValue = $valueArray["value"];
+													//echo $originalToken . " :" .  $lookedUpValue . "\n";
 												}
+												
 											}
 											if($lookedUpValue != NULL) {
+												$managementCache[$tokenContent] = $lookedUpValue;
+												$tokenReplaced = true;
 												//after all that, replace the token with the value in the condition!
-												$conditions = str_replace("<" . $managementTableName . "[" . $managementLocationId . "]." . $managmentColumn . ">", $lookedUpValue, $conditions);
-												//also handle true-XML-style self-closed tokens
-												$conditions = str_replace("<" . $managementTableName . "[" . $managementLocationId . "]." . $managmentColumn . "/>", $lookedUpValue, $conditions);
+												$conditions = str_replace($originalToken, $lookedUpValue, $conditions);
 
+											}
+											if(!$tokenReplaced){
+												$conditions = str_replace($originalToken, "<fail/>", $conditions);
+												//echo  "!" . $lookedUpValue . "|=|" . $originalToken . "|:" . $conditions . "\n";
 											}
 
 											
 										}
 										if(count($tokenContents) > 0 ) {
 											//logSql("management conditions:" .  $conditions);
-											$managementJudgment = eval('return ' . $conditions . ';');
+											//echo "\n" . $conditions . "\n";
+											$managementJudgment = false;
+											if(strpos($conditions, "<fail/>") === false) {
+												if(isValidPHP("echo " . $conditions . ";")) {
+													$managementJudgment = eval('return ' . $conditions . ';');
+												} else {
+													logSql("BAD CONDITIONS:" .  $conditions);
+												}
+											} else {
+												logSql("FAILED TOKEN REPLACEMENT:" .  $originalConditions);
+											}
+
 											//logSql("management judgment:" . $managementJudgment);
 											if($managementJudgment == 1  && $row["value"] != $managementResultValue){
 												$mechanism = "automation";
@@ -444,7 +468,7 @@ if($_REQUEST) {
 								$sqlToUpdateDeviceFeature = substr($sqlToUpdateDeviceFeature, 0, -1);
 							}
 							$sqlToUpdateDeviceFeature .= " WHERE device_feature_id=" . $deviceFeatureId;
-							logSql($sqlToUpdateDeviceFeature);
+							logSql("change sql:" . $sqlToUpdateDeviceFeature);
 							$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
 						}
 							
@@ -461,15 +485,12 @@ if($_REQUEST) {
 			$out = ["error"=>"you lack permissions"];
 		}
 	}
-	
 	echo json_encode($out);
-	
-	
 } else {
 	echo '{"message":"done", "method":"' . $method . '"}';
 }
 
-function disable_gzip() {
+function disable_gzip() { //i wanted this to work so the microcontroller wouldn't have to decompress data but it didn't work
 	header('Content-Encoding: identity');
 	@ini_set('zlib.output_compression', 'Off');
 	@ini_set('output_buffering', 'Off');
