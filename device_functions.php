@@ -207,6 +207,7 @@ function deviceFeatureForm($error,  $userId) {
       'counting_column' => 'management_priority',
 	    'value' => gvfa("management_rule_id", $source), 
       'error' => gvfa("management_rule_id", $error),
+      'item_tool' => 'managementRuleTool',
       //SELECT m.management_rule_id, name as 'text', (d.device_feature_id IS NOT NULL) AS has FROM management_rule m LEFT JOIN device_feature_management_rule d ON m.management_rule_id=d.management_rule_id AND   m.user_id=d.user_id WHERE d.device_feature_id IS NULL OR d.device_feature_id=3 AND m.user_id='1'  ORDER BY m.name ASC
       //SELECT m.management_rule_id, name as 'text', (d.device_feature_id = 3) AS has FROM management_rule m LEFT JOIN device_feature_management_rule d ON m.management_rule_id=d.management_rule_id AND   m.user_id=d.user_id group by m.management_rule_id, name   ORDER BY m.name ASC 
       'values' => "SELECT 
@@ -355,6 +356,7 @@ function managementRuleForm($error,  $userId) {
 	    'label' => 'change to',
       'name' => 'result_value',
       'width' => 100,
+      'type' => 'number',
 	    'value' => gvfa("result_value", $source), 
       'error' => gvfa('result_value', $error)
 	  ],
