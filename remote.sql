@@ -63,7 +63,7 @@ CREATE TABLE feature_type(
 
 CREATE TABLE device_type_feature(
   device_type_feature_id INT AUTO_INCREMENT PRIMARY KEY,
-  device_type_id INT,
+  feature_type_id INT,
   can_be_input TINYINT,
   can_be_output TINYINT,
   can_be_analog TINYINT,
@@ -174,8 +174,8 @@ CREATE TABLE inverter_log(
 --ALTER TABLE device ADD sensor_id INT NULL;
 --ALTER TABLE management_rule ADD result_value INT NULL;
 --ALTER TABLE management_rule RENAME COLUMN management_script TO conditions;
-
-ALTER TABLE device_feature_management_rule ADD management_priority INT DEFAULT 1;
+--ALTER TABLE device_feature_management_rule ADD management_priority INT DEFAULT 1;
+--ALTER TABLE device_type_feature RENAME COLUMN device_type_id TO feature_type_id;
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
 INSERT INTO device (name, device_type_id, created) VALUES ('Hotspot Watchdog', 1, NOW());
