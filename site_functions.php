@@ -633,12 +633,18 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
 	$out = "";
   $onSubmitManyToManyItems = [];
 	$out .= "<div class='genericform'>\n";
+  $columnCount = 0;
 	foreach($data as &$datum) {
 		$label = gvfa("label", $datum);
 		$value = str_replace("\\\\", "\\", gvfa("value", $datum)); 
 		$name = gvfa("name", $datum); 
 		$type = strtolower(gvfa("type", $datum)); 
     $width = 200;
+    
+    if(endsWith($name, "_id") && $columnCount == 0  && ($type == "" || $type == "number")) { //make first column read-only if it's an _id
+      $type = "read_only";
+    }
+ 
     if(gvfa("width", $datum)){
       $width = gvfa("width", $datum);
     }
@@ -796,6 +802,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
       
       $out .= "</div>\n";
     }
+    $columnCount++;
 	}
 	$out .= "<div class='genericformelementlabel'><input name='action' id='action' value='" .  $submitLabel. "' type='submit'/></div>\n";
   $out .= "<input  name='_data' value=\"" . htmlspecialchars(json_encode($data)) . "\" type='hidden'/>";
@@ -949,6 +956,10 @@ function tabNav($user) {
   [
     'label' => 'Management Rules',
     'table' => 'management_rule' 
+  ]   ,
+  [
+    'label' => 'Sensor Data',
+    'table' => 'sensors' 
   ] 
 	);
   if($user["role"] == "super") {
@@ -990,12 +1001,13 @@ function tabNav($user) {
 
 function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null) { //aka genericList
   Global $encryptionPassword;
-
   if($headerData == NULL  && $rows  && $rows[0]) {
-    foreach(array_keys(rows[0]) as &$key) {
+    $headerData = [];
+    foreach(array_keys($rows[0]) as &$key) {
       array_push($headerData, array("label"=>$key, "name"=>$key));
     }
   }
+ ;
   $out = "";
   if($searchData) {
     $out .=  "<form>\n";
