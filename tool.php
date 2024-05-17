@@ -113,7 +113,9 @@ if ($user) {
     }
     die();
   }
-  if ($table == "utilities") {
+  if ($table == "sensors") {
+    $out .= currentSensorData($user);
+  } else if ($table == "utilities") {
     $action = $_GET['action']; //$_POST will have this as "run"
     $data = json_decode(gvfw("_data")); //don't actually need this
     //var_dump($data);
