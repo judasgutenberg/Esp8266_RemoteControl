@@ -559,3 +559,48 @@ function getMostRecentInverterRecord($user){
 		return $row;
 	}
 }
+
+function currentSensorData($user){
+  Global $conn;
+  $out = "";
+  $sql = "SELECT * FROM inverter_log WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE user_id=" . $user["user_id"] . ") LIMIT 0,1";
+  $result = mysqli_query($conn, $sql);
+  $out .= "<div class='listheader'>Inverter </div>";
+  if($result) {
+    $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    //var_dump($rows);
+    if($rows) {
+      $out.= genericTable($rows);
+    }
+  }
+  $sql = "SELECT
+      d.location_name,
+      wd.temperature * 9 / 5 + 32 AS temperature,
+      wd.pressure,
+      wd.humidity,
+      wd.gas_metric,
+      wd.recorded
+    FROM
+      weather_data wd
+    JOIN
+      device d ON wd.location_id = d.device_id
+    JOIN (
+      SELECT
+          location_id,
+          MAX(recorded) AS max_recorded
+      FROM
+          weather_data
+      GROUP BY
+          location_id
+    ) latest ON wd.location_id = latest.location_id AND wd.recorded = latest.max_recorded";
+  $result = mysqli_query($conn, $sql);
+  $out .= "<div class='listheader'>Weather </div>";
+  if($result) {
+    $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    //var_dump($rows);
+    if($rows) {
+      $out.= genericTable($rows);
+    }
+  }
+  return $out;
+}
