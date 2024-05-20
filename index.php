@@ -109,10 +109,10 @@ if($result) {
 //var_dump($selectData);
 //echo  json_last_error_msg();
 $selectId = "locationDropdown";
-
+$handler = "getWeatherData(document.getElementById('" . $selectId . "')[document.getElementById('" . $selectId  . "').selectedIndex].value)";
 echo "<tr><td>Location:</td><td>" . genericSelect($selectId, "locationId", $locationId, $selectData, "onchange", $handler) . "</td></tr>";
 
-$handler = "getWeatherData(document.getElementById('" . $selectId . "')[document.getElementById('" . $selectId  . "').selectedIndex].value)";
+
 
 $scaleData = json_decode('[{"text":"detailed","value":"fine"},{"text":"hourly","value":"hour"}, {"text":"daily","value":"day"}]', true);
 echo "<tr><td>Time Scale:</td><td>" . genericSelect("scaleDropdown", "scale", "fine", $scaleData, "onchange", $handler) . "</td></tr>";
