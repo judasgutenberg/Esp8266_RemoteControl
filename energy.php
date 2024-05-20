@@ -56,7 +56,7 @@ if(!$user) {
 <html>
 
 <head>
-  <title>Weather Information</title>
+  <title>Inverter Information</title>
   <!--For offline ESP graphs see this tutorial https://circuits4you.com/2018/03/10/esp8266-jquery-and-ajax-web-server/ -->
   <script src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>  
   <link rel='stylesheet' href='tool.css?version=1711570359'>
@@ -90,7 +90,7 @@ if(!$user) {
   $out .= "</div>";
   ?>
 
-    <div style="text-align:center;"><b>Weather Information Log</b></div>
+    <div style="text-align:center;"><b>Inverter Information Log</b></div>
     <div class="chart-container" position: relative; height:350px; width:100%">
         <canvas id="Chart" width="400" height="700"></canvas>
     </div>
@@ -99,20 +99,14 @@ if(!$user) {
 <?php 
 //lol, it's easier to specify an object in json and decode it than it is just specify it in PHP
 
-$thisDataSql = "SELECT location_name as text, device_id as value FROM device WHERE location_name <> '' AND location_name IS NOT NULL AND user_id=" . intval($user["user_id"]) . " ORDER BY location_name ASC;";
-$result = mysqli_query($conn, $thisDataSql);
-if($result) {
-  $selectData = mysqli_fetch_all($result, MYSQLI_ASSOC); 
-}
+ 
 
 //$selectData = json_decode('[{"text":"Outside Cabin","value":1},{"text":"Cabin Downstairs","value":2},{"text":"Cabin Watchdog","value":3}]');
 //var_dump($selectData);
 //echo  json_last_error_msg();
-$selectId = "locationDropdown";
-
-echo "<tr><td>Location:</td><td>" . genericSelect($selectId, "locationId", $locationId, $selectData, "onchange", $handler) . "</td></tr>";
-
-$handler = "getWeatherData(document.getElementById('" . $selectId . "')[document.getElementById('" . $selectId  . "').selectedIndex].value)";
+ 
+ 
+$handler = "getInverterData()";
 
 $scaleData = json_decode('[{"text":"detailed","value":"fine"},{"text":"hourly","value":"hour"}, {"text":"daily","value":"day"}]', true);
 echo "<tr><td>Time Scale:</td><td>" . genericSelect("scaleDropdown", "scale", "fine", $scaleData, "onchange", $handler) . "</td></tr>";
@@ -125,12 +119,14 @@ echo "<tr><td>Time Scale:</td><td>" . genericSelect("scaleDropdown", "scale", "f
 <script>
 let glblChart = null;
 //For graphs info, visit: https://www.chartjs.org
-let temperatureValues = [];
-let humidityValues = [];
-let pressureValues = [];
+let panelValues = [];
+let loadValues = [];
+let batteryValues = [];
+let batteryPercents = [];
 let timeStamp = [];
 
 function showGraph(locationId){
+	console.log(timeStamp);
 	if(glblChart){
 		glblChart.destroy();
 	}
@@ -141,30 +137,37 @@ function showGraph(locationId){
         data: {
             labels: timeStamp,  //Bottom Labeling
             datasets: [{
-                label: "Temperature",
+                label: "Panel Power",
                 fill: false,  //Try with true
                 backgroundColor: 'rgba( 243, 156, 18 , 1)', //Dot marker color
                 borderColor: 'rgba( 243, 156, 18 , 1)', //Graph Line Color
-                data: temperatureValues,
+                data: panelValues,
 				yAxisID: 'A'
             },
             {
-                label: "Humidity",
+                label: "Load Power",
                 fill: false,  //Try with true
                 backgroundColor: 'rgba( 156, 243, 18 , 1)', //Dot marker color
                 borderColor: 'rgba( 156, 243, 18 , 1)', //Graph Line Color
-                data: humidityValues,
+                data: loadValues,
 				yAxisID: 'A'
             },
             {
-            label: "Pressure",
+            label: "Battery Power",
                 fill: false,  //Try with true
                 backgroundColor: 'rgba( 18, 243, 156 , 1)', //Dot marker color
                 borderColor: 'rgba( 1, 243, 156 , 1)', //Graph Line Color
-                data: pressureValues,
+                data: batteryValues,
+				yAxisID: 'A'
+            },
+            {
+            label: "Battery Percentage",
+                fill: false,  //Try with true
+                backgroundColor: 'rgba( 111, 111, 156 , 1)', //Dot marker color
+                borderColor: 'rgba( 243, 1, 156 , 1)', //Graph Line Color
+                data: batteryPercents,
 				yAxisID: 'B'
             },
-            
             ],
         },
         options: {
@@ -172,7 +175,7 @@ function showGraph(locationId){
             hover: {mode: null},
             title: {
                     display: true,
-                    text: "Probe data"
+                    text: "Inverter data"
                 },
             maintainAspectRatio: false,
             elements: {
@@ -192,7 +195,8 @@ function showGraph(locationId){
 			        type: 'linear',
 			        position: 'right'
 			 
-	            }
+	            	} 
+ 
 				]
             }
         }
@@ -209,55 +213,59 @@ window.onload = function() {
 //Ajax script to get ADC voltage at every 5 Seconds 
 //Read This tutorial https://circuits4you.com/2018/02/04/esp8266-ajax-update-part-of-web-page-without-refreshing/
 
-getWeatherData("<?php echo gvfw("locationId")?>");
+getInverterData("<?php echo gvfw("locationId")?>");
 //setInterval(function() {
   // Call a function repetatively with 5 Second interval
-  //getWeatherData(locationId)
+  //getInverterData(locationId)
   //;}, 5000)
   //; //50000mSeconds update rate
  
-function getWeatherData(locationId) {
+function getInverterData() {
 	//console.log("got data");
 	let scale = document.getElementById('scaleDropdown')[document.getElementById('scaleDropdown').selectedIndex].value;
 	let xhttp = new XMLHttpRequest();
-	let endpointUrl = "./data.php?storagePassword=<?php echo $user['storage_password'];?>&scale=" + scale + "&mode=getData&locationId=" + locationId;
+	let endpointUrl = "./data.php?storagePassword=<?php echo $user['storage_password'];?>&scale=" + scale + "&mode=getInverterData";
 	xhttp.onreadystatechange = function() {
 	    if (this.readyState == 4 && this.status == 200) {
 	     //Push the data in array
-			temperatureValues = [];
-			humidityValues = [];
-			pressureValues = [];
+			panelValues = [];
+			loadValues = [];
+			batteryValues = [];
+			batteryPercents = [];
 			timeStamp = [];
 			let time = new Date().toLocaleTimeString();
-			console.log(this.responseText);
+			//console.log(this.responseText);
+		
 			let dataObject = JSON.parse(this.responseText); 
 			//let tbody = document.getElementById("tableBody");
 			//tbody.innerHTML = '';
 			
-			for(let datum of dataObject) {
-				//console.log(datum);
-				let time = datum[2];
-				let temperature = datum[3];
-				temperature = temperature * (9/5) + 32;
-				//convert temperature to fahrenheitformula
-				let pressure = datum[4];
-				let humidity = datum[5];
-				temperatureValues.push(temperature);
-				humidityValues.push(humidity);
-				pressureSkewed = pressure;//so we can see some detail in pressure
-				if(pressure > 0) {
-					pressureValues.push(pressure); 
-				}
+			for(let datum of dataObject[0]) {
+				console.log(datum);
+				console.log("!");
+				let time = datum["recorded"];
+				let panel = datum["solar_power"];
+	 
+ 
+				let load = datum["load_power"];
+				let battery = datum["battery_power"];
+				let batteryPercent = datum["battery_percentage"];
+				panelValues.push(panel);
+				loadValues.push(load);
+ 
+				batteryValues.push(battery);
+				batteryPercents.push(batteryPercent);
 				timeStamp.push(time);
 			}
-			glblChart = showGraph(locationId);  //Update Graphs
+			//console.log(batteryPercents);
+			glblChart = showGraph();  //Update Graphs
 	    }
 	  };
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
   xhttp.send();
 }
 
-getWeatherData(<?php echo $locationId?>);
+getInverterData(<?php echo $locationId?>);
 </script>
 </body>
 
