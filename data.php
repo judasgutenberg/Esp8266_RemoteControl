@@ -104,6 +104,62 @@ if($_REQUEST) {
 					$deviceRow = mysqli_fetch_array($getDeviceResult);
 					$deviceName = $deviceRow["name"];
 				}
+			} else if ($mode=="getInverterData") {
+				if(array_key_exists("scale", $_REQUEST)) {
+					$scale = $_REQUEST["scale"];
+				} else {
+					$scale = "";
+				}
+				if(!$conn) {
+					$out = ["error"=>"bad database connection"];
+				} else {
+					
+					if($scale == ""  || $scale == "fine") {
+						$sql = "SELECT * FROM " . $database . ".inverter_log  
+						WHERE recorded > DATE_ADD(NOW(), INTERVAL -1 DAY) 
+						ORDER BY inverter_log_id ASC";
+					} else {
+						if($scale == "hour") {
+							$sql = "SELECT
+							*,
+							YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded) FROM " . $database . ".inverter_log  
+							WHERE recorded > DATE_ADD(NOW(), INTERVAL -7 DAY) 
+								GROUP BY YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded)
+								ORDER BY inverter_log_id ASC";
+						}
+						if($scale == "day") {
+							$sql = "SELECT 	 
+							*,
+							YEAR(recorded), DAYOFYEAR(recorded) FROM " . $database . ".inverter_log  
+							 
+								GROUP BY YEAR(recorded), DAYOFYEAR(recorded)
+								ORDER BY inverter_log_id ASC";
+						}
+					}
+ 
+					/*
+					//using averages didn't work for some reason:
+					inverter_log_id, 
+					recorded, 
+					AVG(temperature) AS temperature, 
+					AVG(pressure) AS pressure, 
+					AVG(humidity) AS humidity, 
+					wind_direction, 
+					AVG(precipitation) AS precipitation, 
+					wind_increment, 
+					*/
+					//echo $sql;
+					if($sql) {
+						$result = mysqli_query($conn, $sql);
+						$out = [];
+						if($result && $canAccessData) {
+							while($row = mysqli_fetch_all($result, MYSQLI_ASSOC)) {
+								array_push($out, $row);
+							}
+						}
+					}
+				}
+				$method  = "read";	
 
 			} else if ($mode=="getData") {
 				if(array_key_exists("scale", $_REQUEST)) {
