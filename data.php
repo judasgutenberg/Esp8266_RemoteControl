@@ -116,14 +116,14 @@ if($_REQUEST) {
 					
 					if($scale == ""  || $scale == "fine") {
 						$sql = "SELECT * FROM " . $database . ".inverter_log  
-						WHERE recorded > DATE_ADD(NOW(), INTERVAL -1 DAY) 
+						WHERE user_id = " . $user["user_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -1 DAY) 
 						ORDER BY inverter_log_id ASC";
 					} else {
 						if($scale == "hour") {
 							$sql = "SELECT
 							*,
 							YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded) FROM " . $database . ".inverter_log  
-							WHERE recorded > DATE_ADD(NOW(), INTERVAL -7 DAY) 
+							WHERE user_id = " . $user["user_id"] . " AND recorded > DATE_ADD(NOW(), INTERVAL -7 DAY) 
 								GROUP BY YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded)
 								ORDER BY inverter_log_id ASC";
 						}
