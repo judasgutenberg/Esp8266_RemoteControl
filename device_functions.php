@@ -592,7 +592,8 @@ function currentSensorData($user){
           weather_data
       GROUP BY
           location_id
-    ) latest ON wd.location_id = latest.location_id AND wd.recorded = latest.max_recorded";
+    ) latest ON wd.location_id = latest.location_id AND wd.recorded = latest.max_recorded
+    WHERE d.user_id = " . $user["user_id"];
   $result = mysqli_query($conn, $sql);
   $out .= "<div class='listheader'>Weather </div>";
   if($result) {
