@@ -11,6 +11,9 @@ One caveat: this system is one where the server tells the microcontroller what p
 To expand the number of pins usable for remote control, you can add a slave Arduino with my slave software:
 https://github.com/judasgutenberg/Generic_Arduino_I2C_Slave and just add the I2C address of the slave Arduino to the device_type_feature record.
 
+![alt text](esp8266-remote.jpg?raw=true)
+
+
 This system is actually multi-user and supports multiple user accounts, each with potentially multiple devices.  Most of the microcontroller work is done and I am in the process of improving the interface for someone performing remote control.  Until that is complete, here's an overview of how to set up control for a particular device:
 
 1. Connect the device to the ESP8266 somehow.  Usually this involves a relay and a relay driver circuit such as the ULN2003 (there are lots of examples of this online, for example https://microcontrollerslab.com/relay-driver-circuit-using-uln2003/).
