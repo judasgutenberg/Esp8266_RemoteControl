@@ -4,6 +4,9 @@ This is another advancement from my Moxee Hotspot Watchdog system, which was its
 
 ![alt text](weathergraph.jpg?raw=true)
 
+There's also a page to show data from your solar inverter if you happen to be using the one I know about (SolArk):
+![alt text](invertergraph.jpg?raw=true)
+
 But the main feature in this system is that it allows you to remotely control devices across the internet and also supports automation based on the values of sensors known to the central database.  It does this using a server running PHP/MySQL.  A web-based tool (tool.php) allows you to edit the value column of a table called device_feature, where device_id is equal to locationId specified in config.c.  The ESP8266 regularly polls the server to look for information in those device_feature records, and it automatically copies data from the value column to the pins they're connected to (which is specified in device_type_feature).  These pins can then be used to turn on relays, which allow you to turn on large loads in remote locations. I'm using this system to remotely turn on the boiler, hot water heater, a 240 volt EV outlet, and two different 120 volt outlets connected to electric space heaters in my off-grid cabin.
 
 One caveat: this system is one where the server tells the microcontroller what pins do what and can change assignments without a need to reflash or even restart the microcontroller. For some pins (notably GPIO10 and GPIO9 on an ESP8266, which are used for accessing on-board flash storage), setting them to outputs and forcing them to take a value will cause the ESP8266 to crash and restart.  So definitely test all your pin control arrangements while local to the ESP8266 before using it remotely.
