@@ -937,9 +937,11 @@ function loginUser($source = NULL) {
 
 function topmostNav() {
 	$tabData = array(
+
     [
       'label' => 'Weather',
-      'url'=> "index.php"
+      'url'=> "index.php",
+      'lpad'=> 22
     ],
     [
       'label' => 'Energy',
@@ -955,6 +957,8 @@ function topmostNav() {
   foreach($tabData as &$tab) {
     $label = gvfa("label", $tab);
     $url = gvfa("url", $tab); 
+    $lpad = gvfa("lpad", $tab); 
+    $rpad = gvfa("rpad", $tab); 
     $class = "navtab";
     $pathArray = explode("/", $_SERVER['PHP_SELF']);
     $currentFile = $pathArray[count($pathArray) - 1];
@@ -962,7 +966,13 @@ function topmostNav() {
     if($currentFile == $url) {
       $class = "navtabthere";
     }
+    if($lpad) {
+      $out .= "<span style='padding-right:" . $lpad . "px;width:10px;height:12px'></span>\n";
+    }
     $out .= "<div class='" . $class . "'><a href='./" . $url . "'>" . $label . "</a></div>";
+    if($rpad) {
+      $out .= "<span style='padding-right:" . $rpad . "px;width:10px;height:12px'></span>\n";
+    }
   }
   $out .= "</div>\n";
   return $out;
