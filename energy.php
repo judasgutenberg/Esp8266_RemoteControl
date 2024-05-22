@@ -60,34 +60,32 @@ if(!$user) {
   <!--For offline ESP graphs see this tutorial https://circuits4you.com/2018/03/10/esp8266-jquery-and-ajax-web-server/ -->
   <script src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>  
   <link rel='stylesheet' href='tool.css?version=1711570359'>
+ 
 </head>
 
 <body>
 <?php
-  if($user) {
-    if($poser) {
-      $poserString = " posing as <span class='poserindication'>" . $poser["email"] . "</span> (<a href='?action=disimpersonate'>unpose</a>)";
+	$out .= topmostNav();
+	$out .= "<div class='logo'>Inverter Data</div>\n";
+	if($user) {
+		$out .= "<div class='outercontent'>";
+		if($poser) {
+			$poserString = " posing as <span class='poserindication'>" . $poser["email"] . "</span> (<a href='?action=disimpersonate'>unpose</a>)";
 
-    }
-    $out .= "<div class='loggedin'>You are logged in as <b>" . $user["email"] . "</b>" .  $poserString . " <div class='basicbutton'><a href=\"?action=logout\">logout</a></div></div>\n";
-	}
-	else
-	{
-    //$out .= "<div class='loggedin'>You are logged out.  </div>\n";
-	} 
-	$out .= "<div>\n";
-    $out .= "<div class='documentdescription'>";
-	echo $out; 
-  /*
-  if($documentId){
-    $document = getDocumentFromDocumentId($documentId);
-    $out .= "Current xxxx: <em>" . $document["name"] . "</em> (" . $document["file_name"] . ")";
-  } else {
-    $out .= "No xxxx selected\n";
-
-  }
-  */
-  $out .= "</div>";
+		}
+		$out .= "<div class='loggedin'>You are logged in as <b>" . $user["email"] . "</b>" .  $poserString . " <div class='basicbutton'><a href=\"?action=logout\">logout</a></div></div>\n";
+		}
+		else
+		{
+		//$out .= "<div class='loggedin'>You are logged out.  </div>\n";
+		} 
+		$out .= "<div>\n";
+		$out .= "<div class='documentdescription'>";
+		
+ 
+		$out .= "</div>";
+		$out .= "<div class='innercontent'>";
+		echo $out; 
   ?>
 
     <div style="text-align:center;"><b>Inverter Information Log</b></div>
@@ -113,9 +111,8 @@ echo "<tr><td>Time Scale:</td><td>" . genericSelect("scaleDropdown", "scale", "f
 ?>
 </table>
 </div>
-<br>
-<br>  
-
+</div>
+ 
 <script>
 let glblChart = null;
 //For graphs info, visit: https://www.chartjs.org
@@ -213,7 +210,7 @@ window.onload = function() {
 //Ajax script to get ADC voltage at every 5 Seconds 
 //Read This tutorial https://circuits4you.com/2018/02/04/esp8266-ajax-update-part-of-web-page-without-refreshing/
 
-getInverterData("<?php echo gvfw("locationId")?>");
+//getInverterData("<?php echo gvfw("locationId")?>");
 //setInterval(function() {
   // Call a function repetatively with 5 Second interval
   //getInverterData(locationId)
@@ -241,8 +238,8 @@ function getInverterData() {
 			//tbody.innerHTML = '';
 			
 			for(let datum of dataObject[0]) {
-				console.log(datum);
-				console.log("!");
+				//console.log(datum);
+				//console.log("!");
 				let time = datum["recorded"];
 				let panel = datum["solar_power"];
 	 
