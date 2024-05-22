@@ -39,7 +39,7 @@ function getUtilityInfo($user, $key){
 }
 
 function bodyWrap($content, $user, $deviceId, $poser = null) {
-  $out = "";
+  $out = "<!doctype html>";
   $out .= "<html>\n";
   $out .= "<head>\n";
   $siteName = "Remote Controller";
@@ -50,9 +50,12 @@ function bodyWrap($content, $user, $deviceId, $poser = null) {
   $out .= "<title>" . $siteName . "</title>\n";
   $out .= "</head>\n";
   $out .= "<body>\n";
+  $out .= topmostNav();
+  $out.= "<div class='logo'>" . $siteName . "</div> \n";
+
   $out .= "<div class='waitingouter' id='waitingouter'><div class='waiting' id='waiting'><img width='200' height='200' src='./images/signs.gif'></div><div id='waitingmessage' class='waitingmessage'>Waiting...</div></div>\n";
   $out .= "<div class='outercontent'>\n";
-  $out.= "<div class='logo'>" . $siteName . "</logo></div>\n";
+  
   $poserString = "";
   if($user) {
     if($poser) {
@@ -66,10 +69,12 @@ function bodyWrap($content, $user, $deviceId, $poser = null) {
     //$out .= "<div class='loggedin'>You are logged out.  </div>\n";
 	} 
 	$out .= "<div>\n";
-  $out .= "<div class='devicedescriptiopn'>";
+ 
+  $out .= "<div class='devicedescription'>";
  
   $out .= "</div>";
 	$out .= tabNav($user);
+ 
   $out .= "<div class='innercontent'>\n";
   $out .= $content;
   $out .= "</div>\n";
@@ -929,6 +934,41 @@ function loginUser($source = NULL) {
   //}
 }
 
+
+function topmostNav() {
+	$tabData = array(
+    [
+      'label' => 'Weather',
+      'url'=> "index.php"
+    ],
+    [
+      'label' => 'Energy',
+      'url' => "energy.php"
+    ],
+    [
+      'label' => 'Device Control',
+      'url' => "tool.php"
+    ]);
+  $out = "<div class='nav'>";
+  $currentMode = gvfa('table', $_REQUEST);
+  $deviceId = gvfa('device_id', $_REQUEST);
+  foreach($tabData as &$tab) {
+    $label = gvfa("label", $tab);
+    $url = gvfa("url", $tab); 
+    $class = "navtab";
+    $pathArray = explode("/", $_SERVER['PHP_SELF']);
+    $currentFile = $pathArray[count($pathArray) - 1];
+    //echo $url . " " . $currentFile  . "<br/>";
+    if($currentFile == $url) {
+      $class = "navtabthere";
+    }
+    $out .= "<div class='" . $class . "'><a href='./" . $url . "'>" . $label . "</a></div>";
+  }
+  $out .= "</div>\n";
+  return $out;
+
+}
+
 function tabNav($user) {
 	$tabData = array(
  
@@ -962,7 +1002,8 @@ function tabNav($user) {
     'table' => 'sensors' 
   ] 
 	);
-  if($user["role"] == "super") {
+  
+  if($user && $user["role"] == "super") {
     $tabData[] =   [
       'label' => 'Users',
       'table' => 'user' 
