@@ -423,30 +423,32 @@ body
   display: inline;
   border-width: 1px 1px 0 1px;
   border-color: black;
+  border-style: solid;
   background-color:#bbaa99;
   FONT-FAMILY:  courier;
   FONT-SIZE: 14px;
-  border-radius: 4px;
+  border-radius: 4px 4px 0 0;
   vertical-align:top;
   white-space:nowrap; 
-  height: 15px;
-  padding: 10px;
-  margin: 3px;
+  height: 12px;
+  padding: 3px;
+  margin: 2px;
 }
 
 .navtabthere {
   display: inline;
   border-width: 1px 1px 0 1px;
   border-color: black;
+  border-style: solid;
   background-color:#ffffff;
   FONT-FAMILY:  courier;
   FONT-SIZE: 14px;
-  border-radius: 4px;
+  border-radius: 4px 4px 0 0;
   vertical-align:top;
   white-space:nowrap; 
-  height: 15px;
-  padding: 10px;
-  margin: 3px;
+  height: 12px;
+  padding: 3px;
+  margin: 2px;
 }
 
 .logo {
@@ -471,7 +473,7 @@ body
 
 .outercontent {
   margin-left:0px;
-  margin-top:-12px;
+  margin-top:-10px;
   padding-top:0px;
   width:1600px;
 }
@@ -488,7 +490,7 @@ body
   padding: 10px;
   margin-top:0px;
   padding-top:5px;
-  margin: 10px;
+  margin: 0px;
 }
 
 
@@ -510,6 +512,41 @@ body
 	color:#ffffff;
 	background-color:#000000;
 }
+
+
+.unfoldingtool
+{
+  display: table;
+  width:500px;
+  border: solid 1px #999999;
+  border-radius: 4px;
+  background: #99cccc;
+  font-size:12px;
+}
+div.unfoldingtool>div:nth-of-type(odd) {
+	background: #cccccc;
+  }
+
+div.unfoldingtool>div:first-child {
+	display: table-row;
+	font-family:helvetica;
+	background-color: #dddddd !important;
+	padding: 5px;
+}
+
+.unfoldingtoolline
+{
+  display: table-row;
+  font-family:helvetica;
+  padding: 5px;
+
+}
+
+.unfoldingtoolline > span {
+	display: table-cell;
+	width:auto;
+	padding: 3px ;
+  }
 
 .list
 {
