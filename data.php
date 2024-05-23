@@ -28,6 +28,7 @@ $deviceId = "";
 $locationId = "";
 $deviceName = "Your device";
 $deviceIds = [];
+$sensorId = "NULL";
 if($_REQUEST) {
 	if(array_key_exists("storagePassword", $_REQUEST)) {
 		$deviceIds = deriveDeviceIdsFromStoragePassword($_REQUEST["storagePassword"]);
@@ -62,6 +63,17 @@ if($_REQUEST) {
         	$lines = explode("|",$data);
 			$weatherInfoString = $lines[0];
         	$arrWeatherData = explode("*", $weatherInfoString);
+			$temperature = $arrWeatherData[0];
+			$pressure = $arrWeatherData[1];
+			$humidity = $arrWeatherData[2];
+			$gasMetric = "NULL";
+			
+			if(count($arrWeatherData)>3) {
+				$gasMetric = $arrWeatherData[3];
+			}
+			if(count($arrWeatherData)>4) {
+				$sensorId = $arrWeatherData[4];
+			}
 		} else {
 			$lines = [];
 			$arrWeatherData = [0,0,0,0,0,0,0,0,0,0,0,0];
@@ -71,7 +83,7 @@ if($_REQUEST) {
 
 		if($canAccessData) {
 			$user = deriveUserFromStoragePassword($storagePassword);
-			$sensorId = "NULL";
+			
 			if($mode=="kill") {
 				$method  = "kill";
 			} else if ($mode=="getDevices") {
@@ -137,18 +149,6 @@ if($_REQUEST) {
 						}
 					}
  
-					/*
-					//using averages didn't work for some reason:
-					inverter_log_id, 
-					recorded, 
-					AVG(temperature) AS temperature, 
-					AVG(pressure) AS pressure, 
-					AVG(humidity) AS humidity, 
-					wind_direction, 
-					AVG(precipitation) AS precipitation, 
-					wind_increment, 
-					*/
-					//echo $sql;
 					if($sql) {
 						$result = mysqli_query($conn, $sql);
 						$out = [];
@@ -194,18 +194,6 @@ if($_REQUEST) {
 								ORDER BY weather_data_id ASC";
 						}
 					}
-					/*
-					//using averages didn't work for some reason:
-					weather_data_id, 
-					recorded, 
-					AVG(temperature) AS temperature, 
-					AVG(pressure) AS pressure, 
-					AVG(humidity) AS humidity, 
-					wind_direction, 
-					AVG(precipitation) AS precipitation, 
-					wind_increment, 
-					*/
-					//echo $sql;
 					if($sql) {
 						$result = mysqli_query($conn, $sql);
 						$out = [];
@@ -220,21 +208,6 @@ if($_REQUEST) {
 			} else if ($mode == "saveData") { //save data
 			//test url;:
 			// //http://randomsprocket.com/weather/data.php?storagePassword=vvvvvvv&locationId=3&mode=saveData&data=10736712.76*12713103.20*1075869.28*NULL|0*0*1710464489*1710464504*1710464519*1710464534*1710464549*1710464563*1710464579*1710464593*
-
-				
-				
-				
-				$temperature = $arrWeatherData[0];
-				$pressure = $arrWeatherData[1];
-				$humidity = $arrWeatherData[2];
-				$gasMetric = "NULL";
-				
-				if(count($arrWeatherData)>3) {
-					$gasMetric = $arrWeatherData[3];
-				}
-				if(count($arrWeatherData)>4) {
-					$sensorId = $arrWeatherData[4];
-				}
 				
 				//select * from weathertron.weather_data where location_id=3 order by recorded desc limit 0,10;
 				$weatherSql = "INSERT INTO weather_data(location_id, recorded, temperature, pressure, humidity, gas_metric, wind_direction, precipitation, wind_speed, wind_increment, sensor_id) VALUES (" . 
