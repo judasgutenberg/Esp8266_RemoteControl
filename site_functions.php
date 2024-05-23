@@ -129,7 +129,7 @@ function loginForm() {
   $out .= "<strong>Login here:</strong>  email: <input name='email' type='text'>\n";
   $out .= "password: <input name='password' type='password'>\n";
   $out .= "<input name='action' value='login' type='submit'>\n";
-  $out .= "<div> or  <div class='basicbutton'><a href=\"?table=user&action=startcreate\">Create Account</a></div>\n";
+  $out .= "<div> or  <div class='basicbutton'><a href=\"tool.php?table=user&action=startcreate\">Create Account</a></div>\n";
   $out .= "</form>\n";
   return $out;
 }
@@ -995,7 +995,7 @@ function tabNav($user) {
     'table' => 'feature_type' 
   ] ,
   [
-    'label' => 'Device Type Features',
+    'label' => 'Device Feature Types',
     'table' => 'device_type_feature' 
   ] ,
   [
@@ -1221,7 +1221,7 @@ function createUser(){
     //die();
     $result = mysqli_query($conn, $sql);
     $id = mysqli_insert_id($conn);
-    updateTablesFromTemplate($id);
+    //updateTablesFromTemplate($id);
     //die("*" . $id);
     loginUser($_POST);
     header("Location: ?");
