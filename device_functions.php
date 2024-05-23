@@ -8,7 +8,7 @@ function deviceFeatures($userId, $deviceId) {
   $sql = "SELECT df.name as name, pin_number, df.enabled, df.device_type_feature_id, df.device_feature_id, df.created, last_known_device_value, last_known_device_modified, df.value  
           FROM " . $table . " df 
           JOIN device_type_feature dtf 
-            ON df.device_type_feature_id=dtf.device_type_feature_id ";
+            ON df.device_type_feature_id=dtf.device_type_feature_id AND df.user_id=dtf.user_id WHERE df.user_id=" . intval($userId);
   //echo $sql;
   if($deviceId){
     $sql .= "WHERE df.device_id=" . intval($deviceId);
@@ -85,7 +85,7 @@ function deviceFeatures($userId, $deviceId) {
 function devices($userId) {
   Global $conn;
   $table = "device";
-  $sql = "SELECT *  FROM " . $table . "  ";
+  $sql = "SELECT *  FROM " . $table . "  WHERE user_id=" . intval($userId);
   //echo $sql;
   $result = mysqli_query($conn, $sql);
   $out = "";
@@ -294,6 +294,20 @@ function deviceForm($error,  $userId) {
       'width' => 200,
 	    'value' => gvfa("location_name", $source), 
       'error' => gvfa('location_name', $error)
+	  ],
+    [
+	    'label' => 'latitude',
+      'name' => 'latitude',
+      'width' => 200,
+	    'value' => gvfa("latitude", $source), 
+      'error' => gvfa('latitude', $error)
+	  ],
+    [
+	    'label' => 'longitude',
+      'name' => 'longitude',
+      'width' => 200,
+	    'value' => gvfa("longitude", $source), 
+      'error' => gvfa('longitude', $error)
 	  ],
     [
 	    'label' => 'ip address',
@@ -633,3 +647,43 @@ function managementRuleTools() {
   return $out;
 }
 
+function getWeatherDataByCoordinates($latitude, $longitude, $apiKey) {
+  $baseUrl = "https://api.openweathermap.org/data/2.5/weather";
+  $query = http_build_query([
+      'lat' => $latitude,
+      'lon' => $longitude,
+      'appid' => $apiKey,
+      'units' => 'metric' // Use 'imperial' for Fahrenheit
+  ]);
+  $url = "$baseUrl?$query";
+
+  // Initialize a cURL session
+  $ch = curl_init();
+
+  // Set the URL and options
+  curl_setopt($ch, CURLOPT_URL, $url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+  // Execute the cURL session
+  $response = curl_exec($ch);
+
+  // Check for errors
+  if ($response === false) {
+      $error = curl_error($ch);
+      curl_close($ch);
+      throw new Exception("cURL Error: $error");
+  }
+
+  // Close the cURL session
+  curl_close($ch);
+
+  // Decode the JSON response
+  $weatherData = json_decode($response, true);
+
+  // Check for JSON decode errors
+  if (json_last_error() !== JSON_ERROR_NONE) {
+      throw new Exception("JSON Decode Error: " . json_last_error_msg());
+  }
+
+  return $weatherData;
+}
