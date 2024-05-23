@@ -54,4 +54,4 @@ Management_rules can be edited in the management_rule editor, which looks like t
 
 ![alt text](managementrule.jpg?raw=true)
 
-At the bottom is a tool you can use to automatically construct a value token to place in conditions.  Treat these as variables in an expression to be evaluated as true or false.  You can use multiple tokens, parentheses, and scalar numbers in such expressions.
+At the bottom is a tool you can use to automatically construct a value token to place in conditions.  Treat these as variables in an expression to be evaluated as true or false.  You can use multiple tokens, parentheses, arithmatic operators, and scalar numbers in such expressions.
