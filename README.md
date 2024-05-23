@@ -16,7 +16,7 @@ One caveat: this system is one where the server tells the microcontroller what p
 To expand the number of pins usable for remote control, you can add one or more slave Arduinos running my slave software (be sure to give them all different I2C addresses):
 https://github.com/judasgutenberg/Generic_Arduino_I2C_Slave and just add the I2C address of the slave Arduino to the device_type_feature record.
 
-![alt text](esp8266-remote.jpg?raw=true)
+![alt text](esp8266-remote-schematic.jpg?raw=true)
 
 
 This system is actually multi-user and supports multiple user accounts, each with potentially multiple devices.  Once you place your user in the user table, here's an overview of how to set up control for a particular system controlled by a pin on your ESP8266:
@@ -27,6 +27,8 @@ This system is actually multi-user and supports multiple user accounts, each wit
 4. Add a record to the device_type_feature table describing the pin (mostly the pin number and perhaps the I2C address if it is on a slave).
 5. Add a record to the device_feature table describing the specific pin (here a human readable name would be useful).
 6. Now you can change the state of a particular ESP8266's pin by changing the state of the value column in the device_feature record.  Make sure to set enabled to 1 as well.
+
+![alt text](esp8266-remote.jpg?raw=true)
 
 Here is the user interface, which allows you to turn items on and off in the list by checking the "power on" column.
 ![alt text](remotecontrolscreen.jpg?raw=true)
