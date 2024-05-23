@@ -386,6 +386,7 @@ function managementRuleForm($error,  $userId) {
 	  ],
     );
   $form = genericForm($formData, $submitLabel);
+  $form .= managementRuleTools();
   return $form;
 }
 
@@ -418,7 +419,7 @@ function deviceFeatureLog($deviceFeatureId, $userId){
   $result = mysqli_query($conn, $sql);
   $out = "<div class='listheader'>Device Feature Log: " . $deviceFeatureName . "</div>";
   if($result) {
-    $rows = $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     //var_dump($rows);
     if($rows) {
       $out .= genericTable($rows, $headerData, null, null);
@@ -439,6 +440,16 @@ function getGeneric($table, $pk, $userId){
 	if($result) {
 		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
 		return $row;
+	}
+}
+
+function getDevices($userId){
+  Global $conn;
+  $sql = "SELECT * FROM device WHERE user_id=" . intval($userId);
+	$result = mysqli_query($conn, $sql);
+	if($result) {
+		$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+		return $rows;
 	}
 }
 
@@ -605,3 +616,20 @@ function currentSensorData($user){
   }
   return $out;
 }
+
+function managementRuleTools() {
+  Global $conn;
+  $out = "";
+  $tables = array("inverter_log", "weather_data");
+  //genericSelect($id, $name, $defaultValue, $data, $event = "", $handler= "")
+  $out.="\n<br/><div class='unfoldingtool'>\n";
+  $out.="<div class='unfoldingtoolline'><span>Create a lookup token in conditions:</span>";
+  $out.= "<div class='unfoldingtoolline' ><span>" . genericSelect("tableNameForManagementRule", "tableNameForManagementRule", "", $tables,"onchange", "managementRuleTableChange()") . "</span></div>";
+  $out .= "\n<div class='unfoldingtoolline' id='mr_column'></div>";
+  $out .= "\n<div class='unfoldingtoolline' id='mr_location'></div>";
+  $out .= "\n<div class='unfoldingtoolline' id='mr_tag'></div>";
+  $out .= "\n<div class='unfoldingtoolline' id='mr_button' style='display:none'><button onclick='managementConditionsAddTag()'>Insert Token</button></div>";
+  $out .= "\n</div>\n";
+  return $out;
+}
+
