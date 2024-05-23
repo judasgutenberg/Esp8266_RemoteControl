@@ -969,7 +969,7 @@ function topmostNav() {
     if($lpad) {
       $out .= "<span style='padding-right:" . $lpad . "px;width:10px;height:12px'></span>\n";
     }
-    $out .= "<div class='" . $class . "'><a href='./" . $url . "'>" . $label . "</a></div>";
+    $out .= "<a href='./" . $url . "'><div class='" . $class . "'>" . $label . "</div></a>";
     if($rpad) {
       $out .= "<span style='padding-right:" . $rpad . "px;width:10px;height:12px'></span>\n";
     }
@@ -1042,7 +1042,7 @@ function tabNav($user) {
       $url .= "&device_id=" . $deviceId;
     }
     
-    $out .= "<div class='" . $class . "'><a href='" . $url . "'>" . $label . "</a></div>";
+    $out .= "<a href='" . $url . "'><div class='" . $class . "'>" . $label . "</div></a>";
   }
   $out .= "</div>\n";
   return $out;
@@ -1244,6 +1244,30 @@ function download($path, $friendlyName){
     echo $file;
     exit;
 }
+
+function genericSelect($id, $name, $defaultValue, $data, $event = "", $handler= "") {
+	$out = "";
+	$out .= "<select name='" . $name. "' id='" . $id . "' " . $event . "=\"" . $handler . "\">\n";
+  $out .= "<option/>";
+	foreach($data as $datum) {
+		$value = gvfa("value", $datum);
+		$text = gvfa("text", $datum);
+    if(!$text) { //if the array is just a list of scalar values:
+      $value = $datum;
+      $text = $datum;
+    }
+		$selected = "";
+		if($defaultValue == $value) {
+			$selected = " selected='true'";
+		}
+		$out.= "<option " . $selected . " value=\"" . $value . "\">";
+		$out.= $text;
+		$out.= "</option>";
+	}
+	$out.= "</select>";
+	return $out;
+}
+ 
 
 function stringToAscii($input) {
   $asciiCodes = [];
@@ -1465,4 +1489,17 @@ function isValidPHP($code) {
   unlink($tempFile);
 
   return strpos($result, 'No syntax errors detected') !== false;
+}
+
+function getColumns($tableName) {
+  Global $conn;
+  $sql = "SHOW COLUMNS FROM " . $tableName . ";"; //watch out for sql injection!
+  $result = mysqli_query($conn, $sql);
+ 
+  if($result) {
+    $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    //var_dump($rows);
+    $columnNames = array_column($rows, 'Field');
+    return $columnNames;
+  }
 }
