@@ -164,6 +164,8 @@ if ($user) {
         $out .= utilityForm($foundData);
       }
    }  
+
+ 
    if(!$foundData ) {
     $out .= "<div class='generalerror'>Utility not yet developed.</div>";
    } else if(!$action) {
@@ -176,8 +178,6 @@ if ($user) {
   } else if ($action == "startcreate") {
     if ($table == "test") {
        
-    } else if ($table == "user" || !is_null($errors)) {
-      $out .= newUserForm($errors);
 
     } else if($table == "device") {
       $out .=  deviceForm($errors,  $userId);
@@ -241,10 +241,15 @@ if ($user) {
 	$out .= "</div>\n";
 
 } else {
-  if(gvfa("password", $_POST) != "") {
+ 
+  if ($table == "user" || !is_null($errors)) {
+    $out .= newUserForm($errors);
+  } else if(gvfa("password", $_POST) != "") {
     $out .= "<div class='genericformerror'>The credentials you entered have failed.</div>";
    }
-  $out .= loginForm();
+  if($action != "startcreate"){
+    $out .= loginForm();
+  }
 }
 
 
