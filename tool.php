@@ -71,22 +71,22 @@ if ($user) {
     $out = getDevices($userId);
     die(json_encode($out));
   } else if($action == "getcolumns") {
-    $tableName = gvfw('table_name');
+    $tableName = filterStringForSqlEntities(gvfw('table_name'));
     $out = getColumns($tableName);
     die(json_encode($out));
   } else if($action == "genericformsave") { //Definitely fix the security here!!!!
     //this only works for checkboxes for now
-    $tableName = gvfw('table_name');
-    $name = gvfw('name');
+    $tableName = filterStringForSqlEntities(gvfw('table_name'));
+    $name = filterStringForSqlEntities(gvfw('name'));
     $value = gvfw('value');
-    $primaryKeyName = gvfw('primary_key_name');
+    $primaryKeyName = filterStringForSqlEntities(gvfw('primary_key_name'));
     $primaryKeyValue = gvfw('primary_key_value');
     if($value == "false"){
       $value = 0;
     } else if($value == "true"){
       $value = 1;
     }
-    //a little safer only because it only allows a user to fuck up records connected to their userId
+    //a little safer only because it allows a user to screw up records connected to their userId but mabe revisit!!!
     $sql = "UPDATE ". filterStringForSqlEntities($tableName) . " SET " . filterStringForSqlEntities($name) . "='" .  mysqli_real_escape_string($conn, $value) . "' WHERE user_id=" . intval($userId) . " AND " . filterStringForSqlEntities($primaryKeyName) . "='" . intval($primaryKeyValue) . "'";
     
     $result = mysqli_query($conn, $sql);
