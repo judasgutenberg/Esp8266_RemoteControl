@@ -50,6 +50,8 @@ CREATE TABLE device(
   description VARCHAR(2000) NULL,
   user_id INT NULL,
   sensor_id INT NULL,
+  latitude DECIMAL(8,5) NULL,
+  longitude DECIMAL(8,5) NULL,
   created DATETIME
 );
 
@@ -82,10 +84,11 @@ CREATE TABLE user(
   password VARCHAR(100) NULL,
   expired DATETIME NULL,
   preferences TEXT NULL,
-  storage_password VARCHAR(100) NULL;
-  energy_api_username VARCHAR(100) NULL;
-  energy_api_password VARCHAR(100) NULL;
-  energy_api_plant_id INT NULL;
+  storage_password VARCHAR(100) NULL,
+  energy_api_username VARCHAR(100) NULL,
+  energy_api_password VARCHAR(100) NULL,
+  energy_api_plant_id INT NULL,
+  open_weather_api_key VARCHAR(100) NULL,
   created DATETIME
 );
 
@@ -176,6 +179,10 @@ CREATE TABLE inverter_log(
 --ALTER TABLE management_rule RENAME COLUMN management_script TO conditions;
 --ALTER TABLE device_feature_management_rule ADD management_priority INT DEFAULT 1;
 --ALTER TABLE device_type_feature RENAME COLUMN device_type_id TO feature_type_id;
+
+--ALTER TABLE device ADD latitude DECIMAL(8,5) NULL;
+--ALTER TABLE device ADD longitude DECIMAL(8,5) NULL;
+--ALTER TABLE user ADD open_weather_api_key VARCHAR(100) NULL;
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
 INSERT INTO device (name, device_type_id, created) VALUES ('Hotspot Watchdog', 1, NOW());
