@@ -77,6 +77,7 @@ if(!$user) {
         <canvas id="Chart" width="400" height="700"></canvas>
     </div>
 <div>
+	<div style='display:inline-block;vertical-align:top'>
 <table id="dataTable">
 <?php 
 //lol, it's easier to specify an object in json and decode it than it is just specify it in PHP
@@ -100,6 +101,9 @@ $scaleData = json_decode('[{"text":"detailed","value":"fine"},{"text":"hourly","
 echo "<tr><td>Time Scale:</td><td>" . genericSelect("scaleDropdown", "scale", "fine", $scaleData, "onchange", $handler) . "</td></tr>";
 ?>
 </table>
+</div>
+<div style='display:inline-block' id='officialweather'>
+</div>
 </div>
 </div>
 
@@ -184,8 +188,14 @@ function showGraph(locationId){
 //On Page load show graphs
 window.onload = function() {
   console.log(new Date().toLocaleTimeString());
+  let locationId = document.getElementById("locationDropdown")[document.getElementById("locationDropdown").selectedIndex].value;
+  officialWeather(locationId);
   //showGraph(5,10,4,58);
 };
+
+ 
+
+ 
 
 //Ajax script to get ADC voltage at every 5 Seconds 
 //Read This tutorial https://circuits4you.com/2018/02/04/esp8266-ajax-update-part-of-web-page-without-refreshing/
@@ -210,7 +220,7 @@ function getWeatherData(locationId) {
 			pressureValues = [];
 			timeStamp = [];
 			let time = new Date().toLocaleTimeString();
-			console.log(this.responseText);
+			//console.log(this.responseText);
 			let dataObject = JSON.parse(this.responseText); 
 			//let tbody = document.getElementById("tableBody");
 			//tbody.innerHTML = '';
@@ -232,10 +242,71 @@ function getWeatherData(locationId) {
 				timeStamp.push(time);
 			}
 			glblChart = showGraph(locationId);  //Update Graphs
+			officialWeather(locationId);
+	    }
+	  };
+
+  xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
+  xhttp.send();
+}
+
+
+function timeConverter(UNIX_timestamp){
+  var a = new Date(UNIX_timestamp * 1000);
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var year = a.getFullYear();
+  var month = months[a.getMonth()];
+  var date = a.getDate();
+  var hour = a.getHours();
+  var min = a.getMinutes();
+  var sec = a.getSeconds();
+  var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
+  return time;
+}
+
+function ctof(inVal){
+	return inVal * (9/5) + 32;
+}
+
+function officialWeather(locationId) {
+	let xhttp = new XMLHttpRequest();
+	let endpointUrl = "./data.php?storagePassword=<?php echo $user['storage_password'];?>&mode=getOfficialWeatherData&locationId=" + locationId;
+	xhttp.onreadystatechange = function() {
+	    if (this.readyState == 4 && this.status == 200) {
+	     //Push the data in array
+			 
+			console.log(this.responseText);
+			let dataObject = JSON.parse(this.responseText); 
+			let weatherDescription = dataObject["official_weather"]["weather"][0]["description"];
+			let temperature = dataObject["official_weather"]["main"]["temp"];
+			let temperatureMin = dataObject["official_weather"]["main"]["temp_min"];
+			let temperatureMax = dataObject["official_weather"]["main"]["temp_max"];
+			let pressure = dataObject["official_weather"]["main"]["pressure"];
+			let humidity = dataObject["official_weather"]["main"]["humidity"];
+			let wind = dataObject["official_weather"]["wind"]["speed"];
+			let gust = dataObject["official_weather"]["wind"]["gust"];
+			let sunrise = dataObject["official_weather"]["sys"]["sunrise"];
+			let sunset = dataObject["official_weather"]["sys"]["sunset"];
+			let weatherdiv = document.getElementById("officialweather");
+			let out = "<table>";
+			//out += "<tr><td>Location</td><td>" + locationId + "</td></tr>\n";
+			out += "<tr><td>Weather</td><td>" + weatherDescription + "</td></tr>\n";
+			out += "<tr><td>Temperature</td><td>" + ctof(temperature) + "</td></tr>\n";
+			out += "<tr><td>Extremes</td><td>" + ctof(temperatureMin) + " to " + ctof(temperatureMax) + "</td></tr>\n";
+			out += "<tr><td>Pressure</td><td>" + pressure + "</td></tr>\n";
+			out += "<tr><td>Humidity</td><td>" + humidity + "</td></tr>\n";
+			out += "<tr><td>Wind</td><td>" + wind + "</td></tr>\n";
+			out += "<tr><td>Gust</td><td>" + gust + "</td></tr>\n";
+			out += "<tr><td>Sunrise</td><td>" + timeConverter(sunrise) + "</td></tr>\n";
+			out += "<tr><td>Sunset</td><td>" + timeConverter(sunset) + "</td></tr>\n";
+			out += "</table>";
+			weatherdiv.innerHTML = out;
+ 
 	    }
 	  };
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
   xhttp.send();
+
 }
 
 getWeatherData(<?php echo $locationId?>);
