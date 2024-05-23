@@ -6,23 +6,7 @@ include("site_functions.php");
 //ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
 
-function genericSelect($id, $name, $defaultValue, $data, $event = "", $handler= "") {
-	$out = "";
-	$out .= "<select name='" . $name. "' id='" . $id . "' " . $event . "=\"" . $handler . "\">\n";
-	foreach($data as $datum) {
-		$value = $datum["value"];
-		$text = $datum["text"];
-		$selected = "";
-		if($defaultValue == $value) {
-			$selected = " selected='true'";
-		}
-		$out.= "<option " . $selected . " value=\"" . $value . "\">";
-		$out.= $text;
-		$out.= "</option>";
-	}
-	$out.= "</select>";
-	return $out;
-}
+ 
 if(array_key_exists( "locationId", $_REQUEST)) {
 	$locationId = $_REQUEST["locationId"];
 } else {
