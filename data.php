@@ -110,11 +110,23 @@ if($_REQUEST) {
 					}
 				}
 			} else if ($mode=="getDeviceData") {
-				$deviceSql = "SELECT name, location_name FROM device WHERE device_id = " . $deviceId;
+				$deviceSql = "SELECT name, location_name FROM device WHERE device_id = " . intval($deviceId);
 				$getDeviceResult = mysqli_query($conn, $deviceSql);
 				if($getDeviceResult) {
 					$deviceRow = mysqli_fetch_array($getDeviceResult);
 					$deviceName = $deviceRow["name"];
+				}
+			} else if ($mode=="getOfficialWeatherData") {
+				$sql = "SELECT latitude, longitude  FROM device  WHERE device_id =" . intval($deviceId);
+				$getDeviceResult = mysqli_query($conn, $sql);
+				if($getDeviceResult) {
+					$deviceRow = mysqli_fetch_array($getDeviceResult);
+					$latitude = $deviceRow["latitude"];
+					$longitude = $deviceRow["longitude"];
+					$apiKey = $user["open_weather_api_key"];
+				}
+				if($latitude  && $longitude && $apiKey) {
+					$out["official_weather"] = getWeatherDataByCoordinates($latitude, $longitude, $apiKey);
 				}
 			} else if ($mode=="getInverterData") {
 				if(array_key_exists("scale", $_REQUEST)) {
