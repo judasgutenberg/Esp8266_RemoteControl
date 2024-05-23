@@ -33,15 +33,16 @@ function formSubmitTasks() {
 
 
 function showDataInPanelTool(data){
-  let html = "";
+  let html = "<div class='list'>";
   let panelId = "";
   for (let key in data) {
     console.log(key);
-    html += "<b>" + key + "</b>:" + data[key] + "<br/>";
+    html += "<div class='listrow'><span><b>" + key + "</b></span><span>" + data[key] + "</span></div>";
     if(document.getElementById("panel_" + key)) {
       panelId = "panel_" + key;
     }
   }
+  html += "</div>";
   document.getElementById(panelId).innerHTML = html;
 }
 
@@ -721,4 +722,114 @@ function genericListActionBackend(name, value, tableName, primaryKeyName, primar
   let url = "?action=genericFormSave&table_name=" + encodeURIComponent(tableName) + "&primary_key_name=" + encodeURIComponent(primaryKeyName) + "&primary_key_value=" + encodeURIComponent(primaryKeyValue) + "&value=" + encodeURIComponent(value) + "&name=" + encodeURIComponent(name); 
   xmlhttp.open("GET", url, true);
   xmlhttp.send();
+}
+
+function genericSelect(id, name, defaultValue, data, event = "", handler = "") {
+  let out = "";
+  out += `<select name="${name}" id="${id}" ${event}="${handler}">\n`;
+  out += "<option></option>";
+  console.log(data);
+  data.forEach(datum => {
+      let value = datum.value !== undefined ? datum.value : datum;
+      let text = datum.text !== undefined ? datum.text : datum;
+      let selected = defaultValue == value ? " selected='true'" : "";
+
+      out += `<option${selected} value="${value}">`;
+      out += text;
+      out += "</option>";
+  });
+
+  out += "</select>";
+  return out;
+}
+
+let managementToolTableName = "";
+let managementToolColumnName = "";
+let managementToolTableHasLocationIdColumn = false;
+
+function managementRuleTableChange() {
+  managementToolTableName = document.getElementById("tableNameForManagementRule")[document.getElementById("tableNameForManagementRule").selectedIndex].value;
+  var xmlhttp = new XMLHttpRequest();
+  let mrColumn =  document.getElementById("mr_column");
+  xmlhttp.onreadystatechange = function() {
+    if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+      //alert(xmlhttp.responseText);
+      let columns = JSON.parse(xmlhttp.responseText);
+      managementToolTableHasLocationIdColumn = columns.includes("location_id");
+      mrColumn.innerHTML = "<span>Column:</span><span> " + genericSelect("columnNameForManagementRule", "columnNameForManagementRule", "", columns, "onchange", "managementRuleColumnChange()"  )  + "</span>";
+    }
+  }
+
+  let url = "?action=getcolumns&table_name=" + encodeURIComponent(managementToolTableName); 
+  xmlhttp.open("GET", url, true);
+  xmlhttp.send();
+}
+
+function managementRuleColumnChange() {
+  managementToolColumnName = document.getElementById("columnNameForManagementRule")[document.getElementById("columnNameForManagementRule").selectedIndex].value;
+  var xmlhttp = new XMLHttpRequest();
+  let mrLocation =  document.getElementById("mr_location");
+  if(!managementToolTableHasLocationIdColumn){
+    tag = "<"  + managementToolTableName + "[]." + managementToolColumnName + "/>";
+    managementRuleDisplayTag(tag);
+  } else {
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.onreadystatechange = function() {
+      if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+        console.log(xmlhttp.responseText);
+        let crudeLocations = JSON.parse(xmlhttp.responseText);
+        let locations = crudeLocations.map(row => {
+          return {
+              value: row.device_id,
+              text: row.name
+          };
+        });
+        let lastTagScript =  "makeManagementRuleTagFromLocation(document.getElementById('locationForManagementRule')[document.getElementById('locationForManagementRule').selectedIndex].value)";
+        mrLocation.innerHTML = "<span>Location:</span><span>" + genericSelect("locationForManagementRule", "locationForManagementRule", "",  locations, "onchange", lastTagScript ) + "</span>";
+
+      }
+    }
+
+    let url = "?action=getdevices"; 
+    xmlhttp.open("GET", url, true);
+    xmlhttp.send();
+
+  }
+
+}
+
+function unescapeHtml(html) {
+  let textArea = document.createElement('textarea');
+  textArea.innerHTML = html;
+  return textArea.value;
+}
+
+function managementRuleDisplayTag(tag) {
+  let mrTag =  document.getElementById("mr_tag");
+  mrTag.innerHTML = tag.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  let mrButton =  document.getElementById("mr_button");
+  mrButton.style.display = 'block';
+}
+
+function makeManagementRuleTagFromLocation(location) {
+  let mrTag =  document.getElementById("mr_tag");
+  let tag = "<"  + managementToolTableName + "[" + location + "]." + managementToolColumnName + "/>";
+  mrTag.innerHTML = tag.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  let mrButton =  document.getElementById("mr_button");
+  mrButton.style.display = 'block';
+}
+
+function managementConditionsAddTag() {
+  let mrTag =  document.getElementById("mr_tag");
+  let tag = unescapeHtml(mrTag.innerHTML);
+  let formItemName = "conditions";
+  let textareas = document.getElementsByName(formItemName);
+  if (textareas.length > 0) {
+    let textarea = textareas[0];
+
+    // Append the text to the existing content
+    textarea.value += tag;
+  } else {
+      console.warn(`Textarea with name "${formItemName}" not found.`);
+  }
 }
