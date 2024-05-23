@@ -67,7 +67,14 @@ if($_POST || gvfw("table")) { //gvfw("table")
  
 if ($user) {
 	$out .= "<div>\n";
-  if($action == "genericformsave") { //Definitely fix the security here!!!!
+  if($action == "getdevices") {
+    $out = getDevices($userId);
+    die(json_encode($out));
+  } else if($action == "getcolumns") {
+    $tableName = gvfw('table_name');
+    $out = getColumns($tableName);
+    die(json_encode($out));
+  } else if($action == "genericformsave") { //Definitely fix the security here!!!!
     //this only works for checkboxes for now
     $tableName = gvfw('table_name');
     $name = gvfw('name');
