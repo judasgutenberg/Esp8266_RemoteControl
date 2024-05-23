@@ -451,7 +451,7 @@ function presentList($data) {
   return $out;
 }
 
-
+ 
 
 function camelCaseToWords($input) { //thanks, chatgpt!
   // Use a regular expression to add spaces before each uppercase letter
@@ -1493,7 +1493,7 @@ function isValidPHP($code) {
 
 function getColumns($tableName) {
   Global $conn;
-  $sql = "SHOW COLUMNS FROM " . $tableName . ";"; //watch out for sql injection!
+  $sql = "SHOW COLUMNS FROM " . filterStringForSqlEntities($tableName) . ";"; //watch out for sql injection!
   $result = mysqli_query($conn, $sql);
  
   if($result) {
