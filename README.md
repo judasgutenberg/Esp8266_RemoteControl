@@ -26,7 +26,7 @@ This system is actually multi-user and supports multiple user accounts, each wit
 3. Add a record to the device_type table describing your particular type of device (in this case, ESP8266).  Details for this don't matter much.
 4. Add a record to the device_type_feature table describing the pin (mostly the pin number and perhaps the I2C address if it is on a slave).
 5. Add a record to the device_feature table describing the specific pin (here a human readable name would be useful).
-6. Now you can change the state of a particular ESP8266's pin by changing the state of the value column in the device_feature record.  Make sure to set enabled to 1 as well.
+6. Now you can change the state of a particular ESP8266's pin by changing the state of the value column in the device_feature record.  Make sure to set enabled to 1 as well.  Depending on the speed of your network and how frequently you set polling, the change should manifest within a minute or so.
 
 Here is the user interface, which allows you to turn items on and off in the list by checking the "power on" column.
 
