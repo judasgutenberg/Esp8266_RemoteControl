@@ -11,7 +11,7 @@ function deviceFeatures($userId, $deviceId) {
             ON df.device_type_feature_id=dtf.device_type_feature_id AND df.user_id=dtf.user_id WHERE df.user_id=" . intval($userId);
   //echo $sql;
   if($deviceId){
-    $sql .= "WHERE df.device_id=" . intval($deviceId);
+    $sql .= " AND df.device_id=" . intval($deviceId);
 
   }
   $result = mysqli_query($conn, $sql);
