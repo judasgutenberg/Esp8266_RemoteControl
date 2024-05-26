@@ -171,6 +171,14 @@ function deviceFeatureForm($error,  $userId) {
       'error' => gvfa('description', $error)
 	  ],
     [
+	    'label' => 'device feature type',
+      'name' => 'device_type_feature_id',
+      'type' => 'select',
+	    'value' => gvfa("device_type_feature_id", $source), 
+      'error' => gvfa("device_type_feature_id", $error),
+      'values' => "SELECT device_type_feature_id, name as 'text' FROM device_type_feature WHERE user_id='" . $userId  . "' ORDER BY name ASC",
+	  ] ,
+    [
 	    'label' => 'enabled',
       'name' => 'enabled',
       'type' => 'bool',
@@ -649,6 +657,49 @@ function managementRuleTools() {
 
 function getWeatherDataByCoordinates($latitude, $longitude, $apiKey) {
   $baseUrl = "https://api.openweathermap.org/data/2.5/weather";
+  $query = http_build_query([
+      'lat' => $latitude,
+      'lon' => $longitude,
+      'appid' => $apiKey,
+      'units' => 'metric' // Use 'imperial' for Fahrenheit
+  ]);
+  $url = "$baseUrl?$query";
+
+  // Initialize a cURL session
+  $ch = curl_init();
+
+  // Set the URL and options
+  curl_setopt($ch, CURLOPT_URL, $url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+  // Execute the cURL session
+  $response = curl_exec($ch);
+
+  // Check for errors
+  if ($response === false) {
+      $error = curl_error($ch);
+      curl_close($ch);
+      throw new Exception("cURL Error: $error");
+  }
+
+  // Close the cURL session
+  curl_close($ch);
+
+  // Decode the JSON response
+  $weatherData = json_decode($response, true);
+
+  // Check for JSON decode errors
+  if (json_last_error() !== JSON_ERROR_NONE) {
+      throw new Exception("JSON Decode Error: " . json_last_error_msg());
+  }
+
+  return $weatherData;
+}
+
+
+
+function getWeatherForecast($latitude, $longitude, $apiKey) {
+  $baseUrl = "https://api.openweathermap.org/data/2.5/onecall";
   $query = http_build_query([
       'lat' => $latitude,
       'lon' => $longitude,
