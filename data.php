@@ -436,7 +436,8 @@ if($_REQUEST) {
 								}
 							}
 						}
-
+						$lastModified  = "";
+						$sqlToUpdateDeviceFeature = "";
 						//echo count($pinValuesKnownToDevice) . "*" . $pinCursor . "<BR>";
 						//this part update device_feature so we can tell from the server if the device has taken on the server's value
 						if(count($pinValuesKnownToDevice) > $pinCursor && $pinValuesKnownToDevice[$pinCursor] != "") {
@@ -510,7 +511,9 @@ if($_REQUEST) {
 							}
 							$sqlToUpdateDeviceFeature .= " WHERE device_feature_id=" . $deviceFeatureId;
 							logSql("change sql:" . $sqlToUpdateDeviceFeature);
-							$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
+							if($sqlToUpdateDeviceFeature != "") {
+								$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
+							}
 						}
 							
 						if($row["i2c"] > 0){
