@@ -28,7 +28,7 @@ This system is multi-user and supports multiple user accounts, each with potenti
 5. Add a record to the device_feature table describing the specific pin (here a human readable name would be useful).
 6. You can change the state of a particular ESP8266's pin by changing the state of the value column in the device_feature record.  Make sure to set enabled to 1 as well.  Depending on the speed of your network and how frequently you set polling, the change should manifest within a minute or so.
 
-Here is the user interface, which allows you to turn items on and off in the list by checking the "power on" column.
+Here is the user interface, which allows you to turn items on and off in the list by checking the "power on" column. (You do it all from the device_feature list view.)
 
 ![alt text](esp8266-remote.jpg?raw=true)
 
