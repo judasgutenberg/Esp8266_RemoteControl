@@ -40,12 +40,12 @@ In addition to supporting the changing of pin states using a server, this system
 
 index.h has the HTML for a locally-served front-end to take advantage of the local API, though the Local Remote is better for this than relying on the massive computational overhead of a modern web browser. It would also be easy to write a phone app, which would be great for someone who always keeps a phone nearby. But I am not such a person. (I kind of hate the smartphone user experience.)
 
-There is also an inverter-related endpoint in data.php to return live inverter information to the local remote (for now, this only works with SolArk inverters, as that is the kind I have, though they are notoriously hard to get data from).  This inverter data is also available to a conditions-processing system that automatically turns device_features on or off depending on values.  Such conditions go into the table management_rule in the conditions column.   Conditions include tokens that take the form <tablename[location_id].columnName>.  An example token would be <inverter_log[].battery_percentage>.  A condition made with that token would be
+There is also an inverter-related endpoint in data.php to return live inverter information to the local remote (for now, this only works with SolArk inverters, as that is the kind I have, though they are notoriously hard to get data from).  This inverter data is also available to a conditions-processing system that automatically turns device_features on or off depending on values.  Such conditions go into the table management_rule in the conditions column.   Conditions include tokens that take the form <tablename[location_id].columnName>.  An example token would be <inverter_log[].battery_percentage>.  A condition made with that token would be something like
 
 
 <inverter_log[].battery_percentage> > 80
 
-which would set the connected device_feature's value to result_value if the condition is met and allow_automatic_management in the device_feature record is true.  Management_rules can be added to device_features in the device_feature editor, which looks like this:
+which would set the connected device_feature's value to result if the condition is met and allow_automatic_management in the device_feature record is true.  Management_rules can be added to device_features in the device_feature editor, which looks like this:
 
 ![alt text](devicefeature.jpg?raw=true)
 
