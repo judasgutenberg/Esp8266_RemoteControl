@@ -24,7 +24,7 @@ This system is multi-user and supports multiple user accounts, each with potenti
 1. Connect the device to the ESP8266 somehow (see schematic).  Usually this involves a relay and a relay driver circuit such as the ULN2003 (there are lots of examples of this online, for example https://microcontrollerslab.com/relay-driver-circuit-using-uln2003/).
 2. Add a record to the device table to represent your particular ESP8266.  In the code, device_id and location_id refer to the same entity. Your ESP8266 will send that id as locationId to the server whenever it polls it to get updates on what values the device with its pins should have.  You will need to set locationId to this value in config.c before compiling the code for you ESP8266.
 3. Add a record to the device_type table describing your particular type of device (in this case, ESP8266).  Details for this don't matter much.
-4. Add a record to the device_type_feature table describing the pin (mostly the pin number and perhaps the I2C address if it is on a slave).
+4. Add a record to the device_type_feature table describing the pin (mostly the pin number and, if it is on an Arduino slave, the I2C address).
 5. Add a record to the device_feature table describing the specific pin (here a human readable name would be useful).
 6. You can change the state of a particular ESP8266's pin by changing the state of the value column in the device_feature record.  Make sure to set enabled to 1 as well.  Depending on the speed of your network and how frequently you set polling, the change should manifest within a minute or so.
 
