@@ -70,7 +70,7 @@ function deviceFeatures($userId, $deviceId) {
     );
     $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a>  | ";
     $toolsTemplate .= "<a href='?action=log&table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>View Log</a>  | ";
-    $toolsTemplate .= "<a onclick='return confirm(\"Are you sure you want to delete this " . $table . "?\")' href='?table=" . $table . "&action=delete&" . $table . "_id=<" . $table . "_id/>'>Delete</a>";
+    $toolsTemplate .= deleteLink($table, $table. "_id" ); 
     if($result) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
       
@@ -117,7 +117,7 @@ function devices($userId) {
     );
     $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
     $toolsTemplate .= " | <a href='?table=device_feature&device_id=<" . $table . "_id/>'>Device Features</a>";
-    $toolsTemplate .= " | <a onclick='return confirm(\"Are you sure you want to delete this " . $table . "?\")' href='?table=" . $table . "&action=delete&" . $table . "_id=<" . $table . "_id/>'>Delete</a>";
+    $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
     if($result) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
       
@@ -154,6 +154,12 @@ function deviceFeatureForm($error,  $userId) {
       'name' => $table . "_id",
       'type' => 'read_only',
 	    'value' => gvfa($table . "_id", $source)
+	  ],
+    [
+	    'label' => 'created',
+      'name' => "created",
+      'type' => 'read_only',
+	    'value' => gvfa("created", $source)
 	  ],
 		[
 	    'label' => 'name',
