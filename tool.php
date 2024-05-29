@@ -198,6 +198,11 @@ if ($user) {
   } else if ($action == "delete") {
     $sql = "DELETE FROM " . $table . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "' AND user_id='" . $userId . "'";
     //die($sql);
+    $hashedEntities = gvfw('hashed_entities');
+    $whatHashedEntitiesShouldBe =  crypt($table .$table . "_id"  . intval(gvfw( $table . "_id")) , $encryptionPassword);
+    if($hashedEntities != $whatHashedEntitiesShouldBe){
+      die("Data appears to have been tampered with.");
+    }
     $result = mysqli_query($conn, $sql);
     header('Location: '.$_SERVER['PHP_SELF'] . "?table=" . $table);
   } else if($table!= "user" || $user["role"]  == "super") {
