@@ -74,13 +74,19 @@ if ($user) {
     $tableName = filterStringForSqlEntities(gvfw('table_name'));
     $out = getColumns($tableName);
     die(json_encode($out));
-  } else if($action == "genericformsave") { //Definitely fix the security here!!!!
+  } else if($action == "genericformsave") { //this should be pretty secure now that i am hashing all the descriptive information to make sure it isn't tampered with
     //this only works for checkboxes for now
     $tableName = filterStringForSqlEntities(gvfw('table_name'));
     $name = filterStringForSqlEntities(gvfw('name'));
     $value = gvfw('value');
     $primaryKeyName = filterStringForSqlEntities(gvfw('primary_key_name'));
     $primaryKeyValue = gvfw('primary_key_value');
+    $hashedEntities = gvfw('hashed_entities');
+    $whatHashedEntitiesShouldBe =  crypt($name . $tableName .$primaryKeyName  . $primaryKeyValue , $encryptionPassword);
+    if($hashedEntities != $whatHashedEntitiesShouldBe){
+      echo $hashedEntities. " " . $whatHashedEntitiesShouldBe . "\n";
+      die("Data appears to have been tampered with.");
+    }
     if($value == "false"){
       $value = 0;
     } else if($value == "true"){
