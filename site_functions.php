@@ -550,7 +550,7 @@ function genericEntityList($userId, $table) {
   if($thisDataResult) {
     $thisDataRows = mysqli_fetch_all($thisDataResult, MYSQLI_ASSOC); 
     $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a>";
-    $toolsTemplate .= " | <a onclick='return(confirm(\"Are you sure you want to delete this " . $table . "?\"))' href='?action=delete&table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Delete</a>";
+    $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
     //if($table == "device") {
       //$toolsTemplate .= " | <a href='?table=device_feature&device_id=<" . $table . "_id/>'>Device Features</a>";
 
@@ -1111,7 +1111,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
       $value = $row[$name];
       if($function){ //allows us to have columns with values that are calculated from PHP
       
-        $function =  tokenReplace($function, $row) . ";"; 
+        $function =  tokenReplace($function, $row, $tableName) . ";"; 
         //echo $function . "<P>";
         try{
           eval('$value = ' . $function);
@@ -1138,7 +1138,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
         }
       } else {
         if($template != "") {
-          $out .=  "<a href=\"" . tokenReplace($template, $row) . "\">" . htmlspecialchars($value) . "</a>";
+          $out .=  "<a href=\"" . tokenReplace($template, $row, $tableName) . "\">" . htmlspecialchars($value) . "</a>";
         } else {
           $out .=  htmlspecialchars($value);
         }
@@ -1148,7 +1148,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
     }
     if($toolsTemplate) {
       
-      $out .= "<span>" . tokenReplace($toolsTemplate,  $row) . "</span>\n";
+      $out .= "<span>" . tokenReplace($toolsTemplate,  $row, $tableName) . "</span>\n";
     }
     $out .= "</div>\n";
   }
@@ -1162,9 +1162,14 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
   return $out;
 }
 
-function tokenReplace($template, $data, $strDelimiterBegin = "<", $strDelimiterEnd = "/>"){
+function tokenReplace($template, $data,  $tableName = "", $strDelimiterBegin = "<", $strDelimiterEnd = "/>"){
+  Global $encryptionPassword;
   foreach($data as $key => $value) {
     $template = str_replace($strDelimiterBegin . $key . $strDelimiterEnd, $value, $template);
+  }
+  if($tableName!= "") {
+    $hashedEntities = crypt($tableName . $tableName . "_id" . $data[$tableName . "_id"], $encryptionPassword);
+    $template = str_replace($strDelimiterBegin . "hashed_entities" . $strDelimiterEnd, $hashedEntities, $template);
   }
   return $template;
 }
@@ -1312,6 +1317,10 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
     $dataToScan = $data;
     die();//don't worry about this case
   }
+  $isInsert = true;
+  if (!empty($primaryKey) && implode(",", array_values($primaryKey)) != "") {
+    $isInsert = false;
+  }
   foreach ($dataToScan as $datum) {
     $column = $datum["name"];
     $type =  strtolower(gvfa("type", $datum, ""));
@@ -1320,6 +1329,9 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
       //echo  $column . "=" . $value . ", " . $type . "<BR>";
       $skip = false;
       if($type == "many-to-many") {
+        if ($isInsert) {
+          $skip  = true;
+        }
       } else if($type == "time" && $value == "") {
         $skip  = true;
 
@@ -1346,7 +1358,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
     }
   }
  
-  if (!empty($primaryKey) && implode(",", array_values($primaryKey)) != "") {
+  if (!$isInsert) {
       // Update the existing record
       $sanitizedData = [];
       $updateFields = [];
@@ -1503,4 +1515,9 @@ function getColumns($tableName) {
     $columnNames = array_column($rows, 'Field');
     return $columnNames;
   }
+}
+
+function deleteLink($table, $pkName) {
+  $out = "<a onclick='return confirm(\"Are you sure you want to delete this " . $table . "?\")' href='?table=" . $table . "&action=delete&" . $pkName . "=<" . $pkName . "/>&hashed_entities=<hashed_entities/>'>Delete</a>";
+  return $out;
 }
