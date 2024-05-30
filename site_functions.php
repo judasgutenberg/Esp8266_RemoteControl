@@ -194,125 +194,6 @@ function xForm($error = NULL, $wordId, $userId, $wordListId = "", $source = null
   return genericForm($formData, $submitLabel);
 }
 
-function xxTestForm($error = NULL, $testId = "", $userId = "") {
-  if($testId  != "") {
-    Global $conn;
-    $sql = "SELECT * FROM `test` WHERE user_id = " . intval($userId) . " AND test_id = " . intval($testId);
-    //echo $sql;
-    $result = mysqli_query($conn, $sql);
-    $row = $result->fetch_assoc();
-    $source = $row;
-  } else {
-    $source = $_POST;
-  }
-  $submitLabel = "save test";
-  if($testId  == "") {
-    $submitLabel = "create test";
-  }
-	$formData = array(
-		[
-	    'label' => 'test name',
-      'name' => 'name',
-	    'value' => gvfa("name", $source), 
-      'error' => gvfa('name', $error)
-	  ],
-    [
-	    'label' => 'enabled',
-      'name' => 'enabled',
-      'type' => 'bool',
-	    'value' => gvfa("enabled", $source), 
-      'error' => gvfa('name', $error)
-	  ],
-		[
-	    'label' => 'test type',
-      'name' => 'test_type',
-      'type' => 'select',
-      'values' => [
-        'chatGpt',
-        'blacklist',
-        'regex indices',
-        'whitelist'
-      ],
-	    'value' => gvfa("test_type", $source), 
-      'error' => gvfa('auttest_typehor', $error)
-	  ],
-
-
-    [
-	    'label' => 'word list',
-      'name' => 'word_list_id',
-      'type' => 'select',
-	    'value' => gvfa("word_list_id", $source), 
-      'error' => gvfa('word_list_id', $error),
-      'values' => "SELECT word_list_id, name as 'text' FROM word_list WHERE user_id='" . $userId  . "' ORDER BY name ASC",
-	  ],
-
-	  [
-	    'label' => 'test content',
-      'width' => 400,
-      'height' => 100,
-      'name' => 'test_content',
-      'value' => gvfa("test_content", $source), 
-      'error' => gvfa('test_content', $error)
-	  ],
-    [
-	    'label' => 'table name',
-      'name' => 'table_name',
-      'type' => 'hidden',
-      'value' => gvfa("table_name", $source), 
-      'error' => gvfa('table_name', $error)
-	  ],
-    [
-	    'label' => 'type value',
-      'name' => 'type',
-      'type' => 'select',
-	    'value' => gvfa("type", $source), 
-      'error' => gvfa('type', $error),
-      'values' => [
-        'white',
-        'black' 
-      ],
-	  ],
-	  [
-	    'label' => 'color',
-      'name' => 'markup_color',
-      'type' => 'color',
-      'value' => gvfa("markup_color", $source), 
-      'error' => gvfa('markup_color', $error)
-	  ],
-    [
-	    'label' => 'size',
-      'name' => 'markup_size',
-      'value' => gvfa("markup_size", $source), 
-      'error' => gvfa('markup_size', $error)
-	  ],
-    [
-	    'label' => 'weight',
-      'name' => 'markup_weight',
-      'value' => gvfa("markup_weight", $source), 
-      'error' => gvfa('markup_weight', $error)
-	  ],
-    [
-	    'label' => 'more config',
-      'name' => 'config',
-      'type' => 'json',
-      'value' => gvfa("config", $source), 
-      'template' => '{"excludeNumbers": 0, "caseSensitive":0, "searchForPhrasesAndRoots":0, "requireLeadingSpaces":0, "filterOutResultsContainingCarriageReturns": 0}',
-      'error' => gvfa('config', $error)
-	  ],
-	  [
-	    'label' => '',
-      'name' => 'test_id',
-      'value' => gvfa("test_id", $source),
-      'type' => 'hidden',
-      'error' => gvfa('test_id', $error)
-	  ]
-	);
-  //var_dump($formData);
-  return genericForm($formData, $submitLabel);
-}
- 
-
 function newUserForm($error = NULL) {
 	$formData = array(
   [
@@ -337,101 +218,6 @@ function newUserForm($error = NULL) {
 	   ]
 	);
   return genericForm($formData, "create user");
-}
-
-function utilities($user, $viewMode = "list") {
-  $utilitiesData = array(
-
- 
- 
-    [
-      'label' => 'Impersonate Another User',
-      'description' => "Act as a different user.",
-      'key' => 'impersonate',
-      'role' => 'admin',
-      'form' => 
-          [
-            [
-              'label' => 'User',
-              'name' => 'user_id',
-              'value' => gvfa("user_id", $_POST),
-              'type' => 'select',
-              'values' => "SELECT user_id, email as 'text' FROM user ORDER BY email ASC"
-            ]
-          ],
-        'action' => 'impersonateUser(<user_id/>)'
-    ],
-    [
-      'label' => 'Reset User App Data',
-      'description' => "Reset user data back to factory.",
-      'key' => 'userreset',
-      'role' => 'admin',
-      'form' => 
-          [
-            [
-              'label' => 'User',
-              'name' => 'user_id',
-              'value' => gvfa("user_id", $_POST),
-              'type' => 'select',
-              'values' => "SELECT user_id, email as 'text' FROM user ORDER BY email ASC"
-            ]
-          ],
-        'action' => 'updateTablesFromTemplate(<user_id/>)'
-    ],
-    [
-      'label' => 'Reset Factory Data',
-      'description' => "Set factory data to that of a specific user.",
-      'key' => 'factoryreset',
-      'role' => 'admin',
-      'form' => 
-          [
-            [
-              'label' => 'User',
-              'name' => 'user_id',
-              'value' => gvfa("user_id", $_POST),
-              'type' => 'select',
-              'values' => "SELECT user_id, email as 'text' FROM user ORDER BY email ASC"
-            ]
-          ],
-        'action' => 'updateTemplateTablesFromAUser(<user_id/>)'
-    ],
-    [
-      'label' => 'Fix Word List Ids',
-      'description' => "They might be wrong from the factory.",
-      'key' => 'fixwordlistids',
-      'role' => 'admin',
-      'form' => 
-          [
-            [
-              'label' => 'User',
-              'name' => 'user_id',
-              'value' => gvfa("user_id", $_POST),
-              'type' => 'select',
-              'values' => "SELECT user_id, email as 'text' FROM user ORDER BY email ASC"
-            ]
-          ],
-        'action' => 'fixWordListIds(<user_id/>)'
-    ]
-
-  );
-
-
-  $filteredData = array_filter($utilitiesData, function ($subData) use ($user) {
-    return doesUserHaveRole($user, gvfa("role", $subData));
-  });
-
-  if($viewMode == "data"){
-    return $filteredData;
-  }
-  if($viewMode == "list"){
-    $out = presentList($filteredData);
-  } else if ($viewMode == "form") {
-
-    die();
-  }
-  
-  return $out;
-      
 }
 
 function presentList($data) {
@@ -1220,9 +1006,15 @@ function createUser(){
   if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 	$errors["email"] = "Invalid email format";
   }
+
   if(is_null($errors)) {
   	$encryptedPassword =  crypt($password, $encryptionPassword);
-  	$sql = "INSERT INTO user(email, password, created) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" .$formatedDateTime . "')"; 
+    if(count(userList()) == 0) {
+      //if there are no users, create the first one as admin
+      $sql = "INSERT INTO user(email, password, created, role) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" .$formatedDateTime . "','admin')"; 
+    } else {
+  	  $sql = "INSERT INTO user(email, password, created) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" .$formatedDateTime . "')"; 
+    }
 	  //echo $sql;
     //die();
     $result = mysqli_query($conn, $sql);
@@ -1236,7 +1028,18 @@ function createUser(){
   
   }
   return false;
- 
+}
+
+function userList(){
+  Global $conn;
+  $userSql = "SELECT * FROM user";
+  $thisDataResult = mysqli_query($conn, $userSql);
+  if($thisDataResult) {
+    $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+  } else {
+    $rows = [];
+  }
+  return $rows;
 }
  
 function download($path, $friendlyName){
