@@ -238,7 +238,7 @@ function genericListActionBackend(name, value, tableName, primaryKeyName, primar
  
     }
   };
-  let url = "?action=genericFormSave&table_name=" + encodeURIComponent(tableName) + "&primary_key_name=" + encodeURIComponent(primaryKeyName) + "&primary_key_value=" + encodeURIComponent(primaryKeyValue) + "&value=" + encodeURIComponent(value) + "&name=" + encodeURIComponent(name) + "&hashed_entities="  + encodeURIComponent(hashedEntities); 
+  let url = "?action=genericFormSave&table=" + encodeURIComponent(tableName) + "&primary_key_name=" + encodeURIComponent(primaryKeyName) + "&primary_key_value=" + encodeURIComponent(primaryKeyValue) + "&value=" + encodeURIComponent(value) + "&name=" + encodeURIComponent(name) + "&hashed_entities="  + encodeURIComponent(hashedEntities); 
   xmlhttp.open("GET", url, true);
   xmlhttp.send();
 }
@@ -279,7 +279,7 @@ function managementRuleTableChange() {
     }
   }
 
-  let url = "?action=getcolumns&table_name=" + encodeURIComponent(managementToolTableName); 
+  let url = "?action=getcolumns&table=" + encodeURIComponent(managementToolTableName); 
   xmlhttp.open("GET", url, true);
   xmlhttp.send();
 }
