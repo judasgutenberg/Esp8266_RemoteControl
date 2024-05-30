@@ -71,18 +71,16 @@ if ($user) {
     $out = getDevices($userId);
     die(json_encode($out));
   } else if($action == "getcolumns") {
-    $tableName = filterStringForSqlEntities(gvfw('table_name'));
-    $out = getColumns($tableName);
+    $out = getColumns($table);
     die(json_encode($out));
   } else if($action == "genericformsave") { //this should be pretty secure now that i am hashing all the descriptive information to make sure it isn't tampered with
-    //this only works for checkboxes for now
-    $tableName = filterStringForSqlEntities(gvfw('table_name'));
+    //mostly works for numbers, colors, and checkboxes
     $name = filterStringForSqlEntities(gvfw('name'));
     $value = gvfw('value');
     $primaryKeyName = filterStringForSqlEntities(gvfw('primary_key_name'));
     $primaryKeyValue = gvfw('primary_key_value');
     $hashedEntities = gvfw('hashed_entities');
-    $whatHashedEntitiesShouldBe =  crypt($name . $tableName .$primaryKeyName  . $primaryKeyValue , $encryptionPassword);
+    $whatHashedEntitiesShouldBe =  crypt($name . $table .$primaryKeyName  . $primaryKeyValue , $encryptionPassword);
     if($hashedEntities != $whatHashedEntitiesShouldBe){
       echo $hashedEntities. " " . $whatHashedEntitiesShouldBe . "\n";
       die("Data appears to have been tampered with.");
@@ -93,13 +91,13 @@ if ($user) {
       $value = 1;
     }
     //a little safer only because it allows a user to screw up records connected to their userId but mabe revisit!!!
-    $sql = "UPDATE ". filterStringForSqlEntities($tableName) . " SET " . filterStringForSqlEntities($name) . "='" .  mysqli_real_escape_string($conn, $value) . "' WHERE user_id=" . intval($userId) . " AND " . filterStringForSqlEntities($primaryKeyName) . "='" . intval($primaryKeyValue) . "'";
+    $sql = "UPDATE ". filterStringForSqlEntities($table) . " SET " . filterStringForSqlEntities($name) . "='" .  mysqli_real_escape_string($conn, $value) . "' WHERE user_id=" . intval($userId) . " AND " . filterStringForSqlEntities($primaryKeyName) . "='" . intval($primaryKeyValue) . "'";
     
     $result = mysqli_query($conn, $sql);
     var_dump($result);
     die($sql);
   
-  } else if ($action == "runencryptedsql") {
+  } else if ($action == "runencryptedsql") { //this is secure because the sql is very hard to decrypt if you don't know the encryption key
  
     $headerData = json_decode(gvfw('headerData'), true);
     $currentSortColumn = gvfw('sortColumn');
@@ -126,7 +124,7 @@ if ($user) {
     }
     die();
   }
-  if ($table == "sensors") {
+  if ($table == "sensors") {//a pseudo-table, as sensors are either one-to-a-device or a device_feature
     $out .= currentSensorData($user);
   } else if ($table == "utilities") {
     $action = $_GET['action']; //$_POST will have this as "run"
@@ -183,8 +181,7 @@ if ($user) {
     $out .= devices($userId);
   } else if ($action == "startcreate") {
     if ($table == "test") {
-       
-
+      
     } else if($table == "device") {
       $out .=  deviceForm($errors,  $userId);
     } else  if($table == "management_rule") {
