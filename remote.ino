@@ -64,6 +64,7 @@ int timeOffset = 0;
 long lastCommandId = 0;
 bool glblRemote = false;
 bool onePinAtATimeMode = false; //used when the server starts gzipping data and we can't make sense of it
+bool requestNonJsonPinInfo = false; //use to get much more compressed data from data.php
 int pinCursor = -1;
 bool connectionFailureMode = true;  //when we're in connectionFailureMode, we check connection much more than pollingGranularity. otherwise, we check it every pollingGranularity
 
@@ -211,7 +212,7 @@ void handleWeatherData() {
   //Serial.println(pinMap->size());
   //i don't send the data to the server with JSON because it's pretty simple and can just be * and | delimited
   //the weather data part of the string, delimited by *
-  transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue) + "*" + NullifyOrNumber(sensorType); //using delimited data instead of JSON to keep things simple
+  transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue) + "*" + NullifyOrNumber(sensorType) + "*" + NullifyOrNumber(requestNonJsonPinInfo); //using delimited data instead of JSON to keep things simple
   //the time-stamps of connection failures, delimited by *
   transmissionString = transmissionString + "|" + JoinValsOnDelimiter(moxeeRebootTimes, "*", 10);
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
@@ -445,8 +446,13 @@ void sendRemoteData(String datastring) {
         setLocalHardwareToServerStateFromJson((char *)retLine.c_str());
         receivedDataJson = true;
         break; 
+      } else if(retLine.charAt(0) == '|') {
+        Serial.println(retLine);
+        setLocalHardwareToServerStateFromNonJson((char *)retLine.c_str());
+        receivedDataJson = true;
+        break;         
       } else {
-        Serial.print("non-JSON line returned: ");
+        Serial.print("non-readable line returned: ");
         Serial.println(retLine);
       }
     }
@@ -459,6 +465,90 @@ void sendRemoteData(String datastring) {
   Serial.println(hostGet);
   clientGet.stop();
 }
+
+void splitString(const String& input, char delimiter, String* outputArray, int arraySize) {
+  int lastIndex = 0;
+  int count = 0;
+  for (int i = 0; i < input.length(); i++) {
+    if (input.charAt(i) == delimiter) {
+      // Extract the substring between the last index and the current index
+      outputArray[count++] = input.substring(lastIndex, i);
+      lastIndex = i + 1;
+      if (count >= arraySize) {
+        break;
+      }
+    }
+  }
+  // Extract the last substring after the last delimiter
+  outputArray[count++] = input.substring(lastIndex);
+}
+
+
+void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
+  char * nodeName="device_data";
+  int pinNumber = 0;
+  String key;
+  int value = -1;
+  int canBeAnalog = 0;
+  int enabled = 0;
+  int pinCounter = 0;
+  int serverSaved = 0;
+  String friendlyPinName = "";
+  String nonJsonPinArray[12];
+  String nonJsonDatumString;
+  String nonJsonPinDatum[5];
+  String pinIdParts[2];
+  char i2c = 0;
+  splitString(nonJsonLine, '|', nonJsonPinArray, 12);
+  int foundPins = 0;
+  for(int i=1; i<12; i++) {
+    nonJsonDatumString = nonJsonPinArray[i];
+    if(key.indexOf('*')>0) {
+      
+      splitString(nonJsonDatumString, '*', nonJsonPinDatum, 3);
+      key = nonJsonPinDatum[1];
+      friendlyPinName = nonJsonPinDatum[0];
+      value = nonJsonPinDatum[2].toInt();
+      pinName[foundPins] = friendlyPinName;
+      canBeAnalog = nonJsonPinDatum[3].toInt();
+      serverSaved = nonJsonPinDatum[4].toInt();
+      if(key.indexOf('.')>0) {
+        splitString(key, '.', pinIdParts, 2);
+        i2c = pinIdParts[0].toInt();
+        pinNumber = pinIdParts[1].toInt();
+      } else {
+        pinNumber = key.toInt();
+      }
+      if(!localSource || serverSaved == 1){
+        if(serverSaved == 1) {//confirmation of serverSaved, so localSource flag is no longer needed
+          Serial.println("SERVER SAVED==1!!");
+          localSource = false;
+        } else {
+          pinMap->remove(key);
+          pinMap->put(key, value);
+        }
+      }
+      pinList[foundPins] = key;
+      pinMode(pinNumber, OUTPUT);
+      if(i2c > 0) {
+        setPinValueOnSlave(i2c, (char)pinNumber, (char)value); 
+      } else {
+        if(canBeAnalog) {
+          analogWrite(pinNumber, value);
+        } else {
+          if(value > 0) {
+            digitalWrite(pinNumber, HIGH);
+          } else {
+            digitalWrite(pinNumber, LOW);
+          }
+        }
+      }
+    }
+    foundPins++;
+  }
+  pinTotal = foundPins;
+}
+
 
 //this will set any pins specified in the JSON
 void setLocalHardwareToServerStateFromJson(char * json){
@@ -478,6 +568,8 @@ void setLocalHardwareToServerStateFromJson(char * json){
   DeserializationError error = deserializeJson(jsonBuffer, json);
   if(jsonBuffer["device"]) { //deviceName is a global
     deviceName = (String)jsonBuffer["device"];
+    //once we have deviceName, we can get data this way:
+    requestNonJsonPinInfo = true;
   }
   if(jsonBuffer[nodeName]) {
     pinCounter = 0;
