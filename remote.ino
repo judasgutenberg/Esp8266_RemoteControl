@@ -39,6 +39,7 @@ WiFiUDP ntpUDP; //i guess i need this for time lookup
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
 bool localSource = false; //turns true when a local edit to the data is done. at that point we have to send local upstream to the server
+byte justDeviceJson = 1;
 long connectionFailureTime = 0;
 long lastDataLogTime = 0;
 long localChangeTime = 0;
@@ -64,7 +65,7 @@ int timeOffset = 0;
 long lastCommandId = 0;
 bool glblRemote = false;
 bool onePinAtATimeMode = false; //used when the server starts gzipping data and we can't make sense of it
-bool requestNonJsonPinInfo = false; //use to get much more compressed data from data.php
+char requestNonJsonPinInfo = 0; //use to get much more compressed data from data.php
 int pinCursor = -1;
 bool connectionFailureMode = true;  //when we're in connectionFailureMode, we check connection much more than pollingGranularity. otherwise, we check it every pollingGranularity
 
@@ -213,17 +214,18 @@ void handleWeatherData() {
   //i don't send the data to the server with JSON because it's pretty simple and can just be * and | delimited
   //the weather data part of the string, delimited by *
   //so stupid:
-  String requestNonJsonPinInfoStr = "0";
-  if(requestNonJsonPinInfo) {
-    requestNonJsonPinInfoStr = "1";
+ 
+ 
+  if(ipAddress.indexOf(' ') > 0) { //i was getting HTML header info mixed in for some reason
+    ipAddress = ipAddress.substring(0, ipAddress.indexOf(' '));
   }
-  transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue) + "*" + NullifyOrNumber(sensorType) + "*" + requestNonJsonPinInfoStr; //using delimited data instead of JSON to keep things simple
+  transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue) + "*" + NullifyOrNumber(sensorType); //using delimited data instead of JSON to keep things simple
   //the time-stamps of connection failures, delimited by *
   transmissionString = transmissionString + "|" + JoinValsOnDelimiter(moxeeRebootTimes, "*", 10);
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
   transmissionString = transmissionString + "|" + JoinMapValsOnDelimiter(pinMap, "*", pinTotal); //also send pin as they are known back to the server
   //other server-relevant info as needed, delimited by *
-  transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddress;
+  transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddress + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson;
   //Serial.println(transmissionString);
   //had to use a global, died a little inside
   if(glblRemote) {
@@ -595,7 +597,7 @@ void setLocalHardwareToServerStateFromJson(char * json){
     deviceName = (String)jsonBuffer["device"];
     Serial.println("DEVICE: " + deviceName);
     //once we have deviceName, we can get data this way:
-    requestNonJsonPinInfo = true;
+    requestNonJsonPinInfo = 1;
   }
   if(jsonBuffer[nodeName]) {
     pinCounter = 0;
@@ -821,5 +823,5 @@ void localShowData() {
     }
   }
   out += "]}";
-  server.send(200, "text/plain", out); f
+  server.send(200, "text/plain", out); 
 }
