@@ -446,6 +446,18 @@ void sendRemoteData(String datastring) {
       receivedData = true;
       String retLine = clientGet.readStringUntil('\n');
       retLine.trim();
+      //Here the code is designed to be able to handle either JSON or double-delimited data from data.php
+      //I started with just JSON, but that's a notoriously bulky data format, what with the names of all the
+      //entities embedded and the overhead of quotes and brackets.  This is a problem because when the 
+      //amount of data being sent by my server reached some critical threshold (I'm not sure what it is!)
+      //it automatically gzipped the data, which I couldn't figure out how to unzip on a ESP8266.
+      //So then I made a system of sending only some of the data at a time via JSON.  That introduced a lot of
+      //complexity and also made the system less responsive, since you now had to wait for the device_feature to
+      //get its turn in a fairly slow queue (on a slow internet connection, it would take ten seconds per queue item).
+      //So that's why I implemented the non-JSON data format, which can easily specify the values for all 
+      //device_features in one data object (assuming it's not too big). The ESP8266 still can respond to data in the
+      //JSON format, but which it will assume if the first character of the data is a '{' -- but if the first character
+      //is a '|' then it assumes the data is non-JSON. Otherwise it assumes it's HTTP boilerplate and ignores it.
       if(retLine.charAt(0) == '{') {
         Serial.print("JSON: ");
         Serial.println(retLine);
