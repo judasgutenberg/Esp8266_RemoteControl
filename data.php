@@ -29,6 +29,8 @@ $locationId = "";
 $deviceName = "Your device";
 $deviceIds = [];
 $sensorId = "NULL";
+$nonJsonPinData = 0;
+$justGetDeviceInfo = 0;
 if($_REQUEST) {
 	if(array_key_exists("storagePassword", $_REQUEST)) {
 		$deviceIds = deriveDeviceIdsFromStoragePassword($_REQUEST["storagePassword"]);
@@ -74,6 +76,7 @@ if($_REQUEST) {
 			if(count($arrWeatherData)>4) {
 				$sensorId = $arrWeatherData[4];
 			}
+
 		} else {
 			$lines = [];
 			$arrWeatherData = [0,0,0,0,0,0,0,0,0,0,0,0];
@@ -275,7 +278,9 @@ if($_REQUEST) {
 						$extraInfo = explode("*", $lines[3]);
 						if(count($extraInfo)>1){
 							$lastCommandId = $extraInfo[0];
-							$specificPin = $extraInfo[1];
+							if(!$nonJsonPinData) {
+								$specificPin = $extraInfo[1]; //don't do this if $nonJsonPinData
+							}
 						}
 						if(count($extraInfo)>2){
 							$mustSaveLastKnownDeviceValueAsValue = $extraInfo[2];
@@ -297,6 +302,13 @@ if($_REQUEST) {
 							}
 							
 						} 
+
+						if(count($extraInfo)>4) {
+							$nonJsonPinData = $extraInfo[4];
+						}
+						if(count($extraInfo)>5) {
+							$justGetDeviceInfo = $extraInfo[5];
+						}
 					 
 					}
 				
@@ -529,7 +541,27 @@ if($_REQUEST) {
 			$out = ["error"=>"you lack permissions"];
 		}
 	}
-	echo json_encode($out);
+	if($nonJsonPinData && array_key_exists("device_data", $out)) { //create a very bare-bones non-JSON delimited data object to speed up data propagation to device
+		$nonJsonOutString = "|";
+		foreach($out["device_data"] as $deviceDatum){
+			if($deviceDatum["enabled"]) {
+				if($deviceDatum["i2c"] > 0){
+					$pinName = $deviceDatum["i2c"] . "." . $deviceDatum["pin_number"];
+				} else {
+					$pinName = $deviceDatum["pin_number"];
+				}
+				$nonJsonOutString .=  str_replace("|", "", str_replace("*", "", $deviceDatum["name"])) . "*" . $pinName . "*" . $deviceDatum["value"] .  "*" . $deviceDatum["can_be_analog"] . "*" . $deviceDatum["ss"] . "|";
+			}
+
+		}
+		$nonJsonOutString = substr($nonJsonOutString, 0, -1);
+		die($nonJsonOutString);
+	} else {
+		if($justGetDeviceInfo && array_key_exists("device_data", $out)) { //used to greatly limit sent back JSON data to a just-started ESP8266
+			unset($out["device_data"]);
+		}
+		echo json_encode($out);
+	}
 } else {
 	echo '{"message":"done", "method":"' . $method . '"}';
 }
