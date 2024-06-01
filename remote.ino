@@ -806,7 +806,7 @@ void localSetData() {
       localSource = true; //sets the NodeMCU into a mode it cannot get out of until the server sends back confirmation it got the data
     }
   }
-  server.send(200, "text/plain", "Data received"); //Send ADC value, temperature and humidity JSON to client ajax request
+  server.send(200, "text/plain", "Data received");
 }
 
 void localShowData() {
@@ -821,5 +821,5 @@ void localShowData() {
     }
   }
   out += "]}";
-  server.send(200, "text/plain", out); //Send ADC value, temperature and humidity JSON to client ajax request
+  server.send(200, "text/plain", out); f
 }
