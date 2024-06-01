@@ -453,10 +453,10 @@ void sendRemoteData(String datastring) {
       //it automatically gzipped the data, which I couldn't figure out how to unzip on a ESP8266.
       //So then I made a system of sending only some of the data at a time via JSON.  That introduced a lot of
       //complexity and also made the system less responsive, since you now had to wait for the device_feature to
-      //get its turn in a fairly slow queue (on a slow internet connection, it would take ten seconds per queue item).
+      //get its turn in a fairly slow round-robin (on a slow internet connection, it would take ten seconds per item).
       //So that's why I implemented the non-JSON data format, which can easily specify the values for all 
       //device_features in one data object (assuming it's not too big). The ESP8266 still can respond to data in the
-      //JSON format, but which it will assume if the first character of the data is a '{' -- but if the first character
+      //JSON format, which it will assume if the first character of the data is a '{' -- but if the first character
       //is a '|' then it assumes the data is non-JSON. Otherwise it assumes it's HTTP boilerplate and ignores it.
       if(retLine.charAt(0) == '{') {
         Serial.print("JSON: ");
