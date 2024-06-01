@@ -212,7 +212,12 @@ void handleWeatherData() {
   //Serial.println(pinMap->size());
   //i don't send the data to the server with JSON because it's pretty simple and can just be * and | delimited
   //the weather data part of the string, delimited by *
-  transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue) + "*" + NullifyOrNumber(sensorType) + "*" + NullifyOrNumber(requestNonJsonPinInfo); //using delimited data instead of JSON to keep things simple
+  //so stupid:
+  String requestNonJsonPinInfoStr = "0";
+  if(requestNonJsonPinInfo) {
+    requestNonJsonPinInfoStr = "1";
+  }
+  transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue) + "*" + NullifyOrNumber(sensorType) + "*" + requestNonJsonPinInfoStr; //using delimited data instead of JSON to keep things simple
   //the time-stamps of connection failures, delimited by *
   transmissionString = transmissionString + "|" + JoinValsOnDelimiter(moxeeRebootTimes, "*", 10);
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
@@ -442,11 +447,13 @@ void sendRemoteData(String datastring) {
       String retLine = clientGet.readStringUntil('\n');
       retLine.trim();
       if(retLine.charAt(0) == '{') {
+        Serial.print("JSON: ");
         Serial.println(retLine);
         setLocalHardwareToServerStateFromJson((char *)retLine.c_str());
         receivedDataJson = true;
         break; 
       } else if(retLine.charAt(0) == '|') {
+        Serial.print("non-JSON: ");
         Serial.println(retLine);
         setLocalHardwareToServerStateFromNonJson((char *)retLine.c_str());
         receivedDataJson = true;
@@ -485,7 +492,6 @@ void splitString(const String& input, char delimiter, String* outputArray, int a
 
 
 void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
-  char * nodeName="device_data";
   int pinNumber = 0;
   String key;
   int value = -1;
@@ -501,11 +507,13 @@ void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
   char i2c = 0;
   splitString(nonJsonLine, '|', nonJsonPinArray, 12);
   int foundPins = 0;
+  Serial.print("localSource: ");
+  Serial.println(localSource);
   for(int i=1; i<12; i++) {
     nonJsonDatumString = nonJsonPinArray[i];
-    if(key.indexOf('*')>0) {
+    if(nonJsonDatumString.indexOf('*')>0) {
       
-      splitString(nonJsonDatumString, '*', nonJsonPinDatum, 3);
+      splitString(nonJsonDatumString, '*', nonJsonPinDatum, 5);
       key = nonJsonPinDatum[1];
       friendlyPinName = nonJsonPinDatum[0];
       value = nonJsonPinDatum[2].toInt();
@@ -519,6 +527,7 @@ void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
       } else {
         pinNumber = key.toInt();
       }
+      //Serial.println("!ABOUT TO TURN OF localsource: " + (String)localSource +  " serverSAVED: " + (String)serverSaved);
       if(!localSource || serverSaved == 1){
         if(serverSaved == 1) {//confirmation of serverSaved, so localSource flag is no longer needed
           Serial.println("SERVER SAVED==1!!");
@@ -531,11 +540,15 @@ void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
       pinList[foundPins] = key;
       pinMode(pinNumber, OUTPUT);
       if(i2c > 0) {
+        //Serial.print("Non-JSON i2c: ");
+        //Serial.println(key);
         setPinValueOnSlave(i2c, (char)pinNumber, (char)value); 
       } else {
         if(canBeAnalog) {
           analogWrite(pinNumber, value);
         } else {
+          //Serial.print("Non-JSON reg: ");
+          //Serial.println(key);
           if(value > 0) {
             digitalWrite(pinNumber, HIGH);
           } else {
@@ -568,6 +581,7 @@ void setLocalHardwareToServerStateFromJson(char * json){
   DeserializationError error = deserializeJson(jsonBuffer, json);
   if(jsonBuffer["device"]) { //deviceName is a global
     deviceName = (String)jsonBuffer["device"];
+    Serial.println("DEVICE: " + deviceName);
     //once we have deviceName, we can get data this way:
     requestNonJsonPinInfo = true;
   }
