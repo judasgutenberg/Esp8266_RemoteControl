@@ -278,10 +278,10 @@ if($_REQUEST) {
 						$extraInfo = explode("*", $lines[3]);
 						if(count($extraInfo)>1){
 							$lastCommandId = $extraInfo[0];
-							if(!$nonJsonPinData) {
-								$specificPin = $extraInfo[1]; //don't do this if $nonJsonPinData
-							}
+							$specificPin = $extraInfo[1]; //don't do this if $nonJsonPinData
+					
 						}
+						//var_dump($extraInfo);
 						if(count($extraInfo)>2){
 							$mustSaveLastKnownDeviceValueAsValue = $extraInfo[2];
 						}
@@ -308,6 +308,9 @@ if($_REQUEST) {
 						}
 						if(count($extraInfo)>5) {
 							$justGetDeviceInfo = $extraInfo[5];
+							if($justGetDeviceInfo == '1'){
+								$specificPin = -1; //this should always be -1 if justGetDeviceInfo is 1
+							}
 						}
 					 
 					}
@@ -541,7 +544,10 @@ if($_REQUEST) {
 			$out = ["error"=>"you lack permissions"];
 		}
 	}
-	if($nonJsonPinData && array_key_exists("device_data", $out)) { //create a very bare-bones non-JSON delimited data object to speed up data propagation to device
+	//var_dump($extraInfo);
+	//var_dump($nonJsonPinData);
+	//var_dump($justGetDeviceInfo);
+	if($nonJsonPinData == '1' && array_key_exists("device_data", $out)) { //create a very bare-bones non-JSON delimited data object to speed up data propagation to device
 		$nonJsonOutString = "|";
 		foreach($out["device_data"] as $deviceDatum){
 			if($deviceDatum["enabled"]) {
@@ -557,7 +563,7 @@ if($_REQUEST) {
 		$nonJsonOutString = substr($nonJsonOutString, 0, -1);
 		die($nonJsonOutString);
 	} else {
-		if($justGetDeviceInfo && array_key_exists("device_data", $out)) { //used to greatly limit sent back JSON data to a just-started ESP8266
+		if($justGetDeviceInfo == '1' && array_key_exists("device_data", $out)) { //used to greatly limit sent back JSON data to a just-started ESP8266
 			unset($out["device_data"]);
 		}
 		echo json_encode($out);
