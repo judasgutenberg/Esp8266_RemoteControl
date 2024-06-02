@@ -386,10 +386,10 @@ if($_REQUEST) {
 												$managmentColumn = "";
 												$managementLocationId = "";
 												if(count($dotParts) > 1){
-													$managmentColumn = $dotParts[1];
+													$managmentColumn = filterStringForSqlEntities($dotParts[1]);
 												}
 												$bracketParts = explode("[", $dotParts[0]);
-												$managementTableName = $bracketParts[0];
+												$managementTableName = filterStringForSqlEntities($bracketParts[0]);
 												if(count($bracketParts) > 1){
 													$managementLocationId =  str_replace("]", "", $bracketParts[1]);
 												}
@@ -416,6 +416,8 @@ if($_REQUEST) {
 												//after all that, replace the token with the value in the condition!
 												$conditions = str_replace($originalToken, $lookedUpValue, $conditions);
 
+											} else {
+												logSql("BAD lookup SQL: " . $managmentValueLookupSql);
 											}
 											if(!$tokenReplaced){
 												$conditions = str_replace($originalToken, "<fail/>", $conditions);
