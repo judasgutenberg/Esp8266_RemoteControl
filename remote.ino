@@ -504,7 +504,11 @@ void splitString(const String& input, char delimiter, String* outputArray, int a
   outputArray[count++] = input.substring(lastIndex);
 }
 
-
+//if the backend sends too much text data at once, it is likely to get gzipped, which is hard to deal with on a microcontroller with limited resources
+//so a better strategy is to send double-delimited data instead of JSON, with data consistently in known ordinal positions
+//thereby making the data payloads small enough that the server never gzips them
+//i've made it so the ESP8266 can receive data in either format. it takes the lead on specifying which format it prefers
+//but if it misbehaves, i can force it to be one format or the other remotely 
 void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
   int pinNumber = 0;
   String key;
