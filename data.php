@@ -112,7 +112,7 @@ if($_REQUEST) {
 						$out["energy_info"]["bat_percent"] = $energyInfo["battery_percentage"];
 					}
 				}
-			} else if ($mode=="getDeviceData") {
+			} else if ($mode=="getDeviceData" || $mode == "getInitialDeviceInfo") {
 				$deviceSql = "SELECT name, location_name FROM device WHERE device_id = " . intval($deviceId);
 				$getDeviceResult = mysqli_query($conn, $deviceSql);
 				if($getDeviceResult) {
@@ -247,7 +247,22 @@ if($_REQUEST) {
 			
 
 			}
-			if($mode == "getDeviceData" || $mode == "saveData" ) {
+			if($mode == "getInitialDeviceInfo" ) { //return a double-delimited string of additional sensors, etc. this one begins with a "*" so we can identify it in the ESP8266. it will be the first data requested by the remote control
+				$outString = "*" . str_replace("|", "", str_replace("*", "", $deviceName));
+				$sensorSql = "SELECT  pin_number, power_pin, sensor_type, sensor_sub_type, via_i2c_address  AS i2c, device_feature_id 
+					FROM device_feature f 
+					LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id 
+					WHERE  sensor_type IS NOT NULL AND device_id=" . intval($deviceId) . " AND f.enabled ORDER BY sensor_type, i2c, pin_number;";
+				$sensorResult = mysqli_query($conn, $sensorSql);
+				if($sensorResult){
+					$rows = mysqli_fetch_all($sensorResult, MYSQLI_ASSOC);
+					foreach($rows as $row){
+						//var_dump($row);
+						$outString .= "|" . $row["pin_number"] . "*" . $row["power_pin"] . "*" . $row["sensor_type"] . "*" . $row["sensor_sub_type"] . "*" . $row["via_i2c_address"];
+					}
+				}
+				die($outString);
+			} else if($mode == "getDeviceData" || $mode == "saveData" ) {
 				$out["device"] = $deviceName;
 				$ipAddress = "192.168.1.X";
 				$mustSaveLastKnownDeviceValueAsValue = 0;
@@ -321,7 +336,9 @@ if($_REQUEST) {
 				$managementCache = []; //save us some database lookups
 				//SELECT pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=11 ORDER BY i2c, pin_number;
 				//the part where we include any data from our remote control system:
-				$deviceSql = "SELECT allow_automatic_management, last_known_device_value, pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE pin_number IS NOT NULL AND device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
+				$deviceSql = "SELECT allow_automatic_management, last_known_device_value, pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id 
+					FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id 
+					WHERE pin_number IS NOT NULL AND sensor_type IS NULL AND device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
 				//echo $deviceSql;
 				$result = mysqli_query($conn, $deviceSql);
 				if($result) {
