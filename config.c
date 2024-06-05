@@ -7,6 +7,10 @@ const char* storagePassword = "somethingdifferent"; //to ensure someone doesn't 
 const char* urlGet = "/weather/data.php";
 const char* hostGet = "yourdomain.com";
 const int sensorType = 0; //2301;//2301;//680; //SENSORS! -- we support these: 180 for BMP180, 2301 for DHT 2301, 680 for BME680.  0 for no sensor.  No support for multiple sensors for now.
+const int sensorI2C = 0x77;
+const int sensorSubType = 21; // DHT 21, AM2301
+const int sensorData = 14; 
+const int sensorPower = 12;
 const int locationId = 4; //3 really is watchdog
 const int pollingGranularity = 4; //how often to poll backend in seconds, 4 makes sense
 const int dataLoggingGranularity = 300; //how often to store data in backend, 300 makes sense
@@ -23,9 +27,8 @@ const int deepSleepTimePerLoop = 12;  //in seconds. saves energy.  set to zero i
 
 //if you are using a DHT hygrometer/temperature probe, these values will be important
 //particularly if you reflashed a MySpool temperature probe (https://myspool.com/) with custom firmware
-//on those, the dhtData is 14 and dhtPower is 12
-const int dhtData = 14; 
-const int dhtPower = 12;
+//on those, the sensorData is 14 and sensorPower is 12
+ 
 // #define dhType DHT11 // DHT 11
 // #define dhType DHT22 // DHT 22, AM2302, AM2321
 const int dhtType = 21; // DHT 21, AM2301
