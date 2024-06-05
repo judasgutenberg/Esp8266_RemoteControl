@@ -22,18 +22,19 @@
 #include <SFE_BMP180.h>
 #include <Adafruit_BMP085.h>
 #include <Temperature_LM75_Derived.h>
-#include "BME280I2C.h"
+#include <Adafruit_BMP280.h>
 #include <Wire.h>
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
-DHT dht(dhtData, dhtType);
-SFE_BMP180 BMP180;
-BME680_Class BME680;
-Adafruit_BMP085 BMP085d;
-Generic_LM75 LM75;
-BME280I2C BMP280;
-
+//i create 12 of each in case we add more sensors via device_features
+DHT* dht[12];
+SFE_BMP180 BMP180[12];
+BME680_Class BME680[12];
+Adafruit_BMP085 BMP085d[12];
+Generic_LM75 LM75[12];
+Adafruit_BMP280 BMP280[12];
+ 
 StaticJsonDocument<1000> jsonBuffer;
 WiFiUDP ntpUDP; //i guess i need this for time lookup
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
@@ -93,23 +94,24 @@ void handleRoot() {
  server.send(200, "text/html", s); //Send web page
 }
 
-void handleWeatherData() {
+String weatherDataString(int sensorType, int deviceFeatureId, char objectCursor) {
   double humidityValue;
   double temperatureValue;
   double pressureValue;
   double gasValue;
-  String transmissionString = "";
   int32_t humidityRaw;
   int32_t temperatureRaw;
   int32_t pressureRaw;
   int32_t gasRaw;
   int32_t alt;
-  
-  static char     buf[16];                        // sprintf text buffer
-  static uint16_t loopCounter = 0;                // Display iterations
+  static char buf[16];
+  static uint16_t loopCounter = 0;  
+  if(deviceFeatureId == NULL) {
+    objectCursor = 0;
+  }
   if (sensorType == 680) {
     //BME680 code:
-    BME680.getSensorData(temperatureRaw, humidityRaw, pressureRaw, gasRaw);
+    BME680[objectCursor].getSensorData(temperatureRaw, humidityRaw, pressureRaw, gasRaw);
     //i'm not sure what all this is about, since i just copied it from the BME680 example:
     sprintf(buf, "%4d %3d.%02d", (loopCounter - 1) % 9999,  // Clamp to 9999,
             (int8_t)(temperatureRaw / 100), (uint8_t)(temperatureRaw % 100));   // Temp in decidegrees
@@ -131,26 +133,21 @@ void handleWeatherData() {
     gasValue = (double)gasRaw/100;  //all i ever get for this is 129468.6 and 8083.7
   } else if (sensorType == 2301) {
     //DHT2301 code:
-    digitalWrite(dhtPower, HIGH); //turn on DHT power. 
+    digitalWrite(sensorPower, HIGH); //turn on DHT power. 
     delay(10);
-    humidityValue = (double)dht.readHumidity();
-    temperatureValue = (double)dht.readTemperature();
+    humidityValue = (double)dht[objectCursor]->readHumidity();
+    temperatureValue = (double)dht[objectCursor]->readTemperature();
     pressureValue = NULL; //really should set unknown values as null
-    digitalWrite(dhtPower, LOW);//turn off DHT power. maybe it saves energy, and that's why MySpool did it this way
+    digitalWrite(sensorPower, LOW);//turn off DHT power. maybe it saves energy, and that's why MySpool did it this way
   } else if(sensorType == 280) {
-    BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
-    BME280::PresUnit presUnit(BME280::PresUnit_Pa);
-    float temp(NAN), hum(NAN), pres(NAN);
-    //so dumb:
-    BMP280.read(pres, temp, hum,  tempUnit,  presUnit);
-    humidityValue = (double)hum;
-    temperatureValue = (double)temp;
-    pressureValue = (double)pres/100;
+    humidityValue = NULL;
+    temperatureValue = BMP280[objectCursor].readTemperature();
+    pressureValue = BMP280[objectCursor].readPressure()/100;
   } else if(sensorType == 180) {
     //BMP180 code:
     char status;
     double p0,a;
-    status = BMP180.startTemperature();
+    status = BMP180[objectCursor].startTemperature();
     if (status != 0)
     {
       // Wait for the measurement to complete:
@@ -158,10 +155,10 @@ void handleWeatherData() {
       // Retrieve the completed temperature measurement:
       // Note that the measurement is stored in the variable T.
       // Function returns 1 if successful, 0 if failure.
-      status = BMP180.getTemperature(temperatureValue);
+      status = BMP180[objectCursor].getTemperature(temperatureValue);
       if (status != 0)
       {
-        status = BMP180.startPressure(3);
+        status = BMP180[objectCursor].startPressure(3);
         if (status != 0)
         {
           // Wait for the measurement to complete:
@@ -171,10 +168,10 @@ void handleWeatherData() {
           // Note also that the function requires the previous temperature measurement (temperatureValue).
           // (If temperature is stable, you can do one temperature measurement for a number of pressure measurements.)
           // Function returns 1 if successful, 0 if failure.
-          status = BMP180.getPressure(pressureValue,temperatureValue);
+          status = BMP180[objectCursor].getPressure(pressureValue,temperatureValue);
           if (status != 0)
           {
-            a = BMP180.altitude(pressureValue,p0);
+            a = BMP180[objectCursor].altitude(pressureValue,p0);
           }
           else Serial.println("error retrieving pressure measurement\n");
         }
@@ -187,12 +184,12 @@ void handleWeatherData() {
     humidityValue = NULL; //really should set unknown values as null
   } else if (sensorType == 85) {
     //https://github.com/adafruit/Adafruit-BMP085-Library
-    temperatureValue = BMP085d.readTemperature();
-    pressureValue = BMP085d.readPressure()/100; //to get millibars!
+    temperatureValue = BMP085d[objectCursor].readTemperature();
+    pressureValue = BMP085d[objectCursor].readPressure()/100; //to get millibars!
     humidityValue = NULL; //really should set unknown values as null
   } else if (sensorType == 75) { //LM75
     //https://electropeak.com/learn/interfacing-lm75-temperature-sensor-with-arduino/
-    temperatureValue = LM75.readTemperatureC();
+    temperatureValue = LM75[objectCursor].readTemperatureC();
     pressureValue = NULL;
     humidityValue = NULL;
   } else {
@@ -201,25 +198,61 @@ void handleWeatherData() {
     pressureValue = NULL;
     humidityValue = NULL;
   }
+  String transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue) + "*" + NullifyOrNumber(sensorType) + "*" + NullifyOrNumber(deviceFeatureId); //using delimited data instead of JSON to keep things simple
+  return transmissionString;
+}
+
+void startWeatherSensors(int sensorType, char objectCursor) {
+  if(sensorType == 680) {
+    Serial.print(F("Initializing BME680 sensor...\n"));
+    while (!BME680[objectCursor].begin(I2C_STANDARD_MODE) && sensorType == 680) {  // Start BME680 using I2C, use first device found
+      Serial.print(F(" - Unable to find BME680. Trying again in 5 seconds.\n"));
+      delay(5000);
+    }  // of loop until device is located
+    Serial.print(F("- Setting 16x oversampling for all sensors\n"));
+    BME680[objectCursor].setOversampling(TemperatureSensor, Oversample16);  // Use enumerated type values
+    BME680[objectCursor].setOversampling(HumiditySensor, Oversample16);     // Use enumerated type values
+    BME680[objectCursor].setOversampling(PressureSensor, Oversample16);     // Use enumerated type values
+    //Serial.print(F("- Setting IIR filter to a value of 4 samples\n"));
+    BME680[objectCursor].setIIRFilter(IIR4);  // Use enumerated type values
+    //Serial.print(F("- Setting gas measurement to 320\xC2\xB0\x43 for 150ms\n"));  // "�C" symbols
+    BME680[objectCursor].setGas(320, 150);  // 320�c for 150 milliseconds
+  } else if (sensorType == 2301) {
+    Serial.print(F("Initializing DHT AM2301 sensor...\n"));
+    pinMode(sensorPower, OUTPUT);
+    digitalWrite(sensorPower, LOW);
+    if(objectCursor == 0){
+      dht[objectCursor] = new DHT(sensorData, sensorSubType);
+    } else {
+      dht[objectCursor] = new DHT(0, 0);
+    }
+    dht[objectCursor]->begin();
+  } else if (sensorType == 180) { //BMP180
+    BMP180[objectCursor].begin();
+  } else if (sensorType == 85) { //BMP085
+    Serial.print(F("Initializing BMP085...\n"));
+    BMP085d[objectCursor].begin();
+  } else if (sensorType == 280) {
+    if(!BMP280[objectCursor].begin(0x76)){
+      Serial.println("Couldn't find BMX280!");
+    }
+  }
+}
+
+
+void handleWeatherData() {
+  String transmissionString = "";
+  int deviceFeatureId = 0;
   if(onePinAtATimeMode) {
     pinCursor++;
     if(pinCursor >= pinTotal) {
       pinCursor = 0;
     }
   }
-  //Serial.print("Pin total: ");
-  //Serial.print(pinTotal);
-  //Serial.print(" ");
-  //Serial.println(pinMap->size());
-  //i don't send the data to the server with JSON because it's pretty simple and can just be * and | delimited
-  //the weather data part of the string, delimited by *
-  //so stupid:
- 
- 
   if(ipAddress.indexOf(' ') > 0) { //i was getting HTML header info mixed in for some reason
     ipAddress = ipAddress.substring(0, ipAddress.indexOf(' '));
   }
-  transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue) + "*" + NullifyOrNumber(sensorType); //using delimited data instead of JSON to keep things simple
+  transmissionString = weatherDataString(sensorType, NULL, 0);
   //the time-stamps of connection failures, delimited by *
   transmissionString = transmissionString + "|" + JoinValsOnDelimiter(moxeeRebootTimes, "*", 10);
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
@@ -262,50 +295,9 @@ void setup(void){
   server.on("/writeLocalData", localSetData);
  
   
-  server.begin();                  //Start server
+  server.begin(); 
   Serial.println("HTTP server started");
-  if(sensorType == 680) {
-    Serial.print(F("Initializing BME680 sensor...\n"));
-    while (!BME680.begin(I2C_STANDARD_MODE) && sensorType == 680) {  // Start BME680 using I2C, use first device found
-      Serial.print(F(" - Unable to find BME680. Trying again in 5 seconds.\n"));
-      delay(5000);
-    }  // of loop until device is located
-    Serial.print(F("- Setting 16x oversampling for all sensors\n"));
-    BME680.setOversampling(TemperatureSensor, Oversample16);  // Use enumerated type values
-    BME680.setOversampling(HumiditySensor, Oversample16);     // Use enumerated type values
-    BME680.setOversampling(PressureSensor, Oversample16);     // Use enumerated type values
-    //Serial.print(F("- Setting IIR filter to a value of 4 samples\n"));
-    BME680.setIIRFilter(IIR4);  // Use enumerated type values
-    //Serial.print(F("- Setting gas measurement to 320\xC2\xB0\x43 for 150ms\n"));  // "�C" symbols
-    BME680.setGas(320, 150);  // 320�c for 150 milliseconds
-  } else if (sensorType == 2301) {
-    Serial.print(F("Initializing DHT AM2301 sensor...\n"));
-    pinMode(dhtPower, OUTPUT);
-    digitalWrite(dhtPower, LOW);
-    dht.begin();
-  } else if (sensorType == 180) { //BMP180
-    BMP180.begin();
-  } else if (sensorType == 85) { //BMP085
-    Serial.print(F("Initializing BMP085...\n"));
-    BMP085d.begin();
-  } else if (sensorType == 280) {
-    
-    if(!BMP280.begin()){
-      Serial.println("Couldn't find BMX280!");
-    }
-    
-    switch(BMP280.chipModel())
-    {
-       case BME280::ChipModel_BME280:
-         Serial.println("Found BME280 sensor! Success.");
-         break;
-       case BME280::ChipModel_BMP280:
-         Serial.println("Found BMP280 sensor! No Humidity available.");
-         break;
-       default:
-         Serial.println("Found UNKNOWN sensor! Error!");
-    }
-  }
+  startWeatherSensors(sensorType, 0);
   //initialize NTP client
   timeClient.begin();
   // Set offset time in seconds to adjust for your timezone, for example:
@@ -460,7 +452,12 @@ void sendRemoteData(String datastring) {
       //device_features in one data object (assuming it's not too big). The ESP8266 still can respond to data in the
       //JSON format, which it will assume if the first character of the data is a '{' -- but if the first character
       //is a '|' then it assumes the data is non-JSON. Otherwise it assumes it's HTTP boilerplate and ignores it.
-      if(retLine.charAt(0) == '{') {
+      if(retLine.charAt(0) == '*') { //getInitialDeviceInfo
+        Serial.print("Initial Device Data: ");
+        Serial.println(retLine);
+        getDeviceNameAndAdditionalSensors((char *)retLine.c_str());
+        break;
+      } else if(retLine.charAt(0) == '{') {
         Serial.print("JSON: ");
         Serial.println(retLine);
         setLocalHardwareToServerStateFromJson((char *)retLine.c_str());
@@ -503,6 +500,25 @@ void splitString(const String& input, char delimiter, String* outputArray, int a
   // Extract the last substring after the last delimiter
   outputArray[count++] = input.substring(lastIndex);
 }
+
+void getDeviceNameAndAdditionalSensors(char * sensorData){
+  String additionalSensorArray[12];
+  String specificSensorData[5];
+
+  splitString(sensorData, '|', additionalSensorArray, 12);
+  deviceName = additionalSensorArray[0].substring(1);
+  for(int i=1; i<12; i++) {
+    String sensorDatum = additionalSensorArray[i];
+    if(sensorDatum.indexOf('*')>0) {
+      splitString(sensorDatum, '*', specificSensorData, 5);
+    }
+  }
+    
+ 
+
+  
+}
+
 
 //if the backend sends too much text data at once, it is likely to get gzipped, which is hard to deal with on a microcontroller with limited resources
 //so a better strategy is to send double-delimited data instead of JSON, with data consistently in known ordinal positions
