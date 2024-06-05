@@ -576,10 +576,12 @@ function getCurrentSolarData($user) {
     $dataBody = json_decode($dataResponse, true);
 
     $data = $dataBody["data"];
-
-    $loggingSql = "INSERT INTO inverter_log ( user_id, recorded, solar_power, load_power, grid_power, battery_percentage, battery_power) VALUES (";
-    $loggingSql .= $user["user_id"] . ",'" . $formatedDateTime . "'," . $data["pvPower"] . "," . $data["loadOrEpsPower"] . "," . $data["gridOrMeterPower"] . "," . $data["soc"] . "," . $data["battPower"]    . ")";
-    $loggingResult = mysqli_query($conn, $loggingSql);
+    //var_dump($data);
+    if ($data["pvTo"] == true) { //this indicates we have real data!
+      $loggingSql = "INSERT INTO inverter_log ( user_id, recorded, solar_power, load_power, grid_power, battery_percentage, battery_power) VALUES (";
+      $loggingSql .= $user["user_id"] . ",'" . $formatedDateTime . "'," . $data["pvPower"] . "," . $data["loadOrEpsPower"] . "," . $data["gridOrMeterPower"] . "," . $data["soc"] . "," . $data["battPower"]    . ")";
+      $loggingResult = mysqli_query($conn, $loggingSql);
+    }
     //echo $loggingSql;
     return Array("user_id"=>$user["user_id"], "recorded" => $formatedDateTime, "solar_power" => $data["pvPower"], "load_power" => $data["loadOrEpsPower"] ,
     "grid_power" =>  $data["gridOrMeterPower"], "battery_percentage" => $data["soc"], "battery_power" => $data["battPower"]); 
