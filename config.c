@@ -31,6 +31,5 @@ const int deepSleepTimePerLoop = 12;  //in seconds. saves energy.  set to zero i
  
 // #define dhType DHT11 // DHT 11
 // #define dhType DHT22 // DHT 22, AM2302, AM2321
-const int dhtType = 21; // DHT 21, AM2301
-
+ 
 const char pinsToStartLow[] = {12, 13, -1}; //so when the device comes up it doesn't immediately turn on attached devices
