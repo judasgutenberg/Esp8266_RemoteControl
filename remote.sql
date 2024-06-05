@@ -71,6 +71,9 @@ CREATE TABLE device_type_feature(
   can_be_analog TINYINT,
   pin_number INT,
   via_i2c_address INT,
+  sensor_type INT DEFAULT NULL,
+  sensor_sub_type INT DEFAULT NULL,
+  power_pin INT NULL,
   name VARCHAR(100) NULL,
   description VARCHAR(2000) NULL,
   user_id INT NULL,
@@ -99,7 +102,7 @@ CREATE TABLE device_feature(
   value INT NULL,
   name VARCHAR(100) NULL,
   description VARCHAR(2000) NULL,
-  device_feature ADD enabled TINYINT DEFAULT 0,
+  enabled TINYINT DEFAULT 0,
   user_id INT NULL,
   created DATETIME,
   modified DATETIME,
@@ -179,6 +182,12 @@ CREATE TABLE inverter_log(
 --ALTER TABLE management_rule RENAME COLUMN management_script TO conditions;
 --ALTER TABLE device_feature_management_rule ADD management_priority INT DEFAULT 1;
 --ALTER TABLE device_type_feature RENAME COLUMN device_type_id TO feature_type_id;
+
+--ALTER TABLE device_type_feature ADD  sensor_type INT DEFAULT NULL;
+--ALTER TABLE device_type_feature ADD  sensor_sub_type INT DEFAULT NULL;
+--ALTER TABLE device_type_feature ADD  power_pin INT DEFAULT NULL;
+ 
+
 
 --ALTER TABLE device ADD latitude DECIMAL(8,5) NULL;
 --ALTER TABLE device ADD longitude DECIMAL(8,5) NULL;
