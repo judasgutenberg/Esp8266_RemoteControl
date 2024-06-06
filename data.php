@@ -260,12 +260,13 @@ if($_REQUEST) {
 					",NULL,NULL,NULL,NULL," .
 					mysqli_real_escape_string($conn, $sensorId) .
 					")";
-				}
-				//echo $weatherSql;
+					
+					//echo $weatherSql;
 
-				if($temperature != "NULL") { //if temperature is null, do not attempt to store!
-					if(true) { //prevents malicious data corruption
-						$result = mysqli_query($conn, $weatherSql);
+					if($temperature != "NULL") { //if temperature is null, do not attempt to store!
+						if(true) { //prevents malicious data corruption
+							$result = mysqli_query($conn, $weatherSql);
+						}
 					}
 				}
 				$method  = "saveWeatherData";
