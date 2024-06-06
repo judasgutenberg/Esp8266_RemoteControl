@@ -99,15 +99,15 @@ void handleRoot() {
 }
 
 String weatherDataString(int sensorType, int powerPin, int deviceFeatureId, char objectCursor) {
-  double humidityValue;
-  double temperatureValue;
-  double pressureValue;
-  double gasValue;
-  int32_t humidityRaw;
-  int32_t temperatureRaw;
-  int32_t pressureRaw;
-  int32_t gasRaw;
-  int32_t alt;
+  double humidityValue = NULL;
+  double temperatureValue = NULL;
+  double pressureValue = NULL;
+  double gasValue = NULL;
+  int32_t humidityRaw = NULL;
+  int32_t temperatureRaw = NULL;
+  int32_t pressureRaw = NULL;
+  int32_t gasRaw = NULL;
+  int32_t alt  = NULL;
   static char buf[16];
   static uint16_t loopCounter = 0;  
   if(deviceFeatureId == NULL) {
