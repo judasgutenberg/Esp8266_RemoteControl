@@ -249,7 +249,7 @@ if($_REQUEST) {
 			}
 			if($mode == "getInitialDeviceInfo" ) { //return a double-delimited string of additional sensors, etc. this one begins with a "*" so we can identify it in the ESP8266. it will be the first data requested by the remote control
 				$outString = "*" . str_replace("|", "", str_replace("*", "", $deviceName));
-				$sensorSql = "SELECT  pin_number, power_pin, sensor_type, sensor_sub_type, via_i2c_address  AS i2c, device_feature_id 
+				$sensorSql = "SELECT  pin_number, power_pin, sensor_type, sensor_sub_type, via_i2c_address, device_feature_id 
 					FROM device_feature f 
 					LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id 
 					WHERE  sensor_type IS NOT NULL AND device_id=" . intval($deviceId) . " AND f.enabled ORDER BY sensor_type, i2c, pin_number;";
@@ -422,7 +422,9 @@ if($_REQUEST) {
 
 												if($managementValueResult) {
 													$valueArray = mysqli_fetch_array($managementValueResult);
-													$lookedUpValue = $valueArray["value"];
+													if($valueArray) {
+														$lookedUpValue = gvfa("value", $valueArray);
+													}
 													//echo $originalToken . " :" .  $lookedUpValue . "\n";
 												}
 												
