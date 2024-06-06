@@ -64,6 +64,7 @@ if($_REQUEST) {
 			$data = $_REQUEST["data"];
         	$lines = explode("|",$data);
 			$weatherInfoString = $lines[0];
+			/*
         	$arrWeatherData = explode("*", $weatherInfoString);
 			$temperature = $arrWeatherData[0];
 			$pressure = $arrWeatherData[1];
@@ -76,6 +77,7 @@ if($_REQUEST) {
 			if(count($arrWeatherData)>4) {
 				$sensorId = $arrWeatherData[4];
 			}
+			*/
 
 		} else {
 			$lines = [];
@@ -225,16 +227,40 @@ if($_REQUEST) {
 			// //http://randomsprocket.com/weather/data.php?storagePassword=vvvvvvv&locationId=3&mode=saveData&data=10736712.76*12713103.20*1075869.28*NULL|0*0*1710464489*1710464504*1710464519*1710464534*1710464549*1710464563*1710464579*1710464593*
 				
 				//select * from weathertron.weather_data where location_id=3 order by recorded desc limit 0,10;
-				$weatherSql = "INSERT INTO weather_data(location_id, recorded, temperature, pressure, humidity, gas_metric, wind_direction, precipitation, wind_speed, wind_increment, sensor_id) VALUES (" . 
-				mysqli_real_escape_string($conn, $locationId) . ",'" .  
-				mysqli_real_escape_string($conn, $formatedDateTime)  . "'," . 
-				mysqli_real_escape_string($conn, $temperature) . "," . 
-				mysqli_real_escape_string($conn, $pressure) . "," . 
-				mysqli_real_escape_string($conn, $humidity) . "," . 
-				mysqli_real_escape_string($conn, $gasMetric) .
-				",NULL,NULL,NULL,NULL," .
-				mysqli_real_escape_string($conn, $sensorId) .
-				")";
+				$multipleSensorArray = explode("!", $weatherInfoString);
+				foreach($multipleSensorArray  as $sensorDataString) { //if there is a ! in the weatherInfoString, 
+
+					$arrWeatherData = explode("*", $sensorDataString);
+					
+					$temperature = $arrWeatherData[0];
+					$pressure = $arrWeatherData[1];
+					$humidity = $arrWeatherData[2];
+					$gasMetric = "NULL";
+					$deviceFeatureId = "NULL";
+					if(count($arrWeatherData)>3) {
+						$gasMetric = $arrWeatherData[3];
+					}
+					if(count($arrWeatherData)>4) {
+						$sensorId = $arrWeatherData[4];
+					}
+					if(count($arrWeatherData)>5) {
+						$deviceFeatureId = $arrWeatherData[5];
+					}
+
+
+
+					$weatherSql = "INSERT INTO weather_data(location_id, device_feature_id, recorded, temperature, pressure, humidity, gas_metric, wind_direction, precipitation, wind_speed, wind_increment, sensor_id) VALUES (" . 
+					mysqli_real_escape_string($conn, $locationId) . "," .
+					mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
+					mysqli_real_escape_string($conn, $formatedDateTime)  . "'," . 
+					mysqli_real_escape_string($conn, $temperature) . "," . 
+					mysqli_real_escape_string($conn, $pressure) . "," . 
+					mysqli_real_escape_string($conn, $humidity) . "," . 
+					mysqli_real_escape_string($conn, $gasMetric) .
+					",NULL,NULL,NULL,NULL," .
+					mysqli_real_escape_string($conn, $sensorId) .
+					")";
+				}
 				//echo $weatherSql;
 
 				if($temperature != "NULL") { //if temperature is null, do not attempt to store!
@@ -252,13 +278,14 @@ if($_REQUEST) {
 				$sensorSql = "SELECT  pin_number, power_pin, sensor_type, sensor_sub_type, via_i2c_address, device_feature_id 
 					FROM device_feature f 
 					LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id 
-					WHERE  sensor_type IS NOT NULL AND device_id=" . intval($deviceId) . " AND f.enabled ORDER BY sensor_type, i2c, pin_number;";
+					WHERE  sensor_type IS NOT NULL AND device_id=" . intval($deviceId) . " AND f.enabled ORDER BY sensor_type, via_i2c_address, pin_number;";
 				$sensorResult = mysqli_query($conn, $sensorSql);
+				//echo $sensorSql;
 				if($sensorResult){
 					$rows = mysqli_fetch_all($sensorResult, MYSQLI_ASSOC);
 					foreach($rows as $row){
 						//var_dump($row);
-						$outString .= "|" . $row["pin_number"] . "*" . $row["power_pin"] . "*" . $row["sensor_type"] . "*" . $row["sensor_sub_type"] . "*" . $row["via_i2c_address"];
+						$outString .= "|" . $row["pin_number"] . "*" . $row["power_pin"] . "*" . $row["sensor_type"] . "*" . $row["sensor_sub_type"] . "*" . $row["via_i2c_address"] . "*" . $row["device_feature_id"];
 					}
 				}
 				die($outString);
