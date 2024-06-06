@@ -49,8 +49,8 @@ int pinTotal = 12;
 String pinList[12]; //just a list of pins
 String pinName[12]; //for friendly names
 String ipAddress;
-
-String deviceName;
+String deviceName = "";
+String additionalSensorInfo; //we keep it stored in a delimited string just the way it came from the server and unpack it periodically to get the data necessary to read sensors
 
 //https://github.com/spacehuhn/SimpleMap
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
@@ -58,7 +58,11 @@ SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String
   else if (a > b) return 1;  // a is bigger than b
   else return -1;            // a is smaller than b
 });
-
+SimpleMap<String, int> *sensorObjectCursor = new SimpleMap<String, int>([](String &a, String &b) -> int {
+  if (a == b) return 0;      // a and b are equal
+  else if (a > b) return 1;  // a is bigger than b
+  else return -1;            // a is smaller than b
+});
 
 long moxeeRebootTimes[] = {0,0,0,0,0,0,0,0,0,0,0};
 int moxeeRebootCount = 0;
@@ -94,7 +98,7 @@ void handleRoot() {
  server.send(200, "text/html", s); //Send web page
 }
 
-String weatherDataString(int sensorType, int deviceFeatureId, char objectCursor) {
+String weatherDataString(int sensorType, int powerPin, int deviceFeatureId, char objectCursor) {
   double humidityValue;
   double temperatureValue;
   double pressureValue;
@@ -133,13 +137,17 @@ String weatherDataString(int sensorType, int deviceFeatureId, char objectCursor)
     gasValue = (double)gasRaw/100;  //all i ever get for this is 129468.6 and 8083.7
   } else if (sensorType == 2301) {
     //DHT2301 code:
-    digitalWrite(sensorPower, HIGH); //turn on DHT power. 
+    digitalWrite(powerPin, HIGH); //turn on DHT power. 
     delay(10);
     humidityValue = (double)dht[objectCursor]->readHumidity();
     temperatureValue = (double)dht[objectCursor]->readTemperature();
     pressureValue = NULL; //really should set unknown values as null
-    digitalWrite(sensorPower, LOW);//turn off DHT power. maybe it saves energy, and that's why MySpool did it this way
+    digitalWrite(powerPin, LOW);//turn off DHT power. maybe it saves energy, and that's why MySpool did it this way
   } else if(sensorType == 280) {
+    Serial.print("BMP280 getting data with ");
+    Serial.print("objectcursor: ");
+    Serial.print((int)objectCursor);
+    Serial.println();
     humidityValue = NULL;
     temperatureValue = BMP280[objectCursor].readTemperature();
     pressureValue = BMP280[objectCursor].readPressure()/100;
@@ -198,14 +206,21 @@ String weatherDataString(int sensorType, int deviceFeatureId, char objectCursor)
     pressureValue = NULL;
     humidityValue = NULL;
   }
-  String transmissionString = NullifyOrNumber(temperatureValue) + "*" + NullifyOrNumber(pressureValue) + "*" + NullifyOrNumber(humidityValue) + "*" + NullifyOrNumber(gasValue) + "*" + NullifyOrNumber(sensorType) + "*" + NullifyOrNumber(deviceFeatureId); //using delimited data instead of JSON to keep things simple
+  String transmissionString = nullifyOrNumber(temperatureValue) + "*" + nullifyOrNumber(pressureValue) + "*" + nullifyOrNumber(humidityValue) + "*" + nullifyOrNumber(gasValue) + "*" + nullifyOrNumber(sensorType) + "*" + nullifyOrInt(deviceFeatureId); //using delimited data instead of JSON to keep things simple
   return transmissionString;
 }
 
-void startWeatherSensors(int sensorType, char objectCursor) {
-  if(sensorType == 680) {
+void startWeatherSensors(int sensorTypeLocal, int sensorSubTypeLocal, int i2c, int pinNumber, int powerPin) {
+  //i've made all these inputs generic across different sensors, though for now some apply and others do not on some sensors
+  //for example, you can set the i2c address of a BME680 or a BMP280 but not a BMP180.  you can specify any GPIO as a data pin for a DHT
+  int objectCursor = 0;
+  if(sensorObjectCursor->has((String)sensorType)) {
+    objectCursor = sensorObjectCursor->get((String)sensorType);
+  } 
+  
+  if(sensorTypeLocal == 680) {
     Serial.print(F("Initializing BME680 sensor...\n"));
-    while (!BME680[objectCursor].begin(I2C_STANDARD_MODE) && sensorType == 680) {  // Start BME680 using I2C, use first device found
+    while (!BME680[objectCursor].begin(I2C_STANDARD_MODE, i2c) && sensorType == 680) {  // Start BME680 using I2C, use first device found
       Serial.print(F(" - Unable to find BME680. Trying again in 5 seconds.\n"));
       delay(5000);
     }  // of loop until device is located
@@ -217,26 +232,28 @@ void startWeatherSensors(int sensorType, char objectCursor) {
     BME680[objectCursor].setIIRFilter(IIR4);  // Use enumerated type values
     //Serial.print(F("- Setting gas measurement to 320\xC2\xB0\x43 for 150ms\n"));  // "�C" symbols
     BME680[objectCursor].setGas(320, 150);  // 320�c for 150 milliseconds
-  } else if (sensorType == 2301) {
+  } else if (sensorTypeLocal == 2301) {
     Serial.print(F("Initializing DHT AM2301 sensor...\n"));
-    pinMode(sensorPower, OUTPUT);
-    digitalWrite(sensorPower, LOW);
-    if(objectCursor == 0){
-      dht[objectCursor] = new DHT(sensorData, sensorSubType);
-    } else {
-      dht[objectCursor] = new DHT(0, 0);
-    }
+    pinMode(powerPin, OUTPUT);
+    digitalWrite(powerPin, LOW);
+    dht[objectCursor] = new DHT(pinNumber, sensorSubTypeLocal);
     dht[objectCursor]->begin();
-  } else if (sensorType == 180) { //BMP180
+  } else if (sensorTypeLocal == 180) { //BMP180
     BMP180[objectCursor].begin();
   } else if (sensorType == 85) { //BMP085
     Serial.print(F("Initializing BMP085...\n"));
     BMP085d[objectCursor].begin();
-  } else if (sensorType == 280) {
-    if(!BMP280[objectCursor].begin(0x76)){
+  } else if (sensorTypeLocal == 280) {
+    Serial.print("BMP280 begin at i2c: ");
+    Serial.print((int)i2c);
+    Serial.print(" objectcursor:");
+    Serial.print((int)objectCursor);
+    Serial.println();
+    if(!BMP280[objectCursor].begin(i2c)){
       Serial.println("Couldn't find BMX280!");
     }
   }
+  sensorObjectCursor->put((String)sensorType, objectCursor + 1); //we keep track of how many of a particular sensorType we use
 }
 
 
@@ -252,7 +269,9 @@ void handleWeatherData() {
   if(ipAddress.indexOf(' ') > 0) { //i was getting HTML header info mixed in for some reason
     ipAddress = ipAddress.substring(0, ipAddress.indexOf(' '));
   }
-  transmissionString = weatherDataString(sensorType, NULL, 0);
+  transmissionString = weatherDataString(sensorType, sensorPower, NULL, 0);
+  //add the data for any additional sensors, delimited by '!' for each sensor
+  transmissionString = transmissionString + handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), false);
   //the time-stamps of connection failures, delimited by *
   transmissionString = transmissionString + "|" + JoinValsOnDelimiter(moxeeRebootTimes, "*", 10);
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
@@ -297,7 +316,7 @@ void setup(void){
   
   server.begin(); 
   Serial.println("HTTP server started");
-  startWeatherSensors(sensorType, 0);
+  startWeatherSensors(sensorType,  sensorSubType, sensorI2C, sensorData, sensorPower);
   //initialize NTP client
   timeClient.begin();
   // Set offset time in seconds to adjust for your timezone, for example:
@@ -353,7 +372,16 @@ String JoinMapValsOnDelimiter(SimpleMap<String, int> *pinMap, String delimiter, 
   return out;
 }
 
-String NullifyOrNumber(double inVal) {
+String nullifyOrNumber(double inVal) {
+  if(inVal == NULL) {
+    return "NULL";
+  } else {
+
+    return String(inVal);
+  }
+}
+
+String nullifyOrInt(int inVal) {
   if(inVal == NULL) {
     return "NULL";
   } else {
@@ -386,6 +414,9 @@ void sendRemoteData(String datastring) {
   if(millis() - lastDataLogTime > dataLoggingGranularity * 1000) {
     mode = "saveData";
     lastDataLogTime = millis();
+  }
+  if(deviceName == "") {
+    mode = "getInitialDeviceInfo";
   }
   url =  (String)urlGet + "?storagePassword=" + (String)storagePasswordToUse + "&locationId=" + locationId + "&mode=" + mode + "&data=" + datastring;
   Serial.println("\r>>> Connecting to host: ");
@@ -455,7 +486,10 @@ void sendRemoteData(String datastring) {
       if(retLine.charAt(0) == '*') { //getInitialDeviceInfo
         Serial.print("Initial Device Data: ");
         Serial.println(retLine);
-        getDeviceNameAndAdditionalSensors((char *)retLine.c_str());
+        //set the global string; we'll just use that to store our data about addtional sensors
+        additionalSensorInfo = retLine;
+        //once we have it
+        handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), true);
         break;
       } else if(retLine.charAt(0) == '{') {
         Serial.print("JSON: ");
@@ -501,22 +535,53 @@ void splitString(const String& input, char delimiter, String* outputArray, int a
   outputArray[count++] = input.substring(lastIndex);
 }
 
-void getDeviceNameAndAdditionalSensors(char * sensorData){
+String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
   String additionalSensorArray[12];
-  String specificSensorData[5];
+  String specificSensorData[6];
+  int i2c;
+  int pinNumber;
+  int powerPin;
+  int sensorTypeLocal;
+  int sensorSubTypeLocal;
+  int deviceFeatureId;
+  String out = "";
+  int objectCursor = 0;
+  int oldSensorType = -1;
 
   splitString(sensorData, '|', additionalSensorArray, 12);
   deviceName = additionalSensorArray[0].substring(1);
+  requestNonJsonPinInfo = 1; //set this global
   for(int i=1; i<12; i++) {
     String sensorDatum = additionalSensorArray[i];
-    if(sensorDatum.indexOf('*')>0) {
+    if(sensorDatum.indexOf('*')>-1) {
       splitString(sensorDatum, '*', specificSensorData, 5);
+      pinNumber = specificSensorData[0].toInt();
+      powerPin = specificSensorData[1].toInt();
+      sensorTypeLocal = specificSensorData[2].toInt();
+      sensorSubTypeLocal = specificSensorData[3].toInt();
+      i2c = specificSensorData[4].toInt();
+      deviceFeatureId = specificSensorData[5].toInt();
+      if(oldSensorType != sensorTypeLocal) { //they're sorted by sensorType, so the objectCursor needs to be set to zero if we're seeing the first of its type
+        objectCursor = 0;
+      }
+      if(sensorTypeLocal == sensorType) { //this particular additional sensor is the same type as the base (non-additional) sensor, so we have to pre-start it higher
+        objectCursor++;
+      }
+      if(intialize) {
+        Serial.print("Object cursor for ");
+        Serial.print(sensorTypeLocal);
+        Serial.print(": ");
+        Serial.println(objectCursor);
+        startWeatherSensors(sensorTypeLocal, sensorSubTypeLocal, i2c, pinNumber, powerPin); //guess i have to pass all this additional info
+      } else {
+        //otherwise do a weatherDataString
+         out = out + "!" + weatherDataString(sensorTypeLocal, powerPin, deviceFeatureId, objectCursor);
+      }
+      objectCursor++;
+      oldSensorType = sensorTypeLocal;
     }
   }
-    
- 
-
-  
+ return out;
 }
 
 
@@ -545,7 +610,7 @@ void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
   Serial.println(localSource);
   for(int i=1; i<12; i++) {
     nonJsonDatumString = nonJsonPinArray[i];
-    if(nonJsonDatumString.indexOf('*')>0) {
+    if(nonJsonDatumString.indexOf('*')>-1) {
       
       splitString(nonJsonDatumString, '*', nonJsonPinDatum, 5);
       key = nonJsonPinDatum[1];
