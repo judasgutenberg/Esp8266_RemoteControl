@@ -64,8 +64,9 @@ if($_REQUEST) {
 			$data = $_REQUEST["data"];
         	$lines = explode("|",$data);
 			$weatherInfoString = $lines[0];
-			/*
+			
         	$arrWeatherData = explode("*", $weatherInfoString);
+			/*
 			$temperature = $arrWeatherData[0];
 			$pressure = $arrWeatherData[1];
 			$humidity = $arrWeatherData[2];
@@ -74,10 +75,11 @@ if($_REQUEST) {
 			if(count($arrWeatherData)>3) {
 				$gasMetric = $arrWeatherData[3];
 			}
-			if(count($arrWeatherData)>4) {
+			*/
+			if(count($arrWeatherData)>4) { //if we actually want to populate the sensor column in device we need to get sensorId now, though now devices can have multiple sensors
 				$sensorId = $arrWeatherData[4];
 			}
-			*/
+			
 
 		} else {
 			$lines = [];
