@@ -12,7 +12,8 @@ CREATE TABLE weather_data(
   wind_speed DECIMAL(8,3) NULL,
   wind_increment INT NULL,
   gas_metric DECIMAL(15,4) NULL,
-  sensor_id INT NULL
+  sensor_id INT NULL,
+  device_feature_id INT NULL
 );
 
 CREATE TABLE reboot_log(
@@ -99,7 +100,7 @@ CREATE TABLE device_feature(
   device_feature_id INT AUTO_INCREMENT PRIMARY KEY,
   device_type_feature_id INT,
   device_type_id INT,
-  value INT NULL,
+  value INT  DEFAULT NULL,
   name VARCHAR(100) NULL,
   description VARCHAR(2000) NULL,
   enabled TINYINT DEFAULT 0,
@@ -187,11 +188,12 @@ CREATE TABLE inverter_log(
 --ALTER TABLE device_type_feature ADD  sensor_sub_type INT DEFAULT NULL;
 --ALTER TABLE device_type_feature ADD  power_pin INT DEFAULT NULL;
  
-
+--ALTER TABLE device_feature MODIFY value INT DEFAULT NULL;
 
 --ALTER TABLE device ADD latitude DECIMAL(8,5) NULL;
 --ALTER TABLE device ADD longitude DECIMAL(8,5) NULL;
 --ALTER TABLE user ADD open_weather_api_key VARCHAR(100) NULL;
+--ALTER TABLE weather_data ADD device_feature_id INT NULL;
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
 INSERT INTO device (name, device_type_id, created) VALUES ('Hotspot Watchdog', 1, NOW());
