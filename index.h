@@ -32,9 +32,17 @@ h2{
   width:100%;
 }
 
+.sensorcluster {
+  display:block;
+  text-align: center;
+  margin-bottom:10px;
+  background-color:black
+}
+
 .weatherdata {
   display:inline-block;
   text-align: center;
+  padding-left:10px;
   color:white
 }
  
@@ -51,10 +59,9 @@ h2{
   <div id='deviceName'>Your Device</div>
   <div class="devices" id="devices">    
   </div>
-   <div id='temperature' class='weatherdata'></div>
-   <div id='pressure' class='weatherdata'></div>
-   <div id='humidity' class='weatherdata'></div>
-  
+  <div class="sensors" id="sensors">    
+  </div>
+   
 </div>
 
 <script>
@@ -67,18 +74,35 @@ function updateWeatherDisplay() {
         let txt = this.responseText;
         let firstLine = txt.split("|")[0];
         //console.log(firstLine);
-        let weatherData = firstLine.split("*");
-        temperature = weatherData[0];
-        pressure = weatherData[1];
-        humidity = weatherData[2];
-        if(temperature != "NULL" && !isNaN(temperature)) {
-          document.getElementById("temperature").innerHTML = (parseFloat(temperature) * 1.8 + 32).toFixed(2) + "&deg; F"; 
-        }
-        if(pressure != "NULL"  && !isNaN(pressure)) {
-          document.getElementById("pressure").innerHTML = parseFloat(pressure).toFixed(2) + "mm Hg";
-        }
-        if(humidity != "NULL" && !isNaN(humidity)) {
-          document.getElementById("humidity").innerHTML = parseFloat(humidity).toFixed(2) + "% rel";
+        let weatherLines = firstLine.split("!");
+        let sensorDiv = document.getElementById("sensors");
+        sensorDiv.innerHTML = "";
+        let firstSensorDone = false;
+        for(weatherLine of weatherLines){
+          let weatherData = weatherLine.split("*");
+          //temperatureValue*pressureValue*humidityValue*gasValue*sensorType*deviceFeatureId"*sensorName; //using delimited data instead of JSON to keep things simple
+          let temperature = weatherData[0];
+          let pressure = weatherData[1];
+          let humidity = weatherData[2];
+          let sensorName = weatherData[6];
+          sensorDiv.innerHTML += "<div class='sensorcluster'>";
+          if(firstSensorDone) {
+            sensorDiv.innerHTML += "<div class='weatherdata'><b>" + sensorName + "</b></div>";
+            firstSensorDone = true;
+          }
+          if(temperature != "NULL" && !isNaN(temperature)) {
+            sensorDiv.innerHTML += "<div class='weatherdata'>" + (parseFloat(temperature) * 1.8 + 32).toFixed(2) + "&deg; F" + "</div>";
+            //document.getElementById("temperature").innerHTML = (parseFloat(temperature) * 1.8 + 32).toFixed(2) + "&deg; F"; 
+          }
+          if(pressure != "NULL"  && !isNaN(pressure)) {
+            sensorDiv.innerHTML += "<div class='weatherdata'>" +  parseFloat(pressure).toFixed(2) + "mm Hg" + "</div>";
+            //document.getElementById("pressure").innerHTML = parseFloat(pressure).toFixed(2) + "mm Hg";
+          }
+          if(humidity != "NULL" && !isNaN(humidity)) {
+            sensorDiv.innerHTML += "<div class='weatherdata'>" +  parseFloat(humidity).toFixed(2) + "% rel" + "</div>";
+            //document.getElementById("humidity").innerHTML = parseFloat(humidity).toFixed(2) + "% rel";
+          }
+          sensorDiv.innerHTML += "</div>";
         }
       }
   
