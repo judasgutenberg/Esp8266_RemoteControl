@@ -101,7 +101,7 @@ void handleRoot() {
 //returns a "*"-delimited string containing weather data, starting with temperature and ending with deviceFeatureId, if present
 //we might send multiple-such strings (separated by "!") to the backend for multiple sensors on an ESP8266
 //i've made this to handle all the weather sensors i have so i can mix and match, though of course there are many others
-String weatherDataString(int sensorType, int sensorSubType, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor) {
+String weatherDataString(int sensorType, int sensorSubType, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName) {
   double humidityValue = NULL;
   double temperatureValue = NULL;
   double pressureValue = NULL;
@@ -134,7 +134,7 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
       }
       transmissionString = transmissionString + "*";
     }
-    transmissionString = transmissionString + nullifyOrNumber(sensorType) + "*" + nullifyOrInt(deviceFeatureId);
+    transmissionString = transmissionString + nullifyOrNumber(sensorType) + "*" + nullifyOrInt(deviceFeatureId) + "*" + urlEncode(sensorName);
     digitalWrite(powerPin, LOW);
     return transmissionString;
   }
@@ -231,7 +231,7 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
     pressureValue = NULL;
     humidityValue = NULL;
   }
-  transmissionString = nullifyOrNumber(temperatureValue) + "*" + nullifyOrNumber(pressureValue) + "*" + nullifyOrNumber(humidityValue) + "*" + nullifyOrNumber(gasValue) + "*" + nullifyOrNumber(sensorType) + "*" + nullifyOrInt(deviceFeatureId); //using delimited data instead of JSON to keep things simple
+  transmissionString = nullifyOrNumber(temperatureValue) + "*" + nullifyOrNumber(pressureValue) + "*" + nullifyOrNumber(humidityValue) + "*" + nullifyOrNumber(gasValue) + "*" + nullifyOrNumber(sensorType) + "*" + nullifyOrInt(deviceFeatureId) + "*" + urlEncode(sensorName); //using delimited data instead of JSON to keep things simple
   return transmissionString;
 }
 
@@ -297,7 +297,7 @@ void handleWeatherData() {
   if(ipAddress.indexOf(' ') > 0) { //i was getting HTML header info mixed in for some reason
     ipAddress = ipAddress.substring(0, ipAddress.indexOf(' '));
   }
-  transmissionString = weatherDataString(sensorType, sensorSubType, sensorData, sensorPower, sensorI2C, NULL, 0);
+  transmissionString = weatherDataString(sensorType, sensorSubType, sensorData, sensorPower, sensorI2C, NULL, 0, deviceName);
   //add the data for any additional sensors, delimited by '!' for each sensor
   transmissionString = transmissionString + handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), false);
   //the time-stamps of connection failures, delimited by *
@@ -565,7 +565,7 @@ void splitString(const String& input, char delimiter, String* outputArray, int a
 
 String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
   String additionalSensorArray[12];
-  String specificSensorData[6];
+  String specificSensorData[7];
   int i2c;
   int pinNumber;
   int powerPin;
@@ -575,6 +575,7 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
   String out = "";
   int objectCursor = 0;
   int oldSensorType = -1;
+  String sensorName;
 
   splitString(sensorData, '|', additionalSensorArray, 12);
   deviceName = additionalSensorArray[0].substring(1);
@@ -589,6 +590,7 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
       sensorSubTypeLocal = specificSensorData[3].toInt();
       i2c = specificSensorData[4].toInt();
       deviceFeatureId = specificSensorData[5].toInt();
+      sensorName = specificSensorData[6];
       if(oldSensorType != sensorTypeLocal) { //they're sorted by sensorType, so the objectCursor needs to be set to zero if we're seeing the first of its type
         objectCursor = 0;
       }
@@ -603,7 +605,7 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
         startWeatherSensors(sensorTypeLocal, sensorSubTypeLocal, i2c, pinNumber, powerPin); //guess i have to pass all this additional info
       } else {
         //otherwise do a weatherDataString
-         out = out + "!" + weatherDataString(sensorTypeLocal, sensorSubTypeLocal, pinNumber, powerPin, i2c, deviceFeatureId, objectCursor);
+         out = out + "!" + weatherDataString(sensorTypeLocal, sensorSubTypeLocal, pinNumber, powerPin, i2c, deviceFeatureId, objectCursor, sensorName);
       }
       objectCursor++;
       oldSensorType = sensorTypeLocal;
@@ -955,4 +957,22 @@ void localShowData() {
   }
   out += "]}";
   server.send(200, "text/plain", out); 
+}
+
+String urlEncode(String str) {
+  String encodedString="";
+  char c;
+  for (int i =0; i < str.length(); i++) {
+    c = str.charAt(i);
+    if (c == ' ') {
+      encodedString+= "%20";
+    } else if (isalnum(c)) {
+      encodedString+= c;
+    } else {
+      encodedString += '%';
+      encodedString += (byte)c >> 4;
+      encodedString += (byte)c & 0xf;
+    }
+  }
+  return encodedString;
 }
