@@ -499,28 +499,12 @@ function getCurrentSolarData($user) {
   //var_dump($mostRecentInverterRecord);
   //echo $minutesSinceLastRecord;
   
-  if($minutesSinceLastRecord > 5) {
+  if($minutesSinceLastRecord > 5 ) {
     $plantId = $user["energy_api_plant_id"];
     $url = $baseUrl . '/oauth/token';
     $headers = [
             'Content-Type: application/json;charset=UTF-8', // Set Content-Type header to application/json
-            'accept: application/json',
-            'Sec-Fetch-Mode: cors',
-            'Origin: ' . $baseUrl,
-            'Accept: application/json',
-            'Accept-Encoding:   ',
-            'Accept-Language: en-US,en;q=0.9',
-            'Sec-Ch-Ua: "Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-            'Sec-Ch-Ua-Platform: Windows',
-            'Sec-Ch-Ua-Mobile: ?0',
-            'Priority: u=1, i',
-            'Referer: ' . $baseUrl . '/login',
-            'Content-Length: 127',
-            'Content-Type: application/json;charset=UTF-8',
-            'Sec-Fetch-Dest: empty',
-            'Sec-Fetch-Mode: cors',
-            'Sec-Fetch-Site: same-origin',
-            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          
     ];
     $params = [
             'client_id' => 'csp-web',
@@ -558,7 +542,7 @@ function getCurrentSolarData($user) {
     $userParams =   [
             //'access_token' => $access_token,
             'date' => $currentDate,
-            'id' => $plantId,
+            'id' => $user["energy_api_plant_id"],
             'lan' => 'en'         
     ];
 
