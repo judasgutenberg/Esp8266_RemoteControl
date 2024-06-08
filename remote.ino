@@ -98,7 +98,10 @@ void handleRoot() {
  server.send(200, "text/html", s); //Send web page
 }
 
-String weatherDataString(int sensorType, int powerPin, int deviceFeatureId, char objectCursor) {
+//returns a "*"-delimited string containing weather data, starting with temperature and ending with deviceFeatureId, if present
+//we might send multiple-such strings (separated by "!") to the backend for multiple sensors on an ESP8266
+//i've made this to handle all the weather sensors i have so i can mix and match, though of course there are many others
+String weatherDataString(int sensorType, int sensorSubType, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor) {
   double humidityValue = NULL;
   double temperatureValue = NULL;
   double pressureValue = NULL;
@@ -110,8 +113,30 @@ String weatherDataString(int sensorType, int powerPin, int deviceFeatureId, char
   int32_t alt  = NULL;
   static char buf[16];
   static uint16_t loopCounter = 0;  
+  String transmissionString = "";
   if(deviceFeatureId == NULL) {
     objectCursor = 0;
+  }
+  if(sensorType == 1) { //simple analog input. we can use subType to decide what kind of sensor it is!
+    //an even smarter system would somehow be able to put together multiple analogReads here
+    digitalWrite(powerPin, HIGH); //turn on DHT power. 
+    delay(10);
+    int value = NULL;
+    if(i2c){
+      //i forget how we read a pin on an i2c slave. lemme see:
+      value = (int)getPinValueOnSlave((char)i2c, (char)dataPin);
+    } else {
+      value = analogRead(dataPin);
+    }
+    for(char i=0; i<3; i++){
+      if((int)i == sensorSubType) {
+        transmissionString = transmissionString + nullifyOrNumber(value);
+      }
+      transmissionString = transmissionString + "*";
+    }
+    transmissionString = transmissionString + nullifyOrNumber(sensorType) + "*" + nullifyOrInt(deviceFeatureId);
+    digitalWrite(powerPin, LOW);
+    return transmissionString;
   }
   if (sensorType == 680) {
     //BME680 code:
@@ -206,7 +231,7 @@ String weatherDataString(int sensorType, int powerPin, int deviceFeatureId, char
     pressureValue = NULL;
     humidityValue = NULL;
   }
-  String transmissionString = nullifyOrNumber(temperatureValue) + "*" + nullifyOrNumber(pressureValue) + "*" + nullifyOrNumber(humidityValue) + "*" + nullifyOrNumber(gasValue) + "*" + nullifyOrNumber(sensorType) + "*" + nullifyOrInt(deviceFeatureId); //using delimited data instead of JSON to keep things simple
+  transmissionString = nullifyOrNumber(temperatureValue) + "*" + nullifyOrNumber(pressureValue) + "*" + nullifyOrNumber(humidityValue) + "*" + nullifyOrNumber(gasValue) + "*" + nullifyOrNumber(sensorType) + "*" + nullifyOrInt(deviceFeatureId); //using delimited data instead of JSON to keep things simple
   return transmissionString;
 }
 
@@ -217,8 +242,11 @@ void startWeatherSensors(int sensorTypeLocal, int sensorSubTypeLocal, int i2c, i
   if(sensorObjectCursor->has((String)sensorType)) {
     objectCursor = sensorObjectCursor->get((String)sensorType);
   } 
-  
-  if(sensorTypeLocal == 680) {
+  if(sensorTypeLocal == 1) { //simple analog input
+    //all we need to do is turn on power to whatever the analog device is
+    pinMode(powerPin, OUTPUT);
+    digitalWrite(powerPin, LOW);
+  } else if(sensorTypeLocal == 680) {
     Serial.print(F("Initializing BME680 sensor...\n"));
     while (!BME680[objectCursor].begin(I2C_STANDARD_MODE, i2c) && sensorType == 680) {  // Start BME680 using I2C, use first device found
       Serial.print(F(" - Unable to find BME680. Trying again in 5 seconds.\n"));
@@ -269,7 +297,7 @@ void handleWeatherData() {
   if(ipAddress.indexOf(' ') > 0) { //i was getting HTML header info mixed in for some reason
     ipAddress = ipAddress.substring(0, ipAddress.indexOf(' '));
   }
-  transmissionString = weatherDataString(sensorType, sensorPower, NULL, 0);
+  transmissionString = weatherDataString(sensorType, sensorSubType, sensorData, sensorPower, sensorI2C, NULL, 0);
   //add the data for any additional sensors, delimited by '!' for each sensor
   transmissionString = transmissionString + handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), false);
   //the time-stamps of connection failures, delimited by *
@@ -575,7 +603,7 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
         startWeatherSensors(sensorTypeLocal, sensorSubTypeLocal, i2c, pinNumber, powerPin); //guess i have to pass all this additional info
       } else {
         //otherwise do a weatherDataString
-         out = out + "!" + weatherDataString(sensorTypeLocal, powerPin, deviceFeatureId, objectCursor);
+         out = out + "!" + weatherDataString(sensorTypeLocal, sensorSubTypeLocal, pinNumber, powerPin, i2c, deviceFeatureId, objectCursor);
       }
       objectCursor++;
       oldSensorType = sensorTypeLocal;
@@ -760,6 +788,24 @@ void setLocalHardwareToServerStateFromJson(char * json){
     }
   }
   pinTotal = pinCounter;
+}
+
+long getPinValueOnSlave(char i2cAddress, char pinNumber) { //might want a user-friendlier API here
+  //reading an analog or digital value from the slave:
+  Wire.beginTransmission(i2cAddress);
+  Wire.write(pinNumber); //addresses greater than 64 are the same as AX (AnalogX) where X is 64-value
+  Wire.endTransmission();
+  delay(100); 
+  Wire.requestFrom(i2cAddress, 4); //we only ever get back four-byte long ints
+  long totalValue = 0;
+  int byteCursor = 1;
+  while (Wire.available()) {
+    byte receivedValue = Wire.read(); // Read the received value from slave
+    totalValue = totalValue + receivedValue * pow(256, 4-byteCursor);
+    Serial.println(receivedValue); // Print the received value
+    byteCursor++;
+  }
+  return totalValue;
 }
 
 void setPinValueOnSlave(char i2cAddress, char pinNumber, char pinValue) {
