@@ -499,7 +499,7 @@ function getCurrentSolarData($user) {
   //var_dump($mostRecentInverterRecord);
   //echo $minutesSinceLastRecord;
   
-  if($minutesSinceLastRecord > 5 ) {
+  if($minutesSinceLastRecord > 5) {
     $plantId = $user["energy_api_plant_id"];
     $url = $baseUrl . '/oauth/token';
     $headers = [
@@ -563,11 +563,11 @@ function getCurrentSolarData($user) {
 
     $data = $dataBody["data"];
     //var_dump($data);
-    if ($data["pvTo"] == true) { //this indicates we have real data!
+    //if ($data["pvTo"] == true) { //this indicates we have real data!
       $loggingSql = "INSERT INTO inverter_log ( user_id, recorded, solar_power, load_power, grid_power, battery_percentage, battery_power) VALUES (";
       $loggingSql .= $user["user_id"] . ",'" . $formatedDateTime . "'," . $data["pvPower"] . "," . $data["loadOrEpsPower"] . "," . $data["gridOrMeterPower"] . "," . $data["soc"] . "," . $data["battPower"]    . ")";
       $loggingResult = mysqli_query($conn, $loggingSql);
-    }
+    //}
     //echo $loggingSql;
     return Array("user_id"=>$user["user_id"], "recorded" => $formatedDateTime, "solar_power" => $data["pvPower"], "load_power" => $data["loadOrEpsPower"] ,
     "grid_power" =>  $data["gridOrMeterPower"], "battery_percentage" => $data["soc"], "battery_power" => $data["battPower"]); 
