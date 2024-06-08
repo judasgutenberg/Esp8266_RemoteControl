@@ -9,6 +9,12 @@ const char* hostGet = "yourdomain.com";
 const int sensorType = 0; //2301;//2301;//680; //SENSORS! -- we support these: 180 for BMP180, 2301 for DHT 2301, 680 for BME680.  0 for no sensor.  No support for multiple sensors for now.
 const int sensorI2C = 0x77;
 const int sensorSubType = 21; // DHT 21, AM2301
+//other subtypes:
+// 11: DHT 11
+// 22: DHT 22, AM2302, AM2321
+//if you are using a DHT hygrometer/temperature probe, these values will be important
+//particularly if you reflashed a MySpool temperature probe (https://myspool.com/) with custom firmware
+//on those, the sensorData is 14 and sensorPower is 12
 const int sensorData = 14; 
 const int sensorPower = 12;
 const int locationId = 4; //3 really is watchdog
@@ -25,11 +31,8 @@ const int moxeePowerSwitch = 13; //usually 14
 
 const int deepSleepTimePerLoop = 12;  //in seconds. saves energy.  set to zero if unneeded
 
-//if you are using a DHT hygrometer/temperature probe, these values will be important
-//particularly if you reflashed a MySpool temperature probe (https://myspool.com/) with custom firmware
-//on those, the sensorData is 14 and sensorPower is 12
+
  
-// #define dhType DHT11 // DHT 11
-// #define dhType DHT22 // DHT 22, AM2302, AM2321
+
  
 const char pinsToStartLow[] = {12, 13, -1}; //so when the device comes up it doesn't immediately turn on attached devices
