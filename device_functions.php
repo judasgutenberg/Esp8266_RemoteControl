@@ -194,6 +194,7 @@ function deviceFeatureForm($error,  $userId) {
     [
 	    'label' => 'value',
       'name' => 'value',
+      'type' => 'number',
       'width' => 100,
 	    'value' => gvfa("value", $source), 
       'error' => gvfa('value', $error)
@@ -484,6 +485,7 @@ function getDevices($userId){
 //reads data from the cloud about our particular solar installation
 function getCurrentSolarData($user) {
   Global $conn;
+  $baseUrl = "https://www.solarkcloud.com";
   $mostRecentInverterRecord = getMostRecentInverterRecord($user);
   $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
@@ -499,12 +501,12 @@ function getCurrentSolarData($user) {
   
   if($minutesSinceLastRecord > 5) {
     $plantId = $user["energy_api_plant_id"];
-    $url = 'https://pv.inteless.com/oauth/token';
+    $url = $baseUrl . '/oauth/token';
     $headers = [
             'Content-Type: application/json;charset=UTF-8', // Set Content-Type header to application/json
             'accept: application/json',
             'Sec-Fetch-Mode: cors',
-            'Origin: https://pv.inteless.com',
+            'Origin: ' . $baseUrl,
             'Accept: application/json',
             'Accept-Encoding:   ',
             'Accept-Language: en-US,en;q=0.9',
@@ -512,7 +514,7 @@ function getCurrentSolarData($user) {
             'Sec-Ch-Ua-Platform: Windows',
             'Sec-Ch-Ua-Mobile: ?0',
             'Priority: u=1, i',
-            'Referer: https://pv.inteless.com/login',
+            'Referer: ' . $baseUrl . '/login',
             'Content-Length: 127',
             'Content-Type: application/json;charset=UTF-8',
             'Sec-Fetch-Dest: empty',
@@ -525,7 +527,7 @@ function getCurrentSolarData($user) {
             'grant_type' => 'password',
             'password' => $user["energy_api_password"],
             'username' => $user["energy_api_username"],
-            'source' => 'elinter',
+ 
     ];
 
     $ch = curl_init();
@@ -550,13 +552,13 @@ function getCurrentSolarData($user) {
     $currentDateTime = new DateTime('now', new DateTimeZone('America/New_York')); 
     //echo $currentDateTime->format('Y-m-d h:i:s');
     $currentDate =  $currentDateTime->format('Y-m-d');
-    $actionUrl = 'https://pv.inteless.com/api/v1/plant/energy/' . $plantId  . '/day?date=' . $currentDate . "&id=" . $plantId . "&lan=en";
-    $actionUrl = 'https://pv.inteless.com/api/v1/plant/energy/' . $plantId  . '/flow?date=' . $currentDate . "&id=" . $plantId . "&lan=en"; 
-    $actionUrl = 'https://pv.inteless.com/api/v1/plant/energy/' . $plantId  . '/flow';
+    $actionUrl = $baseUrl . '/api/v1/plant/energy/' . $plantId  . '/day?date=' . $currentDate . "&id=" . $plantId . "&lan=en";
+    $actionUrl = $baseUrl .'/api/v1/plant/energy/' . $plantId  . '/flow?date=' . $currentDate . "&id=" . $plantId . "&lan=en"; 
+    $actionUrl = $baseUrl . '/api/v1/plant/energy/' . $plantId  . '/flow';
     $userParams =   [
             //'access_token' => $access_token,
             'date' => $currentDate,
-            'id' => 16588,
+            'id' => $plantId,
             'lan' => 'en'         
     ];
 
