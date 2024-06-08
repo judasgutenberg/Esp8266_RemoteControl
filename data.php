@@ -278,7 +278,7 @@ if($_REQUEST) {
 			}
 			if($mode == "getInitialDeviceInfo" ) { //return a double-delimited string of additional sensors, etc. this one begins with a "*" so we can identify it in the ESP8266. it will be the first data requested by the remote control
 				$outString = "*" . str_replace("|", "", str_replace("*", "", $deviceName));
-				$sensorSql = "SELECT  pin_number, power_pin, sensor_type, sensor_sub_type, via_i2c_address, device_feature_id 
+				$sensorSql = "SELECT  f.name, pin_number, power_pin, sensor_type, sensor_sub_type, via_i2c_address, device_feature_id 
 					FROM device_feature f 
 					LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id 
 					WHERE  sensor_type IS NOT NULL AND device_id=" . intval($deviceId) . " AND f.enabled ORDER BY sensor_type, via_i2c_address, pin_number;";
@@ -288,7 +288,7 @@ if($_REQUEST) {
 					$rows = mysqli_fetch_all($sensorResult, MYSQLI_ASSOC);
 					foreach($rows as $row){
 						//var_dump($row);
-						$outString .= "|" . $row["pin_number"] . "*" . $row["power_pin"] . "*" . $row["sensor_type"] . "*" . $row["sensor_sub_type"] . "*" . $row["via_i2c_address"] . "*" . $row["device_feature_id"];
+						$outString .= "|" . $row["pin_number"] . "*" . $row["power_pin"] . "*" . $row["sensor_type"] . "*" . $row["sensor_sub_type"] . "*" . $row["via_i2c_address"] . "*" . $row["device_feature_id"] . "*" . str_replace("|", "", str_replace("*", "", $row["name"]));
 					}
 				}
 				die($outString);
