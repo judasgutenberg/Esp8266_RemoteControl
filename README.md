@@ -1,6 +1,6 @@
 # Esp8266 Remote
 
-This is another advancement from my Moxee Hotspot Watchdog system, which was itself an advancement from my ESP8266-Micro-Weather system.  This system still logs weather data and can, if configured correctly, reboot a Moxee cellular hotspot when it craps out and needs a reboot (which is essential for reliably connecting to my off-grid cabin, which is a major pre-requisite for all the features I am about to describe).
+This is another advancement from my Moxee Hotspot Watchdog system, which was itself an advancement from my ESP8266-Micro-Weather system.  This system still logs weather data using a variety of common weather sensors and can, if configured correctly, reboot a Moxee cellular hotspot when it craps out and needs a reboot (which is essential for reliably connecting to my off-grid cabin, which is a major pre-requisite for all the features I am about to describe).
 
 ![alt text](weathergraph.jpg?raw=true)
 
