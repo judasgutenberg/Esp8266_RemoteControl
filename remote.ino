@@ -583,7 +583,7 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
   for(int i=1; i<12; i++) {
     String sensorDatum = additionalSensorArray[i];
     if(sensorDatum.indexOf('*')>-1) {
-      splitString(sensorDatum, '*', specificSensorData, 5);
+      splitString(sensorDatum, '*', specificSensorData, 7);
       pinNumber = specificSensorData[0].toInt();
       powerPin = specificSensorData[1].toInt();
       sensorTypeLocal = specificSensorData[2].toInt();
