@@ -134,7 +134,7 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
       }
       transmissionString = transmissionString + "*";
     }
-    transmissionString = transmissionString + nullifyOrNumber(sensorType) + "*" + nullifyOrInt(deviceFeatureId) + "*" + urlEncode(sensorName);
+    transmissionString = transmissionString + nullifyOrInt(sensorType) + "*" + nullifyOrInt(deviceFeatureId) + "*" + urlEncode(sensorName);
     digitalWrite(powerPin, LOW);
     return transmissionString;
   }
@@ -231,7 +231,7 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
     pressureValue = NULL;
     humidityValue = NULL;
   }
-  transmissionString = nullifyOrNumber(temperatureValue) + "*" + nullifyOrNumber(pressureValue) + "*" + nullifyOrNumber(humidityValue) + "*" + nullifyOrNumber(gasValue) + "*" + nullifyOrNumber(sensorType) + "*" + nullifyOrInt(deviceFeatureId) + "*" + urlEncode(sensorName); //using delimited data instead of JSON to keep things simple
+  transmissionString = nullifyOrNumber(temperatureValue) + "*" + nullifyOrNumber(pressureValue) + "*" + nullifyOrNumber(humidityValue) + "*" + nullifyOrNumber(gasValue) + "*" + nullifyOrInt(sensorType) + "*" + nullifyOrInt(deviceFeatureId) + "*" + urlEncode(sensorName); //using delimited data instead of JSON to keep things simple
   return transmissionString;
 }
 
@@ -240,7 +240,7 @@ void startWeatherSensors(int sensorTypeLocal, int sensorSubTypeLocal, int i2c, i
   //for example, you can set the i2c address of a BME680 or a BMP280 but not a BMP180.  you can specify any GPIO as a data pin for a DHT
   int objectCursor = 0;
   if(sensorObjectCursor->has((String)sensorType)) {
-    objectCursor = sensorObjectCursor->get((String)sensorType);
+    objectCursor = sensorObjectCursor->get((String)sensorTypeLocal);;
   } 
   if(sensorTypeLocal == 1) { //simple analog input
     //all we need to do is turn on power to whatever the analog device is
@@ -248,7 +248,7 @@ void startWeatherSensors(int sensorTypeLocal, int sensorSubTypeLocal, int i2c, i
     digitalWrite(powerPin, LOW);
   } else if(sensorTypeLocal == 680) {
     Serial.print(F("Initializing BME680 sensor...\n"));
-    while (!BME680[objectCursor].begin(I2C_STANDARD_MODE, i2c) && sensorType == 680) {  // Start BME680 using I2C, use first device found
+    while (!BME680[objectCursor].begin(I2C_STANDARD_MODE, i2c) && sensorType == 680) {  // Start B DHTME680 using I2C, use first device found
       Serial.print(F(" - Unable to find BME680. Trying again in 5 seconds.\n"));
       delay(5000);
     }  // of loop until device is located
@@ -261,7 +261,7 @@ void startWeatherSensors(int sensorTypeLocal, int sensorSubTypeLocal, int i2c, i
     //Serial.print(F("- Setting gas measurement to 320\xC2\xB0\x43 for 150ms\n"));  // "�C" symbols
     BME680[objectCursor].setGas(320, 150);  // 320�c for 150 milliseconds
   } else if (sensorTypeLocal == 2301) {
-    Serial.print(F("Initializing DHT AM2301 sensor...\n"));
+    Serial.print(F("Initializing DHT AM2301 sensor at pin: "));
     pinMode(powerPin, OUTPUT);
     digitalWrite(powerPin, LOW);
     dht[objectCursor] = new DHT(pinNumber, sensorSubTypeLocal);
@@ -281,7 +281,7 @@ void startWeatherSensors(int sensorTypeLocal, int sensorSubTypeLocal, int i2c, i
       Serial.println("Couldn't find BMX280!");
     }
   }
-  sensorObjectCursor->put((String)sensorType, objectCursor + 1); //we keep track of how many of a particular sensorType we use
+  sensorObjectCursor->put((String)sensorTypeLocal, objectCursor + 1); //we keep track of how many of a particular sensorType we use
 }
 
 
@@ -598,14 +598,10 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
         objectCursor++;
       }
       if(intialize) {
-        Serial.print("Object cursor for ");
-        Serial.print(sensorTypeLocal);
-        Serial.print(": ");
-        Serial.println(objectCursor);
         startWeatherSensors(sensorTypeLocal, sensorSubTypeLocal, i2c, pinNumber, powerPin); //guess i have to pass all this additional info
       } else {
         //otherwise do a weatherDataString
-         out = out + "!" + weatherDataString(sensorTypeLocal, sensorSubTypeLocal, pinNumber, powerPin, i2c, deviceFeatureId, objectCursor, sensorName);
+        out = out + "!" + weatherDataString(sensorTypeLocal, sensorSubTypeLocal, pinNumber, powerPin, i2c, deviceFeatureId, objectCursor, sensorName);
       }
       objectCursor++;
       oldSensorType = sensorTypeLocal;
