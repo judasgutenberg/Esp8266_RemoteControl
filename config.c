@@ -6,6 +6,7 @@ const char* storagePassword = "somethingdifferent"; //to ensure someone doesn't 
 //url will be in the form: http://your-server.com:80/weather/data.php?data=
 const char* urlGet = "/weather/data.php";
 const char* hostGet = "yourdomain.com";
+const char* sensorConfigString = ""; //an easy way to specify multiple sensors. the format is: dataPin*powerPin*sensorType*sensorSubType*i2c_address*device_feature_id*name|next_sensor...
 const int sensorType = 0; //2301;//2301;//680; //SENSORS! -- we support these: 180 for BMP180, 2301 for DHT 2301, 680 for BME680.  0 for no sensor.  No support for multiple sensors for now.
 const int sensorI2C = 0x77;
 const int sensorSubType = 21; // DHT 21, AM2301
