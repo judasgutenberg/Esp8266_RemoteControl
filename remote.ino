@@ -122,7 +122,7 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
   }
   if(sensorType == 1) { //simple analog input. we can use subType to decide what kind of sensor it is!
     //an even smarter system would somehow be able to put together multiple analogReads here
-    if(powerPin != NULL) {
+    if(powerPin > -1) {
       digitalWrite(powerPin, HIGH); //turn on DHT power. 
     }
     delay(10);
@@ -141,7 +141,7 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
     }
     //note, if temperature ends up being NULL, the record won't save. might want to tweak data.php to save records if it contains SOME data
     transmissionString = transmissionString + nullifyOrInt(sensorType) + "*" + nullifyOrInt(deviceFeatureId) + "*" + urlEncode(sensorName);
-    if(powerPin != NULL) {
+    if(powerPin > -1) {
       digitalWrite(powerPin, LOW);
     }
     return transmissionString;
@@ -169,14 +169,14 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
     pressureValue = (double)pressureRaw/100;
     gasValue = (double)gasRaw/100;  //all i ever get for this is 129468.6 and 8083.7
   } else if (sensorType == 2301) { //i love the humble DHT
-    if(powerPin != NULL) {
+    if(powerPin > -1) {
       digitalWrite(powerPin, HIGH); //turn on DHT power, in case you're doing that. 
     }
     delay(10);
     humidityValue = (double)dht[objectCursor]->readHumidity();
     temperatureValue = (double)dht[objectCursor]->readTemperature();
     pressureValue = NULL; //really should set unknown values as null
-    if(powerPin != NULL) {
+    if(powerPin > -1) {
       digitalWrite(powerPin, LOW);//turn off DHT power. maybe it saves energy, and that's why MySpool did it this way
     }
   } else if(sensorType == 280) {
@@ -251,7 +251,7 @@ void startWeatherSensors(int sensorTypeLocal, int sensorSubTypeLocal, int i2c, i
   } 
   if(sensorTypeLocal == 1) { //simple analog input
     //all we need to do is turn on power to whatever the analog device is
-    if(powerPin != NULL) {
+    if(powerPin > -1) {
       pinMode(powerPin, OUTPUT);
       digitalWrite(powerPin, LOW);
     }
@@ -271,7 +271,7 @@ void startWeatherSensors(int sensorTypeLocal, int sensorSubTypeLocal, int i2c, i
     BME680[objectCursor].setGas(320, 150);  // 320�c for 150 milliseconds
   } else if (sensorTypeLocal == 2301) {
     Serial.print(F("Initializing DHT AM2301 sensor at pin: "));
-    if(powerPin != NULL) {
+    if(powerPin > -1) {
       pinMode(powerPin, OUTPUT);
       digitalWrite(powerPin, LOW);
     }
@@ -732,7 +732,7 @@ void setLocalHardwareToServerStateFromJson(char * json){
       enabled = (int)jsonBuffer[nodeName][i]["enabled"];
       serverSaved = (int)jsonBuffer[nodeName][i]["ss"];
       i2c = (int)jsonBuffer[nodeName][i]["i2c"];
-      if(i2c == NULL) {
+      if(i2c > 0) {
         i2c = 0;
       }
       Serial.print("pin: ");
@@ -748,7 +748,7 @@ void setLocalHardwareToServerStateFromJson(char * json){
           
           sprintf(sprintBuffer, "%d.%d", i2c, pinNumber);
           key = (String)sprintBuffer;
-          if(i2c == 0){
+          if(i2c < 1){
             key = (String)pinNumber;
           }
           //Serial.println("! " + (String)pinList[j] +  " =?: " + key +  " correcto? " + (int((String)pinList[j] == key)));
