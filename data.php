@@ -231,44 +231,37 @@ if($_REQUEST) {
 				//select * from weathertron.weather_data where location_id=3 order by recorded desc limit 0,10;
 				$multipleSensorArray = explode("!", $weatherInfoString);
 				foreach($multipleSensorArray  as $sensorDataString) { //if there is a ! in the weatherInfoString, 
-
 					$arrWeatherData = explode("*", $sensorDataString);
-					
-					$temperature = $arrWeatherData[0];
-					$pressure = $arrWeatherData[1];
-					$humidity = $arrWeatherData[2];
-					$gasMetric = "NULL";
-					$deviceFeatureId = "NULL";
-					if(count($arrWeatherData)>3) {
-						$gasMetric = $arrWeatherData[3];
-					}
-					if(count($arrWeatherData)>4) {
-						$sensorId = $arrWeatherData[4];
-					}
-					if(count($arrWeatherData)>5) {
-						$deviceFeatureId = $arrWeatherData[5];
-					}
-
-
-
-					$weatherSql = "INSERT INTO weather_data(location_id, device_feature_id, recorded, temperature, pressure, humidity, gas_metric, wind_direction, precipitation, wind_speed, wind_increment, sensor_id) VALUES (" . 
-					mysqli_real_escape_string($conn, $locationId) . "," .
-					mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
-					mysqli_real_escape_string($conn, $formatedDateTime)  . "'," . 
-					mysqli_real_escape_string($conn, $temperature) . "," . 
-					mysqli_real_escape_string($conn, $pressure) . "," . 
-					mysqli_real_escape_string($conn, $humidity) . "," . 
-					mysqli_real_escape_string($conn, $gasMetric) .
-					",NULL,NULL,NULL,NULL," .
-					mysqli_real_escape_string($conn, $sensorId) .
-					")";
-					
- 
-
-					if($temperature != "NULL" || $pressure != "NULL" || $humidity != "NULL" || $gasMetric != "NULL") { //if sensors are all null, do not attempt to store!
-					
-						$result = mysqli_query($conn, $weatherSql);
-					
+					if(count($arrWeatherData) > 1) { //it's possible the $weatherInfoString began with a ! 
+						$temperature = $arrWeatherData[0];
+						$pressure = $arrWeatherData[1];
+						$humidity = $arrWeatherData[2];
+						$gasMetric = "NULL";
+						$deviceFeatureId = "NULL";
+						if(count($arrWeatherData)>3) {
+							$gasMetric = $arrWeatherData[3];
+						}
+						if(count($arrWeatherData)>4) {
+							$sensorId = $arrWeatherData[4];
+						}
+						if(count($arrWeatherData)>5) {
+							$deviceFeatureId = $arrWeatherData[5];
+						}
+						$weatherSql = "INSERT INTO weather_data(location_id, device_feature_id, recorded, temperature, pressure, humidity, gas_metric, wind_direction, precipitation, wind_speed, wind_increment, sensor_id) VALUES (" . 
+						mysqli_real_escape_string($conn, $locationId) . "," .
+						mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
+						mysqli_real_escape_string($conn, $formatedDateTime)  . "'," . 
+						mysqli_real_escape_string($conn, $temperature) . "," . 
+						mysqli_real_escape_string($conn, $pressure) . "," . 
+						mysqli_real_escape_string($conn, $humidity) . "," . 
+						mysqli_real_escape_string($conn, $gasMetric) .
+						",NULL,NULL,NULL,NULL," .
+						mysqli_real_escape_string($conn, $sensorId) .
+						")";
+						
+						if($temperature != "NULL" || $pressure != "NULL" || $humidity != "NULL" || $gasMetric != "NULL") { //if sensors are all null, do not attempt to store!
+							$result = mysqli_query($conn, $weatherSql);
+						}
 					}
 				}
 				$method  = "saveWeatherData";
