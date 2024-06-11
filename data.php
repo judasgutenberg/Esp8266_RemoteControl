@@ -265,7 +265,7 @@ if($_REQUEST) {
 					
 					//echo $weatherSql;
 
-					if($temperature != "NULL") { //if temperature is null, do not attempt to store!
+					if($temperature != "NULL" && $pressure != "NULL" && $humidity != "NULL" && $gasMetric != "NULL") { //if temperature is null, do not attempt to store!
 						if(true) { //prevents malicious data corruption
 							$result = mysqli_query($conn, $weatherSql);
 						}
