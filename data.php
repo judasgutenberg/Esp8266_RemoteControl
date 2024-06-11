@@ -263,12 +263,12 @@ if($_REQUEST) {
 					mysqli_real_escape_string($conn, $sensorId) .
 					")";
 					
-					//echo $weatherSql;
+ 
 
-					if($temperature != "NULL" && $pressure != "NULL" && $humidity != "NULL" && $gasMetric != "NULL") { //if temperature is null, do not attempt to store!
-						if(true) { //prevents malicious data corruption
-							$result = mysqli_query($conn, $weatherSql);
-						}
+					if($temperature != "NULL" || $pressure != "NULL" || $humidity != "NULL" || $gasMetric != "NULL") { //if sensors are all null, do not attempt to store!
+					
+						$result = mysqli_query($conn, $weatherSql);
+					
 					}
 				}
 				$method  = "saveWeatherData";
