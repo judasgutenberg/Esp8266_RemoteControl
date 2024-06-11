@@ -122,7 +122,9 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
   }
   if(sensorType == 1) { //simple analog input. we can use subType to decide what kind of sensor it is!
     //an even smarter system would somehow be able to put together multiple analogReads here
-    digitalWrite(powerPin, HIGH); //turn on DHT power. 
+    if(powerPin != NULL) {
+      digitalWrite(powerPin, HIGH); //turn on DHT power. 
+    }
     delay(10);
     int value = NULL;
     if(i2c){
@@ -139,7 +141,9 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
     }
     //note, if temperature ends up being NULL, the record won't save. might want to tweak data.php to save records if it contains SOME data
     transmissionString = transmissionString + nullifyOrInt(sensorType) + "*" + nullifyOrInt(deviceFeatureId) + "*" + urlEncode(sensorName);
-    digitalWrite(powerPin, LOW);
+    if(powerPin != NULL) {
+      digitalWrite(powerPin, LOW);
+    }
     return transmissionString;
   }
   if (sensorType == 680) { //this is the primo sensor chip, so the trouble is worth it
@@ -165,12 +169,16 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
     pressureValue = (double)pressureRaw/100;
     gasValue = (double)gasRaw/100;  //all i ever get for this is 129468.6 and 8083.7
   } else if (sensorType == 2301) { //i love the humble DHT
-    digitalWrite(powerPin, HIGH); //turn on DHT power, in case you're doing that. 
+    if(powerPin != NULL) {
+      digitalWrite(powerPin, HIGH); //turn on DHT power, in case you're doing that. 
+    }
     delay(10);
     humidityValue = (double)dht[objectCursor]->readHumidity();
     temperatureValue = (double)dht[objectCursor]->readTemperature();
     pressureValue = NULL; //really should set unknown values as null
-    digitalWrite(powerPin, LOW);//turn off DHT power. maybe it saves energy, and that's why MySpool did it this way
+    if(powerPin != NULL) {
+      digitalWrite(powerPin, LOW);//turn off DHT power. maybe it saves energy, and that's why MySpool did it this way
+    }
   } else if(sensorType == 280) {
     humidityValue = NULL;
     temperatureValue = BMP280[objectCursor].readTemperature();
@@ -224,7 +232,7 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
     temperatureValue = LM75[objectCursor].readTemperatureC();
     pressureValue = NULL;
     humidityValue = NULL;
-  } else {
+  } else { //either sensorType is NULL or 0
     //no sensor at all
     temperatureValue = NULL;//don't want to save a record in weather_data from an absent sensor, so force temperature NULL
     pressureValue = NULL;
@@ -243,8 +251,10 @@ void startWeatherSensors(int sensorTypeLocal, int sensorSubTypeLocal, int i2c, i
   } 
   if(sensorTypeLocal == 1) { //simple analog input
     //all we need to do is turn on power to whatever the analog device is
-    pinMode(powerPin, OUTPUT);
-    digitalWrite(powerPin, LOW);
+    if(powerPin != NULL) {
+      pinMode(powerPin, OUTPUT);
+      digitalWrite(powerPin, LOW);
+    }
   } else if(sensorTypeLocal == 680) {
     Serial.print(F("Initializing BME680 sensor...\n"));
     while (!BME680[objectCursor].begin(I2C_STANDARD_MODE, i2c) && sensorType == 680) {  // Start B DHTME680 using I2C, use first device found
@@ -261,8 +271,10 @@ void startWeatherSensors(int sensorTypeLocal, int sensorSubTypeLocal, int i2c, i
     BME680[objectCursor].setGas(320, 150);  // 320�c for 150 milliseconds
   } else if (sensorTypeLocal == 2301) {
     Serial.print(F("Initializing DHT AM2301 sensor at pin: "));
-    pinMode(powerPin, OUTPUT);
-    digitalWrite(powerPin, LOW);
+    if(powerPin != NULL) {
+      pinMode(powerPin, OUTPUT);
+      digitalWrite(powerPin, LOW);
+    }
     dht[objectCursor] = new DHT(pinNumber, sensorSubTypeLocal);
     dht[objectCursor]->begin();
   } else if (sensorTypeLocal == 180) { //BMP180
@@ -296,7 +308,9 @@ void handleWeatherData() {
   if(ipAddress.indexOf(' ') > 0) { //i was getting HTML header info mixed in for some reason
     ipAddress = ipAddress.substring(0, ipAddress.indexOf(' '));
   }
-  transmissionString = weatherDataString(sensorType, sensorSubType, sensorData, sensorPower, sensorI2C, NULL, 0, deviceName);
+  if(sensorType > -1) {
+    transmissionString = weatherDataString(sensorType, sensorSubType, sensorData, sensorPower, sensorI2C, NULL, 0, deviceName);
+  }
   //add the data for any additional sensors, delimited by '!' for each sensor
   transmissionString = transmissionString + handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), false);
   //the time-stamps of connection failures, delimited by *
@@ -326,7 +340,7 @@ void setup(void){
     digitalWrite((int)pinsToStartLow[i], LOW);
   }
   
-  if(moxeePowerSwitch > 0) {
+  if(moxeePowerSwitch > -1) {
     pinMode(moxeePowerSwitch, OUTPUT);
     digitalWrite(moxeePowerSwitch, HIGH);
   }
@@ -433,10 +447,6 @@ void sendRemoteData(String datastring) {
   String url;
   String mode = "getDeviceData";
   String storagePasswordToUse = storagePassword;
-  if(sensorType == 0) {
-    //seemed like a good idea at the time
-    //storagePasswordToUse = "notgonnawork";//don't want to save data from no sensor;
-  }
   //most of the time we want to getDeviceData, not saveData. the former picks up remote control activity. the latter sends sensor data
   if(millis() - lastDataLogTime > dataLoggingGranularity * 1000) {
     mode = "saveData";
@@ -514,6 +524,10 @@ void sendRemoteData(String datastring) {
         Serial.print("Initial Device Data: ");
         Serial.println(retLine);
         //set the global string; we'll just use that to store our data about addtional sensors
+        
+        if(sensorConfigString != "") {
+          retLine = retLine + "|" + String(sensorConfigString);
+        }
         additionalSensorInfo = retLine;
         //once we have it
         handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), true);
@@ -844,7 +858,7 @@ void rebootEsp() {
 }
 
 void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so here i have a little algorithm to reboot it.
-  if(moxeePowerSwitch > 0) {
+  if(moxeePowerSwitch > -1) {
     digitalWrite(moxeePowerSwitch, LOW);
     delay(7000);
     digitalWrite(moxeePowerSwitch, HIGH);
