@@ -101,7 +101,7 @@ void handleRoot() {
  server.send(200, "text/html", s); //Send web page
 }
 
-//returns a "*"-delimited string containing weather data, starting with temperature and ending with deviceFeatureId, if present
+//returns a "*"-delimited string containing weather data, starting with temperature and ending with deviceFeatureId, if present, and url-encoded sensorName
 //we might send multiple-such strings (separated by "!") to the backend for multiple sensors on an ESP8266
 //i've made this to handle all the weather sensors i have so i can mix and match, though of course there are many others
 String weatherDataString(int sensorType, int sensorSubType, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName) {
@@ -137,11 +137,12 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
       }
       transmissionString = transmissionString + "*";
     }
+    //note, if temperature ends up being NULL, the record won't save. might want to tweak data.php to save records if it contains SOME data
     transmissionString = transmissionString + nullifyOrInt(sensorType) + "*" + nullifyOrInt(deviceFeatureId) + "*" + urlEncode(sensorName);
     digitalWrite(powerPin, LOW);
     return transmissionString;
   }
-  if (sensorType == 680) {
+  if (sensorType == 680) { //this is the primo sensor chip, so the trouble is worth it
     //BME680 code:
     BME680[objectCursor].getSensorData(temperatureRaw, humidityRaw, pressureRaw, gasRaw);
     //i'm not sure what all this is about, since i just copied it from the BME680 example:
@@ -163,23 +164,18 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
     temperatureValue = (double)temperatureRaw/100;
     pressureValue = (double)pressureRaw/100;
     gasValue = (double)gasRaw/100;  //all i ever get for this is 129468.6 and 8083.7
-  } else if (sensorType == 2301) {
-    //DHT2301 code:
-    digitalWrite(powerPin, HIGH); //turn on DHT power. 
+  } else if (sensorType == 2301) { //i love the humble DHT
+    digitalWrite(powerPin, HIGH); //turn on DHT power, in case you're doing that. 
     delay(10);
     humidityValue = (double)dht[objectCursor]->readHumidity();
     temperatureValue = (double)dht[objectCursor]->readTemperature();
     pressureValue = NULL; //really should set unknown values as null
     digitalWrite(powerPin, LOW);//turn off DHT power. maybe it saves energy, and that's why MySpool did it this way
   } else if(sensorType == 280) {
-    Serial.print("BMP280 getting data with ");
-    Serial.print("objectcursor: ");
-    Serial.print((int)objectCursor);
-    Serial.println();
     humidityValue = NULL;
     temperatureValue = BMP280[objectCursor].readTemperature();
     pressureValue = BMP280[objectCursor].readPressure()/100;
-  } else if(sensorType == 180) {
+  } else if(sensorType == 180) { //so much trouble for a not-very-good sensor 
     //BMP180 code:
     char status;
     double p0,a;
@@ -223,14 +219,14 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
     temperatureValue = BMP085d[objectCursor].readTemperature();
     pressureValue = BMP085d[objectCursor].readPressure()/100; //to get millibars!
     humidityValue = NULL; //really should set unknown values as null
-  } else if (sensorType == 75) { //LM75
+  } else if (sensorType == 75) { //LM75, so ghetto
     //https://electropeak.com/learn/interfacing-lm75-temperature-sensor-with-arduino/
     temperatureValue = LM75[objectCursor].readTemperatureC();
     pressureValue = NULL;
     humidityValue = NULL;
   } else {
     //no sensor at all
-    temperatureValue = NULL;//don't want to save data from no sensor, so force temperature out of range
+    temperatureValue = NULL;//don't want to save a record in weather_data from an absent sensor, so force temperature NULL
     pressureValue = NULL;
     humidityValue = NULL;
   }
@@ -544,8 +540,6 @@ void sendRemoteData(String datastring) {
     }
    
   } //if (attempts >= connectionRetryNumber)....else....    
-  Serial.println("\r>>> Closing host: ");
-  Serial.println(hostGet);
   clientGet.stop();
 }
 
@@ -635,8 +629,6 @@ void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
   char i2c = 0;
   splitString(nonJsonLine, '|', nonJsonPinArray, 12);
   int foundPins = 0;
-  Serial.print("localSource: ");
-  Serial.println(localSource);
   for(int i=1; i<12; i++) {
     nonJsonDatumString = nonJsonPinArray[i];
     if(nonJsonDatumString.indexOf('*')>-1) {
@@ -959,12 +951,12 @@ void localShowData() {
 }
 
 String urlEncode(String str) {
-  String encodedString="";
+  String encodedString = "";
   char c;
   for (int i =0; i < str.length(); i++) {
     c = str.charAt(i);
     if (c == ' ') {
-      encodedString+= "%20";
+      encodedString += "%20";
     } else if (isalnum(c)) {
       encodedString+= c;
     } else {
