@@ -27,13 +27,16 @@
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
-//i create 12 of each in case we add more sensors via device_features
-DHT* dht[12];
-SFE_BMP180 BMP180[12];
-BME680_Class BME680[12];
-Adafruit_BMP085 BMP085d[12];
+//i created 12 of each sensor object in case we added lots more sensors via device_features
+//amusingly, this barely ate into memory at all
+//since many I2C sensors only permit two sensors per I2C bus, you could reduce the size of these object arrays
+//and so i've dropped some of these down to 2
+DHT* dht[6];
+SFE_BMP180 BMP180[2];
+BME680_Class BME680[2];
+Adafruit_BMP085 BMP085d[2];
 Generic_LM75 LM75[12];
-Adafruit_BMP280 BMP280[12];
+Adafruit_BMP280 BMP280[2];
  
 StaticJsonDocument<1000> jsonBuffer;
 WiFiUDP ntpUDP; //i guess i need this for time lookup
