@@ -126,12 +126,12 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
       digitalWrite(powerPin, HIGH); //turn on DHT power. 
     }
     delay(10);
-    int value = NULL;
+    double value = NULL;
     if(i2c){
       //i forget how we read a pin on an i2c slave. lemme see:
-      value = (int)getPinValueOnSlave((char)i2c, (char)dataPin);
+      value = (double)getPinValueOnSlave((char)i2c, (char)dataPin);
     } else {
-      value = analogRead(dataPin);
+      value = (double)analogRead(dataPin);
     }
     for(char i=0; i<3; i++){
       if((int)i == sensorSubType) {
