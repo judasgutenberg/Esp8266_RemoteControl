@@ -238,6 +238,10 @@ if($_REQUEST) {
 						$humidity = $arrWeatherData[2];
 						$gasMetric = "NULL";
 						$deviceFeatureId = "NULL";
+						$windDirection = "NULL";
+						$precipitation = "NULL";
+						$windSpeed = "NULL";
+						$windIncrement = "NULL";
 						if(count($arrWeatherData)>3) {
 							$gasMetric = $arrWeatherData[3];
 						}
@@ -247,6 +251,19 @@ if($_REQUEST) {
 						if(count($arrWeatherData)>5) {
 							$deviceFeatureId = $arrWeatherData[5];
 						}
+						//$arrWeatherData[6] is the sensor name
+						if(count($arrWeatherData)>8) {
+							$windDirection = $arrWeatherData[8];
+						}
+						if(count($arrWeatherData)>9) {
+							$precipitation = $arrWeatherData[9];
+						}
+						if(count($arrWeatherData)>10) {
+							$windSpeed = $arrWeatherData[10];
+						}
+						if(count($arrWeatherData)>11) {
+							$windIncrement = $arrWeatherData[11];
+						}
 						$weatherSql = "INSERT INTO weather_data(location_id, device_feature_id, recorded, temperature, pressure, humidity, gas_metric, wind_direction, precipitation, wind_speed, wind_increment, sensor_id) VALUES (" . 
 						mysqli_real_escape_string($conn, $locationId) . "," .
 						mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
@@ -254,8 +271,11 @@ if($_REQUEST) {
 						mysqli_real_escape_string($conn, $temperature) . "," . 
 						mysqli_real_escape_string($conn, $pressure) . "," . 
 						mysqli_real_escape_string($conn, $humidity) . "," . 
-						mysqli_real_escape_string($conn, $gasMetric) .
-						",NULL,NULL,NULL,NULL," .
+						mysqli_real_escape_string($conn, $gasMetric) . "," .  
+						mysqli_real_escape_string($conn, $windDirection) . "," .  
+						mysqli_real_escape_string($conn, $precipitation) . "," .  
+						mysqli_real_escape_string($conn, $windSpeed) . "," .  
+						mysqli_real_escape_string($conn, $windIncrement) . "," .  
 						mysqli_real_escape_string($conn, $sensorId) .
 						")";
 						
