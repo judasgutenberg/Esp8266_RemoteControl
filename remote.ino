@@ -75,7 +75,7 @@ bool glblRemote = false;
 bool onePinAtATimeMode = false; //used when the server starts gzipping data and we can't make sense of it
 char requestNonJsonPinInfo = 0; //use to get much more compressed data from data.php
 int pinCursor = -1;
-bool connectionFailureMode = true;  //when we're in connectionFailureMode, we check connection much more than pollingGranularity. otherwise, we check it every pollingGranularity
+bool connectionFailureMode = true;  //when we're in connectionFailureMode, we check connection much more than polling_granularity. otherwise, we check it every polling_granularity
 
 ESP8266WebServer server(80); //Server on port 80
 
@@ -104,7 +104,7 @@ void handleRoot() {
 //returns a "*"-delimited string containing weather data, starting with temperature and ending with deviceFeatureId, if present, and url-encoded sensorName
 //we might send multiple-such strings (separated by "!") to the backend for multiple sensors on an ESP8266
 //i've made this to handle all the weather sensors i have so i can mix and match, though of course there are many others
-String weatherDataString(int sensorType, int sensorSubType, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName) {
+String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName) {
   double humidityValue = NULL;
   double temperatureValue = NULL;
   double pressureValue = NULL;
@@ -120,7 +120,7 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
   if(deviceFeatureId == NULL) {
     objectCursor = 0;
   }
-  if(sensorType == 1) { //simple analog input. we can use subType to decide what kind of sensor it is!
+  if(sensor_id == 1) { //simple analog input. we can use subType to decide what kind of sensor it is!
     //an even smarter system would somehow be able to put together multiple analogReads here
     if(powerPin > -1) {
       digitalWrite(powerPin, HIGH); //turn on DHT power. 
@@ -134,19 +134,19 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
       value = (double)analogRead(dataPin);
     }
     for(char i=0; i<3; i++){
-      if((int)i == sensorSubType) {
+      if((int)i == sensor_sub_type) {
         transmissionString = transmissionString + nullifyOrNumber(value);
       }
       transmissionString = transmissionString + "*";
     }
     //note, if temperature ends up being NULL, the record won't save. might want to tweak data.php to save records if it contains SOME data
-    transmissionString = transmissionString + nullifyOrInt(sensorType) + "*" + nullifyOrInt(deviceFeatureId) + "*" + urlEncode(sensorName);
+    transmissionString = transmissionString + nullifyOrInt(sensor_id) + "*" + nullifyOrInt(deviceFeatureId) + "*" + urlEncode(sensorName);
     if(powerPin > -1) {
       digitalWrite(powerPin, LOW);
     }
     return transmissionString;
   }
-  if (sensorType == 680) { //this is the primo sensor chip, so the trouble is worth it
+  if (sensor_id == 680) { //this is the primo sensor chip, so the trouble is worth it
     //BME680 code:
     BME680[objectCursor].getSensorData(temperatureRaw, humidityRaw, pressureRaw, gasRaw);
     //i'm not sure what all this is about, since i just copied it from the BME680 example:
@@ -168,7 +168,7 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
     temperatureValue = (double)temperatureRaw/100;
     pressureValue = (double)pressureRaw/100;
     gasValue = (double)gasRaw/100;  //all i ever get for this is 129468.6 and 8083.7
-  } else if (sensorType == 2301) { //i love the humble DHT
+  } else if (sensor_id == 2301) { //i love the humble DHT
     if(powerPin > -1) {
       digitalWrite(powerPin, HIGH); //turn on DHT power, in case you're doing that. 
     }
@@ -179,11 +179,11 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
     if(powerPin > -1) {
       digitalWrite(powerPin, LOW);//turn off DHT power. maybe it saves energy, and that's why MySpool did it this way
     }
-  } else if(sensorType == 280) {
+  } else if(sensor_id == 280) {
     humidityValue = NULL;
     temperatureValue = BMP280[objectCursor].readTemperature();
     pressureValue = BMP280[objectCursor].readPressure()/100;
-  } else if(sensorType == 180) { //so much trouble for a not-very-good sensor 
+  } else if(sensor_id == 180) { //so much trouble for a not-very-good sensor 
     //BMP180 code:
     char status;
     double p0,a;
@@ -222,42 +222,42 @@ String weatherDataString(int sensorType, int sensorSubType, int dataPin, int pow
       Serial.println("error starting temperature measurement\n");
     }
     humidityValue = NULL; //really should set unknown values as null
-  } else if (sensorType == 85) {
+  } else if (sensor_id == 85) {
     //https://github.com/adafruit/Adafruit-BMP085-Library
     temperatureValue = BMP085d[objectCursor].readTemperature();
     pressureValue = BMP085d[objectCursor].readPressure()/100; //to get millibars!
     humidityValue = NULL; //really should set unknown values as null
-  } else if (sensorType == 75) { //LM75, so ghetto
+  } else if (sensor_id == 75) { //LM75, so ghetto
     //https://electropeak.com/learn/interfacing-lm75-temperature-sensor-with-arduino/
     temperatureValue = LM75[objectCursor].readTemperatureC();
     pressureValue = NULL;
     humidityValue = NULL;
-  } else { //either sensorType is NULL or 0
+  } else { //either sensor_id is NULL or 0
     //no sensor at all
     temperatureValue = NULL;//don't want to save a record in weather_data from an absent sensor, so force temperature NULL
     pressureValue = NULL;
     humidityValue = NULL;
   }
-  transmissionString = nullifyOrNumber(temperatureValue) + "*" + nullifyOrNumber(pressureValue) + "*" + nullifyOrNumber(humidityValue) + "*" + nullifyOrNumber(gasValue) + "*" + nullifyOrInt(sensorType) + "*" + nullifyOrInt(deviceFeatureId) + "*" + urlEncode(sensorName); //using delimited data instead of JSON to keep things simple
+  transmissionString = nullifyOrNumber(temperatureValue) + "*" + nullifyOrNumber(pressureValue) + "*" + nullifyOrNumber(humidityValue) + "*" + nullifyOrNumber(gasValue) + "*" + nullifyOrInt(sensor_id) + "*" + nullifyOrInt(deviceFeatureId) + "*" + urlEncode(sensorName); //using delimited data instead of JSON to keep things simple
   return transmissionString;
 }
 
-void startWeatherSensors(int sensorTypeLocal, int sensorSubTypeLocal, int i2c, int pinNumber, int powerPin) {
+void startWeatherSensors(int sensor_id_local, int sensorSubTypeLocal, int i2c, int pinNumber, int powerPin) {
   //i've made all these inputs generic across different sensors, though for now some apply and others do not on some sensors
   //for example, you can set the i2c address of a BME680 or a BMP280 but not a BMP180.  you can specify any GPIO as a data pin for a DHT
   int objectCursor = 0;
-  if(sensorObjectCursor->has((String)sensorType)) {
-    objectCursor = sensorObjectCursor->get((String)sensorTypeLocal);;
+  if(sensorObjectCursor->has((String)sensor_id)) {
+    objectCursor = sensorObjectCursor->get((String)sensor_id_local);;
   } 
-  if(sensorTypeLocal == 1) { //simple analog input
+  if(sensor_id_local == 1) { //simple analog input
     //all we need to do is turn on power to whatever the analog device is
     if(powerPin > -1) {
       pinMode(powerPin, OUTPUT);
       digitalWrite(powerPin, LOW);
     }
-  } else if(sensorTypeLocal == 680) {
+  } else if(sensor_id_local == 680) {
     Serial.print(F("Initializing BME680 sensor...\n"));
-    while (!BME680[objectCursor].begin(I2C_STANDARD_MODE, i2c) && sensorType == 680) {  // Start B DHTME680 using I2C, use first device found
+    while (!BME680[objectCursor].begin(I2C_STANDARD_MODE, i2c) && sensor_id == 680) {  // Start B DHTME680 using I2C, use first device found
       Serial.print(F(" - Unable to find BME680. Trying again in 5 seconds.\n"));
       delay(5000);
     }  // of loop until device is located
@@ -269,7 +269,7 @@ void startWeatherSensors(int sensorTypeLocal, int sensorSubTypeLocal, int i2c, i
     BME680[objectCursor].setIIRFilter(IIR4);  // Use enumerated type values
     //Serial.print(F("- Setting gas measurement to 320\xC2\xB0\x43 for 150ms\n"));  // "�C" symbols
     BME680[objectCursor].setGas(320, 150);  // 320�c for 150 milliseconds
-  } else if (sensorTypeLocal == 2301) {
+  } else if (sensor_id_local == 2301) {
     Serial.print(F("Initializing DHT AM2301 sensor at pin: "));
     if(powerPin > -1) {
       pinMode(powerPin, OUTPUT);
@@ -277,12 +277,12 @@ void startWeatherSensors(int sensorTypeLocal, int sensorSubTypeLocal, int i2c, i
     }
     dht[objectCursor] = new DHT(pinNumber, sensorSubTypeLocal);
     dht[objectCursor]->begin();
-  } else if (sensorTypeLocal == 180) { //BMP180
+  } else if (sensor_id_local == 180) { //BMP180
     BMP180[objectCursor].begin();
-  } else if (sensorType == 85) { //BMP085
+  } else if (sensor_id == 85) { //BMP085
     Serial.print(F("Initializing BMP085...\n"));
     BMP085d[objectCursor].begin();
-  } else if (sensorTypeLocal == 280) {
+  } else if (sensor_id_local == 280) {
     Serial.print("BMP280 begin at i2c: ");
     Serial.print((int)i2c);
     Serial.print(" objectcursor:");
@@ -292,7 +292,7 @@ void startWeatherSensors(int sensorTypeLocal, int sensorSubTypeLocal, int i2c, i
       Serial.println("Couldn't find BMX280!");
     }
   }
-  sensorObjectCursor->put((String)sensorTypeLocal, objectCursor + 1); //we keep track of how many of a particular sensorType we use
+  sensorObjectCursor->put((String)sensor_id_local, objectCursor + 1); //we keep track of how many of a particular sensor_id we use
 }
 
 
@@ -308,8 +308,8 @@ void handleWeatherData() {
   if(ipAddress.indexOf(' ') > 0) { //i was getting HTML header info mixed in for some reason
     ipAddress = ipAddress.substring(0, ipAddress.indexOf(' '));
   }
-  if(sensorType > -1) {
-    transmissionString = weatherDataString(sensorType, sensorSubType, sensorData, sensorPower, sensorI2C, NULL, 0, deviceName);
+  if(sensor_id > -1) {
+    transmissionString = weatherDataString(sensor_id, sensor_sub_type, sensor_data_pin, sensor_power_pin, sensor_i2c, NULL, 0, deviceName);
   }
   //add the data for any additional sensors, delimited by '!' for each sensor
   transmissionString = transmissionString + handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), false);
@@ -333,16 +333,16 @@ void handleWeatherData() {
 void setup(void){
   //set specified pins to start low immediately, keeping devices from turning on
   for(int i=0; i<10; i++) {
-    if((int)pinsToStartLow[i] == -1) {
+    if((int)pins_to_start_low[i] == -1) {
       break;
     }
-    pinMode((int)pinsToStartLow[i], OUTPUT);
-    digitalWrite((int)pinsToStartLow[i], LOW);
+    pinMode((int)pins_to_start_low[i], OUTPUT);
+    digitalWrite((int)pins_to_start_low[i], LOW);
   }
   
-  if(moxeePowerSwitch > -1) {
-    pinMode(moxeePowerSwitch, OUTPUT);
-    digitalWrite(moxeePowerSwitch, HIGH);
+  if(moxee_power_switch > -1) {
+    pinMode(moxee_power_switch, OUTPUT);
+    digitalWrite(moxee_power_switch, HIGH);
   }
   Serial.begin(115200);
   Serial.println();
@@ -357,7 +357,7 @@ void setup(void){
   
   server.begin(); 
   Serial.println("HTTP server started");
-  startWeatherSensors(sensorType,  sensorSubType, sensorI2C, sensorData, sensorPower);
+  startWeatherSensors(sensor_id,  sensor_sub_type, sensor_i2c, sensor_data_pin, sensor_power_pin);
   //initialize NTP client
   timeClient.begin();
   // Set offset time in seconds to adjust for your timezone, for example:
@@ -446,32 +446,32 @@ void sendRemoteData(String datastring) {
   const int httpGetPort = 80;
   String url;
   String mode = "getDeviceData";
-  String storagePasswordToUse = storagePassword;
+  String storage_password_to_use = storage_password;
   //most of the time we want to getDeviceData, not saveData. the former picks up remote control activity. the latter sends sensor data
-  if(millis() - lastDataLogTime > dataLoggingGranularity * 1000) {
+  if(millis() - lastDataLogTime > data_logging_granularity * 1000) {
     mode = "saveData";
     lastDataLogTime = millis();
   }
   if(deviceName == "") {
     mode = "getInitialDeviceInfo";
   }
-  url =  (String)urlGet + "?storagePassword=" + (String)storagePasswordToUse + "&locationId=" + locationId + "&mode=" + mode + "&data=" + datastring;
+  url =  (String)url_get + "?storagePassword=" + (String)storage_password_to_use + "&locationId=" + device_id + "&mode=" + mode + "&data=" + datastring;
   Serial.println("\r>>> Connecting to host: ");
-  //Serial.println(hostGet);
+  //Serial.println(host_get);
   int attempts = 0;
-  while(!clientGet.connect(hostGet, httpGetPort) && attempts < connectionRetryNumber) {
+  while(!clientGet.connect(host_get, httpGetPort) && attempts < connection_retry_number) {
     attempts++;
     delay(200);
   }
   Serial.print("Connection attempts:  ");
   Serial.print(attempts);
   Serial.println();
-  if (attempts >= connectionRetryNumber) {
+  if (attempts >= connection_retry_number) {
     Serial.print("Connection failed, moxee rebooted: ");
     connectionFailureTime = millis();
     connectionFailureMode = true;
     rebootMoxee();
-    Serial.print(hostGet);
+    Serial.print(host_get);
     Serial.println();
   } else {
      connectionFailureTime = 0;
@@ -479,7 +479,7 @@ void sendRemoteData(String datastring) {
      Serial.println(url);
      clientGet.println("GET " + url + " HTTP/1.1");
      clientGet.print("Host: ");
-     clientGet.println(hostGet);
+     clientGet.println(host_get);
      clientGet.println("User-Agent: ESP8266/1.0");
      clientGet.println("Accept-Encoding: identity");
      clientGet.println("Connection: close\r\n\r\n");
@@ -488,11 +488,11 @@ void sendRemoteData(String datastring) {
        if (millis() - timeoutP > 10000) {
         //let's try a simpler connection and if that fails, then reboot moxee
         //clientGet.stop();
-        if(clientGet.connect(hostGet, httpGetPort)){
+        if(clientGet.connect(host_get, httpGetPort)){
          //timeOffset = timeOffset + timeSkewAmount; //in case two probes are stepping on each other, make this one skew a 20 seconds from where it tried to upload data
          clientGet.println("GET / HTTP/1.1");
          clientGet.print("Host: ");
-         clientGet.println(hostGet);
+         clientGet.println(host_get);
          clientGet.println("User-Agent: ESP8266/1.0");
          clientGet.println("Accept-Encoding: identity");
          clientGet.println("Connection: close\r\n\r\n");
@@ -525,8 +525,8 @@ void sendRemoteData(String datastring) {
         Serial.println(retLine);
         //set the global string; we'll just use that to store our data about addtional sensors
         
-        if(sensorConfigString != "") {
-          retLine = retLine + "|" + String(sensorConfigString);
+        if(sensor_config_string != "") {
+          retLine = retLine + "|" + String(sensor_config_string);
         }
         additionalSensorInfo = retLine;
         //once we have it
@@ -553,7 +553,7 @@ void sendRemoteData(String datastring) {
       onePinAtATimeMode = true;
     }
    
-  } //if (attempts >= connectionRetryNumber)....else....    
+  } //if (attempts >= connection_retry_number)....else....    
   clientGet.stop();
 }
 
@@ -580,12 +580,12 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
   int i2c;
   int pinNumber;
   int powerPin;
-  int sensorTypeLocal;
+  int sensor_id_local;
   int sensorSubTypeLocal;
   int deviceFeatureId;
   String out = "";
   int objectCursor = 0;
-  int oldSensorType = -1;
+  int oldsensor_id = -1;
   String sensorName;
 
   splitString(sensorData, '|', additionalSensorArray, 12);
@@ -597,25 +597,25 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
       splitString(sensorDatum, '*', specificSensorData, 7);
       pinNumber = specificSensorData[0].toInt();
       powerPin = specificSensorData[1].toInt();
-      sensorTypeLocal = specificSensorData[2].toInt();
+      sensor_id_local = specificSensorData[2].toInt();
       sensorSubTypeLocal = specificSensorData[3].toInt();
       i2c = specificSensorData[4].toInt();
       deviceFeatureId = specificSensorData[5].toInt();
       sensorName = specificSensorData[6];
-      if(oldSensorType != sensorTypeLocal) { //they're sorted by sensorType, so the objectCursor needs to be set to zero if we're seeing the first of its type
+      if(oldsensor_id != sensor_id_local) { //they're sorted by sensor_id, so the objectCursor needs to be set to zero if we're seeing the first of its type
         objectCursor = 0;
       }
-      if(sensorTypeLocal == sensorType) { //this particular additional sensor is the same type as the base (non-additional) sensor, so we have to pre-start it higher
+      if(sensor_id_local == sensor_id) { //this particular additional sensor is the same type as the base (non-additional) sensor, so we have to pre-start it higher
         objectCursor++;
       }
       if(intialize) {
-        startWeatherSensors(sensorTypeLocal, sensorSubTypeLocal, i2c, pinNumber, powerPin); //guess i have to pass all this additional info
+        startWeatherSensors(sensor_id_local, sensorSubTypeLocal, i2c, pinNumber, powerPin); //guess i have to pass all this additional info
       } else {
         //otherwise do a weatherDataString
-        out = out + "!" + weatherDataString(sensorTypeLocal, sensorSubTypeLocal, pinNumber, powerPin, i2c, deviceFeatureId, objectCursor, sensorName);
+        out = out + "!" + weatherDataString(sensor_id_local, sensorSubTypeLocal, pinNumber, powerPin, i2c, deviceFeatureId, objectCursor, sensorName);
       }
       objectCursor++;
-      oldSensorType = sensorTypeLocal;
+      oldsensor_id = sensor_id_local;
     }
   }
  return out;
@@ -858,10 +858,10 @@ void rebootEsp() {
 }
 
 void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so here i have a little algorithm to reboot it.
-  if(moxeePowerSwitch > -1) {
-    digitalWrite(moxeePowerSwitch, LOW);
+  if(moxee_power_switch > -1) {
+    digitalWrite(moxee_power_switch, LOW);
     delay(7000);
-    digitalWrite(moxeePowerSwitch, HIGH);
+    digitalWrite(moxee_power_switch, HIGH);
   }
   //only do one reboot!  it usually takes two, but this thing can be made to cycle so fast that this same function can handle both reboots, which is important if the reboot happens to 
   //be out of phase with the cellular hotspot
@@ -873,12 +873,12 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
 void loop(void){
   timeClient.update();
   long nowTime = millis() + timeOffset;
-  int granularityToUse = pollingGranularity;
+  int granularityToUse = polling_granularity;
   if(connectionFailureMode) {
-    granularityToUse = granularityWhenInConnectionFailureMode;
+    granularityToUse = granularity_when_in_connection_failure_mode;
   }
   //if we've been up for a week or there have been lots of moxee reboots in a short period of time, reboot esp8266
-  if(nowTime > 1000 * 86400 * 7 || nowTime < hotspotLimitedTimeFrame * 1000  && moxeeRebootCount >= numberOfHotspotRebootsOverLimitedTimeframeBeforeEspReboot) {
+  if(nowTime > 1000 * 86400 * 7 || nowTime < hotspot_limited_time_frame * 1000  && moxeeRebootCount >= number_of_hotspot_reboots_over_limited_timeframe_before_esp_reboot) {
     Serial.print("MOXEE REBOOT COUNT: ");
     Serial.print(moxeeRebootCount);
     Serial.println();
@@ -886,11 +886,11 @@ void loop(void){
   }
  
  
-  if(nowTime - ((nowTime/(1000 * granularityToUse) )*(1000 * granularityToUse)) == 0 || connectionFailureTime>0 && connectionFailureTime + connectionFailureRetrySeconds * 1000 > millis()) {  //send data to backend server every <pollingGranularity> seconds or so
+  if(nowTime - ((nowTime/(1000 * granularityToUse) )*(1000 * granularityToUse)) == 0 || connectionFailureTime>0 && connectionFailureTime + connection_failure_retry_seconds * 1000 > millis()) {  //send data to backend server every <polling_granularity> seconds or so
     //Serial.print("Connection failure time: ");
     //Serial.println(connectionFailureTime);
     //Serial.print("  Connection failure calculation: ");
-    //Serial.print(connectionFailureTime>0 && connectionFailureTime + connectionFailureRetrySeconds * 1000);
+    //Serial.print(connectionFailureTime>0 && connectionFailureTime + connection_failure_retry_seconds * 1000);
     //Serial.println("Epoch time:");
     //Serial.println(timeClient.getEpochTime());
     glblRemote = true;
@@ -905,9 +905,9 @@ void loop(void){
  
   if(millis() > 10000) {
     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
-    if(deepSleepTimePerLoop > 0) {
+    if(deep_sleep_time_per_loop > 0) {
       Serial.println("sleeping...");
-      ESP.deepSleep(deepSleepTimePerLoop * 1e6); 
+      ESP.deepSleep(deep_sleep_time_per_loop * 1e6); 
       Serial.println("awake...");
       WiFiConnect();
     }
