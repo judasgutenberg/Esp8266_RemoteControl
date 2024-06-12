@@ -295,7 +295,6 @@ void startWeatherSensors(int sensor_id_local, int sensorSubTypeLocal, int i2c, i
   sensorObjectCursor->put((String)sensor_id_local, objectCursor + 1); //we keep track of how many of a particular sensor_id we use
 }
 
-
 void handleWeatherData() {
   String transmissionString = "";
   int deviceFeatureId = 0;
@@ -314,9 +313,9 @@ void handleWeatherData() {
   //add the data for any additional sensors, delimited by '!' for each sensor
   transmissionString = transmissionString + handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), false);
   //the time-stamps of connection failures, delimited by *
-  transmissionString = transmissionString + "|" + JoinValsOnDelimiter(moxeeRebootTimes, "*", 10);
+  transmissionString = transmissionString + "|" + joinValsOnDelimiter(moxeeRebootTimes, "*", 10);
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
-  transmissionString = transmissionString + "|" + JoinMapValsOnDelimiter(pinMap, "*", pinTotal); //also send pin as they are known back to the server
+  transmissionString = transmissionString + "|" + joinMapValsOnDelimiter(pinMap, "*", pinTotal); //also send pin as they are known back to the server
   //other server-relevant info as needed, delimited by *
   transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddress + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson;
   //Serial.println(transmissionString);
@@ -326,49 +325,9 @@ void handleWeatherData() {
   } else {
     server.send(200, "text/plain", transmissionString); //Send values only to client ajax request
   }
- 
 }
 
-//SETUP----------------------------------------------------
-void setup(void){
-  //set specified pins to start low immediately, keeping devices from turning on
-  for(int i=0; i<10; i++) {
-    if((int)pins_to_start_low[i] == -1) {
-      break;
-    }
-    pinMode((int)pins_to_start_low[i], OUTPUT);
-    digitalWrite((int)pins_to_start_low[i], LOW);
-  }
-  
-  if(moxee_power_switch > -1) {
-    pinMode(moxee_power_switch, OUTPUT);
-    digitalWrite(moxee_power_switch, HIGH);
-  }
-  Serial.begin(115200);
-  Serial.println();
-  Serial.println("Just started up...");
-  Wire.begin();
-  WiFiConnect();
-  server.on("/", handleRoot);      //Which routine to handle at root location. This is display page
-  server.on("/readLocalData", localShowData);
-  server.on("/weatherdata", handleWeatherData); //This page is called by java Script AJAX
-  server.on("/writeLocalData", localSetData);
- 
-  
-  server.begin(); 
-  Serial.println("HTTP server started");
-  startWeatherSensors(sensor_id,  sensor_sub_type, sensor_i2c, sensor_data_pin, sensor_power_pin);
-  //initialize NTP client
-  timeClient.begin();
-  // Set offset time in seconds to adjust for your timezone, for example:
-  // GMT +1 = 3600
-  // GMT +8 = 28800
-  // GMT -1 = -3600
-  // GMT 0 = 0
-  timeClient.setTimeOffset(0);
-}
-
-void WiFiConnect() {
+void wiFiConnect() {
   WiFi.begin(ssid, password);     //Connect to your WiFi router
   Serial.println();
   // Wait for connection
@@ -389,55 +348,6 @@ void WiFiConnect() {
   Serial.print("IP address: ");
   ipAddress =  WiFi.localIP().toString();
   Serial.println(WiFi.localIP());  //IP address assigned to your ESP
-}
-
-String JoinValsOnDelimiter(long vals[], String delimiter, int numberToDo) {
-  String out = "";
-  for(int i=0; i<numberToDo; i++){
-    out = out + (String)vals[i];
-    if(i < numberToDo-1) {
-      out = out + delimiter;
-    }
-  }
-  return out;
-}
-
-String JoinMapValsOnDelimiter(SimpleMap<String, int> *pinMap, String delimiter, int numberToDo) {
-  String out = "";
-  for (int i = 0; i < pinMap->size(); i++) {
-    out = out + (String)pinMap->getData(i);
-    if(i < numberToDo-1) {
-      out = out + delimiter;
-    }
-  }
-  return out;
-}
-
-String nullifyOrNumber(double inVal) {
-  if(inVal == NULL) {
-    return "NULL";
-  } else {
-
-    return String(inVal);
-  }
-}
-
-String nullifyOrInt(int inVal) {
-  if(inVal == NULL) {
-    return "NULL";
-  } else {
-
-    return String(inVal);
-  }
-}
-
-void ShiftArrayUp(long array[], long newValue, int arraySize) {
-    // Shift elements down by one index
-    for (int i =  1; i < arraySize ; i++) {
-        array[i - 1] = array[i];
-    }
-    // Insert the new value at the beginning
-    array[arraySize - 1] = newValue;
 }
 
 //SEND DATA TO A REMOTE SERVER TO STORE IN A DATABASE----------------------------------------------------
@@ -524,7 +434,6 @@ void sendRemoteData(String datastring) {
         Serial.print("Initial Device Data: ");
         Serial.println(retLine);
         //set the global string; we'll just use that to store our data about addtional sensors
-        
         if(sensor_config_string != "") {
           retLine = retLine + "|" + String(sensor_config_string);
         }
@@ -587,7 +496,6 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
   int objectCursor = 0;
   int oldsensor_id = -1;
   String sensorName;
-
   splitString(sensorData, '|', additionalSensorArray, 12);
   deviceName = additionalSensorArray[0].substring(1);
   requestNonJsonPinInfo = 1; //set this global
@@ -621,7 +529,6 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
  return out;
 }
 
-
 //if the backend sends too much text data at once, it is likely to get gzipped, which is hard to deal with on a microcontroller with limited resources
 //so a better strategy is to send double-delimited data instead of JSON, with data consistently in known ordinal positions
 //thereby making the data payloads small enough that the server never gzips them
@@ -645,8 +552,7 @@ void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
   int foundPins = 0;
   for(int i=1; i<12; i++) {
     nonJsonDatumString = nonJsonPinArray[i];
-    if(nonJsonDatumString.indexOf('*')>-1) {
-      
+    if(nonJsonDatumString.indexOf('*')>-1) {  
       splitString(nonJsonDatumString, '*', nonJsonPinDatum, 5);
       key = nonJsonPinDatum[1];
       friendlyPinName = nonJsonPinDatum[0];
@@ -696,7 +602,6 @@ void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
   pinTotal = foundPins;
 }
 
-
 //this will set any pins specified in the JSON
 void setLocalHardwareToServerStateFromJson(char * json){
   if(millis() - localChangeTime < 1000) { //don't accept any server values withing 5 seconds of a local change
@@ -710,7 +615,6 @@ void setLocalHardwareToServerStateFromJson(char * json){
   int pinCounter = 0;
   int serverSaved = 0;
   String friendlyPinName = "";
- 
   char i2c = 0;
   DeserializationError error = deserializeJson(jsonBuffer, json);
   if(jsonBuffer["device"]) { //deviceName is a global
@@ -754,7 +658,6 @@ void setLocalHardwareToServerStateFromJson(char * json){
           //Serial.println("! " + (String)pinList[j] +  " =?: " + key +  " correcto? " + (int((String)pinList[j] == key)));
           if(!localSource || serverSaved == 1){
             if((String)pinList[j] == key) {
-
               if(serverSaved == 1) {//confirmation of serverSaved, so localSource flag is no longer needed
                 Serial.println("SERVER SAVED==1!!");
                 localSource = false;
@@ -865,10 +768,44 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
   }
   //only do one reboot!  it usually takes two, but this thing can be made to cycle so fast that this same function can handle both reboots, which is important if the reboot happens to 
   //be out of phase with the cellular hotspot
-  ShiftArrayUp(moxeeRebootTimes,  timeClient.getEpochTime(), 10);
+  shiftArrayUp(moxeeRebootTimes,  timeClient.getEpochTime(), 10);
   moxeeRebootCount++;
 }
 
+//SETUP----------------------------------------------------
+void setup(void){
+  //set specified pins to start low immediately, keeping devices from turning on
+  for(int i=0; i<10; i++) {
+    if((int)pins_to_start_low[i] == -1) {
+      break;
+    }
+    pinMode((int)pins_to_start_low[i], OUTPUT);
+    digitalWrite((int)pins_to_start_low[i], LOW);
+  }
+  if(moxee_power_switch > -1) {
+    pinMode(moxee_power_switch, OUTPUT);
+    digitalWrite(moxee_power_switch, HIGH);
+  }
+  Serial.begin(115200);
+  Serial.println("Just started up...");
+  Wire.begin();
+  wiFiConnect();
+  server.on("/", handleRoot);      //Which routine to handle at root location. This is display page
+  server.on("/readLocalData", localShowData);
+  server.on("/weatherdata", handleWeatherData); //This page is called by java Script AJAX
+  server.on("/writeLocalData", localSetData);
+  server.begin(); 
+  Serial.println("HTTP server started");
+  startWeatherSensors(sensor_id,  sensor_sub_type, sensor_i2c, sensor_data_pin, sensor_power_pin);
+  //initialize NTP client
+  timeClient.begin();
+  // Set offset time in seconds to adjust for your timezone, for example:
+  // GMT +1 = 3600
+  // GMT +8 = 28800
+  // GMT -1 = -3600
+  // GMT 0 = 0
+  timeClient.setTimeOffset(0);
+}
 //LOOP----------------------------------------------------
 void loop(void){
   timeClient.update();
@@ -884,7 +821,6 @@ void loop(void){
     Serial.println();
     rebootEsp();
   }
- 
  
   if(nowTime - ((nowTime/(1000 * granularityToUse) )*(1000 * granularityToUse)) == 0 || connectionFailureTime>0 && connectionFailureTime + connection_failure_retry_seconds * 1000 > millis()) {  //send data to backend server every <polling_granularity> seconds or so
     //Serial.print("Connection failure time: ");
@@ -909,13 +845,12 @@ void loop(void){
       Serial.println("sleeping...");
       ESP.deepSleep(deep_sleep_time_per_loop * 1e6); 
       Serial.println("awake...");
-      WiFiConnect();
+      wiFiConnect();
     }
   }
 }
 
- 
-//this is the easiest way I could find to read querystring parameters on an ESP8266
+//this is the easiest way I could find to read querystring parameters on an ESP8266. ChatGPT was suprisingly unhelpful
 void localSetData() {
   localChangeTime = millis();
   String id = "";
@@ -927,8 +862,6 @@ void localSetData() {
       Serial.print( " : ");
     } else if (server.argName(i) == "on") {
       onValue = (int)(server.arg(i) == "1");  
-      
-      
     }
     Serial.print(onValue);
     Serial.println();
@@ -964,6 +897,9 @@ void localShowData() {
   server.send(200, "text/plain", out); 
 }
 
+/////////////////////////////////////////////
+//utility functions
+/////////////////////////////////////////////
 String urlEncode(String str) {
   String encodedString = "";
   char c;
@@ -980,4 +916,51 @@ String urlEncode(String str) {
     }
   }
   return encodedString;
+}
+
+String joinValsOnDelimiter(long vals[], String delimiter, int numberToDo) {
+  String out = "";
+  for(int i=0; i<numberToDo; i++){
+    out = out + (String)vals[i];
+    if(i < numberToDo-1) {
+      out = out + delimiter;
+    }
+  }
+  return out;
+}
+
+String joinMapValsOnDelimiter(SimpleMap<String, int> *pinMap, String delimiter, int numberToDo) {
+  String out = "";
+  for (int i = 0; i < pinMap->size(); i++) {
+    out = out + (String)pinMap->getData(i);
+    if(i < numberToDo-1) {
+      out = out + delimiter;
+    }
+  }
+  return out;
+}
+
+String nullifyOrNumber(double inVal) {
+  if(inVal == NULL) {
+    return "NULL";
+  } else {
+    return String(inVal);
+  }
+}
+
+String nullifyOrInt(int inVal) {
+  if(inVal == NULL) {
+    return "NULL";
+  } else {
+    return String(inVal);
+  }
+}
+
+void shiftArrayUp(long array[], long newValue, int arraySize) {
+    // Shift elements down by one index
+    for (int i =  1; i < arraySize ; i++) {
+        array[i - 1] = array[i];
+    }
+    // Insert the new value at the beginning
+    array[arraySize - 1] = newValue;
 }
