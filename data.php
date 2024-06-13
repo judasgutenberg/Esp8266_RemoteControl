@@ -231,43 +231,43 @@ if($_REQUEST) {
 				
 				//select * from weathertron.weather_data where location_id=3 order by recorded desc limit 0,10;
 				$multipleSensorArray = explode("!", $weatherInfoString);
+				$temperature = "NULL";
+				$pressure = "NULL";
+				$humidity = "NULL";
+				$gasMetric = "NULL";
+				$deviceFeatureId = "NULL";
+				$windDirection = "NULL";
+				$precipitation = "NULL";
+				$windSpeed = "NULL";
+				$windIncrement = "NULL";
+				$sensorId = "NULL";
+				$consolidateAllSensorsToOneRecord = 0; //if this is set to one by the first weather record, all weather data is stored in a single weather_data record
+				$weatherRecordCounter = 0;
 				foreach($multipleSensorArray  as $sensorDataString) { //if there is a ! in the weatherInfoString, 
 					$arrWeatherData = explode("*", $sensorDataString);
 					if(count($arrWeatherData) > 1) { //it's possible the $weatherInfoString began with a ! 
-						$temperature = $arrWeatherData[0];
-						$pressure = $arrWeatherData[1];
-						$humidity = $arrWeatherData[2];
-						$gasMetric = "NULL";
-						$deviceFeatureId = "NULL";
-						$windDirection = "NULL";
-						$precipitation = "NULL";
-						$windSpeed = "NULL";
-						$windIncrement = "NULL";
-						if(count($arrWeatherData)>3) {
-							$gasMetric = $arrWeatherData[3];
+						$temperature = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $temperature, $arrWeatherData, 0);
+						$pressure = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $pressure, $arrWeatherData, 1);
+						$humidity = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $humidity, $arrWeatherData, 2);
+						$gasMetric = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $gasMetric, $arrWeatherData, 3);
+						$sensorId = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $sensorId, $arrWeatherData, 4);
+						if($consolidateAllSensorsToOneRecord){
+							$deviceFeatureId = "NULL";
+						} else {
+							if(count($arrWeatherData)>5) {
+								$deviceFeatureId = $arrWeatherData[5];
+							} else {
+								$deviceFeatureId = "NULL";
+							}
 						}
-						if(count($arrWeatherData)>4) {
-							$sensorId = $arrWeatherData[4];
-						}
-						if(count($arrWeatherData)>5) {
-							$deviceFeatureId = $arrWeatherData[5];
-						}
-						if(count($arrWeatherData)>6) {
-							$sensorName = $arrWeatherData[6]; //sensor name is not used here
-						}
-						if(count($arrWeatherData)>7) {
-							$windDirection = $arrWeatherData[7];
-						}
-						if(count($arrWeatherData)>8) {
-							$precipitation = $arrWeatherData[89];
-						}
-						if(count($arrWeatherData)>9) {
-							$windSpeed = $arrWeatherData[9];
-						}
-						if(count($arrWeatherData)>10) {
-							$windIncrement = $arrWeatherData[10];
-						}
+						//sensorName is $arrWeatherData[6] -- not used here
+						$windDirection = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windDirection, $arrWeatherData, 7);
+						$precipitation = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $precipitation, $arrWeatherData, 8);
+						$windSpeed = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windSpeed, $arrWeatherData, 9);
+						$windIncrement = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windIncrement, $arrWeatherData, 10);
+						$consolidateAllSensorsToOneRecord = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $consolidateAllSensorsToOneRecord, $arrWeatherData, 11);
 
+						
 						$weatherSql = "INSERT INTO weather_data(location_id, device_feature_id, recorded, temperature, pressure, humidity, gas_metric, wind_direction, precipitation, wind_speed, wind_increment, sensor_id) VALUES (" . 
 						mysqli_real_escape_string($conn, $locationId) . "," .
 						mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
@@ -283,11 +283,15 @@ if($_REQUEST) {
 						mysqli_real_escape_string($conn, $sensorId) .
 						")";
 						
-						if($temperature != "NULL" || $pressure != "NULL" || $humidity != "NULL" || $gasMetric != "NULL") { //if sensors are all null, do not attempt to store!
-							//echo $weatherSql;
+
+					}
+					if($temperature != "NULL" || $pressure != "NULL" || $humidity != "NULL" || $gasMetric != "NULL") { //if sensors are all null, do not attempt to store!
+						//echo $weatherSql;
+						if(intval($consolidateAllSensorsToOneRecord) != 1 || $weatherRecordCounter == count($multipleSensorArray) - 1) {
 							$result = mysqli_query($conn, $weatherSql);
 						}
 					}
+					$weatherRecordCounter++;
 				}
 				$method  = "saveWeatherData";
 				$out = Array("message" => "done", "method"=>$method);
@@ -683,6 +687,27 @@ function logSql($sql){
 	//return; //for when you don't actually want to log
 	global $formatedDateTime;
 	$myfile = file_put_contents('sql.txt', "\n\n" . $formatedDateTime . ": " . $sql, FILE_APPEND | LOCK_EX);
+}
+
+function mergeWeatherDatum($consolidateAllSensorsToOneRecord, $existingValue, $sourceArray, $itemNumber) {
+	if(intval($consolidateAllSensorsToOneRecord) == 1) {
+		if($existingValue == "NULL"  || $existingValue == "") {
+			if(count($sourceArray) > $itemNumber) {
+				$out = $sourceArray[$itemNumber];
+			} else {
+				$out = "NULL";
+			}
+		} else {
+			return $existingValue;
+		}
+	} else {
+		if(count($sourceArray) > $itemNumber) {
+			$out = $sourceArray[$itemNumber];
+		} else {
+			$out = "NULL";
+		}
+	}
+	return $out;
 }
  
 
