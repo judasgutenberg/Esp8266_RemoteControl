@@ -117,6 +117,9 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
   static char buf[16];
   static uint16_t loopCounter = 0;  
   String transmissionString = "";
+  if(glblRemote) {
+    sensorName = urlEncode(sensorName);
+  }
   if(deviceFeatureId == NULL) {
     objectCursor = 0;
   }
@@ -140,7 +143,7 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
       transmissionString = transmissionString + "*";
     }
     //note, if temperature ends up being NULL, the record won't save. might want to tweak data.php to save records if it contains SOME data
-    transmissionString = transmissionString + nullifyOrInt(sensor_id) + "*" + nullifyOrInt(deviceFeatureId) + "*" + urlEncode(sensorName);
+    transmissionString = transmissionString + nullifyOrInt(sensor_id) + "*" + nullifyOrInt(deviceFeatureId) + "*" + sensorName;
     if(powerPin > -1) {
       digitalWrite(powerPin, LOW);
     }
@@ -238,7 +241,7 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
     pressureValue = NULL;
     humidityValue = NULL;
   }
-  transmissionString = nullifyOrNumber(temperatureValue) + "*" + nullifyOrNumber(pressureValue) + "*" + nullifyOrNumber(humidityValue) + "*" + nullifyOrNumber(gasValue) + "*" + nullifyOrInt(sensor_id) + "*" + nullifyOrInt(deviceFeatureId) + "*" + urlEncode(sensorName); //using delimited data instead of JSON to keep things simple
+  transmissionString = nullifyOrNumber(temperatureValue) + "*" + nullifyOrNumber(pressureValue) + "*" + nullifyOrNumber(humidityValue) + "*" + nullifyOrNumber(gasValue) + "*" + nullifyOrInt(sensor_id) + "*" + nullifyOrInt(deviceFeatureId) + "*" + sensorName; //using delimited data instead of JSON to keep things simple
   return transmissionString;
 }
 
@@ -649,7 +652,6 @@ void setLocalHardwareToServerStateFromJson(char * json){
         for(char j=0; j<pinTotal; j++){
           String key;
           char sprintBuffer[6];
-          
           sprintf(sprintBuffer, "%d.%d", i2c, pinNumber);
           key = (String)sprintBuffer;
           if(i2c < 1){
@@ -685,7 +687,6 @@ void setLocalHardwareToServerStateFromJson(char * json){
       }
       pinCounter++;
     }
-  
   }
   nodeName="pin_list";
   String pinString;
@@ -790,7 +791,7 @@ void setup(void){
   Serial.println("Just started up...");
   Wire.begin();
   wiFiConnect();
-  server.on("/", handleRoot);      //Which routine to handle at root location. This is display page
+  server.on("/", handleRoot);      //Displays a form where devices can be turned on and off and the outputs of sensors
   server.on("/readLocalData", localShowData);
   server.on("/weatherdata", handleWeatherData); //This page is called by java Script AJAX
   server.on("/writeLocalData", localSetData);
