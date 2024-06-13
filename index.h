@@ -5,13 +5,11 @@ const char MAIN_page[] PROGMEM = R"=====(
 <title>local data</title>
 </head>
 <style>
-@import url(https://fonts.googleapis.com/css?family=Montserrat);
-@import url(https://fonts.googleapis.com/css?family=Advent+Pro:400,200);
 *{margin: 0;padding: 0;}
 
 body{
   background:#544947;
-  font-family:Montserrat,Arial,sans-serif;
+  font-family:sans-serif;
 }
 h2{
   font-size:14px;
@@ -24,9 +22,9 @@ h2{
 }
 
 .devices{
-  background:#00A8A9;
+  background:#ccccff;
   border-radius:0 0 5px 5px;
-  font-family:'Advent Pro';
+  font-family:sans-serif;
   font-weight:200;
   height:130px;
   width:100%;
@@ -34,33 +32,48 @@ h2{
 
 .sensorcluster {
   display:block;
-  text-align: center;
-  margin-bottom:10px;
+  text-align: left;
+  margin-bottom:1px;
   background-color:black
 }
 
-.weatherdata {
-  display:inline-block;
-  text-align: center;
-  padding-left:10px;
-  color:white
+.sensors {
+  border-collapse: collapse;
+  width: 100%;
+}
+.sensors td, .sensors th {
+  border: 1px solid #cccccc;
+  background-color: #999999;
+  padding: 2px;
+}
+
+.sensorname{
+  text-align: right;
+  font-weight: bold;
 }
  
-#deviceName {
+#devicename {
   text-align: center;
   color:white;
   font-size: 14px;
 }
- 
+#sensorheader {
+  text-align: center;
+  color:white;
+  font-size: 14px;
+  display:none;
+} 
 </style>
 <body>
 
 <div class="widget"> 
-  <div id='deviceName'>Your Device</div>
+  <div id='devicename'>Your Device</div>
   <div class="devices" id="devices">    
   </div>
-  <div class="sensors" id="sensors">    
-  </div>
+  <div id='sensorheader'>Sensors</div>
+  <table class="sensors">
+    <tbody id="sensors"></tbody>    
+  </table>
    
 </div>
 
@@ -75,9 +88,9 @@ function updateWeatherDisplay() {
         let firstLine = txt.split("|")[0];
         //console.log(firstLine);
         let weatherLines = firstLine.split("!");
-        let sensorDiv = document.getElementById("sensors");
-        sensorDiv.innerHTML = "";
+        let sensorsDiv = document.getElementById("sensors");
         let firstSensorDone = false;
+        let sensorCursor = 0;
         for(weatherLine of weatherLines){  
           if(weatherLine.indexOf("*") > -1) {
             console.log(weatherLine);
@@ -87,28 +100,46 @@ function updateWeatherDisplay() {
             let pressure = weatherData[1];
             let humidity = weatherData[2];
             let sensorName = weatherData[6];
-            sensorDiv.innerHTML += "<div class='sensorcluster'>";
+            let potentialWeatherDisplay = "";
+            let parentDiv = "";
+            let weHadData = false;
+            parentDiv += "<tr id='sensor" + sensorCursor + "'>";
             if(firstSensorDone) {
-              sensorDiv.innerHTML += "<div class='weatherdata'><b>" + sensorName + "</b></div>";
+              potentialWeatherDisplay += "<td class='sensorname'>" + sensorName + "</td>";
+            } else {
+              potentialWeatherDisplay += "<td></td>";
             }
             if(temperature != "NULL" && !isNaN(temperature)) {
-              sensorDiv.innerHTML += "<div class='weatherdata'>" + (parseFloat(temperature) * 1.8 + 32).toFixed(2) + "&deg; F" + "</div>";
+              potentialWeatherDisplay += "<td class='weatherdata'>" + (parseFloat(temperature) * 1.8 + 32).toFixed(2) + "&deg; F" + "</td>";
               //document.getElementById("temperature").innerHTML = (parseFloat(temperature) * 1.8 + 32).toFixed(2) + "&deg; F"; 
+              weHadData = true;
             }
             if(pressure != "NULL"  && !isNaN(pressure)) {
-              sensorDiv.innerHTML += "<div class='weatherdata'>" +  parseFloat(pressure).toFixed(2) + "mm Hg" + "</div>";
+              potentialWeatherDisplay += "<td class='weatherdata'>" +  parseFloat(pressure).toFixed(2) + "mm Hg" + "</td>";
               //document.getElementById("pressure").innerHTML = parseFloat(pressure).toFixed(2) + "mm Hg";
+              weHadData = true;
             }
             if(humidity != "NULL" && !isNaN(humidity)) {
-              sensorDiv.innerHTML += "<div class='weatherdata'>" +  parseFloat(humidity).toFixed(2) + "% rel" + "</div>";
+             potentialWeatherDisplay += "<td class='weatherdata'>" +  parseFloat(humidity).toFixed(2) + "% rel" + "</td>";
               //document.getElementById("humidity").innerHTML = parseFloat(humidity).toFixed(2) + "% rel";
+             weHadData = true;
+            } 
+            parentDiv += "</tr>";
+           
+            if(weHadData) {
+              document.getElementById('sensorheader').style.display = 'block';
+              let particularSensorDiv = document.getElementById('sensor' + sensorCursor);
+              if(!particularSensorDiv) {
+                sensorsDiv.innerHTML += parentDiv;
+              }
+              particularSensorDiv = document.getElementById('sensor' + sensorCursor);
+              particularSensorDiv.innerHTML = potentialWeatherDisplay;
             }
-            sensorDiv.innerHTML += "</div>";
-            firstSensorDone = true;
           }
+          firstSensorDone = true;
+          sensorCursor++;
         }
       }
-  
     };
     xhttp.open("GET", "/weatherdata", true);
     xhttp.send();
@@ -138,7 +169,7 @@ function showPinValues(){
         if(pins.length> 0) {
          document.getElementById("devices").innerHTML = "";
         }
-        document.getElementById("deviceName").innerHTML = deviceName;
+        document.getElementById("devicename").innerHTML = deviceName;
         let pinCursor = 0;
         //console.log(arr);
         for(let obj of pins) {
@@ -161,10 +192,13 @@ function showPinValues(){
           pinCursor++;
         }
       } 
-      updateWeatherDisplay(); 
+
     };
    xhttp.open("GET", "readLocalData", true); //Handle readADC server on ESP8266
    xhttp.send();
+   setTimeout(function(){
+      updateWeatherDisplay(); 
+      }, Math.random()* 3);
 }
 </script>
 </body>
