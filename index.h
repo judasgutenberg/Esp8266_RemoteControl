@@ -47,6 +47,10 @@ h2{
   padding: 2px;
 }
 
+.weatherdata{
+  text-align: right;
+}
+
 .sensorname{
   text-align: right;
   font-weight: bold;
@@ -55,6 +59,7 @@ h2{
 #devicename {
   text-align: center;
   color:white;
+  background-color: #000000;
   font-size: 14px;
 }
 #sensorheader {
