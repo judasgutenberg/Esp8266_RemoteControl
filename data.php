@@ -57,6 +57,7 @@ if($_REQUEST) {
 	if($locationId == ""){
 		$locationId = 1;
 	}
+	
 	if(!$conn) {
         $out = ["error"=>"bad database connection"];
       } else {
@@ -251,19 +252,22 @@ if($_REQUEST) {
 						if(count($arrWeatherData)>5) {
 							$deviceFeatureId = $arrWeatherData[5];
 						}
-						//$arrWeatherData[6] is the sensor name
+						if(count($arrWeatherData)>6) {
+							$sensorName = $arrWeatherData[6]; //sensor name is not used here
+						}
+						if(count($arrWeatherData)>7) {
+							$windDirection = $arrWeatherData[7];
+						}
 						if(count($arrWeatherData)>8) {
-							$windDirection = $arrWeatherData[8];
+							$precipitation = $arrWeatherData[89];
 						}
 						if(count($arrWeatherData)>9) {
-							$precipitation = $arrWeatherData[9];
+							$windSpeed = $arrWeatherData[9];
 						}
 						if(count($arrWeatherData)>10) {
-							$windSpeed = $arrWeatherData[10];
+							$windIncrement = $arrWeatherData[10];
 						}
-						if(count($arrWeatherData)>11) {
-							$windIncrement = $arrWeatherData[11];
-						}
+
 						$weatherSql = "INSERT INTO weather_data(location_id, device_feature_id, recorded, temperature, pressure, humidity, gas_metric, wind_direction, precipitation, wind_speed, wind_increment, sensor_id) VALUES (" . 
 						mysqli_real_escape_string($conn, $locationId) . "," .
 						mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
@@ -280,6 +284,7 @@ if($_REQUEST) {
 						")";
 						
 						if($temperature != "NULL" || $pressure != "NULL" || $humidity != "NULL" || $gasMetric != "NULL") { //if sensors are all null, do not attempt to store!
+							//echo $weatherSql;
 							$result = mysqli_query($conn, $weatherSql);
 						}
 					}
