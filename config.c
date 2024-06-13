@@ -1,6 +1,6 @@
 
-const char* ssid = "your_ssid"; //mine was Moxee Hotspot83_2.4G
-const char* password = "your_wifi_password";
+const char* wifi_ssid = "your_ssid"; //mine was Moxee Hotspot83_2.4G
+const char* wifi_password = "your_wifi_password";
 const char* storage_password = "storage_password_for_your_user"; //to ensure someone doesn't store bogus data on your server. should match value in the storage_password column in you user table for your user
 //data posted to remote server so we can keep a historical record
 //url will be in the form: http://your-server.com:80/weather/data.php?data=
