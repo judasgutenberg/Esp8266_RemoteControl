@@ -331,7 +331,7 @@ void handleWeatherData() {
 }
 
 void wiFiConnect() {
-  WiFi.begin(ssid, password);     //Connect to your WiFi router
+  WiFi.begin(wifi_ssid, wifi_password);     //Connect to your WiFi router
   Serial.println();
   // Wait for connection
   int wiFiSeconds = 0;
@@ -347,7 +347,7 @@ void wiFiConnect() {
   }
   Serial.println("");
   Serial.print("Connected to ");
-  Serial.println(ssid);
+  Serial.println(wifi_ssid);
   Serial.print("IP address: ");
   ipAddress =  WiFi.localIP().toString();
   Serial.println(WiFi.localIP());  //IP address assigned to your ESP
@@ -359,7 +359,6 @@ void sendRemoteData(String datastring) {
   const int httpGetPort = 80;
   String url;
   String mode = "getDeviceData";
-  String storage_password_to_use = storage_password;
   //most of the time we want to getDeviceData, not saveData. the former picks up remote control activity. the latter sends sensor data
   if(millis() - lastDataLogTime > data_logging_granularity * 1000) {
     mode = "saveData";
@@ -368,7 +367,7 @@ void sendRemoteData(String datastring) {
   if(deviceName == "") {
     mode = "getInitialDeviceInfo";
   }
-  url =  (String)url_get + "?storagePassword=" + (String)storage_password_to_use + "&locationId=" + device_id + "&mode=" + mode + "&data=" + datastring;
+  url =  (String)url_get + "?storagePassword=" + (String)storage_password + "&locationId=" + device_id + "&mode=" + mode + "&data=" + datastring;
   Serial.println("\r>>> Connecting to host: ");
   //Serial.println(host_get);
   int attempts = 0;
