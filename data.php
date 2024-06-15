@@ -241,6 +241,10 @@ if($_REQUEST) {
 				$windSpeed = "NULL";
 				$windIncrement = "NULL";
 				$sensorId = "NULL";
+				$reserved1 = "NULL";
+				$reserved2 = "NULL";
+				$reserved3 = "NULL";
+				$reserved4 = "NULL";
 				$consolidateAllSensorsToOneRecord = 0; //if this is set to one by the first weather record, all weather data is stored in a single weather_data record
 				$weatherRecordCounter = 0;
 				foreach($multipleSensorArray  as $sensorDataString) { //if there is a ! in the weatherInfoString, 
@@ -250,25 +254,30 @@ if($_REQUEST) {
 						$pressure = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $pressure, $arrWeatherData, 1);
 						$humidity = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $humidity, $arrWeatherData, 2);
 						$gasMetric = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $gasMetric, $arrWeatherData, 3);
-						$sensorId = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $sensorId, $arrWeatherData, 4);
+						$windDirection = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windDirection, $arrWeatherData, 4);
+						$precipitation = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $precipitation, $arrWeatherData, 5);
+						$windSpeed = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windSpeed, $arrWeatherData, 6);
+						$windIncrement = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windIncrement, $arrWeatherData, 7);
+						$reserved1 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved1, $arrWeatherData, 8);
+						$reserved2 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved1, $arrWeatherData, 9);
+						$reserved3 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved1, $arrWeatherData, 10);
+						$reserved4 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved1, $arrWeatherData, 11);
+						$sensorId = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $sensorId, $arrWeatherData, 12);
 						if($consolidateAllSensorsToOneRecord){
 							$deviceFeatureId = "NULL";
 						} else {
-							if(count($arrWeatherData)>5) {
-								$deviceFeatureId = $arrWeatherData[5];
+							if(count($arrWeatherData)>13) {
+								$deviceFeatureId = $arrWeatherData[13];
 							} else {
 								$deviceFeatureId = "NULL";
 							}
 						}
-						//sensorName is $arrWeatherData[6] -- not used here
-						$windDirection = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windDirection, $arrWeatherData, 7);
-						$precipitation = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $precipitation, $arrWeatherData, 8);
-						$windSpeed = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windSpeed, $arrWeatherData, 9);
-						$windIncrement = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windIncrement, $arrWeatherData, 10);
+						//sensorName is $arrWeatherData[14] -- not used here
+
 						$consolidateAllSensorsToOneRecord = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $consolidateAllSensorsToOneRecord, $arrWeatherData, 11);
 
 						
-						$weatherSql = "INSERT INTO weather_data(location_id, device_feature_id, recorded, temperature, pressure, humidity, gas_metric, wind_direction, precipitation, wind_speed, wind_increment, sensor_id) VALUES (" . 
+						$weatherSql = "INSERT INTO weather_data(location_id, device_feature_id, recorded, temperature, pressure, humidity, gas_metric, wind_direction,  wind_speed, wind_increment, precipitation, sensor_id) VALUES (" . 
 						mysqli_real_escape_string($conn, $locationId) . "," .
 						mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
 						mysqli_real_escape_string($conn, $formatedDateTime)  . "'," . 
@@ -277,9 +286,9 @@ if($_REQUEST) {
 						mysqli_real_escape_string($conn, $humidity) . "," . 
 						mysqli_real_escape_string($conn, $gasMetric) . "," .  
 						mysqli_real_escape_string($conn, $windDirection) . "," .  
-						mysqli_real_escape_string($conn, $precipitation) . "," .  
 						mysqli_real_escape_string($conn, $windSpeed) . "," .  
-						mysqli_real_escape_string($conn, $windIncrement) . "," .  
+						mysqli_real_escape_string($conn, $windIncrement) . "," .
+						mysqli_real_escape_string($conn, $precipitation) . "," .  
 						mysqli_real_escape_string($conn, $sensorId) .
 						")";
 						
@@ -310,7 +319,7 @@ if($_REQUEST) {
 					$rows = mysqli_fetch_all($sensorResult, MYSQLI_ASSOC);
 					foreach($rows as $row){
 						//var_dump($row);
-						$outString .= "|" . $row["pin_number"] . "*" . $row["power_pin"] . "*" . $row["sensor_type"] . "*" . $row["sensor_sub_type"] . "*" . $row["via_i2c_address"] . "*" . $row["device_feature_id"] . "*" . str_replace("|", "", str_replace("*", "", $row["name"]));
+						$outString .= "|" . $row["pin_number"] . "*" . $row["power_pin"] . "*" . $row["sensor_type"] . "*" . $row["sensor_sub_type"] . "*" . $row["via_i2c_address"] . "*" . $row["device_feature_id"] . "*" . str_replace("|", "", str_replace("*", "", $row["name"])) . "*0";
 					}
 				}
 				die($outString);
@@ -321,7 +330,7 @@ if($_REQUEST) {
 				$method = "getDeviceData";
 				$pinValuesKnownToDevice = [];
 				$specificPin = -1;
-				 
+ 
 				if(count($lines)>1) {
 					$recentReboots = explode("*", $lines[1]);
 					foreach($recentReboots as $rebootOccasion) {
