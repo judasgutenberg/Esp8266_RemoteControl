@@ -274,9 +274,9 @@ if($_REQUEST) {
 						}
 						//sensorName is $arrWeatherData[14] -- not used here
 
-						$consolidateAllSensorsToOneRecord = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $consolidateAllSensorsToOneRecord, $arrWeatherData, 11);
+						$consolidateAllSensorsToOneRecord = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $consolidateAllSensorsToOneRecord, $arrWeatherData, 15);
 
-						
+						//die("x" . $consolidateAllSensorsToOneRecord);
 						$weatherSql = "INSERT INTO weather_data(location_id, device_feature_id, recorded, temperature, pressure, humidity, gas_metric, wind_direction,  wind_speed, wind_increment, precipitation, sensor_id) VALUES (" . 
 						mysqli_real_escape_string($conn, $locationId) . "," .
 						mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
@@ -321,6 +321,9 @@ if($_REQUEST) {
 						//var_dump($row);
 						$outString .= "|" . $row["pin_number"] . "*" . $row["power_pin"] . "*" . $row["sensor_type"] . "*" . $row["sensor_sub_type"] . "*" . $row["via_i2c_address"] . "*" . $row["device_feature_id"] . "*" . str_replace("|", "", str_replace("*", "", $row["name"])) . "*0";
 					}
+				}
+				if(strpos($outString, "|") === false){
+					$outString .= "|";
 				}
 				die($outString);
 			} else if($mode == "getDeviceData" || $mode == "saveData" ) {
