@@ -321,7 +321,11 @@ void handleWeatherData() {
     transmissionString = weatherDataString(sensor_id, sensor_sub_type, sensor_data_pin, sensor_power_pin, sensor_i2c, NULL, 0, deviceName, consolidate_all_sensors_to_one_record);
   }
   //add the data for any additional sensors, delimited by '!' for each sensor
-  transmissionString = transmissionString + handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), false);
+  String additionalSensorData = handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), false);
+  if(transmissionString == "") {
+    additionalSensorData = additionalSensorData.substring(1); //trim off leading "!" if there is no default sensor data
+  }
+  transmissionString = transmissionString + additionalSensorData;
   //the time-stamps of connection failures, delimited by *
   transmissionString = transmissionString + "|" + joinValsOnDelimiter(moxeeRebootTimes, "*", 10);
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
