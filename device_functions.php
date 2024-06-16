@@ -313,6 +313,7 @@ function deviceForm($error,  $userId) {
     [
 	    'label' => 'latitude',
       'name' => 'latitude',
+      'type' => "number",
       'width' => 200,
 	    'value' => gvfa("latitude", $source), 
       'error' => gvfa('latitude', $error)
@@ -320,6 +321,7 @@ function deviceForm($error,  $userId) {
     [
 	    'label' => 'longitude',
       'name' => 'longitude',
+      'type' => "number",
       'width' => 200,
 	    'value' => gvfa("longitude", $source), 
       'error' => gvfa('longitude', $error)
@@ -327,6 +329,7 @@ function deviceForm($error,  $userId) {
     [
 	    'label' => 'ip address',
       'name' => 'ip_address',
+      
       'width' => 200,
 	    'value' => gvfa("ip_address", $source), 
       'error' => gvfa('ip_address', $error)
@@ -334,6 +337,7 @@ function deviceForm($error,  $userId) {
     [
 	    'label' => 'sensor',
       'name' => 'sensor_id',
+      'type' => "number",
       'width' => 200,
 	    'value' => gvfa("sensor_id", $source), 
       'error' => gvfa('sensor_id', $error)
