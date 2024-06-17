@@ -126,7 +126,7 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
   if(sensor_id == 1) { //simple analog input. we can use subType to decide what kind of sensor it is!
     //an even smarter system would somehow be able to put together multiple analogReads here
     if(powerPin > -1) {
-      digitalWrite(powerPin, HIGH); //turn on DHT power. 
+      digitalWrite(powerPin, HIGH); //turn on sensor power. 
     }
     delay(10);
     double value = NULL;
@@ -136,7 +136,10 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
     } else {
       value = (double)analogRead(dataPin);
     }
-    for(char i=0; i<11; i++){
+    for(char i=0; i<12; i++){ //we have 12 separate possible sensor functions:
+      //temperature*pressure*humidity*gas*windDirection*windSpeed*windIncrement*precipitation*reserved1*reserved2*reserved3*reserved4
+      //i'm thinking i don't bother defining the reserved ones and just let them be application-specific and different in different implementations
+      //a good one would be radioactive counts per unit time
       if((int)i == sensor_sub_type) {
         transmissionString = transmissionString + nullifyOrNumber(value);
       }
