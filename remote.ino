@@ -138,6 +138,8 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
     }
     for(char i=0; i<12; i++){ //we have 12 separate possible sensor functions:
       //temperature*pressure*humidity*gas*windDirection*windSpeed*windIncrement*precipitation*reserved1*reserved2*reserved3*reserved4
+      //if you have some particular sensor communicating through a pin and want it to be one of these
+      //you set sensor_sub_type to be the 0-based value in that *-delimited string
       //i'm thinking i don't bother defining the reserved ones and just let them be application-specific and different in different implementations
       //a good one would be radioactive counts per unit time
       if((int)i == sensor_sub_type) {
