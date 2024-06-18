@@ -16,7 +16,8 @@ disable_gzip();
 $conn = mysqli_connect($servername, $username, $password, $database);
 $method = "none";
 $mode = "";
-$error = "none";
+$error = "";
+$badSql = "";
 $out = [];
 $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
 $pastDate = $date;
@@ -300,16 +301,16 @@ if($_REQUEST) {
 						if(intval($consolidateAllSensorsToOneRecord) != 1 || $weatherRecordCounter == count($multipleSensorArray) - 1) {
 							$result = mysqli_query($conn, $weatherSql);
 							$error = mysqli_error($conn);
-
-
+							if($error != ""){
+								$badSql = $weatherSql;
+							}
 						}
 					}
 					$weatherRecordCounter++;
 				}
 				$method  = "saveWeatherData";
-				$out = Array("message" => "done", "method"=>$method, "error" => $error);
+				$out =  addNodeIfPresent(addNodeIfPresent(Array("message" => "done", "method"=>$method), "error", $error), "sql", $badSql);
 			
-
 			}
 			if($mode == "getInitialDeviceInfo" ) { //return a double-delimited string of additional sensors, etc. this one begins with a "*" so we can identify it in the ESP8266. it will be the first data requested by the remote control
 				$outString = "*" . str_replace("|", "", str_replace("*", "", $deviceName));
@@ -598,6 +599,12 @@ if($_REQUEST) {
 								logSql("querystring: ". $_SERVER['QUERY_STRING']  );
 								if($automatedChangeMade || $specificPin > -1 && $specificPin == $pinCursor  || $specificPin == -1){ //otherwise we get too much logging if we're in one-pin-at-a-mode time
 									$loggingResult = mysqli_query($conn, $loggingSql);
+									$error = mysqli_error($conn);
+									if($error != ""){
+										$badSql = $loggingSql;
+										$out["error"] = $error;
+										$out["sql"] = $badSql;
+									}
 								}
 							} else {
 								$sqlToUpdateDeviceFeature = str_replace("<lastmodified/>", "", $sqlToUpdateDeviceFeature);
@@ -636,7 +643,7 @@ if($_REQUEST) {
 	//var_dump($extraInfo);
 	//var_dump($nonJsonPinData);
 	//var_dump($justGetDeviceInfo);
-	if($nonJsonPinData == '1' && array_key_exists("device_data", $out)) { //create a very bare-bones non-JSON delimited data object to speed up data propagation to device
+	if($nonJsonPinData == '1' && array_key_exists("device_data", $out) && !array_key_exists("error", $out)) { //create a very bare-bones non-JSON delimited data object to speed up data propagation to device
 		$nonJsonOutString = "|";
 		foreach($out["device_data"] as $deviceDatum){
 			if($deviceDatum["enabled"]) {
@@ -671,7 +678,6 @@ function disable_gzip() { //i wanted this to work so the microcontroller wouldn'
 	@ini_set('fastcgi_pass_request_headers', 'Off');
 	@apache_setenv('no-gzip', 1);	
 }
-
 
 //this only works if you make sure your users all have distinct storagePasswords!
 function deriveDeviceIdsFromStoragePassword($storagePassword) {
@@ -727,6 +733,13 @@ function mergeWeatherDatum($consolidateAllSensorsToOneRecord, $existingValue, $s
 		$out = "NULL";
 	}
 	return $out;
+}
+
+function addNodeIfPresent($object, $key, $value){
+	if($value != ""){
+		$object[$key] = $value;
+	}
+	return $object;
 }
  
 
