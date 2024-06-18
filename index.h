@@ -114,17 +114,17 @@ function updateWeatherDisplay() {
             } else {
               potentialWeatherDisplay += "<td></td>";
             }
-            if(temperature != "NULL" && !isNaN(temperature)) {
+            if(temperature != "NULL" && !isNaN(temperature) && temperature != "") {
               potentialWeatherDisplay += "<td class='weatherdata'>" + (parseFloat(temperature) * 1.8 + 32).toFixed(2) + "&deg; F" + "</td>";
               //document.getElementById("temperature").innerHTML = (parseFloat(temperature) * 1.8 + 32).toFixed(2) + "&deg; F"; 
               weHadData = true;
             }
-            if(pressure != "NULL"  && !isNaN(pressure)) {
+            if(pressure != "NULL"  && !isNaN(pressure) && pressure != "" ) {
               potentialWeatherDisplay += "<td class='weatherdata'>" +  parseFloat(pressure).toFixed(2) + "mm Hg" + "</td>";
               //document.getElementById("pressure").innerHTML = parseFloat(pressure).toFixed(2) + "mm Hg";
               weHadData = true;
             }
-            if(humidity != "NULL" && !isNaN(humidity)) {
+            if(humidity != "NULL" && !isNaN(humidity) && humidity != "") {
              potentialWeatherDisplay += "<td class='weatherdata'>" +  parseFloat(humidity).toFixed(2) + "% rel" + "</td>";
               //document.getElementById("humidity").innerHTML = parseFloat(humidity).toFixed(2) + "% rel";
              weHadData = true;
