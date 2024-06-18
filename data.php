@@ -624,6 +624,12 @@ if($_REQUEST) {
 							logSql("change sql:" . $sqlToUpdateDeviceFeature);
 							if($sqlToUpdateDeviceFeature != "") {
 								$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
+								$error = mysqli_error($conn);
+								if($error != ""){
+									$badSql = $sqlToUpdateDeviceFeature;
+									$out["error"] = $error;
+									$out["sql"] = $badSql;
+								}
 							}
 						}
 							
