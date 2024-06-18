@@ -273,7 +273,7 @@ if($_REQUEST) {
 							}
 						}
 						//sensorName is $arrWeatherData[14] -- not used here
-
+						//i put $consolidateAllSensorsToOneRecord on the sensor record so that some sensors could be separate and then later ones could be consolidated
 						$consolidateAllSensorsToOneRecord = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $consolidateAllSensorsToOneRecord, $arrWeatherData, 15);
 
 						//die("x" . $consolidateAllSensorsToOneRecord);
