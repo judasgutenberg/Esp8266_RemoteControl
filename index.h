@@ -104,7 +104,7 @@ function updateWeatherDisplay() {
             let temperature = weatherData[0];
             let pressure = weatherData[1];
             let humidity = weatherData[2];
-            let sensorName = weatherData[6];
+            let sensorName = weatherData[14];
             let potentialWeatherDisplay = "";
             let parentDiv = "";
             let weHadData = false;
