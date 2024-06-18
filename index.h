@@ -1,3 +1,4 @@
+//produces a web page viewable only on the local network allowing control of devices and reading of sensors
 const char MAIN_page[] PROGMEM = R"=====(
 <!DOCTYPE html>
 <html>
@@ -14,7 +15,7 @@ body{
 h2{
   font-size:14px;
 }
-.widget{
+.webapp{
   margin:100px auto;
   height: 330px;
   position: relative;
@@ -71,7 +72,7 @@ h2{
 </style>
 <body>
 
-<div class="widget"> 
+<div class="webapp"> 
   <div id='devicename'>Your Device</div>
   <div class="devices" id="devices">    
   </div>
@@ -79,7 +80,6 @@ h2{
   <table class="sensors">
     <tbody id="sensors"></tbody>    
   </table>
-   
 </div>
 
 <script>
@@ -98,9 +98,6 @@ function updateWeatherDisplay() {
         let sensorsDiv = document.getElementById("sensors");
         let firstSensorDone = false;
         let sensorCursor = 0;
-        
-        
-        
         for(let weatherLine of weatherLines){
           let parentDiv = "";  
           let potentialWeatherDisplay = "";
