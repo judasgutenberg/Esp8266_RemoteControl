@@ -98,10 +98,12 @@ function updateWeatherDisplay() {
         let sensorsDiv = document.getElementById("sensors");
         let firstSensorDone = false;
         let sensorCursor = 0;
-        let parentDiv = "";
-        let potentialWeatherDisplay = "";
         
-        for(let weatherLine of weatherLines){  
+        
+        
+        for(let weatherLine of weatherLines){
+          let parentDiv = "";  
+          let potentialWeatherDisplay = "";
           if(weatherLine.indexOf("*") > -1) {
             console.log(weatherLine);
             let weatherData = weatherLine.split("*");
