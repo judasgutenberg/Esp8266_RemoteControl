@@ -100,10 +100,12 @@ function updateWeatherDisplay() {
         let sensorCursor = 0;
         let parentDiv = "";
         let potentialWeatherDisplay = "";
+        
         for(let weatherLine of weatherLines){  
           if(weatherLine.indexOf("*") > -1) {
             console.log(weatherLine);
             let weatherData = weatherLine.split("*");
+            let sensorName = weatherData[14];
             //temperature*pressure*humidity*gas*windDirection*windSpeed*windIncrement*precipitation*reserved1*reserved2*reserved3*reserved4 
             //using delimited data instead of JSON to keep things concise and simple
             let weHadData = false;
