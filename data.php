@@ -16,6 +16,7 @@ disable_gzip();
 $conn = mysqli_connect($servername, $username, $password, $database);
 $method = "none";
 $mode = "";
+$error = "none";
 $out = [];
 $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
 $pastDate = $date;
@@ -298,12 +299,15 @@ if($_REQUEST) {
 						//echo $weatherSql;
 						if(intval($consolidateAllSensorsToOneRecord) != 1 || $weatherRecordCounter == count($multipleSensorArray) - 1) {
 							$result = mysqli_query($conn, $weatherSql);
+							$error = mysqli_error($conn);
+
+
 						}
 					}
 					$weatherRecordCounter++;
 				}
 				$method  = "saveWeatherData";
-				$out = Array("message" => "done", "method"=>$method);
+				$out = Array("message" => "done", "method"=>$method, "error" => $error);
 			
 
 			}
@@ -710,7 +714,7 @@ function mergeWeatherDatum($consolidateAllSensorsToOneRecord, $existingValue, $s
 				$out = "NULL";
 			}
 		} else {
-			return $existingValue;
+			$out = $existingValue;
 		}
 	} else {
 		if(count($sourceArray) > $itemNumber) {
@@ -718,6 +722,9 @@ function mergeWeatherDatum($consolidateAllSensorsToOneRecord, $existingValue, $s
 		} else {
 			$out = "NULL";
 		}
+	}
+	if($out === ""){
+		$out = "NULL";
 	}
 	return $out;
 }
