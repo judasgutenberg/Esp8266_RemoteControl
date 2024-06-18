@@ -927,7 +927,7 @@ String joinMapValsOnDelimiter(SimpleMap<String, int> *pinMap, String delimiter, 
 
 String nullifyOrNumber(double inVal) {
   if(inVal == NULL) {
-    return "NULL";
+    return "";
   } else {
     return String(inVal);
   }
@@ -935,7 +935,7 @@ String nullifyOrNumber(double inVal) {
 
 String nullifyOrInt(int inVal) {
   if(inVal == NULL) {
-    return "NULL";
+    return "";
   } else {
     return String(inVal);
   }
