@@ -79,22 +79,6 @@ bool connectionFailureMode = true;  //when we're in connectionFailureMode, we ch
 
 ESP8266WebServer server(80); //Server on port 80
 
-float altitude(const int32_t press, const float seaLevel = 1013.25);
-float altitude(const int32_t press, const float seaLevel) {
-  /*!
-  @brief     This converts a pressure measurement into a height in meters
-  @details   The corrected sea-level pressure can be passed into the function if it is known,
-             otherwise the standard atmospheric pressure of 1013.25hPa is used (see
-             https://en.wikipedia.org/wiki/Atmospheric_pressure) for details.
-  @param[in] press    Pressure reading from BME680
-  @param[in] seaLevel Sea-Level pressure in millibars
-  @return    floating point altitude in meters.
-  */ 
-  static float Altitude;
-  Altitude = 44330.0 * (1.0 - pow(((float)press / 100.0) / seaLevel, 0.1903));  // Convert into meters
-  return (Altitude);
-}
-
 //ESP8266's home page:----------------------------------------------------
 void handleRoot() {
  String s = MAIN_page; //Read HTML contents
@@ -165,9 +149,8 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
     //Serial.print(buf);
     sprintf(buf, "%7d.%02d", (int16_t)(pressureRaw / 100),
             (uint8_t)(pressureRaw % 100));  // Pressure Pascals
-    //Serial.print(buf);
-    alt = altitude(pressureRaw);                                                // temp altitude
-    sprintf(buf, "%5d.%02d", (int16_t)(alt), ((uint8_t)(alt * 100) % 100));  // Altitude meters
+    //Serial.print(buf);                                     
+ 
     //Serial.print(buf);
     sprintf(buf, "%4d.%02d\n", (int16_t)(gasRaw / 100), (uint8_t)(gasRaw % 100));  // Resistance milliohms
     //Serial.print(buf);
@@ -216,15 +199,15 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
           // (If temperature is stable, you can do one temperature measurement for a number of pressure measurements.)
           // Function returns 1 if successful, 0 if failure.
           status = BMP180[objectCursor].getPressure(pressureValue,temperatureValue);
-          if (status != 0)
-          {
-            a = BMP180[objectCursor].altitude(pressureValue,p0);
+          if (status == 0) {
+            Serial.println("error retrieving pressure measurement\n");
           }
-          else Serial.println("error retrieving pressure measurement\n");
+        } else {
+          Serial.println("error starting pressure measurement\n");
         }
-        else Serial.println("error starting pressure measurement\n");
+      } else {
+        Serial.println("error retrieving temperature measurement\n");
       }
-      else Serial.println("error retrieving temperature measurement\n");
     } else {
       Serial.println("error starting temperature measurement\n");
     }
@@ -250,7 +233,7 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
     transmissionString = nullifyOrNumber(temperatureValue) + "*" + nullifyOrNumber(pressureValue);
     transmissionString = transmissionString + "*" + nullifyOrNumber(humidityValue);
     transmissionString = transmissionString + "*" + nullifyOrNumber(gasValue);
-    transmissionString = transmissionString + "*NULL*NULL*NULL*NULL*NULL*NULL*NULL*NULL*"; //for esoteric weather sensors that measure wind and precipitation.  the last four are reserved for now
+    transmissionString = transmissionString + "*********"; //for esoteric weather sensors that measure wind and precipitation.  the last four are reserved for now
   }
   //using delimited data instead of JSON to keep things simple
   transmissionString = transmissionString + nullifyOrInt(sensor_id) + "*" + nullifyOrInt(deviceFeatureId) + "*" + sensorName + "*" + nullifyOrInt(consolidateAllSensorsToOneRecord); 
