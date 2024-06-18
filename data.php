@@ -250,7 +250,7 @@ if($_REQUEST) {
 				$weatherRecordCounter = 0;
 				foreach($multipleSensorArray  as $sensorDataString) { //if there is a ! in the weatherInfoString, 
 					$arrWeatherData = explode("*", $sensorDataString);
-					if(count($arrWeatherData) > 1) { //it's possible the $weatherInfoString began with a ! 
+					if(count($arrWeatherData) > 1) { //it's possible the $weatherInfoString began with a !, meaning the first weather record is technically empty
 						$temperature = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $temperature, $arrWeatherData, 0);
 						$pressure = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $pressure, $arrWeatherData, 1);
 						$humidity = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $humidity, $arrWeatherData, 2);
