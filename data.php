@@ -33,9 +33,11 @@ $deviceIds = [];
 $sensorId = "NULL";
 $nonJsonPinData = 0;
 $justGetDeviceInfo = 0;
+$storagePassword = "";
 if($_REQUEST) {
 	if(array_key_exists("storagePassword", $_REQUEST)) {
-		$deviceIds = deriveDeviceIdsFromStoragePassword($_REQUEST["storagePassword"]);
+		$storagePassword  = $_REQUEST["storagePassword"];
+		$deviceIds = deriveDeviceIdsFromStoragePassword($storagePassword);
 	}
 	if(array_key_exists("mode", $_REQUEST)) {
 		$mode = $_REQUEST["mode"];
@@ -547,7 +549,7 @@ if($_REQUEST) {
 						//this part update device_feature so we can tell from the server if the device has taken on the server's value
 						if(count($pinValuesKnownToDevice) > $pinCursor && $pinValuesKnownToDevice[$pinCursor] != "") {
 							$lastModified = " last_known_device_modified='" . $formatedDateTime . "',";
-							$lastKnownDevice = " last_known_device_value =  " . $pinValuesKnownToDevice[$pinCursor] . ","; //only do this when we actually have data from the microcontroller
+							$lastKnownDevice = " last_known_device_value =  " . nullifyOrNumber($pinValuesKnownToDevice[$pinCursor]) . ","; //only do this when we actually have data from the microcontroller
 							$sqlToUpdateDeviceFeature = "UPDATE device_feature SET <lastknowndevice/><lastmodified/><additional/>";
 							
 							//echo $sqlToUpdateDeviceFeature  . "<BR> " . $specificPin  . "<BR>";
@@ -588,7 +590,7 @@ if($_REQUEST) {
 								} 
 								//also log this change in the new device_feature_log table!  we're going to need that for when device_features get changed automatically based on data as well!
 								$loggingSql = "INSERT INTO device_feature_log (device_feature_id, user_id, recorded, beginning_state, end_state, management_rule_id, mechanism) VALUES (";
-								$loggingSql .= $row["device_feature_id"] . "," . $user["user_id"] . ",'" . $formatedDateTime . "'," .$oldValue . "," . $newValue  . "," . $managementRuleId  . ",'" . $mechanism . "')";
+								$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $user["user_id"] . ",'" . $formatedDateTime . "'," . nullifyOrNumber($oldValue) . "," . nullifyOrNumber($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "')";
 								//if($mechanism == "automation"){
 									//logSql("logging sql: " . $loggingSql);
 									//logSql("update sql: " . $sqlToUpdateDeviceFeature);
@@ -746,6 +748,14 @@ function addNodeIfPresent($object, $key, $value){
 		$object[$key] = $value;
 	}
 	return $object;
+}
+
+function nullifyOrNumber($number){
+	$out = $number;
+	if($number === ""){
+		$out = "NULL";
+	}
+	return $out;
 }
  
 
