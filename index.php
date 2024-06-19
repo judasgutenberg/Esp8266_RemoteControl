@@ -106,7 +106,8 @@ echo "<tr><td>Time Scale:</td><td>" . genericSelect("scaleDropdown", "scale", "f
 </div>
 </div>
 </div>
-
+</div>
+</div>
 <script>
 let glblChart = null;
 //For graphs info, visit: https://www.chartjs.org
