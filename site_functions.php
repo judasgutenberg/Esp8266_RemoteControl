@@ -992,6 +992,7 @@ function endsWith($strIn, $what) {
 	return false;
 }
 
+
 function createUser(){
   Global $conn;
   Global $encryptionPassword;
@@ -1010,6 +1011,7 @@ function createUser(){
 
   if(is_null($errors)) {
   	$encryptedPassword =  crypt($password, $encryptionPassword);
+    $userList = userList();
     if(count(userList()) == 0) {
       //if there are no users, create the first one as admin
       $sql = "INSERT INTO user(email, password, created, role) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" .$formatedDateTime . "','admin')"; 
@@ -1036,13 +1038,13 @@ function userList(){
   $userSql = "SELECT * FROM user";
   $thisDataResult = mysqli_query($conn, $userSql);
   if($thisDataResult) {
-    $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    $rows = mysqli_fetch_all($thisDataResult, MYSQLI_ASSOC);
   } else {
     $rows = [];
   }
   return $rows;
 }
- 
+
 function download($path, $friendlyName){
     $file = file_get_contents($path);
     header("Cache-Control: no-cache private");
