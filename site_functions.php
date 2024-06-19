@@ -79,6 +79,7 @@ function bodyWrap($content, $user, $deviceId, $poser = null) {
   $out .= $content;
   $out .= "</div>\n";
   $out .= "</div>\n";
+  $out .= "</div>\n";
   $out .= "</body>\n";
   $out .= "</html>\n";
   return $out;
@@ -129,7 +130,7 @@ function loginForm() {
   $out .= "<strong>Login here:</strong>  email: <input name='email' type='text'>\n";
   $out .= "password: <input name='password' type='password'>\n";
   $out .= "<input name='action' value='login' type='submit'>\n";
-  $out .= "<div> or  <div class='basicbutton'><a href=\"tool.php?table=user&action=startcreate\">Create Account</a></div>\n";
+  $out .= "<div> or  <div class='basicbutton'><a href=\"tool.php?table=user&action=startcreate\">Create Account</a></div></div>\n";
   $out .= "</form>\n";
   return $out;
 }
@@ -1142,15 +1143,15 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
       } else if($column == "last_known_device_modified" || $column == "created" || $column == "modified") {
 
 
-        $sanitized = $formatedDateTime;
+        $sanitized = "'" . $formatedDateTime . "'";
       } else if ($column == "expired"){
         $skip = true;
       } else if(($type == "bool"  || $type == "checkbox") && !$value){
         $sanitized = '0';
       } else if (beginsWith($type, "number") && !$value) {
-        $sanitized = '0';
+        $sanitized = 'NULL';
       } else {
-        $sanitized = mysqli_real_escape_string($conn, $value);
+        $sanitized = "'" . mysqli_real_escape_string($conn, $value) . "'";
       }
       if(!$skip ){
         $sanitizedData[] = $sanitized;
@@ -1179,13 +1180,15 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
           $count = 1;
           $extraM2MColumns = "";
           $extraM2MValues = "";
-          foreach($value as $valueItem){
-            if($countingColumn) {
-              $extraM2MColumns = ", " .$countingColumn;
-              $extraM2MValues = ", " . $count;
+          if($value){
+            foreach($value as $valueItem){
+              if($countingColumn) {
+                $extraM2MColumns = ", " .$countingColumn;
+                $extraM2MValues = ", " . $count;
+              }
+              $laterSql .= "\nINSERT INTO " . $mappingTable . "(user_id, " . implode(",", array_keys($primaryKey)) . "," . $column . ",created" . $extraM2MColumns  . ") VALUES('" . $data["user_id"] . "','" . implode("','", array_values($primaryKey)) . "','" . $valueItem . "','" .  $formatedDateTime . "'" . $extraM2MValues . ");\n";
+              $count++;
             }
-            $laterSql .= "\nINSERT INTO " . $mappingTable . "(user_id, " . implode(",", array_keys($primaryKey)) . "," . $column . ",created" . $extraM2MColumns  . ") VALUES('" . $data["user_id"] . "','" . implode("','", array_values($primaryKey)) . "','" . $valueItem . "','" .  $formatedDateTime . "'" . $extraM2MValues . ");\n";
-            $count++;
           }
         } else if($column == "expired"  && $value == ""){
         } else if($type == "time" && $value == "") {
@@ -1196,12 +1199,12 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
           if(($type == "bool"  || $type == "checkbox") && !$value){
             $sanitized = '0';
           } else if (beginsWith($type, "number") && !$value) {
-            $sanitized = '0';
+            $sanitized = 'NULL';
           } else {
-            $sanitized = mysqli_real_escape_string($conn, $value);
+            $sanitized = "'" . mysqli_real_escape_string($conn, $value) . "'";
           }
 
-          $updateFields[] = "`$column` =  '$sanitized'";
+          $updateFields[] = "`$column` =  $sanitized";
         }
       }
 
@@ -1218,9 +1221,9 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
   } else {
       // Insert a new record
       $columns = "`" . implode('`, `', $sanitizedKeys) . "`";
-      $values = implode("', '", $sanitizedData);
+      $values = implode(", ", $sanitizedData);
       
-      $sql .= "INSERT INTO `$tableName` ($columns) VALUES ('$values');";
+      $sql .= "INSERT INTO `$tableName` ($columns) VALUES ($values);";
   }
   $laterSql = str_replace("<whereclause/>", $whereClauseString, $laterSql);
   //die($sql . $laterSql );
