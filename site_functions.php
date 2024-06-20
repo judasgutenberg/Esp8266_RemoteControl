@@ -218,7 +218,9 @@ function newUserForm($error = NULL) {
     'error' => gvfa('password2', $error)
 	   ]
 	);
-  return genericForm($formData, "create user");
+  $out = genericForm($formData, "create user");
+  $out.= "<div style='padding-left:180px'><a href='?action=login'>Go back to login</a></div>";
+  return $out;
 }
 
 function presentList($data) {
