@@ -1,7 +1,7 @@
 /*
- * ESP8266 Remote Control. Also sends weather data from three different kinds of sensors (configured in config.c) 
+ * ESP8266 Remote Control. Also sends weather data from multiple kinds of sensors (configured in config.c) 
  * originally built on the basis of something I found on https://circuits4you.com
- * reorganized and extended by Gus Mueller, April 24 2022 - April 6 2024
+ * reorganized and extended by Gus Mueller, April 24 2022 - June 22 2024
  * Also resets a Moxee Cellular hotspot if there are network problems
  * since those do not include watchdog behaviors
  */
