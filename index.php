@@ -198,8 +198,8 @@ window.onload = function() {
 
  
 
-//Ajax script to get ADC voltage at every 5 Seconds 
-//Read This tutorial https://circuits4you.com/2018/02/04/esp8266-ajax-update-part-of-web-page-without-refreshing/
+//script to get weather data
+//This evolved from a script in this tutorial: https://circuits4you.com/2018/02/04/esp8266-ajax-update-part-of-web-page-without-refreshing/
 
 //getWeatherData("<?php echo gvfw("locationId")?>");
 //setInterval(function() {
