@@ -85,7 +85,7 @@ void handleRoot() {
  server.send(200, "text/html", s); //Send web page
 }
 
-//returns a "*"-delimited string containing weather data, starting with temperature and ending with deviceFeatureId, if present, and url-encoded sensorName
+//returns a "*"-delimited string containing weather data, starting with temperature and ending with deviceFeatureId,    a url-encoded sensorName, and consolidateAllSensorsToOneRecord
 //we might send multiple-such strings (separated by "!") to the backend for multiple sensors on an ESP8266
 //i've made this to handle all the weather sensors i have so i can mix and match, though of course there are many others
 String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName,  int consolidateAllSensorsToOneRecord) {
