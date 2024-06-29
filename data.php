@@ -403,7 +403,7 @@ if($_REQUEST) {
 				
 				}
 
- 
+				//var_dump($pinValuesKnownToDevice);
 				$managementCache = []; //save us some database lookups
 				//SELECT pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=11 ORDER BY i2c, pin_number;
 				//the part where we include any data from our remote control system:
@@ -534,7 +534,9 @@ if($_REQUEST) {
 											if($managementJudgment == 1  && $row["value"] != $managementResultValue){
 												$mechanism = "automation";
 												$managementRuleId = $managementRuleIdIfNeeded;
-												$pinValuesKnownToDevice[$pinCursor] =  $managementResultValue;
+												//echo intval($managementResultValue) . "<BR>";
+												//we need to make this value explicitly numeric or we have trouble later:
+												$pinValuesKnownToDevice[$pinCursor] =   intval($managementResultValue);
 												$automatedChangeMade = true;
 												//logSql($managementRuleName . "; setting #" . $deviceFeatureId . " to " . $pinValuesKnownToDevice[$pinCursor]);
 											}
@@ -547,7 +549,10 @@ if($_REQUEST) {
 						$sqlToUpdateDeviceFeature = "";
 						//echo count($pinValuesKnownToDevice) . "*" . $pinCursor . "<BR>";
 						//this part update device_feature so we can tell from the server if the device has taken on the server's value
-						if(count($pinValuesKnownToDevice) > $pinCursor && $pinValuesKnownToDevice[$pinCursor] != "") {
+						//var_dump($pinValuesKnownToDevice);
+						//echo $deviceFeatureId  . "*" .  intval(count($pinValuesKnownToDevice) > $pinCursor)  . "*" .  $pinValuesKnownToDevice[$pinCursor] . "*" . intval(is_numeric($pinValuesKnownToDevice[$pinCursor])) ."<BR>";
+						if(count($pinValuesKnownToDevice) > $pinCursor && is_numeric($pinValuesKnownToDevice[$pinCursor])) {
+							//echo $deviceFeatureId   . "<BR>";
 							$lastModified = " last_known_device_modified='" . $formatedDateTime . "',";
 							$lastKnownDevice = " last_known_device_value =  " . nullifyOrNumber($pinValuesKnownToDevice[$pinCursor]) . ","; //only do this when we actually have data from the microcontroller
 							$sqlToUpdateDeviceFeature = "UPDATE device_feature SET <lastknowndevice/><lastmodified/><additional/>";
@@ -560,8 +565,10 @@ if($_REQUEST) {
 								$sqlToUpdateDeviceFeature = str_replace("<lastknowndevice/>", $lastKnownDevice, $sqlToUpdateDeviceFeature);
 							}
 						}
+						//echo $deviceFeatureId  . "*" . $mustSaveLastKnownDeviceValueAsValue  . "*" . $automatedChangeMade . "<BR>";
 						if($mustSaveLastKnownDeviceValueAsValue || $automatedChangeMade){ //actually update the pin values here too!
-							if(count($pinValuesKnownToDevice) > $pinCursor && $pinValuesKnownToDevice[$pinCursor] != "") {
+							//echo $sqlToUpdateDeviceFeature . "<BR>";
+							if(count($pinValuesKnownToDevice) > $pinCursor && is_numeric($pinValuesKnownToDevice[$pinCursor])) {
 								$sqlToUpdateDeviceFeature = str_replace("<additional/>", $sqlIfDataGoingUpstream, $sqlToUpdateDeviceFeature);
 							}
 							if(!$automatedChangeMade && ($pinCursor == count($rows)-1 || $specificPin > -1)) {
@@ -590,7 +597,7 @@ if($_REQUEST) {
 								} 
 								//also log this change in the new device_feature_log table!  we're going to need that for when device_features get changed automatically based on data as well!
 								$loggingSql = "INSERT INTO device_feature_log (device_feature_id, user_id, recorded, beginning_state, end_state, management_rule_id, mechanism) VALUES (";
-								$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $user["user_id"] . ",'" . $formatedDateTime . "'," . nullifyOrNumber($oldValue) . "," . nullifyOrNumber($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "')";
+								$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $user["user_id"] . ",'" . $formatedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "')";
 								//if($mechanism == "automation"){
 									//logSql("logging sql: " . $loggingSql);
 									//logSql("update sql: " . $sqlToUpdateDeviceFeature);
@@ -618,12 +625,19 @@ if($_REQUEST) {
 							unset($row["allow_automatic_management"]);//make things as lean as possible for IoT device
 							$out["device_data"][] = $row;
 						}
-						if(count($pinValuesKnownToDevice) > $pinCursor  && $pinValuesKnownToDevice[$pinCursor] != "") {
+						//echo $sqlToUpdateDeviceFeature . "<BR>";
+						//echo $deviceFeatureId . "*" . intval(count($pinValuesKnownToDevice) > $pinCursor) . "*" . is_numeric($pinValuesKnownToDevice[$pinCursor]) . "<BR>";
+						if(count($pinValuesKnownToDevice) > $pinCursor  && is_numeric($pinValuesKnownToDevice[$pinCursor])) {
+							$sqlToUpdateDeviceFeature = trim($sqlToUpdateDeviceFeature);
+							//echo "{" . $sqlToUpdateDeviceFeature . "}" . substr($sqlToUpdateDeviceFeature,-1) . "<BR>";
 							if(endsWith($sqlToUpdateDeviceFeature, ",")) {
+								//echo $deviceFeatureId . "!" . $sqlToUpdateDeviceFeature . "*<BR>";
 								$sqlToUpdateDeviceFeature = substr($sqlToUpdateDeviceFeature, 0, -1);
+								//echo $deviceFeatureId . "!" . $sqlToUpdateDeviceFeature . "*<BR>";
 							}
 							$sqlToUpdateDeviceFeature .= " WHERE device_feature_id=" . $deviceFeatureId;
 							logSql("change sql:" . $sqlToUpdateDeviceFeature);
+							//echo $sqlToUpdateDeviceFeature . "<BR>";
 							if($sqlToUpdateDeviceFeature != "") {
 								$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
 								$error = mysqli_error($conn);
@@ -660,7 +674,7 @@ if($_REQUEST) {
 				} else {
 					$pinName = $deviceDatum["pin_number"];
 				}
-				$nonJsonOutString .=  str_replace("|", "", str_replace("*", "", $deviceDatum["name"])) . "*" . $pinName . "*" . $deviceDatum["value"] .  "*" . $deviceDatum["can_be_analog"] . "*" . $deviceDatum["ss"] . "|";
+				$nonJsonOutString .=  str_replace("|", "", str_replace("*", "", $deviceDatum["name"])) . "*" . $pinName . "*" . intval($deviceDatum["value"]) .  "*" . intval($deviceDatum["can_be_analog"]) . "*" . $deviceDatum["ss"] . "|";
 			}
 
 		}
