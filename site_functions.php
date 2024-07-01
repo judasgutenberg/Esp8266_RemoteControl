@@ -588,8 +588,11 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
         if($height){
           $out .= "<textarea " .  $idString . " style='width:" . $width . "px;height:" . $height . "px' name='" . $name . "'  />" .  $value  . "</textarea>\n";
         } else {
-
-          $out .= "<input style='width:" . $width . "px'  " . $idString. " name='" . $name . "' value=\"" .  $value . "\" type='" . $type . "'/>\n";
+          $specialNumberAttribs = "";
+          if ($type == "number") {
+            $specialNumberAttribs = " step='0.0000000000001' ";
+          }
+          $out .= "<input style='width:" . $width . "px'  " . $idString. " " . $specialNumberAttribs . "  name='" . $name . "' value=\"" .  $value . "\" type='" . $type . "'/>\n";
         }
         
       }
