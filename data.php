@@ -61,49 +61,64 @@ if($_REQUEST) {
 	if($locationId == ""){
 		$locationId = 1;
 	}
-	
-	if(!$conn) {
-        $out = ["error"=>"bad database connection"];
-      } else {
-		if(array_key_exists("data", $_REQUEST)) {
-			$data = $_REQUEST["data"];
-        	$lines = explode("|",$data);
-			$weatherInfoString = $lines[0];
-			
-        	$arrWeatherData = explode("*", $weatherInfoString);
-			/*
-			$temperature = $arrWeatherData[0];
-			$pressure = $arrWeatherData[1];
-			$humidity = $arrWeatherData[2];
-			$gasMetric = "NULL";
-			
-			if(count($arrWeatherData)>3) {
-				$gasMetric = $arrWeatherData[3];
-			}
-			*/
-			if(count($arrWeatherData)>4) { //if we actually want to populate the sensor column in device we need to get sensorId now, though now devices can have multiple sensors
-				$sensorId = $arrWeatherData[4];
-			}
-			
-
+	$canAccessData = array_search($locationId, $deviceIds) !== false;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
+	if($canAccessData) {		
+		$user = deriveUserFromStoragePassword($storagePassword);
+		if(!$conn) {
+			$out = ["error"=>"bad database connection"];
 		} else {
-			$lines = [];
-			$arrWeatherData = [0,0,0,0,0,0,0,0,0,0,0,0];
-		}
-		//var_dump($deviceIds);
-		$canAccessData = array_search($locationId, $deviceIds) !== false;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
-
-		if($canAccessData) {
-			$user = deriveUserFromStoragePassword($storagePassword);
 			
+			if(array_key_exists("data", $_REQUEST)) {
+				$data = $_REQUEST["data"];
+				$lines = explode("|",$data);
+				if ($mode=="saveLocallyGatheredSolarData") { //used by the special inverter monitoring MCU to sed fine-grain data promptly
+					if($canAccessData) {
+						
+						///weather/data.php?storagePassword=xxxxxx&locationId=16&mode=saveLocallyGatheredSolarData&data=0*61*3336*3965*425*420*0*0*6359|||***192.168.1.200 
+						$energyInfoString = $lines[0];
+						$arrEnergyData = explode("*", $energyInfoString);
+						$gridPower = $arrEnergyData[0];
+						$batteryPercent = $arrEnergyData[1];
+						$batteryPower  = $arrEnergyData[2];
+						$loadPower = $arrEnergyData[3];
+						$solarString1 = $arrEnergyData[4];
+						$solarString2 = $arrEnergyData[5];
+						$energyInfo = saveSolarData($user, $gridPower, $batteryPercent,  $batteryPower, $loadPower, $solarString1, $solarString2);
+					}	
+				} else {
+					$weatherInfoString = $lines[0];
+					
+					$arrWeatherData = explode("*", $weatherInfoString);
+					/*
+					$temperature = $arrWeatherData[0];
+					$pressure = $arrWeatherData[1];
+					$humidity = $arrWeatherData[2];
+					$gasMetric = "NULL";
+					
+					if(count($arrWeatherData)>3) {
+						$gasMetric = $arrWeatherData[3];
+					}
+					*/
+					if(count($arrWeatherData)>4) { //if we actually want to populate the sensor column in device we need to get sensorId now, though now devices can have multiple sensors
+						$sensorId = $arrWeatherData[4];
+					}
+					
+				}
+			} else {
+				$lines = [];
+				$arrWeatherData = [0,0,0,0,0,0,0,0,0,0,0,0];
+			}
+			//var_dump($deviceIds);
+
+		
 			if($mode=="kill") {
 				$method  = "kill";
 			} else if ($mode=="getDevices") {
 				$sql = "SELECT ip_address, name, device_id FROM device  WHERE device_id IN (" . implode("," , $deviceIds) . ") ORDER BY NAME ASC";
 				//echo $sql;
-  				$result = mysqli_query($conn, $sql);
-  				if($result) {
-	  				$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+				$result = mysqli_query($conn, $sql);
+				if($result) {
+					$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
 					$out["devices"] = $rows;
 				}
 			} else if ($mode=="getEnergyInfo"){ //this gets critical SolArk data for possible use automating certain things
@@ -150,9 +165,14 @@ if($_REQUEST) {
 					$out = ["error"=>"bad database connection"];
 				} else {
 					
-					if($scale == ""  || $scale == "fine") {
+					if($scale == "ultra-fine") {
 						$sql = "SELECT * FROM " . $database . ".inverter_log  
+						WHERE user_id = " . $user["user_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -5 HOUR) 
+						ORDER BY inverter_log_id ASC";
+					} else if($scale == ""  || $scale == "fine") {
+						$sql = "SELECT *  FROM " . $database . ".inverter_log  
 						WHERE user_id = " . $user["user_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -1 DAY) 
+						GROUP BY YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded), MINUTE(recorded)
 						ORDER BY inverter_log_id ASC";
 					} else {
 						if($scale == "hour") {
@@ -167,12 +187,12 @@ if($_REQUEST) {
 							$sql = "SELECT 	 
 							*,
 							YEAR(recorded), DAYOFYEAR(recorded) FROM " . $database . ".inverter_log  
-							 
+								
 								GROUP BY YEAR(recorded), DAYOFYEAR(recorded)
 								ORDER BY inverter_log_id ASC";
 						}
 					}
- 
+
 					if($sql) {
 						$result = mysqli_query($conn, $sql);
 						$out = [];
@@ -340,7 +360,7 @@ if($_REQUEST) {
 				$method = "getDeviceData";
 				$pinValuesKnownToDevice = [];
 				$specificPin = -1;
- 
+
 				if(count($lines)>1) {
 					$recentReboots = explode("*", $lines[1]);
 					foreach($recentReboots as $rebootOccasion) {
@@ -398,7 +418,7 @@ if($_REQUEST) {
 								$specificPin = -1; //this should always be -1 if justGetDeviceInfo is 1
 							}
 						}
-					 
+						
 					}
 				
 				}
@@ -658,10 +678,12 @@ if($_REQUEST) {
 					}
 				}
 			} 
-		}else {
-			$out = ["error"=>"you lack permissions"];
 		}
+ 
+	} else {
+		$out = ["error"=>"you lack permissions"];
 	}
+	
 	//var_dump($extraInfo);
 	//var_dump($nonJsonPinData);
 	//var_dump($justGetDeviceInfo);
