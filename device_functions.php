@@ -485,6 +485,22 @@ function getDevices($userId){
 		return $rows;
 	}
 }
+function saveSolarData($user, $gridPower, $batteryPercent,  $batteryPower, $loadPower, $solarString1, $solarString2) {
+  Global $conn;
+  $date = new DateTime("now", new DateTimeZone('America/New_York'));
+  $formatedDateTime =  $date->format('Y-m-d H:i:s');
+  $nowTime = strtotime($formatedDateTime);
+  $loggingSql = "INSERT INTO inverter_log ( user_id, recorded, solar_power, load_power, grid_power, battery_percentage, battery_power) VALUES (";
+  $loggingSql .= $user["user_id"] . ",'" . $formatedDateTime . "'," .
+   intval(intval($solarString1) + intval($solarString2)) . "," . 
+   $loadPower. "," . 
+   $gridPower . "," . 
+   $batteryPercent . "," . 
+   $batteryPower . ")";
+  $loggingResult = mysqli_query($conn, $loggingSql);
+
+}
+
 
 //reads data from the cloud about our particular solar installation
 function getCurrentSolarData($user) {
@@ -503,7 +519,7 @@ function getCurrentSolarData($user) {
   //var_dump($mostRecentInverterRecord);
   //echo $minutesSinceLastRecord;
   
-  if($minutesSinceLastRecord > 5) {
+  if(false && $minutesSinceLastRecord > 5) { //we don't need to get data from SolArk any more, but this is how you would
     $plantId = $user["energy_api_plant_id"];
     $url = $baseUrl . '/oauth/token';
     $headers = [
