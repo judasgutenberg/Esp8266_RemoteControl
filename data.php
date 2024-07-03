@@ -136,7 +136,7 @@ if($_REQUEST) {
 						$out["energy_info"]["bat_percent"] = $energyInfo["battery_percentage"];
 					}
 				}
-			} else if ($mode=="getDeviceData" || $mode == "getInitialDeviceInfo") {
+			} else if ($mode=="getDeviceData" || $mode == "getInitialDeviceInfo" || $mode=="saveLocallyGatheredSolarData") {
 				$deviceSql = "SELECT name, location_name FROM device WHERE device_id = " . intval($deviceId);
 				$getDeviceResult = mysqli_query($conn, $deviceSql);
 				if($getDeviceResult) {
@@ -353,7 +353,7 @@ if($_REQUEST) {
 					$outString .= "|";
 				}
 				die($outString);
-			} else if($mode == "getDeviceData" || $mode == "saveData" ) {
+			} else if($mode == "getDeviceData" || $mode == "saveData" || $mode=="saveLocallyGatheredSolarData") {
 				$out["device"] = $deviceName;
 				$ipAddress = "192.168.1.X";
 				$mustSaveLastKnownDeviceValueAsValue = 0;
