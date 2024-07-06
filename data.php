@@ -168,10 +168,12 @@ if($_REQUEST) {
 					if($scale == "ultra-fine") {
 						$sql = "SELECT * FROM " . $database . ".inverter_log  
 						WHERE user_id = " . $user["user_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -5 HOUR) 
+						AND battery_percentage > 0
 						ORDER BY inverter_log_id ASC";
 					} else if($scale == ""  || $scale == "fine") {
 						$sql = "SELECT *  FROM " . $database . ".inverter_log  
 						WHERE user_id = " . $user["user_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -1 DAY) 
+						AND battery_percentage > 0
 						GROUP BY YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded), MINUTE(recorded)
 						ORDER BY inverter_log_id ASC";
 					} else {
@@ -180,6 +182,7 @@ if($_REQUEST) {
 							*,
 							YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded) FROM " . $database . ".inverter_log  
 							WHERE user_id = " . $user["user_id"] . " AND recorded > DATE_ADD(NOW(), INTERVAL -7 DAY) 
+								AND battery_percentage > 0
 								GROUP BY YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded)
 								ORDER BY inverter_log_id ASC";
 						}
@@ -187,7 +190,7 @@ if($_REQUEST) {
 							$sql = "SELECT 	 
 							*,
 							YEAR(recorded), DAYOFYEAR(recorded) FROM " . $database . ".inverter_log  
-								
+								WHERE battery_percentage > 0
 								GROUP BY YEAR(recorded), DAYOFYEAR(recorded)
 								ORDER BY inverter_log_id ASC";
 						}
