@@ -161,9 +161,12 @@ function showGraph(locationId){
                 },
             maintainAspectRatio: false,
             elements: {
-            line: {
-                    tension: 0.5 //Smoothening (Curved) of data lines
-                }
+				point:{
+                        radius: 0
+                    },
+				line: {
+						tension: 0.5 //Smoothening (Curved) of data lines
+					}
             },
             scales: {
 			  yAxes: [
