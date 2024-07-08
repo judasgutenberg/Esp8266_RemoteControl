@@ -47,6 +47,7 @@ byte justDeviceJson = 1;
 long connectionFailureTime = 0;
 long lastDataLogTime = 0;
 long localChangeTime = 0;
+long lastPoll = 0;
 int timeSkewAmount = 0; //i had it as much as 20000 for 20 seconds, but serves no purpose that I can tell
 int pinTotal = 12;
 String pinList[12]; //just a list of pins
@@ -806,8 +807,10 @@ void loop(void){
     Serial.println();
     rebootEsp();
   }
- 
-  if(nowTime - ((nowTime/(1000 * granularityToUse) )*(1000 * granularityToUse)) == 0 || connectionFailureTime>0 && connectionFailureTime + connection_failure_retry_seconds * 1000 > millis()) {  //send data to backend server every <polling_granularity> seconds or so
+  //Serial.print(granularityToUse);
+  //Serial.print(" ");
+  //Serial.println(connectionFailureTime);
+  if((nowTime - lastPoll)/1000 > granularityToUse || connectionFailureTime>0 && connectionFailureTime + connection_failure_retry_seconds * 1000 > millis()) {  //send data to backend server every <polling_granularity> seconds or so
     //Serial.print("Connection failure time: ");
     //Serial.println(connectionFailureTime);
     //Serial.print("  Connection failure calculation: ");
@@ -817,6 +820,7 @@ void loop(void){
     glblRemote = true;
     handleWeatherData();
     glblRemote = false;
+    lastPoll = nowTime;
   }
   server.handleClient();          //Handle client requests
   //digitalWrite(0, HIGH );
