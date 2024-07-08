@@ -16,7 +16,7 @@ const int data_logging_granularity = 300; //how often to store data in backend, 
 const int connection_failure_retry_seconds = 4;
 const int connection_retry_number = 22;
 
-const int granularity_when_in_connection_failure_mode = 5; //40 was too little time for everything to come up and start working reliably, at least with my sketchy cellular connection
+const int granularity_when_in_connection_failure_mode = 40; //40 was enough time for everything to come up and start working reliably, at least with my sketchy cellular connection
 const int number_of_hotspot_reboots_over_limited_timeframe_before_esp_reboot = 4; //reboots moxee four times in 340 seconds (number below) and then reboots itself
 const int hotspot_limited_time_frame = 340; //seconds
 
