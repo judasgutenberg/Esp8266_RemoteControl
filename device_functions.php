@@ -103,10 +103,6 @@ function devices($userId) {
       'name' => 'name' 
     ],
     [
-      'label' => 'name',
-      'name' => 'name' 
-    ],
-    [
       'label' => 'location name',
       'name' => 'location_name' 
     ],
@@ -128,6 +124,93 @@ function devices($userId) {
     return $out;
 
 }
+
+function reports($userId) {
+  Global $conn;
+  $table = "report";
+  $sql = "SELECT *  FROM " . $table . "  WHERE user_id=" . intval($userId);
+  //echo $sql;
+  $result = mysqli_query($conn, $sql);
+  $out = "";
+  $out .= "<div class='listtitle'>Your " . $table . "s</div>\n";
+  $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a new " . $table  . "</div>\n";
+  
+  //$out .= "<hr style='width:100px;margin:0'/>\n";
+  $headerData = array(
+    [
+	    'label' => 'id',
+      'name' => $table . "_id"
+	  ],
+    [
+      'label' => 'name',
+      'name' => 'name' 
+    ],
+    [
+      'label' => 'name',
+      'name' => 'name' 
+    ],
+    [
+      'label' => 'created',
+      'name' => 'created' 
+    ],
+    [
+      'label' => 'modified',
+      'name' => 'modified' 
+    ],
+    );
+    $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
+    $toolsTemplate .= " | <a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>&action=fetch'>Run</a>";
+    $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
+
+    if($result) {
+      $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+      
+      if($rows) {
+        $out .= genericTable($rows, $headerData, $toolsTemplate, null,  $table, $table . "_id", $sql);
+      }
+    }
+    return $out;
+
+}
+
+function doReport($reportId){
+  Global $conn;
+  $sql = "SELECT * FROM report WHERE report_id=" . intval($reportId);
+  
+  $result = mysqli_query($conn, $sql);
+  $data = "";
+  if($result) {
+    
+    $reportData = mysqli_fetch_array($result);
+    $sql = $reportData["sql"];
+    $form = $reportData["form"];
+    if($form != "" && gvfw("action") == "fetch") {
+      $out = "<div class='listtitle'>Prepare to Run Report  '" . $reportData["name"] . "'</div>";
+      $out .= genericForm($form, "Run");
+    } else {
+      $out = "<div class='listtitle'>Running Report  '" . $reportData["name"] . "'</div>";
+      //gotta merge form values in here:
+      $reportResult = mysqli_query($conn, $sql);
+      if($reportResult) {
+        $rows = mysqli_fetch_all($reportResult, MYSQLI_ASSOC);
+        //var_dump($rows);
+        if($rows) {
+          $data .= genericTable($rows, null, null, null);
+        }
+        
+
+      }
+    }
+  }
+  if($data == ""){
+    $data = "No results";
+  }
+  $out .= $data;
+  return $out;
+}
+
+
+
 
 function deviceFeatureForm($error,  $userId) {
   Global $conn;
@@ -245,7 +328,62 @@ function deviceFeatureForm($error,  $userId) {
   $form = genericForm($formData, $submitLabel);
   return $form;
 }
+
+function editReport($error,  $userId) {
+  Global $conn;
+  $table = "report";
+  $pk = gvfw($table . "_id");
+  
+  $submitLabel = "save report";
+  if($pk  == ""  && $_POST) {
  
+    $submitLabel = "create device";
+    $source = $_POST;
+  } else {
+    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND user_id=" . intval($userId);
+    $result = mysqli_query($conn, $sql);
+    if($result) {
+      $source = mysqli_fetch_array($result);
+    }
+  }
+  if(!$pk){
+    $pk = "NULL";
+  }
+  $formData = array(
+    [
+	    'label' => 'id',
+      'name' => $table . "_id",
+      'type' => 'read_only',
+	    'value' => gvfa($table . "_id", $source)
+	  ],
+		[
+	    'label' => 'name',
+      'name' => 'name',
+      'width' => 400,
+	    'value' => gvfa("name", $source), 
+      'error' => gvfa('name', $error)
+	  ],
+		[
+	    'label' => 'form',
+      'name' => 'form',
+      'width' => 500,
+      'height'=> 200,
+	    'value' => gvfa("form", $source), 
+      'error' => gvfa('form', $error)
+	  ],
+    [
+	    'label' => 'sql',
+      'name' => 'sql',
+      'width' => 500,
+      'height'=> 200,
+	    'value' => gvfa("sql", $source), 
+      'error' => gvfa('sql', $error)
+	  ]
+    );
+  $form = genericForm($formData, $submitLabel);
+  return $form;
+}
+
 function deviceForm($error,  $userId) {
   Global $conn;
   $table = "device";
@@ -337,7 +475,7 @@ function deviceForm($error,  $userId) {
     [
 	    'label' => 'sensor',
       'name' => 'sensor_id',
-      'type' => "number",
+      'type' => "int",
       'width' => 200,
 	    'value' => gvfa("sensor_id", $source), 
       'error' => gvfa('sensor_id', $error)

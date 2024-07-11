@@ -804,7 +804,7 @@ function tabNav($user) {
   [
     'label' => 'Management Rules',
     'table' => 'management_rule' 
-  ]   ,
+  ], 
   [
     'label' => 'Sensor Data',
     'table' => 'sensors' 
@@ -815,6 +815,10 @@ function tabNav($user) {
     $tabData[] =   [
       'label' => 'Users',
       'table' => 'user' 
+    ];
+    $tabData[] =   [
+      'label' => 'Reports',
+      'table' => 'report' 
     ];
   }
 	$out = "<div class='nav'>";

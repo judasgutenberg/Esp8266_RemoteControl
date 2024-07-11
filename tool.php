@@ -176,8 +176,15 @@ if ($user) {
     $out .= utilities($user, "list");
    }
  
-
-	} else if($table == "devices") {
+	} else if($table == "report") {
+    if ($action == "fetch" || beginsWith(strtolower($action), "run")) {
+      $out .= doReport($userId, gvfw("report_id"));
+    } else if ($action == "startcreate" || gvfw("report_id") != "") {
+      $out .=  editReport($errors,  $userId);
+    } else {
+      $out .= reports($userId);
+    }
+	} else if($table == "device") {
     $out .= devices($userId);
   } else if ($action == "startcreate") {
     if ($table == "test") {
