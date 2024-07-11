@@ -43,7 +43,8 @@ if(!$user) {
   <!--For offline ESP graphs see this tutorial https://circuits4you.com/2018/03/10/esp8266-jquery-and-ajax-web-server/ -->
   <script src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>  
   <link rel='stylesheet' href='tool.css?version=1711570359'>
- 
+  <link rel="icon" type="image/x-icon" href="./favicon.ico" />
+
 </head>
 
 <body>
@@ -198,8 +199,8 @@ window.onload = function() {
 
  
 
-//script to get weather data
-//This evolved from a script in this tutorial: https://circuits4you.com/2018/02/04/esp8266-ajax-update-part-of-web-page-without-refreshing/
+//Ajax script to get ADC voltage at every 5 Seconds 
+//Read This tutorial https://circuits4you.com/2018/02/04/esp8266-ajax-update-part-of-web-page-without-refreshing/
 
 //getWeatherData("<?php echo gvfw("locationId")?>");
 //setInterval(function() {
@@ -292,12 +293,12 @@ function officialWeather(locationId) {
 			let out = "<table>";
 			//out += "<tr><td>Location</td><td>" + locationId + "</td></tr>\n";
 			out += "<tr><td>Weather</td><td>" + weatherDescription + "</td></tr>\n";
-			out += "<tr><td>Temperature</td><td>" + ctof(temperature) + "</td></tr>\n";
-			out += "<tr><td>Extremes</td><td>" + ctof(temperatureMin) + " to " + ctof(temperatureMax) + "</td></tr>\n";
-			out += "<tr><td>Pressure</td><td>" + pressure + "</td></tr>\n";
-			out += "<tr><td>Humidity</td><td>" + humidity + "</td></tr>\n";
-			out += "<tr><td>Wind</td><td>" + wind + "</td></tr>\n";
-			out += "<tr><td>Gust</td><td>" + gust + "</td></tr>\n";
+			out += "<tr><td>Temperature</td><td>" + ctof(temperature).toFixed(1); + "</td></tr>\n";
+			out += "<tr><td>Extremes</td><td>" + ctof(temperatureMin).toFixed(1); + " to " + ctof(temperatureMax).toFixed(1); + "</td></tr>\n";
+			out += "<tr><td>Pressure</td><td>" + pressure.toFixed(1); + "</td></tr>\n";
+			out += "<tr><td>Humidity</td><td>" + humidity.toFixed(1); + "</td></tr>\n";
+			out += "<tr><td>Wind</td><td>" + wind.toFixed(1); + "</td></tr>\n";
+			out += "<tr><td>Gust</td><td>" + gust.toFixed(1); + "</td></tr>\n";
 			out += "<tr><td>Sunrise</td><td>" + timeConverter(sunrise) + "</td></tr>\n";
 			out += "<tr><td>Sunset</td><td>" + timeConverter(sunset) + "</td></tr>\n";
 			out += "</table>";

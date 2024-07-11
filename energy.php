@@ -44,7 +44,7 @@ if(!$user) {
   <!--For offline ESP graphs see this tutorial https://circuits4you.com/2018/03/10/esp8266-jquery-and-ajax-web-server/ -->
   <script src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>  
   <link rel='stylesheet' href='tool.css?version=1711570359'>
- 
+  <link rel="icon" type="image/x-icon" href="./favicon.ico" />
 </head>
 
 <body>

@@ -42,6 +42,8 @@ function bodyWrap($content, $user, $deviceId, $poser = null) {
   $out = "<!doctype html>";
   $out .= "<html>\n";
   $out .= "<head>\n";
+  $out .= '<link rel="icon" type="image/x-icon" href="./favicon.ico" />';
+
   $siteName = "Remote Controller";
   $version = filemtime("./index.php");
   $out .= "<script src='tablesort.js?version=" . urlencode($version) . "'></script>\n";
@@ -591,6 +593,10 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
           $specialNumberAttribs = "";
           if ($type == "number") {
             $specialNumberAttribs = " step='0.0000000000001' ";
+          }
+          if ($type == "int") {
+            $type == "number";
+            $specialNumberAttribs = " step='1' ";
           }
           $out .= "<input style='width:" . $width . "px'  " . $idString. " " . $specialNumberAttribs . "  name='" . $name . "' value=\"" .  $value . "\" type='" . $type . "'/>\n";
         }
