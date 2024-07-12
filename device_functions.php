@@ -623,18 +623,21 @@ function getDevices($userId){
 		return $rows;
 	}
 }
-function saveSolarData($user, $gridPower, $batteryPercent,  $batteryPower, $loadPower, $solarString1, $solarString2) {
+function saveSolarData($user, $gridPower, $batteryPercent,  $batteryPower, $loadPower, $solarString1, $solarString2, $batteryVoltage, $solarPotential) {
   Global $conn;
   $date = new DateTime("now", new DateTimeZone('America/New_York'));
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
   $nowTime = strtotime($formatedDateTime);
-  $loggingSql = "INSERT INTO inverter_log ( user_id, recorded, solar_power, load_power, grid_power, battery_percentage, battery_power) VALUES (";
+  $loggingSql = "INSERT INTO inverter_log ( user_id, recorded, solar_power, load_power, grid_power, battery_percentage, battery_power, battery_voltage, solar_potential) VALUES (";
   $loggingSql .= $user["user_id"] . ",'" . $formatedDateTime . "'," .
    intval(intval($solarString1) + intval($solarString2)) . "," . 
    $loadPower. "," . 
    $gridPower . "," . 
    $batteryPercent . "," . 
-   $batteryPower . ")";
+   $batteryPower . "," .  
+   $batteryVoltage . "," .  
+   $solarPotential . 
+   ")";
   $loggingResult = mysqli_query($conn, $loggingSql);
 
 }

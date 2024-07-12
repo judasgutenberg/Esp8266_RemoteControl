@@ -152,7 +152,9 @@ CREATE TABLE inverter_log(
   load_power INT NULL,
   grid_power INT NULL,
   battery_percentage INT NULL,
-  battery_power INT NULL
+  battery_power INT NULL,
+  battery_voltage DECIMAL(8,5) NULL,
+  solar_potential INT NULL
 )
 
 CREATE TABLE report(
@@ -215,6 +217,8 @@ CREATE TABLE report_log(
 --ALTER TABLE device ADD longitude DECIMAL(8,5) NULL;
 --ALTER TABLE user ADD open_weather_api_key VARCHAR(100) NULL;
 --ALTER TABLE weather_data ADD device_feature_id INT NULL;
+--ALTER TABLE inverter_log ADD battery_voltage DECIMAL(8,5) NULL;
+--ALTER TABLE inverter_log ADD solar_potential INT NULL;
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
 INSERT INTO device (name, device_type_id, created) VALUES ('Hotspot Watchdog', 1, NOW());

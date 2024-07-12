@@ -34,6 +34,9 @@ $sensorId = "NULL";
 $nonJsonPinData = 0;
 $justGetDeviceInfo = 0;
 $storagePassword = "";
+if($_POST) {
+	logPost(gvfa("data", $_POST)); //help me debug
+}
 if($_REQUEST) {
 	if(array_key_exists("storagePassword", $_REQUEST)) {
 		$storagePassword  = $_REQUEST["storagePassword"];
@@ -77,13 +80,16 @@ if($_REQUEST) {
 						///weather/data.php?storagePassword=xxxxxx&locationId=16&mode=saveLocallyGatheredSolarData&data=0*61*3336*3965*425*420*0*0*6359|||***192.168.1.200 
 						$energyInfoString = $lines[0];
 						$arrEnergyData = explode("*", $energyInfoString);
-						$gridPower = $arrEnergyData[0];
-						$batteryPercent = $arrEnergyData[1];
-						$batteryPower  = $arrEnergyData[2];
-						$loadPower = $arrEnergyData[3];
-						$solarString1 = $arrEnergyData[4];
-						$solarString2 = $arrEnergyData[5];
-						$energyInfo = saveSolarData($user, $gridPower, $batteryPercent,  $batteryPower, $loadPower, $solarString1, $solarString2);
+						$inverterSnapshotTime = $arrEnergyData[0];
+						$gridPower = $arrEnergyData[1];
+						$batteryPercent = $arrEnergyData[2];
+						$batteryPower  = $arrEnergyData[3];
+						$loadPower = $arrEnergyData[4];
+						$solarString1 = $arrEnergyData[5];
+						$solarString2 = $arrEnergyData[6];
+						$batteryVoltage = intval($arrEnergyData[7])/100;
+						$solarPotential =  $arrEnergyData[8];
+						$energyInfo = saveSolarData($user, $gridPower, $batteryPercent,  $batteryPower, $loadPower, $solarString1, $solarString2, $batteryVoltage, $solarPotential);
 					}	
 				} else {
 					$weatherInfoString = $lines[0];
@@ -113,8 +119,13 @@ if($_REQUEST) {
 		
 			if($mode=="kill") {
 				$method  = "kill";
-			} else if ($mode=="getDevices") {
-				$sql = "SELECT ip_address, name, device_id FROM device  WHERE device_id IN (" . implode("," , $deviceIds) . ") ORDER BY NAME ASC";
+			} else if (beginsWith($mode, "getDevices")) {
+				$deviceIdsPassedIn = gvfw("device_ids");
+				$deviceIdsToUse = $deviceIds;
+				if($deviceIdsPassedIn) {
+					$deviceIdsToUse = explode("*", $deviceIdsPassedIn);
+				}
+				$sql = "SELECT ip_address, name, device_id FROM device  WHERE device_id IN (" . implode("," , $deviceIdsToUse) . ") ORDER BY NAME ASC";
 				//echo $sql;
 				$result = mysqli_query($conn, $sql);
 				if($result) {
@@ -690,7 +701,27 @@ if($_REQUEST) {
 	//var_dump($extraInfo);
 	//var_dump($nonJsonPinData);
 	//var_dump($justGetDeviceInfo);
-	if($nonJsonPinData == '1' && array_key_exists("device_data", $out) && !array_key_exists("error", $out)) { //create a very bare-bones non-JSON delimited data object to speed up data propagation to device
+	if (endsWith(strtolower($mode), "nonjson")) {
+		//let's just double-delimit using pipes and stars
+		//lots of comments because CHAT fucking GPT!
+		// Get the first item in the root level
+		//note: this only works with a one-property object 
+		$firstItem = reset($out); //this was the main thing i need to know but didn't
+		// Initialize an array to hold the parsed values
+		$parsedValues = [];
+		// Iterate through each item in the array
+		foreach ($firstItem as $item) {
+			// Extract the values from the associative array
+			$values = array_values($item);
+			// Concatenate the values with "*" as the delimiter
+			$parsedValues[] = implode('*', $values);
+		}
+		// Concatenate each item's values with "|" as the delimiter
+		$result = implode('|', $parsedValues);
+		die($result);
+
+		
+	} else if($nonJsonPinData == '1' && array_key_exists("device_data", $out) && !array_key_exists("error", $out)) { //create a very bare-bones non-JSON delimited data object to speed up data propagation to device
 		$nonJsonOutString = "|";
 		foreach($out["device_data"] as $deviceDatum){
 			if($deviceDatum["enabled"]) {
@@ -752,7 +783,14 @@ function deriveUserFromStoragePassword($storagePassword) {
 	}
 }
 
+function logPost($post){
+	//return; //for when you don't actually want to log
+	global $formatedDateTime;
+	$myfile = file_put_contents('post.txt', "\n\n" . $formatedDateTime . ": " . $post, FILE_APPEND | LOCK_EX);
+}
+
 function logSql($sql){
+	return;
 	//return; //for when you don't actually want to log
 	global $formatedDateTime;
 	$myfile = file_put_contents('sql.txt', "\n\n" . $formatedDateTime . ": " . $sql, FILE_APPEND | LOCK_EX);
