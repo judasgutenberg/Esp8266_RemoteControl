@@ -179,13 +179,14 @@ function doReport($userId, $reportId){
   
   $result = mysqli_query($conn, $sql);
   $data = "";
+  $out = "";
   if($result) {
     
     $reportData = mysqli_fetch_array($result);
     $sql = $reportData["sql"];
     $form = $reportData["form"];
     if($form != "" && gvfw("action") == "fetch") {
-      $out = "<div class='listtitle'>Prepare to Run Report  '" . $reportData["name"] . "'</div>";
+      $out .= "<div class='listtitle'>Prepare to Run Report  '" . $reportData["name"] . "'</div>";
       $out .= genericForm($form, "Run");
     } else {
       $out = "<div class='listtitle'>Running Report  '" . $reportData["name"] . "'</div>";
