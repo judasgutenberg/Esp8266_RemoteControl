@@ -89,7 +89,26 @@ if($_REQUEST) {
 						$solarString2 = $arrEnergyData[6];
 						$batteryVoltage = intval($arrEnergyData[7])/100;
 						$solarPotential =  $arrEnergyData[8];
-						$energyInfo = saveSolarData($user, $gridPower, $batteryPercent,  $batteryPower, $loadPower, $solarString1, $solarString2, $batteryVoltage, $solarPotential);
+						$mysteryValue1 = $arrEnergyData[9];
+						$mysteryValue2 = $arrEnergyData[10];
+						$changer1 = $arrEnergyData[11];
+						$changer2 = $arrEnergyData[12];
+						$changer3 = $arrEnergyData[13];
+						$changer4 = $arrEnergyData[14];
+						$changer5 = $arrEnergyData[15];
+
+						$energyInfo = saveSolarData($user, $gridPower, $batteryPercent,  
+						$batteryPower, $loadPower, $solarString1, $solarString2, 
+							$batteryVoltage, 
+							$solarPotential,
+							$mysteryValue1,
+							$mysteryValue2,
+							$changer1,
+							$changer2,
+							$changer3,
+							$changer4,
+							$changer5
+						);
 					}	
 				} else {
 					$weatherInfoString = $lines[0];
@@ -179,12 +198,12 @@ if($_REQUEST) {
 					if($scale == "ultra-fine") {
 						$sql = "SELECT * FROM " . $database . ".inverter_log  
 						WHERE user_id = " . $user["user_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -5 HOUR) 
-						AND battery_percentage > 0
+						 
 						ORDER BY inverter_log_id ASC";
 					} else if($scale == ""  || $scale == "fine") {
 						$sql = "SELECT *  FROM " . $database . ".inverter_log  
 						WHERE user_id = " . $user["user_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -1 DAY) 
-						AND battery_percentage > 0
+						 
 						GROUP BY YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded), MINUTE(recorded)
 						ORDER BY inverter_log_id ASC";
 					} else {
@@ -193,7 +212,7 @@ if($_REQUEST) {
 							*,
 							YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded) FROM " . $database . ".inverter_log  
 							WHERE user_id = " . $user["user_id"] . " AND recorded > DATE_ADD(NOW(), INTERVAL -7 DAY) 
-								AND battery_percentage > 0
+								 
 								GROUP BY YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded)
 								ORDER BY inverter_log_id ASC";
 						}
@@ -201,7 +220,7 @@ if($_REQUEST) {
 							$sql = "SELECT 	 
 							*,
 							YEAR(recorded), DAYOFYEAR(recorded) FROM " . $database . ".inverter_log  
-								WHERE battery_percentage > 0
+								 
 								GROUP BY YEAR(recorded), DAYOFYEAR(recorded)
 								ORDER BY inverter_log_id ASC";
 						}

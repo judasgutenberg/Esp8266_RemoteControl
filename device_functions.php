@@ -173,9 +173,9 @@ function reports($userId) {
 
 }
 
-function doReport($reportId){
+function doReport($userId, $reportId){
   Global $conn;
-  $sql = "SELECT * FROM report WHERE report_id=" . intval($reportId);
+  $sql = "SELECT * FROM report WHERE report_id=" . intval($reportId) AND userId=" . intval($userId);
   
   $result = mysqli_query($conn, $sql);
   $data = "";
@@ -623,12 +623,33 @@ function getDevices($userId){
 		return $rows;
 	}
 }
-function saveSolarData($user, $gridPower, $batteryPercent,  $batteryPower, $loadPower, $solarString1, $solarString2, $batteryVoltage, $solarPotential) {
+function saveSolarData($user, $gridPower, $batteryPercent,  $batteryPower, $loadPower, 
+  $solarString1, $solarString2, $batteryVoltage, 
+  $solarPotential,
+  $mysteryValue1,
+  $mysteryValue2,
+  $changer1,
+  $changer2,
+  $changer3,
+  $changer4,
+  $changer5
+) {
   Global $conn;
   $date = new DateTime("now", new DateTimeZone('America/New_York'));
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
   $nowTime = strtotime($formatedDateTime);
-  $loggingSql = "INSERT INTO inverter_log ( user_id, recorded, solar_power, load_power, grid_power, battery_percentage, battery_power, battery_voltage, solar_potential) VALUES (";
+  $loggingSql = "INSERT INTO inverter_log ( user_id, recorded, 
+  solar_power, load_power, grid_power, battery_percentage, battery_power,
+  battery_voltage, solar_potential,
+  mystery_value1,
+  mystery_value2,
+  changer1,
+  changer2,
+  changer3,
+  changer4,
+  changer5
+  
+  ) VALUES (";
   $loggingSql .= $user["user_id"] . ",'" . $formatedDateTime . "'," .
    intval(intval($solarString1) + intval($solarString2)) . "," . 
    $loadPower. "," . 
@@ -636,7 +657,14 @@ function saveSolarData($user, $gridPower, $batteryPercent,  $batteryPower, $load
    $batteryPercent . "," . 
    $batteryPower . "," .  
    $batteryVoltage . "," .  
-   $solarPotential . 
+   $solarPotential . "," .
+   $mysteryValue1 . "," .
+   $mysteryValue2 . "," .
+   $changer1 . "," .
+   $changer2 . "," .
+   $changer3 . "," .
+   $changer4 . "," .
+   $changer5 .
    ")";
   $loggingResult = mysqli_query($conn, $loggingSql);
 
