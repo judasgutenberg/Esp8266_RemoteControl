@@ -175,8 +175,8 @@ function reports($userId) {
 
 function doReport($userId, $reportId){
   Global $conn;
-  $sql = "SELECT * FROM report WHERE report_id=" . intval($reportId) . " AND userId=" . intval($userId);
-  
+  $sql = "SELECT * FROM report WHERE report_id=" . intval($reportId) . " AND user_id=" . intval($userId);
+  //die($sql);
   $result = mysqli_query($conn, $sql);
   $data = "";
   $out = "";
@@ -633,7 +633,9 @@ function saveSolarData($user, $gridPower, $batteryPercent,  $batteryPower, $load
   $changer2,
   $changer3,
   $changer4,
-  $changer5
+  $changer5,
+  $changer6,
+  $changer7
 ) {
   Global $conn;
   $date = new DateTime("now", new DateTimeZone('America/New_York'));
@@ -648,7 +650,9 @@ function saveSolarData($user, $gridPower, $batteryPercent,  $batteryPower, $load
   changer2,
   changer3,
   changer4,
-  changer5
+  changer5,
+  changer6,
+  changer7
   
   ) VALUES (";
   $loggingSql .= $user["user_id"] . ",'" . $formatedDateTime . "'," .
@@ -665,7 +669,9 @@ function saveSolarData($user, $gridPower, $batteryPercent,  $batteryPower, $load
    $changer2 . "," .
    $changer3 . "," .
    $changer4 . "," .
-   $changer5 .
+   $changer5 . "," .
+   $changer6 . "," .
+   $changer7 .
    ")";
   $loggingResult = mysqli_query($conn, $loggingSql);
 
@@ -922,3 +928,68 @@ function getWeatherForecast($latitude, $longitude, $apiKey) {
 
   return $weatherData;
 }
+
+
+
+function utilities($user, $viewMode = "list") {
+  $utilitiesData = array(
+
+    [
+      'label' => 'Rececent Visitor Log',
+      'url' => '?table=utilities&action=recentvisitorlogs',
+      'description' => "Beats having to use putty.",
+      'action' => 'vistorLog(<device_id/>, <number/>)',
+      'key' => 'recentvisitorlogs',
+      'role' => "super",
+      'form' => 
+      [
+        [
+          'label' => 'Number of Records',
+          'name' => 'number',
+          'value' => gvfa("user_id", $_POST),
+          'type' => 'select',
+          'values' => [10, 20, 40, 60, 100]
+        ],
+        [
+          'label' => 'Location',
+          'name' => 'device_id',
+          'value' => gvfa("device_id", $_POST),
+          'type' => 'select',
+          'values' => "SELECT name as text, device_id FROM device WHERE user_id=<user_id/>"
+        ]
+
+      ]
+    ]
+    
+  );
+
+
+  $filteredData = array_filter($utilitiesData, function ($subData) use ($user) {
+    return doesUserHaveRole($user, gvfa("role", $subData));
+  });
+  //echo $viewMode;
+  //var_dump($filteredData );
+  if($viewMode == "data"){
+    return $filteredData;
+  }
+  if($viewMode == "list"){
+ 
+    $out = presentList($filteredData);
+  } else if ($viewMode == "form") {
+
+    die();
+  }
+  
+  return $out;
+      
+}
+
+  function vistorLog($deviceId, $number) {
+    $lines=array();
+    $logFile = "/var/log/apache2/access.log";
+    $strToExec = "tail -n $number $logFile  | grep locationId=" . $deviceId;
+    $output = shell_exec($strToExec);
+    //die($output . "ASDASDSAD" . $strToExec);
+    return explode("\n", $output);
+
+  }

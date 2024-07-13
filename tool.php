@@ -131,24 +131,30 @@ if ($user) {
     $data = json_decode(gvfw("_data")); //don't actually need this
     //var_dump($data);
     $foundData = getUtilityInfo($user, $action);
-    
+    //echo "SADASDASD" . $action;
+    //var_dump($foundData);
     if($foundData) {
+      
       if ($_POST ||  gvfa("action", $foundData) && !gvfa("form", $foundData)) {
         //dealing with a utility that has a form
         $role = gvfa("role", $foundData);
         if (doesUserHaveRole($user, $role) && $action) { //don't actually need to do this here any more
+          
           if(array_key_exists("action", $foundData)) {
               $redirect = true;
               $codeToRun = tokenReplace($foundData["action"], $_GET);
               $codeToRun = tokenReplace($codeToRun, $_POST) . ";";
-              //die($codeToRun);
+   
               try {
-                $result = @eval($evalcode . "; return true;");
+                //$result = @eval($evalcode . "; return true;");
+                
                 //die(var_dump($result));
                 //die($result);
-                if($result){
-                  eval($codeToRun);
-                }
+                //if($result){
+                  eval('$result  =' . $codeToRun . ";");
+                //}
+                var_dump($result);
+                die($codeToRun);
               }
               catch(ParseError $error) { //this shit does not work. does try/catch ever work in PHP?
                 //var_dump($error);
@@ -156,26 +162,25 @@ if ($user) {
                 $redirect = false;
               }
               if($redirect){
-                header('Location: '.$_SERVER['PHP_SELF'] . "?table=" . $table);
-                die();
+                //header('Location: '.$_SERVER['PHP_SELF'] . "?mode=" . $mode);
+                //die();
               }
           }
         }
       } else if($action == "xxxxx") {
         
       } else if ($action) {
-        //var_dump($foundData);
+ 
         $out .= utilityForm($foundData);
       }
    }  
-
- 
-   if(!$foundData ) {
-    $out .= "<div class='generalerror'>Utility not yet developed.</div>";
-   } else if(!$action) {
+   
+    
+   if(!$action) {
     $out .= utilities($user, "list");
+   } else if(!$foundData && false) {
+    $out .= "<div class='generalerror'>Utility not yet developed.</div>";
    }
- 
 	} else if($table == "report") {
     if ($action == "fetch" || beginsWith(strtolower($action), "run")) {
       $out .= doReport($userId, gvfw("report_id"));

@@ -26,15 +26,18 @@ function doesUserHaveRole($user, $role) {
 }
 
 function getUtilityInfo($user, $key){
+  //echo $key;
   $data =  utilities($user, "data");
-  //echo "$" . $key . "$";
   //var_dump($data);
+  //echo "$" . $key . "$";
+ 
   $searchValue = $key;
   $resultArray = array_filter($data, function ($subData) use ($searchValue) {
-    return $subData["key"] == $searchValue;
+      return $subData["key"] == $searchValue;
   });
-  //var_dump($resultArray);
+  //var_dump($resultArray);SSSS
   $foundData = reset($resultArray);
+ 
   return $foundData;
 }
 
@@ -482,6 +485,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
         $out .= "<select  name='" . $name . "' />";
         if(is_string($values)) {
           $out .= "<option value='0'>none</option>";
+          $values = tokenReplace($values,["user_id"=>1]);
           //echo $values;
           $result = mysqli_query($conn, $values); //REALLY NEED TO SANITIZE $values since it contains RAW SQL!!!
           $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
@@ -819,6 +823,10 @@ function tabNav($user) {
     $tabData[] =   [
       'label' => 'Reports',
       'table' => 'report' 
+    ];
+    $tabData[] =   [
+      'label' => 'Utilities',
+      'table' => 'utilities' 
     ];
   }
 	$out = "<div class='nav'>";
