@@ -175,7 +175,7 @@ function reports($userId) {
 
 function doReport($userId, $reportId){
   Global $conn;
-  $sql = "SELECT * FROM report WHERE report_id=" . intval($reportId) AND userId=" . intval($userId);
+  $sql = "SELECT * FROM report WHERE report_id=" . intval($reportId) . " AND userId=" . intval($userId);
   
   $result = mysqli_query($conn, $sql);
   $data = "";
