@@ -293,13 +293,13 @@ if($_REQUEST) {
 			} 
 			
 			if ($mode == "saveData" || count($multipleSensorArray) > 0) { //save data
-				echo "saveDate or multipleSensorArray";
+				//echo "saveDate or multipleSensorArray";
 				//either we have a conventional saveData or we saved energy data and there is also weather data to save
 				//test url;:
 				//http://randomsprocket.com/weather/data.php?storagePassword=vvvvvvv&locationId=3&mode=saveData&data=10736712.76*12713103.20*1075869.28*NULL|0*0*1710464489*1710464504*1710464519*1710464534*1710464549*1710464563*1710464579*1710464593*
 				
 				//select * from weathertron.weather_data where location_id=3 order by recorded desc limit 0,10;
-				if(count(multipleSensorArray) == 0) {
+				if(count($multipleSensorArray) == 0) {
 					$multipleSensorArray = explode("!", $weatherInfoString);
 				}
 				$temperature = "NULL";
@@ -342,6 +342,10 @@ if($_REQUEST) {
 							} else {
 								$deviceFeatureId = "NULL";
 							}
+
+						}
+						if($deviceFeatureId == ""){
+							$deviceFeatureId = "NULL";
 						}
 						//sensorName is $arrWeatherData[14] -- not used here
 						//i put $consolidateAllSensorsToOneRecord on the sensor record so that some sensors could be separate and then later ones could be consolidated
