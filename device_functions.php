@@ -948,7 +948,7 @@ function utilities($user, $viewMode = "list") {
           'name' => 'number',
           'value' => gvfa("user_id", $_POST),
           'type' => 'select',
-          'values' => [10, 20, 40, 60, 100]
+          'values' => [10, 20, 40, 60, 100, 200, 500, 1000, 2000, 5000, 10000]
         ],
         [
           'label' => 'Location',

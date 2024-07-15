@@ -127,7 +127,8 @@ if ($user) {
   if ($table == "sensors") {//a pseudo-table, as sensors are either one-to-a-device or a device_feature
     $out .= currentSensorData($user);
   } else if ($table == "utilities") {
-    $action = $_GET['action']; //$_POST will have this as "run"
+    
+    $action = gvfa('action', $_GET); //$_POST will have this as "run"
     $data = json_decode(gvfw("_data")); //don't actually need this
     //var_dump($data);
     $foundData = getUtilityInfo($user, $action);

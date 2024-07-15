@@ -34,6 +34,7 @@ $sensorId = "NULL";
 $nonJsonPinData = 0;
 $justGetDeviceInfo = 0;
 $storagePassword = "";
+$multipleSensorArray = [];
 if($_POST) {
 	logPost(gvfa("data", $_POST)); //help me debug
 }
@@ -75,10 +76,14 @@ if($_REQUEST) {
 				$data = $_REQUEST["data"];
 				$lines = explode("|",$data);
 				if ($mode=="saveLocallyGatheredSolarData") { //used by the special inverter monitoring MCU to sed fine-grain data promptly
+					
 					if($canAccessData) {
 						
 						///weather/data.php?storagePassword=xxxxxx&locationId=16&mode=saveLocallyGatheredSolarData&data=0*61*3336*3965*425*420*0*0*6359|||***192.168.1.200 
-						$energyInfoString = $lines[0];
+						$multipleSensorArray = explode("!", $lines[0]);
+						//the first item will be energy data;  all subsequent items will be weather
+						$energyInfoString = array_shift($multipleSensorArray);
+						//var_dump($energyInfoString );
 						$arrEnergyData = explode("*", $energyInfoString);
 						$inverterSnapshotTime = $arrEnergyData[0];
 						$gridPower = $arrEnergyData[1];
@@ -96,7 +101,8 @@ if($_REQUEST) {
 						$changer3 = $arrEnergyData[13];
 						$changer4 = $arrEnergyData[14];
 						$changer5 = $arrEnergyData[15];
-
+						$changer6 = $arrEnergyData[16];
+						$changer7 = $arrEnergyData[17];
 						$energyInfo = saveSolarData($user, $gridPower, $batteryPercent,  
 						$batteryPower, $loadPower, $solarString1, $solarString2, 
 							$batteryVoltage, 
@@ -107,7 +113,9 @@ if($_REQUEST) {
 							$changer2,
 							$changer3,
 							$changer4,
-							$changer5
+							$changer5,
+							$changer6,
+							$changer7
 						);
 					}	
 				} else {
@@ -134,8 +142,8 @@ if($_REQUEST) {
 				$arrWeatherData = [0,0,0,0,0,0,0,0,0,0,0,0];
 			}
 			//var_dump($deviceIds);
-
-		
+			//var_dump($multipleSensorArray);
+			//echo $mode .  "*" . count($multipleSensorArray);
 			if($mode=="kill") {
 				$method  = "kill";
 			} else if (beginsWith($mode, "getDevices")) {
@@ -282,12 +290,18 @@ if($_REQUEST) {
 					}
 				}
 				$method  = "read";	
-			} else if ($mode == "saveData") { //save data
-			//test url;:
-			// //http://randomsprocket.com/weather/data.php?storagePassword=vvvvvvv&locationId=3&mode=saveData&data=10736712.76*12713103.20*1075869.28*NULL|0*0*1710464489*1710464504*1710464519*1710464534*1710464549*1710464563*1710464579*1710464593*
+			} 
+			
+			if ($mode == "saveData" || count($multipleSensorArray) > 0) { //save data
+				echo "saveDate or multipleSensorArray";
+				//either we have a conventional saveData or we saved energy data and there is also weather data to save
+				//test url;:
+				//http://randomsprocket.com/weather/data.php?storagePassword=vvvvvvv&locationId=3&mode=saveData&data=10736712.76*12713103.20*1075869.28*NULL|0*0*1710464489*1710464504*1710464519*1710464534*1710464549*1710464563*1710464579*1710464593*
 				
 				//select * from weathertron.weather_data where location_id=3 order by recorded desc limit 0,10;
-				$multipleSensorArray = explode("!", $weatherInfoString);
+				if(count(multipleSensorArray) == 0) {
+					$multipleSensorArray = explode("!", $weatherInfoString);
+				}
 				$temperature = "NULL";
 				$pressure = "NULL";
 				$humidity = "NULL";
