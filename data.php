@@ -869,7 +869,7 @@ function nullifyOrNumber($number){
 }
 
 function deDelimitify($inString){
-	return str_replace("!", str_replace("|", "", str_replace("*", "", $inString)));
+	return str_replace("!", "", str_replace("|", "", str_replace("*", "", $inString)));
 }
 
 //some helpful sql examples for creating sql users:
