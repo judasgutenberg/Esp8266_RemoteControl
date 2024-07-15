@@ -179,7 +179,7 @@ if($_REQUEST) {
 				$getDeviceResult = mysqli_query($conn, $deviceSql);
 				if($getDeviceResult) {
 					$deviceRow = mysqli_fetch_array($getDeviceResult);
-					$deviceName = $deviceRow["name"];
+					$deviceName = deDelimitify($deviceRow["name"]);
 				}
 			} else if ($mode=="getOfficialWeatherData") {
 				$sql = "SELECT latitude, longitude  FROM device  WHERE device_id =" . intval($deviceId);
@@ -382,7 +382,7 @@ if($_REQUEST) {
 			
 			}
 			if($mode == "getInitialDeviceInfo" ) { //return a double-delimited string of additional sensors, etc. this one begins with a "*" so we can identify it in the ESP8266. it will be the first data requested by the remote control
-				$outString = "*" . str_replace("|", "", str_replace("*", "", $deviceName));
+				$outString = "*" . deDelimitify($deviceName); 
 				$sensorSql = "SELECT  f.name, pin_number, power_pin, sensor_type, sensor_sub_type, via_i2c_address, device_feature_id 
 					FROM device_feature f 
 					LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id 
@@ -401,7 +401,7 @@ if($_REQUEST) {
 				}
 				die($outString);
 			} else if($mode == "getDeviceData" || $mode == "saveData" || $mode=="saveLocallyGatheredSolarData") {
-				$out["device"] = $deviceName;
+				$out["device"] = deDelimitify($deviceName);
 				$ipAddress = "192.168.1.X";
 				$mustSaveLastKnownDeviceValueAsValue = 0;
 				$method = "getDeviceData";
@@ -867,7 +867,10 @@ function nullifyOrNumber($number){
 	}
 	return $out;
 }
- 
+
+function deDelimitify($inString){
+	return str_replace("!", str_replace("|", "", str_replace("*", "", $inString)));
+}
 
 //some helpful sql examples for creating sql users:
 //CREATE USER 'weathertron'@'localhost' IDENTIFIED  BY 'your_password';
