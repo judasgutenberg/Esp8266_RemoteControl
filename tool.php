@@ -183,8 +183,9 @@ if ($user) {
     $out .= "<div class='generalerror'>Utility not yet developed.</div>";
    }
 	} else if($table == "report") {
-    if ($action == "fetch" || beginsWith(strtolower($action), "run")) {
-      $out .= doReport($userId, gvfw("report_id"));
+    if ($action == "rerun" || $action == "fetch" || beginsWith(strtolower($action), "run")) {
+      $out .= doReport($userId, gvfw("report_id"), gvfw("report_log_id"));
+    
     } else if ($action == "startcreate" || gvfw("report_id") != "") {
       $out .=  editReport($errors,  $userId);
     } else {

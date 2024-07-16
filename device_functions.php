@@ -173,8 +173,21 @@ function reports($userId) {
 
 }
 
-function doReport($userId, $reportId){
+function doReport($userId, $reportId, $reportLogId = null){
   Global $conn;
+  $historicDataObject = null;
+  if($reportLogId != null) {
+    $sql = "SELECT data, report_id FROM report_log WHERE report_log_id = " . intval($reportLogId) . " AND user_id=" . intval($userId);
+    $historyResult = mysqli_query($conn, $sql);
+    if($historyResult) {
+      $historyData = mysqli_fetch_array($historyResult);
+      if($historyData){
+        $data = $historyData["data"];
+        $reportId = $historyData["report_id"];
+        $historicDataObject = json_decode($data, true);
+      }
+    }
+  }
   $sql = "SELECT * FROM report WHERE report_id=" . intval($reportId) . " AND user_id=" . intval($userId);
   //die($sql);
   $result = mysqli_query($conn, $sql);
@@ -194,20 +207,31 @@ function doReport($userId, $reportId){
     if($form){
       $decodedForm = json_decode($form, true);
     }
-    if($form != "" && gvfw("action") == "fetch") {
+    if($form != "" && gvfw("action") == "fetch" || gvfw("action") == "rerun") {
       $out .= "<div class='listtitle'>Prepare to Run Report  '" . $reportData["name"] . "'</div>";
+
+      if($historicDataObject){
+        $decodedForm = copyValuesFromSourceToDest($decodedForm, $historicDataObject);
+      }
+
       $out .= genericForm($decodedForm, "Run");
+      $out .= "<div class='listtitle'>Past Runs:</div>";
+      $out .= previousReportRuns($userId, $reportId);
     } else {
       $ran = true;
       $out = "<div class='listtitle'>Running Report  '" . $reportData["name"] . "'</div>";
       //gotta merge form values in here:
       $sql =  tokenReplace($sql, $_POST);
       //die($sql);
+      $start = microtime(true);
       $reportResult = mysqli_query($conn, $sql);
       if($reportResult) {
-        $decodedForm = mergeValues($decodedForm, $_POST);
+        if($decodedForm != "") {
+          $decodedForm = mergeValues($decodedForm, $_POST);
+        }
         $rows = mysqli_fetch_all($reportResult, MYSQLI_ASSOC);
-        $reportLogSql = "INSERT INTO report_log (user_id, report_id, run, records_returned, `data`) VALUES (" . intval($userId) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . count($rows) . ",'" . json_encode($decodedForm) . "');";
+        $timeElapsedSecs = microtime(true) - $start;
+        $reportLogSql = "INSERT INTO report_log (user_id, report_id, run, records_returned, runtime, `data`) VALUES (" . intval($userId) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . count($rows)  . "," .  intval($timeElapsedSecs * 1000) . ",'" . json_encode($decodedForm) . "');";
         $reportLogResult = mysqli_query($conn, $reportLogSql);
         //var_dump($rows);
         if($rows) {
@@ -232,6 +256,38 @@ function mergeValues($dataArray, $valuesArray) {
   }
   return $dataArray;
 }
+
+function copyValuesFromSourceToDest($dest, $source) {
+  // Create an associative array from the source array for quick lookup
+  $sourceValues = [];
+  foreach ($source as $srcItem) {
+      if (isset($srcItem['name']) && isset($srcItem['value'])) {
+          $sourceValues[$srcItem['name']] = $srcItem['value'];
+      }
+  }
+  // Update the dest array with values from the source array
+  foreach ($dest as &$destItem) {
+      if (isset($destItem['name']) && isset($sourceValues[$destItem['name']])) {
+          $destItem['value'] = $sourceValues[$destItem['name']];
+      }
+  }
+  return $dest;
+}
+
+function previousReportRuns($userId, $reportId) {
+  Global $conn;
+  $sql = "SELECT report_log_id, run, records_returned, runtime  FROM report_log WHERE report_id=" . intval($reportId) . " AND user_id=" . intval($userId) . " ORDER BY run DESC";
+  $result = mysqli_query($conn, $sql);
+  $out = "";
+  if($result) {
+    $reportRuns = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    $toolsTemplate = "<a href='?action=rerun&table=report&report_log_id=<report_log_id/>'>Re-Run</a> ";
+    $out = genericTable($reportRuns, null, $toolsTemplate, null);
+  }
+  return $out;
+}
+
+
 
 function deviceFeatureForm($error,  $userId) {
   Global $conn;
