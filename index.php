@@ -298,7 +298,7 @@ function officialWeather(locationId) {
 			out += "<tr><td>Pressure</td><td>" + pressure.toFixed(1); + "</td></tr>\n";
 			out += "<tr><td>Humidity</td><td>" + humidity.toFixed(1); + "</td></tr>\n";
 			out += "<tr><td>Wind</td><td>" + wind.toFixed(1); + "</td></tr>\n";
-			out += "<tr><td>Gust</td><td>" + gust.toFixed(1); + "</td></tr>\n";
+			//out += "<tr><td>Gust</td><td>" + gust.toFixed(1); + "</td></tr>\n"; //i guess they got rid of this one
 			out += "<tr><td>Sunrise</td><td>" + timeConverter(sunrise) + "</td></tr>\n";
 			out += "<tr><td>Sunset</td><td>" + timeConverter(sunset) + "</td></tr>\n";
 			out += "</table>";

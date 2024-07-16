@@ -155,6 +155,16 @@ CREATE TABLE inverter_log(
   battery_power INT NULL,
   battery_voltage DECIMAL(8,5) NULL,
   solar_potential INT NULL
+  
+  mystery_value1 INT NULL,
+  mystery_value2 INT NULL,
+  changer1 INT NULL,
+  changer2 INT NULL,
+  changer3 INT NULL,
+  changer4 INT NULL,
+  changer5 INT NULL,
+  changer6 INT NULL,
+  changer7 INT NULL
 )
 
 CREATE TABLE report(
@@ -219,6 +229,17 @@ CREATE TABLE report_log(
 --ALTER TABLE weather_data ADD device_feature_id INT NULL;
 --ALTER TABLE inverter_log ADD battery_voltage DECIMAL(8,5) NULL;
 --ALTER TABLE inverter_log ADD solar_potential INT NULL;
+
+
+  ALTER TABLE inverter_log ADD mystery_value1 INT NULL;
+  ALTER TABLE inverter_log ADD mystery_value2 INT NULL;
+  ALTER TABLE inverter_log ADD changer1 INT NULL;
+  ALTER TABLE inverter_log ADD changer2 INT NULL;
+  ALTER TABLE inverter_log ADD changer3 INT NULL;
+  ALTER TABLE inverter_log ADD changer4 INT NULL;
+  ALTER TABLE inverter_log ADD changer5 INT NULL;
+  ALTER TABLE inverter_log ADD changer6 INT NULL;
+  ALTER TABLE inverter_log ADD changer7 INT NULL;
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
 INSERT INTO device (name, device_type_id, created) VALUES ('Hotspot Watchdog', 1, NOW());

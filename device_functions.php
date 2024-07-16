@@ -180,38 +180,58 @@ function doReport($userId, $reportId){
   $result = mysqli_query($conn, $sql);
   $data = "";
   $out = "";
+  $ran = false;
+  $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
+
+  $formatedDateTime =  $date->format('Y-m-d H:i:s');
+
   if($result) {
     
     $reportData = mysqli_fetch_array($result);
     $sql = $reportData["sql"];
     $form = $reportData["form"];
+    $decodedForm = "";
+    if($form){
+      $decodedForm = json_decode($form, true);
+    }
     if($form != "" && gvfw("action") == "fetch") {
       $out .= "<div class='listtitle'>Prepare to Run Report  '" . $reportData["name"] . "'</div>";
-      $out .= genericForm($form, "Run");
+      $out .= genericForm($decodedForm, "Run");
     } else {
+      $ran = true;
       $out = "<div class='listtitle'>Running Report  '" . $reportData["name"] . "'</div>";
       //gotta merge form values in here:
+      $sql =  tokenReplace($sql, $_POST);
+      //die($sql);
       $reportResult = mysqli_query($conn, $sql);
       if($reportResult) {
+        $decodedForm = mergeValues($decodedForm, $_POST);
         $rows = mysqli_fetch_all($reportResult, MYSQLI_ASSOC);
+        $reportLogSql = "INSERT INTO report_log (user_id, report_id, run, records_returned, `data`) VALUES (" . intval($userId) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . count($rows) . ",'" . json_encode($decodedForm) . "');";
+        $reportLogResult = mysqli_query($conn, $reportLogSql);
         //var_dump($rows);
         if($rows) {
           $data .= genericTable($rows, null, null, null);
         }
         
-
       }
     }
   }
-  if($data == ""){
+  if($data == ""  && $ran){
     $data = "No results";
   }
   $out .= $data;
   return $out;
 }
 
-
-
+function mergeValues($dataArray, $valuesArray) {
+  foreach ($dataArray as &$item) {
+      if (isset($valuesArray[$item['name']])) {
+          $item['value'] = $valuesArray[$item['name']];
+      }
+  }
+  return $dataArray;
+}
 
 function deviceFeatureForm($error,  $userId) {
   Global $conn;
