@@ -1014,7 +1014,7 @@ function utilities($user, $viewMode = "list") {
       'label' => 'Rececent Visitor Log',
       'url' => '?table=utilities&action=recentvisitorlogs',
       'description' => "Beats having to use putty.",
-      'action' => 'vistorLog(<device_id/>, <number/>)',
+      'action' => 'visitorLog(<device_id/>, <number/>)',
       'key' => 'recentvisitorlogs',
       'role' => "super",
       'form' => 
@@ -1060,12 +1060,12 @@ function utilities($user, $viewMode = "list") {
       
 }
 
-  function vistorLog($deviceId, $number) {
+  function visitorLog($deviceId, $number) {
     $lines=array();
     $logFile = "/var/log/apache2/access.log";
-    $strToExec = "tail -n $number $logFile  | grep locationId=" . $deviceId;
+    $strToExec = "grep \"locationId=" . $deviceId . "\" " . $logFile . " | tail -n " . $number;
     $output = shell_exec($strToExec);
     //die($output . "ASDASDSAD" . $strToExec);
-    return explode("\n", $output);
+    return $output;
 
   }

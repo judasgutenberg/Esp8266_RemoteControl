@@ -154,8 +154,9 @@ if ($user) {
                 //if($result){
                   eval('$result  =' . $codeToRun . ";");
                 //}
-                var_dump($result);
-                die($codeToRun);
+                echo "<plaintext>" . $result;
+                die();
+                //die($codeToRun);
               }
               catch(ParseError $error) { //this shit does not work. does try/catch ever work in PHP?
                 //var_dump($error);
