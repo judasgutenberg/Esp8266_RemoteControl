@@ -1,5 +1,5 @@
 # Esp8266 Remote, Automation, and Environmental Logging
-
+## Overview
 If you want complete control of all the code of a robust remote-control, automation and  weather data logging system, you might be interested in this system. I developed it to more efficiently use solar energy at my off-grid Adirondack cabin while also keeping the internet accessible and the pipes from freezing.  This started out as a simple multi-probe weather monitoring system (ESP8266 MicroWeather) to which I added first reliability automation (Hotspot-Watchdog), then remote control, then solar inverter monitoring, then home automation.  
 
 Some of the code (remote.ino, config.h, config.c, and index.h) is designed to be compiled in the Arduino environment and uploaded to an ESP8266. (I used a NodeMCU, which is cheap and physically easy to work with.)  The rest of the code needs to be placed on a server that can process PHP pages and communicate with a MySQL database. (It's not a pretty language, but I like PHP because it runs pretty well and doesn't require compilation or setup headaches on most servers or Raspberry Pis.)  You create an initial database by running remote.sql on the server and then change config.php so the PHP will know how to connect to the database.  You then create a user and give that user a storage_password so that the ESP8266 will be able to authenticate communication with the backend.  This storage password is then set as storage_password (along with other important config information like your WiFi credentials and the domain and path where your backend is hosted) in config.c before compiling the Arduino code and uploading it to an ESP8266.  Then you create a device and give it device_features, and set the device_id of the ESP8266 to the device_id of that device in config.c so that the backend will know what ESP8266 is polling to either log sensor data or pick up remote control settings and additional sensors.
@@ -24,7 +24,7 @@ https://github.com/judasgutenberg/Generic_Arduino_I2C_Slave and just add the I2C
 
 ![alt text](esp8266-remote-schematic.jpg?raw=true)
 
-
+## Setup
 This system is multi-user and supports multiple user accounts, each with potentially multiple devices.  First register your user by creating a new account with the web front end. The first user in the database is automatically given the role of admin, which can edit the user table among other priviledges.  From there, here's an overview of how to set up control for a particular system controlled by a pin on your ESP8266:
 
 1. Connect the system to be turned on or off to the ESP8266 somehow (see schematic for how I connected seven relays).  Usually this involves a relay and a relay driver circuit such as the ULN2003 (there are lots of examples of this online, for example https://microcontrollerslab.com/relay-driver-circuit-using-uln2003/).
@@ -37,7 +37,7 @@ This system is multi-user and supports multiple user accounts, each with potenti
 Here is the user interface, which allows you to turn items on and off in the list by checking the "power on" column. (You do it all from the device_feature list view.)
 
 ![alt text](esp8266-remote.jpg?raw=true)
-
+## Remote Control
 This system tracks whether or not data makes it to the ESP8266 that it is sent to via the last_known_device_value and last_known_device_modified columns.  This is important when a remote control action needs to be verified as having happened. Otherwise you end up looking for a change of temperature or power consumption at your off-grid cabin for such confirmation.  I use a string hash table as a very simple database to store this information on the microcontroller, which might be overkill. But the ESP8266 has enough storage and memory to be a little wasteful of resources. Also, every change of state for a device_feature is logged in the device_feature_log table.
 
 ![alt text](reallifecircuit.jpg?raw=true)
@@ -48,6 +48,7 @@ In addition to supporting the changing of pin states using a server, this system
 
 index.h has the HTML for a locally-served front-end to take advantage of the local API, though the Local Remote is better for this than relying on the massive computational overhead of a modern web browser. It would also be easy to write a phone app, which would be great for someone who always keeps a phone nearby. But I am not such a person.  
 
+## Automation and Conditions
 There is also an inverter-related endpoint in data.php to return live inverter information to the local remote (for now, this only works with SolArk inverters, as that is the kind I have, though they are notoriously hard to get data from).  This inverter data is also available to a conditions-processing system that automatically turns device_features on or off depending on inverter sensor values.  Such conditions go into the table management_rule in the conditions column.   Conditions include tokens that take the form <tablename[location_id].columnName>.  An example token would be <inverter_log[].battery_percentage>.  A condition made with that token would be something like
 
 
@@ -64,6 +65,7 @@ Management_rules can be edited in the management_rule editor, which looks like t
 
 At the bottom is a tool you can use to automatically construct a value token to place in conditions.  Treat these as variables in an expression to be evaluated as true or false.  You can use multiple tokens, parentheses, arithmatic operators, and scalar numbers in such expressions.
 
+## Reports
 There is support for reports (currently restricted to superusers), which are defined as a form (using JSON) and SQL. Simple reports can just be SQL, though if you need to send parameters to a report, you will need to define a form.  Perhaps forms definitions are best shown by example.
 
 This JSON defines a form with one parameter
