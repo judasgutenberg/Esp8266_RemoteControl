@@ -84,4 +84,4 @@ SELECT  <changerX/>, battery_percentage, solar_power, load_power, battery_power 
  
 </code>
 
-the "values" parameter in the form JSON can also be a SQL string to generate a list of options from the database.  If so, the SQL needs to return a 'text' column.
+the "values" parameter in the form JSON can also be a SQL string to generate a list of options from the database.  If so, the SQL needs to return a 'text' column for a proper dropdown list of options to be displayed.
