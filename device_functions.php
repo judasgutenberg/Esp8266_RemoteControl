@@ -204,8 +204,15 @@ function doReport($userId, $reportId, $reportLogId = null){
     $sql = $reportData["sql"];
     $form = $reportData["form"];
     $decodedForm = "";
+    $output = null;
     if($form){
       $decodedForm = json_decode($form, true);
+      if(array_key_exists("form", $decodedForm)) {
+        if(array_key_exists("output", $decodedForm)) {
+          $output = $decodedForm["output"];
+        }
+        $decodedForm = $decodedForm["form"];
+      }
     }
     if($form != "" && gvfw("action") == "fetch" || gvfw("action") == "rerun") {
       $out .= "<div class='listtitle'>Prepare to Run Report  '" . $reportData["name"] . "'</div>";
@@ -235,7 +242,16 @@ function doReport($userId, $reportId, $reportLogId = null){
         $reportLogResult = mysqli_query($conn, $reportLogSql);
         //var_dump($rows);
         if($rows) {
-          $data .= genericTable($rows, null, null, null);
+          if($output != null) {
+            $canvasId = "statsCanvas";
+            $data .= "\n<script src = \"./tinycolor.js\"></script>\n";
+            $data .= "\n<script src = \"https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js\"></script>\n";
+            $data .= "\n<script>let reportData = " . json_encode($rows) . ";\nlet reportOutput = " . json_encode($output) . "\n;document.addEventListener('DOMContentLoaded', async () => {displayReport(" . $reportId . ",'" . $canvasId . "');});\n</script>\n";
+            $data .= "\n<canvas id=\"" . $canvasId . "\" style='display:block;'></canvas>\n";
+            $data .= "\n<div id='visualizationCaption' style='padding:10px'></div>";
+          } else {
+            $data .= genericTable($rows, null, null, null);
+          }
         }
         
       }
