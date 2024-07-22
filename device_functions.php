@@ -243,6 +243,7 @@ function doReport($userId, $reportId, $reportLogId = null){
         //var_dump($rows);
         if($rows) {
           if($output != null) {
+            $output =  tokenReplace($output, $_POST); //there could be tokens in the output config
             $canvasId = "statsCanvas";
             $data .= "\n<script src = \"./tinycolor.js\"></script>\n";
             $data .= "\n<script src = \"https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js\"></script>\n";
