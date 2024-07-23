@@ -539,6 +539,7 @@ function formatSQL(sql) {
   const keywordSet = new Set(keywords.map(k => k.toUpperCase()));
   let formattedSQL = "";
   let indentLevel = 0;
+  let isSelectClause = false;
 
   const tokens = sql.split(/\s+/);
   let i = 0;
@@ -556,15 +557,29 @@ function formatSQL(sql) {
               formattedSQL += "\n";
           }
 
-          if (upperToken === "FROM" || upperToken === "WHERE" || upperToken === "JOIN" || upperToken === "ON" || upperToken === "GROUP BY" || upperToken === "ORDER BY") {
-              indentLevel = Math.max(indentLevel, 1);
+          if (upperToken === "SELECT") {
+              isSelectClause = true;
+          } else {
+              isSelectClause = false;
+          }
+
+          if (upperToken === "FROM" || upperToken === "WHERE" || upperToken === "JOIN" || upperToken === "ON" || upperToken === "GROUP BY" || upperToken === "ORDER BY" || upperToken === "LIMIT") {
+              indentLevel = 1;
           } else {
               indentLevel = 0;
           }
 
           formattedSQL += `${indentString.repeat(indentLevel)}${upperToken}`;
       } else {
-          formattedSQL += (i > 0 && formattedSQL.slice(-1) !== "\n" ? " " : "") + token;
+          if (isSelectClause) {
+              // Handle columns in SELECT clause
+              formattedSQL += `\n${indentString.repeat(indentLevel + 1)}${token}`;
+              if (tokens[i + 1] && tokens[i + 1] !== ',' && tokens[i + 1].toUpperCase() !== 'FROM') {
+                  formattedSQL += ",";
+              }
+          } else {
+              formattedSQL += (i > 0 && formattedSQL.slice(-1) !== "\n" ? " " : "") + token;
+          }
       }
 
       if (upperToken === "SELECT" || upperToken === "INSERT" || upperToken === "UPDATE" || upperToken === "DELETE") {

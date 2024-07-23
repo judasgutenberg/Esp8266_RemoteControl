@@ -178,13 +178,19 @@ function doReport($userId, $reportId, $reportLogId = null){
   $historicDataObject = null;
   if($reportLogId != null) {
     $sql = "SELECT data, report_id FROM report_log WHERE report_log_id = " . intval($reportLogId) . " AND user_id=" . intval($userId);
+   
     $historyResult = mysqli_query($conn, $sql);
     if($historyResult) {
       $historyData = mysqli_fetch_array($historyResult);
       if($historyData){
         $data = $historyData["data"];
         $reportId = $historyData["report_id"];
+        //trouble with carriage feeds:
+ 
+        $data = sanitizeForJson($data);
+ 
         $historicDataObject = json_decode($data, true);
+ 
       }
     }
   }
@@ -216,8 +222,9 @@ function doReport($userId, $reportId, $reportLogId = null){
     }
     if($form != "" && gvfw("action") == "fetch" || gvfw("action") == "rerun") {
       $out .= "<div class='listtitle'>Prepare to Run Report  '" . $reportData["name"] . "'</div>";
-
+ 
       if($historicDataObject){
+
         $decodedForm = copyValuesFromSourceToDest($decodedForm, $historicDataObject);
       }
 

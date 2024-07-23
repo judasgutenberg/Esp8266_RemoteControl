@@ -661,14 +661,8 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
       $out .= "mode = 'application/' + codeLanguage;\n";
       $out .= "}\n;";
       $out .= "textArea.value = formattedCode;\n";
-      
-      
- 
       $out .= "let editor = CodeMirror.fromTextArea(textArea, {\n";
-      
-    
       $out .=  "lineNumbers: true,\n";
-      
       $out .= " mode:     mode,\n";
       $out .= " theme: \"default\",\n";
       $out .= "tabSize: 2,\n";
@@ -1420,6 +1414,19 @@ function decryptLongString($encryptedData, $password) {
     
     // Return the decrypted plaintext
     return $plaintext;
+}
+
+function sanitizeForJson($input) {
+  // Define a regex pattern to match illegal characters
+  // This pattern matches any character outside the legal JSON character set
+  // \x20-\x7E covers the visible ASCII characters excluding control characters
+  // \u0800-\uFFFF covers additional Unicode characters
+  $illegalCharsPattern = '/[^\x20-\x7E\x80-\xFF\u0100-\uFFFF]/u';
+
+  // Replace illegal characters with spaces
+  $sanitizedInput = preg_replace($illegalCharsPattern, ' ', $input);
+
+  return $sanitizedInput;
 }
 
 function isValidPHP($code) {
