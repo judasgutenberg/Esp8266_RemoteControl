@@ -514,6 +514,69 @@ function colorFix(strIn) {
 
 }
 
+function formatJSON(jsonString, indent = 2) {
+  try {
+      // Parse the JSON string into an object
+      const jsonObj = JSON.parse(jsonString);
+      
+      // Convert the object back into a formatted JSON string
+      return JSON.stringify(jsonObj, null, indent);
+  } catch (error) {
+      // Handle errors in case of invalid JSON
+      console.error("Invalid JSON string:", error);
+      return null;
+  }
+}
+
+function formatSQL(sql) {
+  const indentString = "  "; // Two spaces for indentation
+  const keywords = [
+      "SELECT", "FROM", "WHERE", "AND", "OR", "INSERT", "INTO", "VALUES",
+      "UPDATE", "SET", "DELETE", "JOIN", "INNER JOIN", "LEFT JOIN", "RIGHT JOIN",
+      "ON", "GROUP BY", "ORDER BY", "LIMIT", "OFFSET", "HAVING", "DISTINCT"
+  ];
+  
+  const keywordSet = new Set(keywords.map(k => k.toUpperCase()));
+  let formattedSQL = "";
+  let indentLevel = 0;
+
+  const tokens = sql.split(/\s+/);
+  let i = 0;
+
+  while (i < tokens.length) {
+      const token = tokens[i].trim();
+      if (!token) {
+          i++;
+          continue;
+      }
+
+      const upperToken = token.toUpperCase();
+      if (keywordSet.has(upperToken)) {
+          if (formattedSQL.trim().length > 0) {
+              formattedSQL += "\n";
+          }
+
+          if (upperToken === "FROM" || upperToken === "WHERE" || upperToken === "JOIN" || upperToken === "ON" || upperToken === "GROUP BY" || upperToken === "ORDER BY") {
+              indentLevel = Math.max(indentLevel, 1);
+          } else {
+              indentLevel = 0;
+          }
+
+          formattedSQL += `${indentString.repeat(indentLevel)}${upperToken}`;
+      } else {
+          formattedSQL += (i > 0 && formattedSQL.slice(-1) !== "\n" ? " " : "") + token;
+      }
+
+      if (upperToken === "SELECT" || upperToken === "INSERT" || upperToken === "UPDATE" || upperToken === "DELETE") {
+          indentLevel = 1;
+      }
+
+      i++;
+  }
+
+  return formattedSQL.trim();
+}
+
 
 //uses charts.js library to make all sorts of graphs. also a serves as the launch point for other viewOptions like google maps and calendar
 function displayViewOption(canvasId, records, viewOptionInfo, reportId) {
@@ -562,6 +625,10 @@ function displayViewOption(canvasId, records, viewOptionInfo, reportId) {
 	var labels = new Array();
 	var labelsMade = false;
 	var colorIndex = 0;
+
+  if(!caption){
+    caption = "";
+  }
 	
 	var borderColor;
 	if(plots) {

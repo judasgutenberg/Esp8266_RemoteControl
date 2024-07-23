@@ -429,6 +429,8 @@ function updateDataWithRows($data, $thisDataRows) {
 
 function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$data also includes any errors
   Global $conn;
+  $textareaIds = [];
+  $codeLanguages = [];
 	$out = "";
   $onSubmitManyToManyItems = [];
 	$out .= "<div class='genericform'>\n";
@@ -592,6 +594,11 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
         $out .= $value . "\n";
       } else {
         if($height){
+          $textAreaId = "id-" . $name;
+          $idString = "id='" . $textAreaId  . "'";
+          array_push($textareaIds, $textAreaId);
+          $codeLanguage = gvfa("code_language", $datum, "html");
+          array_push($codeLanguages, $codeLanguage);
           $out .= "<textarea " .  $idString . " style='width:" . $width . "px;height:" . $height . "px' name='" . $name . "'  />" .  $value  . "</textarea>\n";
         } else {
           $specialNumberAttribs = "";
@@ -618,6 +625,119 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
 	$out .= "</form>\n";
   $out .= "\n<script>let onSubmitManyToManyItems=['" . implode("','", $onSubmitManyToManyItems) . "'];</script>\n";
   $out = "<form name='genericForm' onsubmit='formSubmitTasks();startWaiting(\"" . $waitingMesasage . "\")' method='post' name='genericform' id='genericform' enctype='multipart/form-data'>\n" . $out;
+  if(count($textareaIds) > 0){
+    
+    $out .= "<script src=\"./tinymce/tinymce.min.js\" referrerpolicy=\"origin\"></script>\n";
+    /*
+    $out .= "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css\">\n";
+    $out .= "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js\"></script>\n";
+       */
+      /*
+    $out .= "<link href=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/themes/prism.min.css\" rel=\"stylesheet\" />\n";
+    $out .= "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/prism.min.js\"></script>\n";
+    $out .= "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/plugins/line-numbers/prism-line-numbers.min.js\"></script>\n";
+    $out .= "<link href=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/plugins/line-numbers/prism-line-numbers.min.css\" rel=\"stylesheet\" />\n";
+    $out .= "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/components/prism-sql.min.js\"></script>\n";
+    */
+    $out .= "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css\">\n";
+    $out .= "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js\"></script>\n";
+    $out .= "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/sql/sql.min.js\"></script>\n";
+    $out .= "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js\"></script>\n";
+    $out .= "\n<script>\n";
+ 
+    $out.= "let textAreaCount = 0;\n";
+    $out.= "let textareaIds = ['" . implode("','", $textareaIds) . "'];\n";
+    $out.= "let codeLanguages = ['" . implode("','", $codeLanguages) . "'];\n";
+    $out .= "\ntextareaIds.forEach(id => {\n";
+      $out .= "let textArea = document.getElementById(id);\n";
+      $out .= "let codeLanguage=codeLanguages[textAreaCount];\n";
+      $out .= "formattedCode = textArea.value;\n";
+      $out .= "if (codeLanguage == 'sql'){;\n";
+      $out .= "formattedCode = formatSQL(textArea.value);\n";
+      $out .= "mode = 'text/x-' + codeLanguage;\n";
+      $out .= "}\n;";
+      $out .= "if (codeLanguage == 'json'){;\n";
+      $out .= "formattedCode = formatJSON(textArea.value);\n";
+      $out .= "mode = 'application/' + codeLanguage;\n";
+      $out .= "}\n;";
+      $out .= "textArea.value = formattedCode;\n";
+      
+      
+ 
+      $out .= "let editor = CodeMirror.fromTextArea(textArea, {\n";
+      
+    
+      $out .=  "lineNumbers: true,\n";
+      
+      $out .= " mode:     mode,\n";
+      $out .= " theme: \"default\",\n";
+      $out .= "tabSize: 2,\n";
+      $out .= "indentWithTabs: true,\n";
+      $out .= "smartIndent: true,\n";
+      $out .= "autoCloseBrackets: true\n";
+      $out .= "lineWrapping: true\n";
+      $out .= "});\n";
+      $out.= "textAreaCount++;\n";
+      $out .= "});\n";
+
+
+    //$out.= "setTimeout(()=>{\n";
+      /*
+    $out .= "\ntextareaIds.forEach(id => {\n";
+      $out .= "\n  tinymce.init({\n";
+        $out .= "\nselector: `#$" . "{id}`,\n";
+        $out .= "\nbranding: false,\n";
+        $out .= "\nforce_br_newlines : true,\n";
+        $out .= "\nlicense_key: 'gpl' ,\n";
+        $out .= "\npromotion: false,\n";
+
+        $out .= "\nplugins: 'codesample code',\n";
+        $out .= "\ntoolbar: 'codesample code',\n";
+ 
+        $out .= "codesample_languages: [
+          {text: 'HTML/XML', value: 'markup'},
+          {text: 'JavaScript', value: 'javascript'},
+          {text: 'CSS', value: 'css'},
+          {text: 'PHP', value: 'php'},
+          {text: 'Ruby', value: 'ruby'},
+          {text: 'Python', value: 'python'},
+          {text: 'Java', value: 'java'},
+          {text: 'C', value: 'c'},
+          {text: 'C#', value: 'csharp'},
+          {text: 'C++', value: 'cpp'},
+          {text: 'SQL', value: 'sql'}
+      ],";
+      */
+            /*
+        $out .= "\nsetup: function(editor) {\n";
+          $out .= "\neditor.on('change', function() {\n";
+            $out .= "\neditor.save();\n";
+            $out .= "\n  document.querySelectorAll('pre code').forEach((block) => {\n";
+              $out .= "\n   hljs.highlightElement(block);\n";
+              $out .= "\n  });\n";
+              $out .= "\n});\n";
+              $out .= "\n }\n";
+              $out .= "\n});\n";
+              $out .= "\n });\n";
+        
+    */
+    /*
+        $out .= "\nsetup: function(editor) {\n";
+          $out .= "\n  editor.on('init', function() {\n";
+            $out .= "\n  editor.on('NodeChange', function(e) {\n";
+              $out .= "\nconsole.log('cccc');\n";
+              $out .= "\n  // Highlight the code block using Prism.js when the editor content changes\n";
+              $out .= "\n  Prism.highlightAllUnder(editor.getBody());\n";
+              $out .= "\n });\n";
+              $out .= "\n});\n";
+              $out .= "\n}\n";
+              $out .= "\n});\n";
+              $out .= "\n });\n";
+
+              */
+        //$out.= "\n}, 8000)\n";
+    $out .= "\n</script>\n";
+  }
 	return $out;
 }
 

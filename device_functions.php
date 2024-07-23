@@ -460,6 +460,7 @@ function editReport($error,  $userId) {
 		[
 	    'label' => 'form',
       'name' => 'form',
+      'code_language' => 'json',
       'width' => 500,
       'height'=> 200,
 	    'value' => gvfa("form", $source), 
@@ -468,6 +469,7 @@ function editReport($error,  $userId) {
     [
 	    'label' => 'sql',
       'name' => 'sql',
+      'code_language' => 'sql',
       'width' => 500,
       'height'=> 200,
 	    'value' => gvfa("sql", $source), 
