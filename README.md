@@ -80,7 +80,7 @@ This JSON defines a form with one parameter
 </code>
 the value of which is substituted into the SQL component of the report:
 <code>
-SELECT  <changerX/>, battery_percentage, solar_power, load_power, battery_power FROM inverter_log  ORDER BY <changerX/> DESC
+SELECT  &lt;changerX/&gt;, battery_percentage, solar_power, load_power, battery_power FROM inverter_log  ORDER BY <changerX/> DESC
  
 </code>
 
