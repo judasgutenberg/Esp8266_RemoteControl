@@ -1280,8 +1280,6 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
 
 
       } else if($column == "last_known_device_modified" || $column == "created" || $column == "modified") {
-
-
         $sanitized = "'" . $formatedDateTime . "'";
       } else if ($column == "expired"){
         $skip = true;
@@ -1310,7 +1308,9 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
         $column = $datum["name"];
         $type =  strtolower(gvfa("type", $datum, ""));
         $value = gvfa($column, $data, "");
-
+        if($value == ''  && $column == "modified"){
+          $value = $formatedDateTime;
+        }
         //echo  $column . "=" . $value . ", " . $type . "<BR>";
         if($type == "many-to-many") {
           $mappingTable = gvfa("mapping_table", $datum);
@@ -1335,11 +1335,13 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
 
 
         } else if ($column != "created" && $column != "_data" && array_key_exists($column, $primaryKey) == false) {
+          
           if(($type == "bool"  || $type == "checkbox") && !$value){
             $sanitized = '0';
           } else if (beginsWith($type, "number") && !$value) {
             $sanitized = 'NULL';
           } else {
+            //echo $column .  "*" . $value . "<BR>";
             $sanitized = "'" . mysqli_real_escape_string($conn, $value) . "'";
           }
 

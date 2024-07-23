@@ -145,10 +145,7 @@ function reports($userId) {
       'label' => 'name',
       'name' => 'name' 
     ],
-    [
-      'label' => 'name',
-      'name' => 'name' 
-    ],
+ 
     [
       'label' => 'created',
       'name' => 'created' 
@@ -313,7 +310,7 @@ function previousReportRuns($userId, $reportId) {
 
 
 
-function deviceFeatureForm($error,  $userId) {
+function editDeviceFeature($error,  $userId) {
   Global $conn;
   $table = "device_feature";
   $pk = gvfw($table . "_id");
@@ -452,6 +449,20 @@ function editReport($error,  $userId) {
   }
   $formData = array(
     [
+	    'label' => 'created',
+      'name' => 'created',
+      'type' => 'read_only',
+	    'value' => gvfa("created", $source), 
+      'error' => gvfa('created', $error)
+	  ],
+    [
+	    'label' => 'modified',
+      'name' => 'modified',
+      'type' => 'read_only',
+	    'value' => gvfa("modified", $source), 
+      'error' => gvfa('modified', $error)
+	  ],
+    [
 	    'label' => 'id',
       'name' => $table . "_id",
       'type' => 'read_only',
@@ -487,7 +498,7 @@ function editReport($error,  $userId) {
   return $form;
 }
 
-function deviceForm($error,  $userId) {
+function editDevice($error,  $userId) {
   Global $conn;
   $table = "device";
   $pk = gvfw($table . "_id");
@@ -588,7 +599,7 @@ function deviceForm($error,  $userId) {
   return $form;
 }
 
-function managementRuleForm($error,  $userId) {
+function editManagementRule($error,  $userId) {
   Global $conn;
   $table = "management_rule";
   $pk = gvfw($table . "_id");
@@ -662,6 +673,39 @@ function managementRuleForm($error,  $userId) {
   $form = genericForm($formData, $submitLabel);
   $form .= managementRuleTools();
   return $form;
+}
+
+function managementRules($userId, $deviceId){
+  Global $conn;
+  $table = "management_rule";
+  $headerData = array(
+    [
+	    'label' => 'management_rulide_id',
+      'name' => $table . "_id"
+	  ],
+		[
+	    'label' => 'name',
+      'name' => 'name'
+	  ] ,
+		[
+	    'label' => 'created',
+      'name' => 'created'
+	  ] 
+    );
+ 
+  $sql = "SELECT * FROM " . $table . " WHERE user_id =" . intval($userId) . " ORDER BY created DESC";
+  $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
+  $result = mysqli_query($conn, $sql);
+  $out = "<div class='listheader'>Management Rules</div>";
+  if($result) {
+    $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    //var_dump($rows);
+    if($rows) {
+      $out .= genericTable($rows, $headerData, $toolsTemplate, null);
+    }
+    
+  }
+  return $out;
 }
 
 function deviceFeatureLog($deviceFeatureId, $userId){

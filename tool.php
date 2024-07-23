@@ -183,30 +183,6 @@ if ($user) {
    } else if(!$foundData && false) {
     $out .= "<div class='generalerror'>Utility not yet developed.</div>";
    }
-	} else if($table == "report") {
-    if ($action == "rerun" || $action == "fetch" || beginsWith(strtolower($action), "run")) {
-      $out .= doReport($userId, gvfw("report_id"), gvfw("report_log_id"));
-    
-    } else if ($action == "startcreate" || gvfw("report_id") != "") {
-      $out .=  editReport($errors,  $userId);
-    } else {
-      $out .= reports($userId);
-    }
-	} else if($table == "device") {
-    $out .= devices($userId);
-  } else if ($action == "startcreate") {
-    if ($table == "test") {
-      
-    } else if($table == "device") {
-      $out .=  deviceForm($errors,  $userId);
-    } else  if($table == "management_rule") {
-      $out .=  managementRuleForm($errors,  $userId);
-    } else if ($table == "device_feature") {
-      $out .= deviceFeatureForm($errors,  $userId);
-    } else {
-      $out .= genericEntityForm($userId, $table, $errors);
-    }
- 
   } else if ($action == "delete") {
     $sql = "DELETE FROM " . $table . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "' AND user_id='" . $userId . "'";
     //die($sql);
@@ -217,11 +193,38 @@ if ($user) {
     }
     $result = mysqli_query($conn, $sql);
     header('Location: '.$_SERVER['PHP_SELF'] . "?table=" . $table);
+  //this is the section for conditionals related to specially-written editors and listers
+	} else if($table == "report") {
+    if ($action == "rerun" || $action == "fetch" || beginsWith(strtolower($action), "run")) {
+      $out .= doReport($userId, gvfw("report_id"), gvfw("report_log_id"));
+    
+    } else if ($action == "startcreate" || gvfw("report_id") != "") {
+      $out .=  editReport($errors,  $userId);
+    } else {
+      $out .= reports($userId);
+    }
+	} else if($table == "device") {
+    if ($action == "startcreate" || gvfw("device_id") != "") {
+      $out .=  editDevice($errors,  $userId);
+    } else {
+     $out .= devices($userId);
+    }
+	} else if($table == "device_feature") {
+    if ($action == "startcreate" || gvfw("device_feature_id") != "") {
+      $out .=  editDeviceFeature($errors,  $userId);
+    } else {
+      $out .= deviceFeatures($userId, $deviceId);
+    }
+	} else if($table == "management_rule") {
+    if ($action == "startcreate" || gvfw("management_rule_id") != "") {
+      $out .=  editManagementRule($errors,  $userId);
+    } else {
+      $out .= managementRules($userId, $deviceId);
+    }
+  } else if ($action == "startcreate") {
+    $out .= genericEntityForm($userId, $table, $errors);
   } else if($table!= "user" || $user["role"]  == "super") {
     if(gvfw($table . '_id')) {
-      
-
-
       if($action == "log") {
         if($table == "device_feature"){
           $out .= deviceFeatureLog(gvfw($table . '_id'), $userId);
@@ -233,28 +236,12 @@ if ($user) {
           $valueArray = mysqli_fetch_assoc($result);
           die(json_encode($valueArray, JSON_FORCE_OBJECT));
         } else {
-        if($table == "management_rule"){
-            $out .= managementRuleForm($errors,  $userId);
-          } else if($table == "device") {
-            $out .=  deviceForm($errors,  $userId);
-          } else if ($table == "device_feature") {
-            $out .= deviceFeatureForm($errors,  $userId);
-          } else {
-  
-            $out .= genericEntityForm($userId, $table, $errors);
-          }
+          $out .= genericEntityForm($userId, $table, $errors);
         }
       }
 
     } else {
-      if($table == "device_feature") {
-        $out .= deviceFeatures($userId, $deviceId);
-      } else if($table == "device") {
-          $out .= devices($userId, $deviceId);
-      } else {
-        $out .= genericEntityList($userId, $table);
-      }
-      
+      $out .= genericEntityList($userId, $table);
     }
     
   }
