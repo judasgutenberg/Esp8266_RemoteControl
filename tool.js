@@ -363,6 +363,10 @@ function displayReport(reportId, canvasId) {
 
 }
 
+function initGoogleMap() {
+	//don't do anything
+}
+
 //does adjustments to colors based on plot parameters and record data
 //this allows data to change colors dynamically in graphs and maps
 function manipulateColor(plotColor, plot, record) {
@@ -838,4 +842,308 @@ function displayViewOption(canvasId, records, viewOptionInfo, reportId) {
 	*/
 
 	window.graphics.update();
+}
+
+function plotOnMap(map, records, viewOptionInfo) {
+	var place = document.getElementById("googleMapper");
+	if(!place) {
+		return;
+	}
+	/*
+	setTimeout(function() {
+	google.maps.event.trigger(map, "resize");
+
+	}, 4000);
+	*/
+	place.style.display = 'block';
+
+	if(typeof(viewOptionInfo["width"]) != "undefined") {
+		place.style.width = viewOptionInfo.width + "px";
+	} else {
+		//place.style.width = "1000px";
+	}
+	if(viewOptionInfo.height) {
+		canvas.style.height= viewOptionInfo.height + "px";
+	} else {
+
+		//place.style.height = "600px";
+	}
+	var degreeWiggle = 0;
+	var degreeWiggleLatColumn = null;
+	var degreeWiggleLonColumn = null;
+	var markerArray = new Array();
+	var markerCursor = 0;
+	var defaultOpacity = "0.1";
+	
+	var reportVisualization = document.getElementById("reportVisualization");
+	if(reportVisualization) {
+		reportVisualization.style.display = 'none';
+	}
+	var strStockColors = "ff0099,ff9900,99ff99,9999ff,990099,00ff00,00ffff,ffff00,0000ff,999900,990000,ff0000,000000,ffffff,330000,990033";
+	
+	if(viewOptionInfo.colors) {
+		strStockColors = viewOptionInfo.colors;
+	}
+	var colorArray = strStockColors.split(",");
+	var defaultColor = colorArray[0];
+	if(viewOptionInfo.color) {
+		defaultColor = viewOptionInfo.color;
+
+	}
+ 
+	var zoom = 0;
+	if(viewOptionInfo.zoom) {
+		zoom = viewOptionInfo.zoom;
+	}
+	if(viewOptionInfo.degreeWiggle) {
+		degreeWiggle = viewOptionInfo.degreeWiggle;
+	}
+
+	if(viewOptionInfo.degreeWiggleLatColumn) {
+		degreeWiggleLatColumn = viewOptionInfo.degreeWiggleLatColumn;
+	}	
+	if(viewOptionInfo.degreeWiggleLonColumn) {
+		degreeWiggleLonColumn = viewOptionInfo.degreeWiggleLonColumn;
+	}	
+	var mapType = 'terrain';
+	if(viewOptionInfo.mapType) {
+		mapType = viewOptionInfo.mapType;
+	}
+	var lat = viewOptionInfo.lat;
+	var lon = viewOptionInfo.lon;
+	if(!lat || !lon || !zoom) {
+		var center = centerOfGeoPlot(viewOptionInfo, records);
+		//console.log(viewOptionInfo.plots[0]);
+		console.log(center);
+		if(!lat) {
+			lat = center.lat;
+		}
+		if(!lon) {
+			lon = center.lon;
+		}
+		if(!zoom) {
+			zoom = center.estimatedScale;
+		}
+		if(!zoom) {
+			zoom = 5;
+		}
+
+	}
+ 
+
+	 map = new google.maps.Map(place, {
+          zoom: zoom,
+          center: new google.maps.LatLng(lat, lon),
+          mapTypeId: mapType
+        });
+
+
+	//console.log(viewOptionInfo);
+	for (var j = 0; j < viewOptionInfo.plots.length; j++) {
+	 
+		var plot = viewOptionInfo.plots[j];
+		if(plot.degreeWiggle) {
+			degreeWiggle = plot.degreeWiggle;
+		}
+		if(plot.degreeWiggleLatColumn) {
+			degreeWiggleLatColumn = plot.degreeWiggleLatColumn;
+		}	
+		if(plot.degreeWiggleLonColumn) {
+			degreeWiggleLonColumn = plot.degreeWiggleLonColumn;
+		}
+
+		var defaultWeight = 1;
+		if(plot.lineWeight) {
+			defaultWeight = plot.lineWeight;
+		}
+		if(!plot.lineWeight && viewOptionInfo.lineWeight) {
+			defaultWeight = viewOptionInfo.lineWeight;
+		}
+
+		var latColumn = plot.latColumn;
+		var lonColumn = plot.lonColumn;
+		var iconName = plot.iconName;
+   	  	var plotColor = defaultColor;
+		var plotOpacity = defaultOpacity;
+		var magnitudeColumn = plot.magnitudeColumn;
+		var labelTemplate = plot.labelTemplate;
+		var linkTemplate = plot.linkTemplate;
+		var infoWindowTemplate = plot.infoWindowTemplate;
+		if(plot.color) {
+			plotColor = plot.color;
+		}
+		if(plot.opacity) {
+			plotOpacity = plot.opacity;
+		}
+
+	    for (var i = 0; i < records.length; i++) {
+	    	var didPlot = false;
+	    	var record = records[i];
+	    	var iconPath = "icons/default.png";
+	    	var markerUrl = null;
+	    	if(plot[iconName]) {
+	    		iconPath = "icons/" + plot[iconName] + ".png";
+	    	}
+
+	    	//lat/lon wiggle make sure that not all the map
+	    	//markers don't stack on top of each other if all
+	    	//the addresses in a zipcode get the same lat/lon
+	    	//values.  degreeWiggleLatColumn/degreeWiggleLonColumn
+	    	//make it so the markers always end up in the same random
+	    	//place on the map
+	    	var latWiggleAmount = 0;
+	    	var lonWiggleAmount = 0;
+			if(degreeWiggleLatColumn  && record[degreeWiggleLatColumn]) {
+				latWiggleAmount = (record[degreeWiggleLatColumn] % 1000)/1000;
+			} else if(degreeWiggle) {
+				latWiggleAmount = Math.random();
+			}
+			if(degreeWiggleLonColumn && record[degreeWiggleLonColumn]) {
+				lonWiggleAmount = (record[degreeWiggleLonColumn] % 1000)/1000 ;
+			} else if(degreeWiggle) {
+				lonWiggleAmount = Math.random();
+			} 
+
+	    	var degreeWiggleDeltaLat = degreeWiggle * latWiggleAmount - (0.5 * degreeWiggle);
+	    	var degreeWiggleDeltaLon = degreeWiggle * lonWiggleAmount - (0.5 * degreeWiggle);
+	      	//console.log(degreeWiggleDeltaLat + ' ' + degreeWiggleDeltaLon);
+	      	var latLng = new google.maps.LatLng(parseFloat(record[latColumn]) + degreeWiggleDeltaLat,parseFloat(record[lonColumn]) + degreeWiggleDeltaLon);
+	      	//console.log(latLng);
+	      	
+	      	var markerConfig = {
+		        position: latLng,
+		        map: map
+	      	}
+	      	if(plot[iconName]) {
+	      		markerConfig["icon"] = iconPath;
+	      	}
+	      	var quantity =  record[magnitudeColumn]; 
+			if(!quantity) {
+				quantity=0;
+			} else {
+				quantity = parseFloat(quantity);
+			}
+			if(plot.quantityDivisor) {
+				quantity = quantity/plot.quantityDivisor;
+			}
+			if(labelTemplate) {
+				markerConfig["label"] = genericParamReplace(labelTemplate, record, "@");
+			}
+			if(linkTemplate) {
+				markerUrl = genericParamReplace(linkTemplate, record, "@");
+			}
+
+			plotColor = manipulateColor(plotColor, plot, record);
+
+			//console.log(defaultColor);
+			var marker = null;
+			var mapShape = null;
+	      	if(plot["shape"]) {
+	      		if(plot["shape"].radius) {
+	      			quantity = plot["shape"].radius;
+	      		}
+	      		if(plot["shape"].type) {
+	      			if(plot["shape"].type == "circle") {
+	      				circleConfig = {
+
+							strokeColor: colorFix(defaultColor),
+							strokeOpacity: defaultOpacity,
+							strokeWeight: defaultWeight,
+
+							fillColor: colorFix(plotColor),
+							fillOpacity: plotOpacity,
+							center: latLng,
+							map: map,
+							icon: "default",
+							radius: quantity
+
+	      				}
+	      				//console.log(circleConfig);
+	      				mapShape = new google.maps.Circle(circleConfig);
+	      				 
+	      				var didPlot = true;
+	      			}
+	      		}
+	      	}
+	      	if(!didPlot || plot["alwaysShowIcon"]) {
+
+	      		markerArray[markerCursor] = new google.maps.Marker(markerConfig);
+	      		if(markerUrl) {
+	      			//console.log(markerUrl);
+	      			//markerArray[markerCursor].addListener("click", function() {navigateToPage(markerUrl)});
+	      			attachHyperlinkToMapMarker(markerArray[markerCursor], markerUrl);
+
+	      		}
+	      		if(plot["infoWindowTemplate"]) {
+	      		 
+	      			//markerArray[markerCursor].addListener("mouseover", function() {console.log(markerCursor)});
+	      			attachHoverMapMarker(markerArray[markerCursor], plot["infoWindowTemplate"], record);
+	      		}
+	      		var didPlot = true;
+	      		markerCursor++;
+	     	}
+	    }
+	}
+}
+
+//looks at records and tries to find the center of the data, as well as a zoom for google maps to use
+//plots can now be viewOption to get the center of all plots
+function centerOfGeoPlot(plot, records) {
+	var latSum = 0;
+	var lonSum = 0;
+	var count = 0;
+	var minLat = 100;
+	var minLon = 400;
+	var maxLat = 0;
+	var maxLon = -300;
+	var plots = [plot];
+	if(plot.plots) {
+		plots = plot.plots;
+	}
+	for(var j=0; j<plots.length; j++) {
+		var plot = plots[j];
+		if(plot) {
+			//console.log(plot);
+		    for (var i = 0; i < records.length; i++) {
+		    	var record = records[i];
+		    	if(isNumeric(record[plot.latColumn]) && isNumeric(record[plot.lonColumn])) {
+			    	var lat = parseFloat(record[plot.latColumn]);
+			    	var lon = parseFloat(record[plot.lonColumn]);
+			    	//console.log(lat + " " + lon);
+			      	latSum += lat;
+			      	lonSum += lon;
+			      	if(lon < minLon) {
+			      		minLon = lon;
+			      	}
+			      	if(lon > maxLon) {
+			      		maxLon = lon;
+			      	}
+			      	if(lat < minLat) {
+			      		minLat = lat;
+			      	}
+			      	if(lat > maxLat) {
+			      		maxLat = lat;
+			      	}
+			      	count++;
+		      	}
+		     }
+		     //12 is about 15 miles wide 12 diag
+		    //8 is about 200 miles wide   150 diag
+		    //6 is about 1200 miles wide  900 diag
+		    //4 is about 4000 miles across 3000 diag
+		    //basic pythagorean stuff here:
+		    var diagonalLength = Math.pow(Math.pow((maxLon-minLon), 2) + Math.pow((maxLat-minLat), 2), 0.5);
+		    //i know, 60 miles per degree is only true of latitude, but for these purposes this is close enough:
+		    var estimatedDiagonalInMiles = parseFloat(diagonalLength) * 60;
+		    var estimatedScale = 2;
+		    //var estimatedDiagonalInMiles = diagonalLength * 60;
+		    //after some experimentation, i've found this calculates a good Google Maps zoom factor from a max quadrangle diagonal length:
+			estimatedScale = parseInt(16-(Math.log2(estimatedDiagonalInMiles * 1.20)));
+			if(estimatedScale < 1) {
+				estimatedScale = 1;
+			}
+		    return {"lat": latSum/count, "lon":lonSum/count,  "maxLat": maxLat, "maxLon": maxLon,  "minLat": minLat, "minLon": minLon, "diagonalLength":diagonalLength, "distanceInMiles":estimatedDiagonalInMiles, "estimatedScale":estimatedScale}
+		}
+	}
+
 }
