@@ -649,30 +649,30 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
     $out.= "let textareaIds = ['" . implode("','", $textareaIds) . "'];\n";
     $out.= "let codeLanguages = ['" . implode("','", $codeLanguages) . "'];\n";
     $out .= "\ntextareaIds.forEach(id => {\n";
-      $out .= "let textArea = document.getElementById(id);\n";
-      $out .= "let codeLanguage=codeLanguages[textAreaCount];\n";
-      $out .= "formattedCode = textArea.value;\n";
-      $out .= "if (codeLanguage == 'sql'){;\n";
-      $out .= "formattedCode = formatSQL(textArea.value);\n";
-      $out .= "mode = 'text/x-' + codeLanguage;\n";
-      $out .= "}\n;";
-      $out .= "if (codeLanguage == 'json'){;\n";
-      $out .= "formattedCode = formatJSON(textArea.value);\n";
-      $out .= "mode = 'application/' + codeLanguage;\n";
-      $out .= "}\n;";
-      $out .= "textArea.value = formattedCode;\n";
-      $out .= "let editor = CodeMirror.fromTextArea(textArea, {\n";
-      $out .=  "lineNumbers: true,\n";
-      $out .= " mode:     mode,\n";
-      $out .= " theme: \"default\",\n";
-      $out .= "tabSize: 2,\n";
-      $out .= "indentWithTabs: true,\n";
-      $out .= "smartIndent: true,\n";
-      $out .= "autoCloseBrackets: true,\n";
-      $out .= "lineWrapping: true\n";
-      $out .= "});\n";
-      $out.= "textAreaCount++;\n";
-      $out .= "});\n";
+    $out .= "let textArea = document.getElementById(id);\n";
+    $out .= "let codeLanguage=codeLanguages[textAreaCount];\n";
+    $out .= "formattedCode = textArea.value;\n";
+    $out .= "if (codeLanguage == 'sql'){;\n";
+    $out .= "formattedCode = formatSQL(textArea.value);\n";
+    $out .= "mode = 'text/x-' + codeLanguage;\n";
+    $out .= "}\n;";
+    $out .= "if (codeLanguage == 'json'){;\n";
+    $out .= "formattedCode = formatJSON(textArea.value);\n";
+    $out .= "mode = 'application/' + codeLanguage;\n";
+    $out .= "}\n;";
+    $out .= "textArea.value = formattedCode;\n";
+    $out .= "let editor = CodeMirror.fromTextArea(textArea, {\n";
+    $out .=  "lineNumbers: true,\n";
+    $out .= " mode:     mode,\n";
+    $out .= " theme: \"default\",\n";
+    $out .= "tabSize: 2,\n";
+    $out .= "indentWithTabs: true,\n";
+    $out .= "smartIndent: true,\n";
+    $out .= "autoCloseBrackets: true,\n";
+    $out .= "lineWrapping: true\n";
+    $out .= "});\n";
+    $out.= "textAreaCount++;\n";
+    $out .= "});\n";
 
 
     //$out.= "setTimeout(()=>{\n";
@@ -1479,5 +1479,107 @@ function getColumns($tableName) {
 
 function deleteLink($table, $pkName) {
   $out = "<a onclick='return confirm(\"Are you sure you want to delete this " . $table . "?\")' href='?table=" . $table . "&action=delete&" . $pkName . "=<" . $pkName . "/>&hashed_entities=<hashed_entities/>'>Delete</a>";
+  return $out;
+}
+
+function doReport($userId, $reportId, $reportLogId = null){
+  Global $conn;
+  $historicDataObject = null;
+
+  if($reportLogId != null) {
+    $sql = "SELECT data, report_id FROM report_log WHERE report_log_id = " . intval($reportLogId) . " AND user_id=" . intval($userId);
+   
+    $historyResult = mysqli_query($conn, $sql);
+    if($historyResult) {
+      $historyData = mysqli_fetch_array($historyResult);
+      if($historyData){
+        $data = $historyData["data"];
+        $reportId = $historyData["report_id"];
+        //trouble with carriage feeds:
+ 
+        $data = sanitizeForJson($data);
+ 
+        $historicDataObject = json_decode($data, true);
+ 
+      }
+    }
+  }
+  $editButton = "<a href='?table=report&report_id=" . $reportId . "' class='basicbutton'>edit</a>";
+  $reRunButton = "<a href='?action=fetch&table=report&report_id=" . $reportId . "' class='basicbutton'>run</a>";
+  $sql = "SELECT * FROM report WHERE report_id=" . intval($reportId) . " AND user_id=" . intval($userId);
+  //die($sql);
+  $result = mysqli_query($conn, $sql);
+  $data = "";
+  $out = "";
+  $ran = false;
+  $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
+
+  $formatedDateTime =  $date->format('Y-m-d H:i:s');
+
+  if($result) {
+    
+    $reportData = mysqli_fetch_array($result);
+    $sql = $reportData["sql"];
+    $form = $reportData["form"];
+    $decodedForm = "";
+    $output = null;
+    if($form){
+      $decodedForm = json_decode($form, true);
+      if(array_key_exists("form", $decodedForm)) {
+        if(array_key_exists("output", $decodedForm)) {
+          $output = $decodedForm["output"];
+        }
+        $decodedForm = $decodedForm["form"];
+      }
+    }
+    if($form != "" && gvfw("action") == "fetch" || gvfw("action") == "rerun") {
+      $out .= "<div class='listtitle'>Prepare to Run Report  '" . $reportData["name"] . "' " . $editButton . "</div>";
+ 
+      if($historicDataObject){
+
+        $decodedForm = copyValuesFromSourceToDest($decodedForm, $historicDataObject);
+      }
+
+      $out .= genericForm($decodedForm, "Run");
+      $out .= "<div class='listtitle'>Past Runs:</div>";
+      $out .= previousReportRuns($userId, $reportId);
+    } else {
+      $ran = true;
+      $out = "<div class='listtitle'>Running Report  '" . $reportData["name"] . "' " . $editButton . " " . $reRunButton  . "</div>";
+      //gotta merge form values in here:
+      $sql =  tokenReplace($sql, $_POST);
+      //die($sql);
+      $start = microtime(true);
+      $reportResult = mysqli_query($conn, $sql);
+      if($reportResult) {
+        if($decodedForm != "") {
+          $decodedForm = mergeValues($decodedForm, $_POST);
+        }
+        $rows = mysqli_fetch_all($reportResult, MYSQLI_ASSOC);
+        $timeElapsedSecs = microtime(true) - $start;
+        $reportLogSql = "INSERT INTO report_log (user_id, report_id, run, records_returned, runtime, `data`) VALUES (" . intval($userId) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . count($rows)  . "," .  intval($timeElapsedSecs * 1000) . ",'" . json_encode($decodedForm) . "');";
+        $reportLogResult = mysqli_query($conn, $reportLogSql);
+        //var_dump($rows);
+        if($rows) {
+          if($output != null) {
+            $output =  tokenReplace($output, $_POST); //there could be tokens in the output config
+            $canvasId = "statsCanvas";
+            $data .= "\n<script src = \"./tinycolor.js\"></script>\n";
+            $data .= "\n<script src = \"https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js\"></script>\n";
+            $data .= "\n<script>let reportData = " . json_encode($rows) . ";\nlet reportOutput = " . json_encode($output) . "\n;document.addEventListener('DOMContentLoaded', async () => {displayReport(" . $reportId . ",'" . $canvasId . "');});\n</script>\n";
+            $data .= "\n<canvas id=\"" . $canvasId . "\" style='display:block;'></canvas>\n";
+            $data .= "\n<div id='visualizationCaption' style='padding:10px'></div>";
+          } else {
+            $data .= genericTable($rows, null, null, null);
+          }
+        }
+        
+      }
+    }
+  }
+  if($data == ""  && $ran){
+    $data = "No results";
+  }
+  $out .= $data;
   return $out;
 }
