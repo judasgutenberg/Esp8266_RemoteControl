@@ -193,6 +193,17 @@ if ($user) {
     }
     $result = mysqli_query($conn, $sql);
     header('Location: '.$_SERVER['PHP_SELF'] . "?table=" . $table);
+  } elseif($action == "json"){
+    if($table!= "user" || $user["role"]  == "super") {
+      $sql = "SELECT * FROM " .  $table  . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "' AND user_id='" . $userId . "'";
+      $result = mysqli_query($conn, $sql);
+      $valueArray = mysqli_fetch_assoc($result);
+      die(json_encode($valueArray, JSON_FORCE_OBJECT));
+    }
+  } elseif($action == "log") {
+      if($table == "device_feature"){
+        $out .= deviceFeatureLog(gvfw($table . '_id'), $userId);
+      }
   //this is the section for conditionals related to specially-written editors and listers
 	} else if($table == "report") {
     if ($action == "rerun" || $action == "fetch" || beginsWith(strtolower($action), "run")) {
@@ -225,25 +236,10 @@ if ($user) {
     $out .= genericEntityForm($userId, $table, $errors);
   } else if($table!= "user" || $user["role"]  == "super") {
     if(gvfw($table . '_id')) {
-      if($action == "log") {
-        if($table == "device_feature"){
-          $out .= deviceFeatureLog(gvfw($table . '_id'), $userId);
-        }
-      } else {
-        if($action == "json"){
-          $sql = "SELECT * FROM " .  $table  . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "' AND user_id='" . $userId . "'";
-          $result = mysqli_query($conn, $sql);
-          $valueArray = mysqli_fetch_assoc($result);
-          die(json_encode($valueArray, JSON_FORCE_OBJECT));
-        } else {
-          $out .= genericEntityForm($userId, $table, $errors);
-        }
-      }
-
-    } else {
+      $out .= genericEntityForm($userId, $table, $errors);
+    } else if($table) {
       $out .= genericEntityList($userId, $table);
     }
-    
   }
 	$out .= "</div>\n";
 	$out .= "<div>\n";

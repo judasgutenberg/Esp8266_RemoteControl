@@ -1285,7 +1285,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
         $skip = true;
       } else if(($type == "bool"  || $type == "checkbox") && !$value){
         $sanitized = '0';
-      } else if (beginsWith($type, "number") && !$value) {
+      } else if ((beginsWith($type, "number")  ||  $type == "int") && !$value) {
         $sanitized = 'NULL';
       } else {
         $sanitized = "'" . mysqli_real_escape_string($conn, $value) . "'";
