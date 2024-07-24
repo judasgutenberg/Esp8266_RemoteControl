@@ -1003,7 +1003,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
   $out .="<div class='listheader'>\n";
   $cellNumber = 0;
   foreach($headerData as &$headerCell) {
-  	$out.= "<span class='headerlink' onclick='sortTable(" . $cellNumber . ")'>" . $headerCell['label'] . "</span>\n";
+  	$out.= "<span class='headerlink' onclick='sortTable(event, " . $cellNumber . ")'>" . $headerCell['label'] . "</span>\n";
     $cellNumber++;
   }
   if($toolsTemplate) {

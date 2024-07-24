@@ -84,7 +84,7 @@ function autoUpdate(encryptedSql, headerData, tableId){
     /*
     if(currentSortColumn > -1) {
       ascending = -ascending;
-      sortTable(currentSortColumn);
+      sortTable(event, currentSortColumn);
     }
     */
   }
