@@ -30,7 +30,7 @@ CREATE TABLE location(
   device_id INT NULL,
   i2c_address INT NULL,
   connecting_device_id INT NULL,
-  user_id INT NULL,
+  tenant_id INT NULL,
   created DATETIME
 );
 
@@ -40,7 +40,7 @@ CREATE TABLE device_type(
   description VARCHAR(2000) NULL,
   architecture VARCHAR(100) NULL,
   power_voltage DECIMAL(9,3) NULL,
-  user_id INT NULL,
+  tenant_id INT NULL,
   created DATETIME
 );
 
@@ -49,7 +49,7 @@ CREATE TABLE device(
   device_type_id INT,
   name VARCHAR(100) NULL,
   description VARCHAR(2000) NULL,
-  user_id INT NULL,
+  tenant_id INT NULL,
   sensor_id INT NULL,
   latitude DECIMAL(8,5) NULL,
   longitude DECIMAL(8,5) NULL,
@@ -60,7 +60,7 @@ CREATE TABLE feature_type(
   feature_type_id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NULL,
   description VARCHAR(2000) NULL,
-  user_id INT NULL,
+  tenant_id INT NULL,
   created DATETIME
 );
 
@@ -77,24 +77,12 @@ CREATE TABLE device_type_feature(
   power_pin INT NULL,
   name VARCHAR(100) NULL,
   description VARCHAR(2000) NULL,
-  user_id INT NULL,
+  tenant_id INT NULL,
   created DATETIME
   
 );
 
-CREATE TABLE user(
-  user_id INT AUTO_INCREMENT PRIMARY KEY,
-  email VARCHAR(100) NULL,
-  password VARCHAR(100) NULL,
-  expired DATETIME NULL,
-  preferences TEXT NULL,
-  storage_password VARCHAR(100) NULL,
-  energy_api_username VARCHAR(100) NULL,
-  energy_api_password VARCHAR(100) NULL,
-  energy_api_plant_id INT NULL,
-  open_weather_api_key VARCHAR(100) NULL,
-  created DATETIME
-);
+ 
 
 CREATE TABLE device_feature(
   device_feature_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -104,7 +92,7 @@ CREATE TABLE device_feature(
   name VARCHAR(100) NULL,
   description VARCHAR(2000) NULL,
   enabled TINYINT DEFAULT 0,
-  user_id INT NULL,
+  tenant_id INT NULL,
   created DATETIME,
   modified DATETIME,
   last_known_device_value INT NULL,
@@ -115,7 +103,7 @@ CREATE TABLE device_feature(
 CREATE TABLE device_feature_management_rule(
   device_feature_id INT,
   management_rule_id INT,
-  user_id INT,
+  tenant_id INT,
   management_priority INT DEFAULT 1,
   created DATETIME
 )
@@ -124,7 +112,7 @@ CREATE TABLE device_feature_management_rule(
 CREATE TABLE device_feature_log(
   device_feature_log_id INT AUTO_INCREMENT PRIMARY KEY,
   device_feature_id INT,
-  user_id INT,
+  tenant_id INT,
   recorded DATETIME,
   beginning_state INT,
   end_state INT,
@@ -134,7 +122,7 @@ CREATE TABLE device_feature_log(
 
 CREATE TABLE management_rule(
   management_rule_id  INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT,
+  tenant_id INT,
   name VARCHAR(50),
   result_value INT DEFAULT 1,
   description VARCHAR(2000),
@@ -146,7 +134,7 @@ CREATE TABLE management_rule(
 
 CREATE TABLE inverter_log(
   inverter_log_id  INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT,
+  tenant_id INT,
   recorded DATETIME,
   solar_power INT NULL,
   load_power INT NULL,
@@ -169,7 +157,7 @@ CREATE TABLE inverter_log(
 
 CREATE TABLE report(
   report_id  INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT,
+  tenant_id INT,
   name VARCHAR(100),
   created DATETIME,
   modified DATETIME,
@@ -180,13 +168,41 @@ CREATE TABLE report(
 CREATE TABLE report_log(
   report_log_id  INT AUTO_INCREMENT PRIMARY KEY,
   report_id INT,
-  user_id INT,
+  tenant_id INT,
   run DATETIME,
   data TEXT NULL,
   records_returned int,
   runtime int
 );
 
+CREATE TABLE tenant(
+  tenant_id  INT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(100),
+  expired   DATETIME NULL,
+  created     DATETIME,
+  preferences  TEXT NULL,
+  storage_password VARCHAR(100) NULL,
+  energy_api_username  VARCHAR(100) NULL,
+  energy_api_password VARCHAR(100) NULL,
+  energy_api_plant_id INT NULL,
+  open_weather_api_key VARCHAR(100) NULL       
+);
+
+CREATE TABLE user(
+  user_id  INT AUTO_INCREMENT PRIMARY KEY,
+  role     VARCHAR(50) DEFAULT 'normal',
+  expired  DATETIME NULL,
+  created  DATETIME,
+  preferences TEXT NULL      
+);
+
+CREATE TABLE tenant_user(
+  user_id   INT,
+  tenant_id INT,
+  role      VARCHAR(50) DEFAULT 'normal',
+  expired   DATETIME NULL,
+  created   DATETIME      
+);
 
 --fixes for older versions of the schema:
 --ALTER TABLE device_feature ADD enabled TINYINT DEFAULT 0;
@@ -194,12 +210,12 @@ CREATE TABLE report_log(
 --ALTER TABLE location ADD device_type_feature_id INT NULL;
 --ALTER TABLE location ADD i2c_address INT NULL;
 --ALTER TABLE location ADD connecting_device_id INT NULL;
---ALTER TABLE location ADD user_id INT NULL;
---ALTER TABLE device_type ADD user_id INT NULL;
---ALTER TABLE device ADD user_id INT NULL;
---ALTER TABLE feature_type ADD user_id INT NULL;
---ALTER TABLE device_type_feature ADD user_id INT NULL;
---ALTER TABLE device_feature ADD user_id INT NULL;
+--ALTER TABLE location ADD tenant_id INT NULL;
+--ALTER TABLE device_type ADD tenant_id INT NULL;
+--ALTER TABLE device ADD tenant_id INT NULL;
+--ALTER TABLE feature_type ADD tenant_id INT NULL;
+--ALTER TABLE device_type_feature ADD tenant_id INT NULL;
+--ALTER TABLE device_feature ADD tenant_id INT NULL;
 --ALTER TABLE device_feature ADD last_known_device_value INT NULL;
 --ALTER TABLE device_feature ADD last_known_device_modified DATETIME;
 --ALTER TABLE user ADD preferences TEXT NULL;

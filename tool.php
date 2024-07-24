@@ -21,8 +21,11 @@ $conn = mysqli_connect($servername, $username, $password, $database);
 $table = strtolower(filterStringForSqlEntities(gvfw('table', "device"))); //make sure this table name doesn't contain injected SQL
 $action = strtolower(gvfw('action', "list"));
 $user = logIn();
+$tenantId = gvfa("tenant_id", $user);
+
 $deviceId = gvfa('device_id', $_GET);
 $userId = gvfa("user_id", $user);
+
 //used to impersonate another user
 
 $poser = getImpersonator(false);
@@ -59,7 +62,7 @@ if($_POST || gvfw("table")) { //gvfw("table")
 	}  else if (strtolower($table) == "run") {
     //oh, we're a utility, though we never get here
   } else if(beginsWith(strtolower($action), "save") || beginsWith(strtolower($action), "create")) {
-    $errors = genericEntitySave($userId, $table);
+    $errors = genericEntitySave($tenantId, $table);
   }
 } else {
  
@@ -68,7 +71,7 @@ if($_POST || gvfw("table")) { //gvfw("table")
 if ($user) {
 	$out .= "<div>\n";
   if($action == "getdevices") {
-    $out = getDevices($userId);
+    $out = getDevices($tenantId);
     die(json_encode($out));
   } else if($action == "getcolumns") {
     $out = getColumns($table);
@@ -90,8 +93,8 @@ if ($user) {
     } else if($value == "true"){
       $value = 1;
     }
-    //a little safer only because it allows a user to screw up records connected to their userId but mabe revisit!!!
-    $sql = "UPDATE ". filterStringForSqlEntities($table) . " SET " . filterStringForSqlEntities($name) . "='" .  mysqli_real_escape_string($conn, $value) . "' WHERE user_id=" . intval($userId) . " AND " . filterStringForSqlEntities($primaryKeyName) . "='" . intval($primaryKeyValue) . "'";
+    //a little safer only because it allows a user to screw up records connected to their tenantId but mabe revisit!!!
+    $sql = "UPDATE ". filterStringForSqlEntities($table) . " SET " . filterStringForSqlEntities($name) . "='" .  mysqli_real_escape_string($conn, $value) . "' WHERE tenant_id=" . intval($tenantId) . " AND " . filterStringForSqlEntities($primaryKeyName) . "='" . intval($primaryKeyValue) . "'";
     
     $result = mysqli_query($conn, $sql);
     var_dump($result);
@@ -184,7 +187,7 @@ if ($user) {
     $out .= "<div class='generalerror'>Utility not yet developed.</div>";
    }
   } else if ($action == "delete") {
-    $sql = "DELETE FROM " . $table . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "' AND user_id='" . $userId . "'";
+    $sql = "DELETE FROM " . $table . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "' AND tenant_id='" . $tenantId . "'";
     //die($sql);
     $hashedEntities = gvfw('hashed_entities');
     $whatHashedEntitiesShouldBe =  crypt($table .$table . "_id"  . intval(gvfw( $table . "_id")) , $encryptionPassword);
@@ -195,50 +198,50 @@ if ($user) {
     header('Location: '.$_SERVER['PHP_SELF'] . "?table=" . $table);
   } elseif($action == "json"){
     if($table!= "user" || $user["role"]  == "super") {
-      $sql = "SELECT * FROM " .  $table  . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "' AND user_id='" . $userId . "'";
+      $sql = "SELECT * FROM " .  $table  . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "' AND tenant_id='" . $tenantId . "'";
       $result = mysqli_query($conn, $sql);
       $valueArray = mysqli_fetch_assoc($result);
       die(json_encode($valueArray, JSON_FORCE_OBJECT));
     }
   } elseif($action == "log") {
       if($table == "device_feature"){
-        $out .= deviceFeatureLog(gvfw($table . '_id'), $userId);
+        $out .= deviceFeatureLog(gvfw($table . '_id'), $tenantId);
       }
   //this is the section for conditionals related to specially-written editors and listers
 	} else if($table == "report") {
     if ($action == "rerun" || $action == "fetch" || beginsWith(strtolower($action), "run")) {
-      $out .= doReport($userId, gvfw("report_id"), gvfw("report_log_id"));
+      $out .= doReport($user, gvfw("report_id"), gvfw("report_log_id"));
     
     } else if ($action == "startcreate" || gvfw("report_id") != "") {
-      $out .=  editReport($errors,  $userId);
+      $out .=  editReport($errors,  $tenantId);
     } else {
-      $out .= reports($userId);
+      $out .= reports($tenantId);
     }
 	} else if($table == "device") {
     if ($action == "startcreate" || gvfw("device_id") != "") {
-      $out .=  editDevice($errors,  $userId);
+      $out .=  editDevice($errors,  $tenantId);
     } else {
-     $out .= devices($userId);
+     $out .= devices($tenantId);
     }
 	} else if($table == "device_feature") {
     if ($action == "startcreate" || gvfw("device_feature_id") != "") {
-      $out .=  editDeviceFeature($errors,  $userId);
+      $out .=  editDeviceFeature($errors,  $tenantId);
     } else {
-      $out .= deviceFeatures($userId, $deviceId);
+      $out .= deviceFeatures($tenantId, $deviceId);
     }
 	} else if($table == "management_rule") {
     if ($action == "startcreate" || gvfw("management_rule_id") != "") {
-      $out .=  editManagementRule($errors,  $userId);
+      $out .=  editManagementRule($errors,  $tenantId);
     } else {
-      $out .= managementRules($userId, $deviceId);
+      $out .= managementRules($tenantId, $deviceId);
     }
   } else if ($action == "startcreate") {
-    $out .= genericEntityForm($userId, $table, $errors);
+    $out .= genericEntityForm($tenantId, $table, $errors);
   } else if($table!= "user" || $user["role"]  == "super") {
     if(gvfw($table . '_id')) {
-      $out .= genericEntityForm($userId, $table, $errors);
+      $out .= genericEntityForm($tenantId, $table, $errors);
     } else if($table) {
-      $out .= genericEntityList($userId, $table);
+      $out .= genericEntityList($tenantId, $table);
     }
   }
 	$out .= "</div>\n";

@@ -35,6 +35,9 @@ $nonJsonPinData = 0;
 $justGetDeviceInfo = 0;
 $storagePassword = "";
 $multipleSensorArray = [];
+
+
+$tenant = getTenantById(1);
 if($_POST) {
 	logPost(gvfa("data", $_POST)); //help me debug
 }
@@ -188,7 +191,7 @@ if($_REQUEST) {
 					$deviceRow = mysqli_fetch_array($getDeviceResult);
 					$latitude = $deviceRow["latitude"];
 					$longitude = $deviceRow["longitude"];
-					$apiKey = $user["open_weather_api_key"];
+					$apiKey = $tenant["open_weather_api_key"];
 				}
 				if($latitude  && $longitude && $apiKey) {
 					$out["official_weather"] = getWeatherDataByCoordinates($latitude, $longitude, $apiKey);
@@ -205,12 +208,12 @@ if($_REQUEST) {
 					
 					if($scale == "ultra-fine") {
 						$sql = "SELECT * FROM " . $database . ".inverter_log  
-						WHERE user_id = " . $user["user_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -5 HOUR) 
+						WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -5 HOUR) 
 						 
 						ORDER BY inverter_log_id ASC";
 					} else if($scale == ""  || $scale == "fine") {
 						$sql = "SELECT *  FROM " . $database . ".inverter_log  
-						WHERE user_id = " . $user["user_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -1 DAY) 
+						WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -1 DAY) 
 						 
 						GROUP BY YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded), MINUTE(recorded)
 						ORDER BY inverter_log_id ASC";
@@ -219,7 +222,7 @@ if($_REQUEST) {
 							$sql = "SELECT
 							*,
 							YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded) FROM " . $database . ".inverter_log  
-							WHERE user_id = " . $user["user_id"] . " AND recorded > DATE_ADD(NOW(), INTERVAL -7 DAY) 
+							WHERE tenant_id = " . $tenant["tenant_id"] . " AND recorded > DATE_ADD(NOW(), INTERVAL -7 DAY) 
 								 
 								GROUP BY YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded)
 								ORDER BY inverter_log_id ASC";
@@ -500,7 +503,7 @@ if($_REQUEST) {
 						//a good place to put automation code!  if an automated change happens, we will change $pinValuesKnownToDevice[$pinCursor] as if it happened via local remote, but then alter $mechanism and $managementRuleId
 						//we also have to set $automatedChangeMade to true but TOTALLY SKIP the setting of $row['ss'], since from the local remote's perspective, the change happened server-side
 						if($allowAutomaticManagement) {
-							$automationSql = "SELECT m.* FROM management_rule m JOIN device_feature_management_rule d ON m.management_rule_id = d.management_rule_id AND m.user_id=d.user_id WHERE d.device_feature_id = " . $deviceFeatureId . " ORDER BY management_priority DESC";
+							$automationSql = "SELECT m.* FROM management_rule m JOIN device_feature_management_rule d ON m.management_rule_id = d.management_rule_id AND m.tenant_id=d.tenant_id WHERE d.device_feature_id = " . $deviceFeatureId . " ORDER BY management_priority DESC";
 							//logSql("management sql:" .  $automationSql);
 							$automationResult = mysqli_query($conn, $automationSql);
 							if($automationResult) {
@@ -667,8 +670,8 @@ if($_REQUEST) {
 									$newValue = $row["value"];
 								} 
 								//also log this change in the new device_feature_log table!  we're going to need that for when device_features get changed automatically based on data as well!
-								$loggingSql = "INSERT INTO device_feature_log (device_feature_id, user_id, recorded, beginning_state, end_state, management_rule_id, mechanism) VALUES (";
-								$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $user["user_id"] . ",'" . $formatedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "')";
+								$loggingSql = "INSERT INTO device_feature_log (device_feature_id, tenant_id, recorded, beginning_state, end_state, management_rule_id, mechanism) VALUES (";
+								$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $user["tenant_id"] . ",'" . $formatedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "')";
 								//if($mechanism == "automation"){
 									//logSql("logging sql: " . $loggingSql);
 									//logSql("update sql: " . $sqlToUpdateDeviceFeature);
@@ -798,7 +801,7 @@ function disable_gzip() { //i wanted this to work so the microcontroller wouldn'
 function deriveDeviceIdsFromStoragePassword($storagePassword) {
 	Global $conn;
 	$deviceIds = [];
-	$sql = "SELECT device_id FROM user u JOIN device d ON u.user_id=d.user_id WHERE storage_password='" . mysqli_real_escape_string($conn, $storagePassword)  . "' ORDER BY device_id ASC";
+	$sql = "SELECT device_id FROM tenant t JOIN device d ON t.tenant_id=d.tenant_id WHERE storage_password='" . mysqli_real_escape_string($conn, $storagePassword)  . "' ORDER BY device_id ASC";
 	$result = mysqli_query($conn, $sql);
 	if($result) {
 		$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
@@ -874,6 +877,17 @@ function nullifyOrNumber($number){
 
 function deDelimitify($inString){
 	return str_replace("!", "", str_replace("|", "", str_replace("*", "", $inString)));
+}
+
+
+function getTenantById($tenantId){
+	Global $conn;
+	$sql = "SELECT * FROM tenant WHERE tenant_id=1";
+	$result = mysqli_query($conn, $sql);
+	if($result) {
+		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
+		return $row;
+	}
 }
 
 //some helpful sql examples for creating sql users:

@@ -2,13 +2,13 @@
 
 
 
-function deviceFeatures($userId, $deviceId) {
+function deviceFeatures($tenantId, $deviceId) {
   Global $conn;
   $table = "device_feature";
   $sql = "SELECT df.name as name, pin_number, df.enabled, df.device_type_feature_id, df.device_feature_id, df.created, last_known_device_value, last_known_device_modified, df.value  
           FROM " . $table . " df 
           JOIN device_type_feature dtf 
-            ON df.device_type_feature_id=dtf.device_type_feature_id AND df.user_id=dtf.user_id WHERE df.user_id=" . intval($userId);
+            ON df.device_type_feature_id=dtf.device_type_feature_id AND df.tenant_id=dtf.tenant_id WHERE df.tenant_id=" . intval($tenantId);
   //echo $sql;
   if($deviceId){
     $sql .= " AND df.device_id=" . intval($deviceId);
@@ -82,10 +82,10 @@ function deviceFeatures($userId, $deviceId) {
 
 }
 
-function devices($userId) {
+function devices($tenantId) {
   Global $conn;
   $table = "device";
-  $sql = "SELECT *  FROM " . $table . "  WHERE user_id=" . intval($userId);
+  $sql = "SELECT *  FROM " . $table . "  WHERE tenant_id=" . intval($tenantId);
   //echo $sql;
   $result = mysqli_query($conn, $sql);
   $out = "";
@@ -125,10 +125,10 @@ function devices($userId) {
 
 }
 
-function reports($userId) {
+function reports($tenantId) {
   Global $conn;
   $table = "report";
-  $sql = "SELECT *  FROM " . $table . "  WHERE user_id=" . intval($userId);
+  $sql = "SELECT *  FROM " . $table . "  WHERE tenant_id=" . intval($tenantId);
   //echo $sql;
   $result = mysqli_query($conn, $sql);
   $out = "";
@@ -198,9 +198,9 @@ function copyValuesFromSourceToDest($dest, $source) {
   return $dest;
 }
 
-function previousReportRuns($userId, $reportId) {
+function previousReportRuns($tenantId, $reportId) {
   Global $conn;
-  $sql = "SELECT report_log_id, run, records_returned, runtime  FROM report_log WHERE report_id=" . intval($reportId) . " AND user_id=" . intval($userId) . " ORDER BY run DESC";
+  $sql = "SELECT report_log_id, run, records_returned, runtime  FROM report_log WHERE report_id=" . intval($reportId) . " AND tenant_id=" . intval($tenantId) . " ORDER BY run DESC";
   $result = mysqli_query($conn, $sql);
   $out = "";
   if($result) {
@@ -213,7 +213,7 @@ function previousReportRuns($userId, $reportId) {
 
 
 
-function editDeviceFeature($error,  $userId) {
+function editDeviceFeature($error,  $tenantId) {
   Global $conn;
   $table = "device_feature";
   $pk = gvfw($table . "_id");
@@ -223,7 +223,7 @@ function editDeviceFeature($error,  $userId) {
     $submitLabel = "create device feature";
     $source = $_POST;
   } else {
-    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND user_id=" . intval($userId);
+    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
     $result = mysqli_query($conn, $sql);
     if($result) {
       $source = mysqli_fetch_array($result);
@@ -266,7 +266,7 @@ function editDeviceFeature($error,  $userId) {
       'type' => 'select',
 	    'value' => gvfa("device_type_feature_id", $source), 
       'error' => gvfa("device_type_feature_id", $error),
-      'values' => "SELECT device_type_feature_id, name as 'text' FROM device_type_feature WHERE user_id='" . $userId  . "' ORDER BY name ASC",
+      'values' => "SELECT device_type_feature_id, name as 'text' FROM device_type_feature WHERE tenant_id='" . $tenantId  . "' ORDER BY name ASC",
 	  ] ,
     [
 	    'label' => 'enabled',
@@ -289,7 +289,7 @@ function editDeviceFeature($error,  $userId) {
       'type' => 'select',
 	    'value' => gvfa("device_id", $source), 
       'error' => gvfa("device_id", $error),
-      'values' => "SELECT device_id, name as 'text' FROM device WHERE user_id='" . $userId  . "' ORDER BY name ASC",
+      'values' => "SELECT device_id, name as 'text' FROM device WHERE tenant_id='" . $tenantId  . "' ORDER BY name ASC",
 	  ] ,
     [
 	    'label' => 'allow automation',
@@ -307,8 +307,8 @@ function editDeviceFeature($error,  $userId) {
 	    'value' => gvfa("management_rule_id", $source), 
       'error' => gvfa("management_rule_id", $error),
       'item_tool' => 'managementRuleTool',
-      //SELECT m.management_rule_id, name as 'text', (d.device_feature_id IS NOT NULL) AS has FROM management_rule m LEFT JOIN device_feature_management_rule d ON m.management_rule_id=d.management_rule_id AND   m.user_id=d.user_id WHERE d.device_feature_id IS NULL OR d.device_feature_id=3 AND m.user_id='1'  ORDER BY m.name ASC
-      //SELECT m.management_rule_id, name as 'text', (d.device_feature_id = 3) AS has FROM management_rule m LEFT JOIN device_feature_management_rule d ON m.management_rule_id=d.management_rule_id AND   m.user_id=d.user_id group by m.management_rule_id, name   ORDER BY m.name ASC 
+      //SELECT m.management_rule_id, name as 'text', (d.device_feature_id IS NOT NULL) AS has FROM management_rule m LEFT JOIN device_feature_management_rule d ON m.management_rule_id=d.management_rule_id AND   m.tenant_id=d.tenant_id WHERE d.device_feature_id IS NULL OR d.device_feature_id=3 AND m.tenant_id='1'  ORDER BY m.name ASC
+      //SELECT m.management_rule_id, name as 'text', (d.device_feature_id = 3) AS has FROM management_rule m LEFT JOIN device_feature_management_rule d ON m.management_rule_id=d.management_rule_id AND   m.tenant_id=d.tenant_id group by m.management_rule_id, name   ORDER BY m.name ASC 
       'values' => "SELECT 
               m.management_rule_id, 
               m.name AS 'text', 
@@ -319,7 +319,7 @@ function editDeviceFeature($error,  $userId) {
               device_feature_management_rule d 
           ON 
               m.management_rule_id = d.management_rule_id 
-              AND m.user_id = d.user_id
+              AND m.tenant_id = d.tenant_id
           GROUP BY 
               m.management_rule_id, m.name
           ORDER BY 
@@ -330,7 +330,7 @@ function editDeviceFeature($error,  $userId) {
   return $form;
 }
 
-function editReport($error,  $userId) {
+function editReport($error,  $tenantId) {
   Global $conn;
   $table = "report";
   $pk = gvfw($table . "_id");
@@ -341,7 +341,7 @@ function editReport($error,  $userId) {
     $submitLabel = "create device";
     $source = $_POST;
   } else {
-    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND user_id=" . intval($userId);
+    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
     $result = mysqli_query($conn, $sql);
     if($result) {
       $source = mysqli_fetch_array($result);
@@ -401,7 +401,7 @@ function editReport($error,  $userId) {
   return $form;
 }
 
-function editDevice($error,  $userId) {
+function editDevice($error,  $tenantId) {
   Global $conn;
   $table = "device";
   $pk = gvfw($table . "_id");
@@ -412,7 +412,7 @@ function editDevice($error,  $userId) {
     $submitLabel = "create device";
     $source = $_POST;
   } else {
-    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND user_id=" . intval($userId);
+    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
     $result = mysqli_query($conn, $sql);
     if($result) {
       $source = mysqli_fetch_array($result);
@@ -456,7 +456,7 @@ function editDevice($error,  $userId) {
       'type' => 'select',
 	    'value' => gvfa("device_type_id", $source), 
       'error' => gvfa('device_type_id', $error),
-      'values' => "SELECT device_type_id, name as 'text' FROM device_type WHERE user_id='" . $userId  . "' ORDER BY name ASC",
+      'values' => "SELECT device_type_id, name as 'text' FROM device_type WHERE tenant_id='" . $tenantId  . "' ORDER BY name ASC",
 	  ],
     [
 	    'label' => 'location name',
@@ -502,7 +502,7 @@ function editDevice($error,  $userId) {
   return $form;
 }
 
-function editManagementRule($error,  $userId) {
+function editManagementRule($error,  $tenantId) {
   Global $conn;
   $table = "management_rule";
   $pk = gvfw($table . "_id");
@@ -512,7 +512,7 @@ function editManagementRule($error,  $userId) {
     $submitLabel = "create management rule";
     $source = $_POST;
   } else {
-    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND user_id=" . intval($userId);
+    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
     $result = mysqli_query($conn, $sql);
     if($result) {
       $source = mysqli_fetch_array($result);
@@ -578,7 +578,7 @@ function editManagementRule($error,  $userId) {
   return $form;
 }
 
-function managementRules($userId, $deviceId){
+function managementRules($tenantId, $deviceId){
   Global $conn;
   $table = "management_rule";
   $headerData = array(
@@ -596,7 +596,7 @@ function managementRules($userId, $deviceId){
 	  ] 
     );
  
-  $sql = "SELECT * FROM " . $table . " WHERE user_id =" . intval($userId) . " ORDER BY created DESC";
+  $sql = "SELECT * FROM " . $table . " WHERE tenant_id =" . intval($tenantId) . " ORDER BY created DESC";
   $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
   $result = mysqli_query($conn, $sql);
   $out = "<div class='listheader'>Management Rules</div>";
@@ -611,7 +611,7 @@ function managementRules($userId, $deviceId){
   return $out;
 }
 
-function deviceFeatureLog($deviceFeatureId, $userId){
+function deviceFeatureLog($deviceFeatureId, $tenantId){
   Global $conn;
   $headerData = array(
     [
@@ -635,8 +635,8 @@ function deviceFeatureLog($deviceFeatureId, $userId){
       'name' => 'rule_name' 
     ]
     );
-  $deviceFeatureName = getDeviceFeature($deviceFeatureId, $userId)["name"];
-  $sql = "SELECT recorded, beginning_state, end_state, mechanism, m.name AS rule_name FROM device_feature_log f LEFT JOIN management_rule m ON m.management_rule_id=f.management_rule_id  AND m.user_id=f.user_id WHERE f.user_id =" . intval($userId) . " AND device_feature_id=" . intval($deviceFeatureId) . " ORDER BY recorded DESC";
+  $deviceFeatureName = getDeviceFeature($deviceFeatureId, $tenantId)["name"];
+  $sql = "SELECT recorded, beginning_state, end_state, mechanism, m.name AS rule_name FROM device_feature_log f LEFT JOIN management_rule m ON m.management_rule_id=f.management_rule_id  AND m.tenant_id=f.tenant_id WHERE f.tenant_id =" . intval($tenantId) . " AND device_feature_id=" . intval($deviceFeatureId) . " ORDER BY recorded DESC";
   $result = mysqli_query($conn, $sql);
   $out = "<div class='listheader'>Device Feature Log: " . $deviceFeatureName . "</div>";
   if($result) {
@@ -650,13 +650,13 @@ function deviceFeatureLog($deviceFeatureId, $userId){
   return $out;
 }
 
-function getDeviceFeature($deviceFeatureId, $userId){
-  return getGeneric("device_feature", $deviceFeatureId, $userId);
+function getDeviceFeature($deviceFeatureId, $tenantId){
+  return getGeneric("device_feature", $deviceFeatureId, $tenantId);
 }
 
-function getGeneric($table, $pk, $userId){
+function getGeneric($table, $pk, $tenantId){
   Global $conn;
-  $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id='" . mysqli_real_escape_string($conn, $pk)  . "' AND user_id=" . intval($userId);
+  $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id='" . mysqli_real_escape_string($conn, $pk)  . "' AND tenant_id=" . intval($tenantId);
 	$result = mysqli_query($conn, $sql);
 	if($result) {
 		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
@@ -664,16 +664,16 @@ function getGeneric($table, $pk, $userId){
 	}
 }
 
-function getDevices($userId){
+function getDevices($tenantId){
   Global $conn;
-  $sql = "SELECT * FROM device WHERE user_id=" . intval($userId);
+  $sql = "SELECT * FROM device WHERE tenant_id=" . intval($tenantId);
 	$result = mysqli_query($conn, $sql);
 	if($result) {
 		$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
 		return $rows;
 	}
 }
-function saveSolarData($user, $gridPower, $batteryPercent,  $batteryPower, $loadPower, 
+function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $loadPower, 
   $solarString1, $solarString2, $batteryVoltage, 
   $solarPotential,
   $mysteryValue1,
@@ -690,7 +690,7 @@ function saveSolarData($user, $gridPower, $batteryPercent,  $batteryPower, $load
   $date = new DateTime("now", new DateTimeZone('America/New_York'));
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
   $nowTime = strtotime($formatedDateTime);
-  $loggingSql = "INSERT INTO inverter_log ( user_id, recorded, 
+  $loggingSql = "INSERT INTO inverter_log ( tenant_id, recorded, 
   solar_power, load_power, grid_power, battery_percentage, battery_power,
   battery_voltage, solar_potential,
   mystery_value1,
@@ -704,7 +704,7 @@ function saveSolarData($user, $gridPower, $batteryPercent,  $batteryPower, $load
   changer7
   
   ) VALUES (";
-  $loggingSql .= $user["user_id"] . ",'" . $formatedDateTime . "'," .
+  $loggingSql .= $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," .
    intval(intval($solarString1) + intval($solarString2)) . "," . 
    $loadPower. "," . 
    $gridPower . "," . 
@@ -728,7 +728,7 @@ function saveSolarData($user, $gridPower, $batteryPercent,  $batteryPower, $load
 
 
 //reads data from the cloud about our particular solar installation
-function getCurrentSolarData($user) {
+function getCurrentSolarData($tenant) {
   Global $conn;
   $baseUrl = "https://www.solarkcloud.com";
   $mostRecentInverterRecord = getMostRecentInverterRecord($user);
@@ -745,7 +745,7 @@ function getCurrentSolarData($user) {
   //echo $minutesSinceLastRecord;
   
   if(false && $minutesSinceLastRecord > 5) { //we don't need to get data from SolArk any more, but this is how you would
-    $plantId = $user["energy_api_plant_id"];
+    $plantId = $tenant["energy_api_plant_id"];
     $url = $baseUrl . '/oauth/token';
     $headers = [
             'Content-Type: application/json;charset=UTF-8', // Set Content-Type header to application/json
@@ -754,8 +754,8 @@ function getCurrentSolarData($user) {
     $params = [
             'client_id' => 'csp-web',
             'grant_type' => 'password',
-            'password' => $user["energy_api_password"],
-            'username' => $user["energy_api_username"],
+            'password' => $tenant["energy_api_password"],
+            'username' => $tenant["energy_api_username"],
  
     ];
 
@@ -787,7 +787,7 @@ function getCurrentSolarData($user) {
     $userParams =   [
             //'access_token' => $access_token,
             'date' => $currentDate,
-            'id' => $user["energy_api_plant_id"],
+            'id' => $tenant["energy_api_plant_id"],
             'lan' => 'en'         
     ];
 
@@ -809,12 +809,12 @@ function getCurrentSolarData($user) {
     $data = $dataBody["data"];
     //var_dump($data);
     //if ($data["pvTo"] == true) { //this indicates we have real data!
-      $loggingSql = "INSERT INTO inverter_log ( user_id, recorded, solar_power, load_power, grid_power, battery_percentage, battery_power) VALUES (";
-      $loggingSql .= $user["user_id"] . ",'" . $formatedDateTime . "'," . $data["pvPower"] . "," . $data["loadOrEpsPower"] . "," . $data["gridOrMeterPower"] . "," . $data["soc"] . "," . $data["battPower"]    . ")";
+      $loggingSql = "INSERT INTO inverter_log ( tenant_id, recorded, solar_power, load_power, grid_power, battery_percentage, battery_power) VALUES (";
+      $loggingSql .= $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . $data["pvPower"] . "," . $data["loadOrEpsPower"] . "," . $data["gridOrMeterPower"] . "," . $data["soc"] . "," . $data["battPower"]    . ")";
       $loggingResult = mysqli_query($conn, $loggingSql);
     //}
     //echo $loggingSql;
-    return Array("user_id"=>$user["user_id"], "recorded" => $formatedDateTime, "solar_power" => $data["pvPower"], "load_power" => $data["loadOrEpsPower"] ,
+    return Array("tenant_id"=>$tenant["tenant_id"], "recorded" => $formatedDateTime, "solar_power" => $data["pvPower"], "load_power" => $data["loadOrEpsPower"] ,
     "grid_power" =>  $data["gridOrMeterPower"], "battery_percentage" => $data["soc"], "battery_power" => $data["battPower"]); 
   } else {
     return $mostRecentInverterRecord;
@@ -822,9 +822,9 @@ function getCurrentSolarData($user) {
   }
 }
 
-function getMostRecentInverterRecord($user){
+function getMostRecentInverterRecord($tenant){
   Global $conn;
-  $sql = "SELECT * FROM inverter_log WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE user_id=" . $user["user_id"] . ") LIMIT 0,1";
+  $sql = "SELECT * FROM inverter_log WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE tenant_id=" . $tenant["tenant_id"] . ") LIMIT 0,1";
 	$result = mysqli_query($conn, $sql);
 	if($result) {
 		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
@@ -832,10 +832,10 @@ function getMostRecentInverterRecord($user){
 	}
 }
 
-function currentSensorData($user){
+function currentSensorData($tenant){
   Global $conn;
   $out = "";
-  $sql = "SELECT * FROM inverter_log WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE user_id=" . $user["user_id"] . ") LIMIT 0,1";
+  $sql = "SELECT * FROM inverter_log WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE tenant_id=" . $tenant["tenant_id"] . ") LIMIT 0,1";
   $result = mysqli_query($conn, $sql);
   $out .= "<div class='listheader'>Inverter </div>";
   if($result) {
@@ -865,7 +865,7 @@ function currentSensorData($user){
       GROUP BY
           location_id
     ) latest ON wd.location_id = latest.location_id AND wd.recorded = latest.max_recorded
-    WHERE d.user_id = " . $user["user_id"];
+    WHERE d.tenant_id = " . $tenant["tenant_id"];
   $result = mysqli_query($conn, $sql);
   $out .= "<div class='listheader'>Weather </div>";
   if($result) {
@@ -980,7 +980,7 @@ function getWeatherForecast($latitude, $longitude, $apiKey) {
 
 
 
-function utilities($user, $viewMode = "list") {
+function utilities($tenant, $viewMode = "list") {
   $utilitiesData = array(
 
     [
@@ -995,7 +995,7 @@ function utilities($user, $viewMode = "list") {
         [
           'label' => 'Number of Records',
           'name' => 'number',
-          'value' => gvfa("user_id", $_POST),
+          'value' => gvfa("tenant_id", $_POST),
           'type' => 'select',
           'values' => [10, 20, 40, 60, 100, 200, 500, 1000, 2000, 5000, 10000]
         ],
@@ -1004,7 +1004,7 @@ function utilities($user, $viewMode = "list") {
           'name' => 'device_id',
           'value' => gvfa("device_id", $_POST),
           'type' => 'select',
-          'values' => "SELECT name as text, device_id FROM device WHERE user_id=<user_id/>"
+          'values' => "SELECT name as text, device_id FROM device WHERE tenant_id=<tenant_id/>"
         ]
 
       ]
@@ -1013,8 +1013,8 @@ function utilities($user, $viewMode = "list") {
   );
 
 
-  $filteredData = array_filter($utilitiesData, function ($subData) use ($user) {
-    return doesUserHaveRole($user, gvfa("role", $subData));
+  $filteredData = array_filter($utilitiesData, function ($subData) use ($tenant) {
+    return doesUserHaveRole($tenant, gvfa("role", $subData));
   });
   //echo $viewMode;
   //var_dump($filteredData );

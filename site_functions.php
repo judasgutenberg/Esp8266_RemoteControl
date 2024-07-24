@@ -141,10 +141,10 @@ function loginForm() {
 }
 
 
-function xForm($error = NULL, $wordId, $userId, $wordListId = "", $source = null) {
+function xForm($error = NULL, $wordId, $tenantId, $wordListId = "", $source = null) {
   Global $conn;
   if($wordId  != "") {
-    $sql = "SELECT * FROM `word` WHERE user_id = " . intval($userId) . " AND word_id = " . intval($wordId);
+    $sql = "SELECT * FROM `word` WHERE tenant_id = " . intval($tenantId) . " AND word_id = " . intval($wordId);
     $result = mysqli_query($conn, $sql);
     $row = $result->fetch_assoc();
     $source = $row;
@@ -186,7 +186,7 @@ function xForm($error = NULL, $wordId, $userId, $wordListId = "", $source = null
       'type' => 'select',
 	    'value' => gvfa("word_list_id", $source), 
       'error' => gvfa('word_list_id', $error),
-      'values' => "SELECT word_list_id, name as 'text' FROM word_list WHERE user_id='" . $userId  . "' ORDER BY name ASC",
+      'values' => "SELECT word_list_id, name as 'text' FROM word_list WHERE tenant_id='" . $tenantId  . "' ORDER BY name ASC",
 	  ]
     ,
 	  [
@@ -312,7 +312,7 @@ function schemaArrayFromSchema($table, &$pk){
       if(beginswith($row["Type"] , "int") || beginswith($row["Type"] , "decim")|| beginswith($row["Type"] , "float")  ){
         $type = "number";
       }
-      if($fieldName != "user_id") {
+      if($fieldName != "tenant_id") {
         $record = ["label" => $fieldName, "name" => $fieldName, "type" => $type ];
         if($type == "bool" || $type == "number" ){
           $record["liveChangeable"] = true;
@@ -325,7 +325,7 @@ function schemaArrayFromSchema($table, &$pk){
   return $headerData;
 }
 
-function genericEntityList($userId, $table) {
+function genericEntityList($tenantId, $table) {
   Global $conn;
   $headerData = schemaArrayFromSchema($table, $pk);
   $additionalValueQueryString = "";
@@ -335,7 +335,7 @@ function genericEntityList($userId, $table) {
     }
   }
   $out = "<div class='listtools'><div class='basicbutton'><a href='?table=" . $table . "&action=startcreate" . $additionalValueQueryString . "'>Create</a></div> a new " . $table . "<//div>\n";
-  $thisDataSql = "SELECT * FROM " . $table . " WHERE user_id=" . intval($userId);
+  $thisDataSql = "SELECT * FROM " . $table . " WHERE tenant_id=" . intval($tenantId);
   $deviceId = gvfw("device_id");
   if($deviceId && $table== "device_feature" ){
     $thisDataSql .= " AND device_id=" . intval($deviceId);
@@ -355,11 +355,11 @@ function genericEntityList($userId, $table) {
   }
 }
 
-function genericEntityForm($userId, $table, $errors){
+function genericEntityForm($tenantId, $table, $errors){
   Global $conn;
   $data = schemaArrayFromSchema($table, $pk);
   $pkValue =  gvfa($pk, $_GET);
-  $thisDataSql = "SELECT * FROM " . $table . " WHERE " . $pk . " = '" . $pkValue . "' AND user_id=" . intval($userId);
+  $thisDataSql = "SELECT * FROM " . $table . " WHERE " . $pk . " = '" . $pkValue . "' AND tenant_id=" . intval($tenantId);
 
   $thisDataResult = mysqli_query($conn, $thisDataSql);
   if($thisDataResult) {
@@ -374,7 +374,7 @@ function genericEntityForm($userId, $table, $errors){
 }
 
  
-function genericEntitySave($userId, $table) {
+function genericEntitySave($tenantId, $table) {
   Global $conn;
   //$data = schemaArrayFromSchema($table, $pk);
   $pk = $table . "_id";
@@ -382,7 +382,7 @@ function genericEntitySave($userId, $table) {
   unset($data['action']);
   unset($data[$pk]);
   unset($data['created']);
-  $data["user_id"] = $userId;
+  $data["tenant_id"] = $tenantId;
   $sql = insertUpdateSql($conn, $table, array($pk => gvfw($table . '_id')), $data);
   //echo $sql;
   //die();
@@ -487,7 +487,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
         $out .= "<select  name='" . $name . "' />";
         if(is_string($values)) {
           $out .= "<option value='0'>none</option>";
-          $values = tokenReplace($values,["user_id"=>1]);
+          $values = tokenReplace($values,["tenant_id"=>1]);
           //echo $values;
           $result = mysqli_query($conn, $values); //REALLY NEED TO SANITIZE $values since it contains RAW SQL!!!
           $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
@@ -784,18 +784,28 @@ function getUserById($id) {
   return $row;
 }
 
+//also returns tenant information
 function getUser($email) {
   Global $conn;
+  $user = null;
   $sql = "SELECT * FROM `user` WHERE email = '" . mysqli_real_escape_string($conn, $email) . "'";
   $result = mysqli_query($conn, $sql);
-  $row = $result->fetch_assoc();
-  return $row;
+  if($result){
+    $user = $result->fetch_assoc();
+    $sql = "SELECT * FROM `tenant_user` tu JOIN tenant t ON tu.tenant_id=t.tenant_id WHERE user_id = '" . $user["user_id"] . "'";
+    $result = mysqli_query($conn, $sql);
+    if($result){
+      $tenant = $result->fetch_assoc();
+      $user  = array_merge($user, $tenant);
+    }
+  }
+  return $user;
 }
 
-function impersonateUser($impersonatedUserId) {
+function impersonateUser($impersonatedtenantId) {
   Global $encryptionPassword;
   Global $poserCookieName;
-  setcookie($poserCookieName, openssl_encrypt($impersonatedUserId, "AES-128-CTR", $encryptionPassword), time() + (30 * 365 * 24 * 60 * 60));
+  setcookie($poserCookieName, openssl_encrypt($impersonatedtenantId, "AES-128-CTR", $encryptionPassword), time() + (30 * 365 * 24 * 60 * 60));
   header("location: .");
 }
 
@@ -1249,7 +1259,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
   $whereClauseString = "<whereclause/>";
   if($_dataRaw){
     $_data = json_decode($_dataRaw, true);
-    $_data[] = array("name"=>"user_id", "type"=>"hidden");
+    $_data[] = array("name"=>"tenant_id", "type"=>"hidden");
   }
   // Check if a primary key is provided
   $sanitizedKeys = [];
@@ -1315,7 +1325,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
         if($type == "many-to-many") {
           $mappingTable = gvfa("mapping_table", $datum);
           $countingColumn = gvfa("counting_column", $datum);
-          $laterSql .= "\nDELETE FROM " . $mappingTable . " WHERE user_id='".  $data["user_id"] .  "' AND <whereclause/>;";
+          $laterSql .= "\nDELETE FROM " . $mappingTable . " WHERE tenant_id='".  $data["tenant_id"] .  "' AND <whereclause/>;";
           $count = 1;
           $extraM2MColumns = "";
           $extraM2MValues = "";
@@ -1325,7 +1335,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
                 $extraM2MColumns = ", " .$countingColumn;
                 $extraM2MValues = ", " . $count;
               }
-              $laterSql .= "\nINSERT INTO " . $mappingTable . "(user_id, " . implode(",", array_keys($primaryKey)) . "," . $column . ",created" . $extraM2MColumns  . ") VALUES('" . $data["user_id"] . "','" . implode("','", array_values($primaryKey)) . "','" . $valueItem . "','" .  $formatedDateTime . "'" . $extraM2MValues . ");\n";
+              $laterSql .= "\nINSERT INTO " . $mappingTable . "(tenant_id, " . implode(",", array_keys($primaryKey)) . "," . $column . ",created" . $extraM2MColumns  . ") VALUES('" . $data["tenant_id"] . "','" . implode("','", array_values($primaryKey)) . "','" . $valueItem . "','" .  $formatedDateTime . "'" . $extraM2MValues . ");\n";
               $count++;
             }
           }
@@ -1482,12 +1492,13 @@ function deleteLink($table, $pkName) {
   return $out;
 }
 
-function doReport($userId, $reportId, $reportLogId = null){
+function doReport($user, $reportId, $reportLogId = null){
   Global $conn;
+  $tenantId = $user["tenant_id"];
   $historicDataObject = null;
 
   if($reportLogId != null) {
-    $sql = "SELECT data, report_id FROM report_log WHERE report_log_id = " . intval($reportLogId) . " AND user_id=" . intval($userId);
+    $sql = "SELECT data, report_id FROM report_log WHERE report_log_id = " . intval($reportLogId) . " AND tenant_id=" . intval($tenantId);
    
     $historyResult = mysqli_query($conn, $sql);
     if($historyResult) {
@@ -1506,7 +1517,7 @@ function doReport($userId, $reportId, $reportLogId = null){
   }
   $editButton = "<a href='?table=report&report_id=" . $reportId . "' class='basicbutton'>edit</a>";
   $reRunButton = "<a href='?action=fetch&table=report&report_id=" . $reportId . "' class='basicbutton'>run</a>";
-  $sql = "SELECT * FROM report WHERE report_id=" . intval($reportId) . " AND user_id=" . intval($userId);
+  $sql = "SELECT * FROM report WHERE report_id=" . intval($reportId) . " AND tenant_id=" . intval($tenantId);
   //die($sql);
   $result = mysqli_query($conn, $sql);
   $data = "";
@@ -1542,7 +1553,7 @@ function doReport($userId, $reportId, $reportLogId = null){
 
       $out .= genericForm($decodedForm, "Run");
       $out .= "<div class='listtitle'>Past Runs:</div>";
-      $out .= previousReportRuns($userId, $reportId);
+      $out .= previousReportRuns($tenantId, $reportId);
     } else {
       $ran = true;
       $out = "<div class='listtitle'>Running Report  '" . $reportData["name"] . "' " . $editButton . " " . $reRunButton  . "</div>";
@@ -1557,7 +1568,7 @@ function doReport($userId, $reportId, $reportLogId = null){
         }
         $rows = mysqli_fetch_all($reportResult, MYSQLI_ASSOC);
         $timeElapsedSecs = microtime(true) - $start;
-        $reportLogSql = "INSERT INTO report_log (user_id, report_id, run, records_returned, runtime, `data`) VALUES (" . intval($userId) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . count($rows)  . "," .  intval($timeElapsedSecs * 1000) . ",'" . json_encode($decodedForm) . "');";
+        $reportLogSql = "INSERT INTO report_log (tenant_id, report_id, run, records_returned, runtime, `data`) VALUES (" . intval($tenantId) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . count($rows)  . "," .  intval($timeElapsedSecs * 1000) . ",'" . json_encode($decodedForm) . "');";
         $reportLogResult = mysqli_query($conn, $reportLogSql);
         //var_dump($rows);
         if($rows) {
