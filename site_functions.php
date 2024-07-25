@@ -1187,7 +1187,7 @@ function createUser(){
       $result = mysqli_query($conn, $tenantSql);
       $tenantId = mysqli_insert_id($conn);
       $tenantSql = "INSERT INTO tenant_user(user_id, tenant_id, created) VALUES  (" . $userId . "," . $tenantId  . ",'" . $formatedDateTime . "')";
-      $result = mysqli_query($conn, $sql);
+      $result = mysqli_query($conn, $tenantSql);
     }
     //updateTablesFromTemplate($id);
     //die("*" . $id);
