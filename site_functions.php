@@ -435,7 +435,7 @@ function updateDataWithRows($data, $thisDataRows) {
   return $data;
 }
 
-function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$data also includes any errors
+function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user = null) { //$data also includes any errors
   Global $conn;
   $textareaIds = [];
   $codeLanguages = [];
@@ -495,7 +495,9 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
         $out .= "<select  name='" . $name . "' />";
         if(is_string($values)) {
           $out .= "<option value='0'>none</option>";
-          $values = tokenReplace($values,["tenant_id"=>1]); //suspect
+          if($user) {
+            $values = tokenReplace($values, $user); //I'd has something embarrassingly hardcoded here until I had $user available
+          }
           //echo $values;
           $result = mysqli_query($conn, $values); //REALLY NEED TO SANITIZE $values since it contains RAW SQL!!!
           $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
@@ -1587,8 +1589,8 @@ function doReport($user, $reportId, $reportLogId = null){
 
         $decodedForm = copyValuesFromSourceToDest($decodedForm, $historicDataObject);
       }
-
-      $out .= genericForm($decodedForm, "Run");
+ 
+      $out .= genericForm($decodedForm, "Run", "Running Report...", $user);
       $out .= "<div class='listtitle'>Past Runs:</div>";
       $out .= previousReportRuns($tenantId, $reportId);
     } else {
