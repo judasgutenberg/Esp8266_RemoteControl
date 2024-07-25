@@ -107,7 +107,7 @@ if($_REQUEST) {
 						$changer5 = $arrEnergyData[15];
 						$changer6 = $arrEnergyData[16];
 						$changer7 = $arrEnergyData[17];
-						$energyInfo = saveSolarData($user, $gridPower, $batteryPercent,  
+						$energyInfo = saveSolarData($tenant, $gridPower, $batteryPercent,  
 						$batteryPower, $loadPower, $solarString1, $solarString2, 
 							$batteryVoltage, 
 							$solarPotential,
@@ -165,7 +165,7 @@ if($_REQUEST) {
 				}
 			} else if ($mode=="getEnergyInfo"){ //this gets critical SolArk data for possible use automating certain things
 				
-				$energyInfo = getCurrentSolarData($user);
+				$energyInfo = getCurrentSolarData($tenant);
 				$out["energy_info"] = [];
 				if($energyInfo){
 					if(gvfa("errors", $energyInfo)){
@@ -672,7 +672,7 @@ if($_REQUEST) {
 								} 
 								//also log this change in the new device_feature_log table!  we're going to need that for when device_features get changed automatically based on data as well!
 								$loggingSql = "INSERT INTO device_feature_log (device_feature_id, tenant_id, recorded, beginning_state, end_state, management_rule_id, mechanism) VALUES (";
-								$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $user["tenant_id"] . ",'" . $formatedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "')";
+								$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "')";
 								//if($mechanism == "automation"){
 									//logSql("logging sql: " . $loggingSql);
 									//logSql("update sql: " . $sqlToUpdateDeviceFeature);

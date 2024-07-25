@@ -376,9 +376,13 @@ function genericEntityForm($tenantId, $table, $errors){
  
 function genericEntitySave($tenantId, $table) {
   Global $conn;
+  Global $encryptionPassword;
   //$data = schemaArrayFromSchema($table, $pk);
   $pk = $table . "_id";
   $data = $_POST;
+  if(array_key_exists("password", $data) && !array_key_exists("password2", $data)){
+    $data["password"] =  crypt($data["password"], $encryptionPassword);
+  }
   unset($data['action']);
   unset($data[$pk]);
   unset($data['created']);
