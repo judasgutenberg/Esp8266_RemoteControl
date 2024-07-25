@@ -784,6 +784,7 @@ function getUserById($id) {
   return $row;
 }
 
+//needs to be made so users and tenants can be many to many
 //also returns tenant information
 function getUser($email) {
   Global $conn;

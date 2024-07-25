@@ -37,7 +37,7 @@ $storagePassword = "";
 $multipleSensorArray = [];
 
 
-$tenant = getTenantById(1);
+ 
 if($_POST) {
 	logPost(gvfa("data", $_POST)); //help me debug
 }
@@ -70,7 +70,8 @@ if($_REQUEST) {
 	}
 	$canAccessData = array_search($locationId, $deviceIds) !== false;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
 	if($canAccessData) {		
-		$user = deriveUserFromStoragePassword($storagePassword);
+		$tenant = deriveTenantFromStoragePassword($storagePassword);
+ 
 		if(!$conn) {
 			$out = ["error"=>"bad database connection"];
 		} else {
@@ -813,13 +814,14 @@ function deriveDeviceIdsFromStoragePassword($storagePassword) {
 	}
 }
 
-function deriveUserFromStoragePassword($storagePassword) {
+//needs to be made so users and tenants can be many to many
+function deriveTenantFromStoragePassword($storagePassword) {
 	Global $conn;
-	$sql = "SELECT * FROM user WHERE storage_password='" . mysqli_real_escape_string($conn, $storagePassword)  . "'";
+	$sql = "SELECT * FROM tenant WHERE storage_password='" . mysqli_real_escape_string($conn, $storagePassword)  . "'";
 	$result = mysqli_query($conn, $sql);
-	if($result) {
-		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
-		return $row;
+	if($result){
+		$tenant = mysqli_fetch_array($result, MYSQLI_ASSOC);
+		return $tenant;
 	}
 }
 
