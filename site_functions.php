@@ -1171,16 +1171,24 @@ function createUser(){
   if(is_null($errors)) {
   	$encryptedPassword =  crypt($password, $encryptionPassword);
     $userList = userList();
+    $tenantSql = "";
     if(count(userList()) == 0) {
-      //if there are no users, create the first one as admin
-      $sql = "INSERT INTO user(email, password, created, role) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" .$formatedDateTime . "','admin')"; 
+      //if there are no users, create the first one as admin. we also need a Tenant and we need to add the user to that Tenant
+      $sql = "INSERT INTO user(email, password, created, role) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" .$formatedDateTime . "','super')"; 
+      $tenantSql = "INSERT INTO tenant(name, created) VALUES  ('First Tenant', '" . $formatedDateTime . "')";
     } else {
   	  $sql = "INSERT INTO user(email, password, created) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" .$formatedDateTime . "')"; 
     }
 	  //echo $sql;
     //die();
     $result = mysqli_query($conn, $sql);
-    $id = mysqli_insert_id($conn);
+    $userId = mysqli_insert_id($conn);
+    if($tenantSql){
+      $result = mysqli_query($conn, $tenantSql);
+      $tenantId = mysqli_insert_id($conn);
+      $tenantSql = "INSERT INTO tenant_user(user_id, tenant_id, created) VALUES  (" . $userId . "," . $tenantId  . ",'" . $formatedDateTime . "')";
+      $result = mysqli_query($conn, $sql);
+    }
     //updateTablesFromTemplate($id);
     //die("*" . $id);
     loginUser($_POST);
