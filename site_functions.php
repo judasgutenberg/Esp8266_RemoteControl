@@ -491,7 +491,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...") { //$d
         $out .= "<select  name='" . $name . "' />";
         if(is_string($values)) {
           $out .= "<option value='0'>none</option>";
-          $values = tokenReplace($values,["tenant_id"=>1]);
+          $values = tokenReplace($values,["tenant_id"=>1]); //suspect
           //echo $values;
           $result = mysqli_query($conn, $values); //REALLY NEED TO SANITIZE $values since it contains RAW SQL!!!
           $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);

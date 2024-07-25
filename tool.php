@@ -57,8 +57,8 @@ if($_POST || gvfw("table")) { //gvfw("table")
  
 	if ($action == "login") {
 		loginUser();
-  } else if (strtolower($action) == "create user") {
-		$errors = createUser();
+  } else if (strtolower($action) == "create user"  && array_key_exists("password2", $_POST)) {
+		$errors = createUser(); //only use this for self-creates
 	}  else if (strtolower($table) == "run") {
     //oh, we're a utility, though we never get here
   } else if(beginsWith(strtolower($action), "save") || beginsWith(strtolower($action), "create")) {
@@ -189,7 +189,11 @@ if ($user) {
     $out .= "<div class='generalerror'>Utility not yet developed.</div>";
    }
   } else if ($action == "delete") {
-    $sql = "DELETE FROM " . $table . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "' AND tenant_id='" . $tenantId . "'";
+
+    $sql = "DELETE FROM " . $table . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "'";
+    if($table != "user") {
+      $sql .= " AND tenant_id='" . $tenantId . "'";
+    }
     //die($sql);
     $hashedEntities = gvfw('hashed_entities');
     $whatHashedEntitiesShouldBe =  crypt($table .$table . "_id"  . intval(gvfw( $table . "_id")) , $encryptionPassword);

@@ -214,6 +214,8 @@ function previousReportRuns($tenantId, $reportId) {
 function users(){
   Global $conn;
   $table = "user";
+  $out = "<div class='listheader'>Users</div>";
+  $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a new user</div>\n";
   $headerData = array(
     [
 	    'label' => 'id',
@@ -239,13 +241,15 @@ function users(){
  
   $sql = "SELECT * FROM " . $table . " ORDER BY created DESC";
   $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
+  $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
   $result = mysqli_query($conn, $sql);
-  $out = "<div class='listheader'>Management Rules</div>";
+  
   if($result) {
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     //var_dump($rows);
     if($rows) {
-      $out .= genericTable($rows, $headerData, $toolsTemplate, null);
+      // genericTable($rows, $headerData, $toolsTemplate, null,  $table, $table . "_id", $sql);
+      $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id");
     }
     
   }
@@ -707,6 +711,8 @@ function editManagementRule($error,  $tenantId) {
 function managementRules($tenantId, $deviceId){
   Global $conn;
   $table = "management_rule";
+  $out = "<div class='listheader'>Management Rules</div>";
+  $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a management rule</div>\n";
   $headerData = array(
     [
 	    'label' => 'id',
@@ -724,13 +730,14 @@ function managementRules($tenantId, $deviceId){
  
   $sql = "SELECT * FROM " . $table . " WHERE tenant_id =" . intval($tenantId) . " ORDER BY created DESC";
   $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
+  $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
   $result = mysqli_query($conn, $sql);
-  $out = "<div class='listheader'>Management Rules</div>";
+ 
   if($result) {
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     //var_dump($rows);
     if($rows) {
-      $out .= genericTable($rows, $headerData, $toolsTemplate, null);
+      $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id");
     }
     
   }
