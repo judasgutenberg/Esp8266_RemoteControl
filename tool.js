@@ -13,7 +13,20 @@ function managementRuleTool(item) {
  
 }
 
-
+function tenantTool(item) {
+	let xmlhttp = new XMLHttpRequest();
+	xmlhttp.onreadystatechange = function() {
+	  console.log(xmlhttp.responseText);
+	  let data = JSON.parse(xmlhttp.responseText);
+	  showDataInPanelTool(data);
+	  //console.log(data);
+	}
+	console.log(item.value);
+	let url = "?table=tenant&action=json&tenant_id=" + item.value;
+	xmlhttp.open("GET", url, true);
+	xmlhttp.send();
+   
+  }
 
 
 function formSubmitTasks() {
@@ -43,7 +56,9 @@ function showDataInPanelTool(data){
     }
   }
   html += "</div>";
-  document.getElementById(panelId).innerHTML = html;
+  if(panelId){
+  	document.getElementById(panelId).innerHTML = html;
+  }
 }
 
 function autoUpdate(encryptedSql, headerData, tableId){

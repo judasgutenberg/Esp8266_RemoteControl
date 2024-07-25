@@ -382,7 +382,11 @@ function genericEntitySave($tenantId, $table) {
   unset($data['action']);
   unset($data[$pk]);
   unset($data['created']);
-  $data["tenant_id"] = $tenantId;
+  if($table != "user") {
+    $data["tenant_id"] = $tenantId;
+  } else {
+    //unset($data["tenant_id"]);
+  }
   $sql = insertUpdateSql($conn, $table, array($pk => gvfw($table . '_id')), $data);
   //echo $sql;
   //die();
@@ -793,13 +797,16 @@ function getUser($email) {
   $result = mysqli_query($conn, $sql);
   if($result){
     $user = $result->fetch_assoc();
-    $sql = "SELECT * FROM `tenant_user` tu JOIN tenant t ON tu.tenant_id=t.tenant_id WHERE user_id = '" . $user["user_id"] . "'";
+    $role = $user["role"];
+    $sql = "SELECT * FROM `tenant_user` tu JOIN tenant t ON tu.tenant_id=t.tenant_id WHERE user_id = '" . $user["user_id"] . "' LIMIT 0, 1 ";
     $result = mysqli_query($conn, $sql);
     if($result){
       $tenant = $result->fetch_assoc();
+      $tenant["role"] = $role;//a temporary hack that will probably be good for awhile -- overwrite the mapping table role with the user role;
       $user  = array_merge($user, $tenant);
     }
   }
+  //var_dump($user);
   return $user;
 }
 
@@ -1258,9 +1265,12 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
   $laterSql = "";
   $_dataRaw = gvfa("_data", $data); 
   $whereClauseString = "<whereclause/>";
+  //var_dump($_POST);
   if($_dataRaw){
     $_data = json_decode($_dataRaw, true);
-    $_data[] = array("name"=>"tenant_id", "type"=>"hidden");
+    if($tableName != "user") {
+      $_data[] = array("name"=>"tenant_id", "type"=>"hidden");
+    }
   }
   // Check if a primary key is provided
   $sanitizedKeys = [];
@@ -1277,6 +1287,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
   }
   foreach ($dataToScan as $datum) {
     $column = $datum["name"];
+    //echo $column ."<BR>";
     $type =  strtolower(gvfa("type", $datum, ""));
     $value = gvfa($column, $data, "");
     if($column  != "_data"  && !array_key_exists($column, $primaryKey)) {
@@ -1326,17 +1337,30 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
         if($type == "many-to-many") {
           $mappingTable = gvfa("mapping_table", $datum);
           $countingColumn = gvfa("counting_column", $datum);
-          $laterSql .= "\nDELETE FROM " . $mappingTable . " WHERE tenant_id='".  $data["tenant_id"] .  "' AND <whereclause/>;";
+          $laterSql .= "\nDELETE FROM " . $mappingTable . " WHERE <whereclause/> ";
+          if($tableName  != "user"){
+            $laterSql .= "AND tenant_id='".  $data["tenant_id"] .  "'"; 
+          }
+          $laterSql .= ";";
           $count = 1;
           $extraM2MColumns = "";
           $extraM2MValues = "";
-          if($value){
+          //var_dump($value);
+          if($value){;
             foreach($value as $valueItem){
               if($countingColumn) {
                 $extraM2MColumns = ", " .$countingColumn;
                 $extraM2MValues = ", " . $count;
               }
-              $laterSql .= "\nINSERT INTO " . $mappingTable . "(tenant_id, " . implode(",", array_keys($primaryKey)) . "," . $column . ",created" . $extraM2MColumns  . ") VALUES('" . $data["tenant_id"] . "','" . implode("','", array_values($primaryKey)) . "','" . $valueItem . "','" .  $formatedDateTime . "'" . $extraM2MValues . ");\n";
+              $insertSql = "\n INSERT INTO " . $mappingTable . "(<tenant_id/> " . implode(",", array_keys($primaryKey)) . "," . $column . ",created" . $extraM2MColumns  . ") VALUES(<tenant_id_value/> '" . implode("','", array_values($primaryKey)) . "','" . $valueItem . "','" .  $formatedDateTime . "'" . $extraM2MValues . ");\n";
+              if($tableName  != "user"){
+                $insertSql = str_replace("<tenant_id/>", "tenant_id,", $insertSql);
+                $insertSql = str_replace("<tenant_id_value/>", $data["tenant_id"] . ",", $insertSql);
+              } else {
+                $insertSql = str_replace("<tenant_id/>", "", $insertSql);
+                $insertSql = str_replace("<tenant_id_value/>", "", $insertSql);
+              }
+              $laterSql .= $insertSql;
               $count++;
             }
           }

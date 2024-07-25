@@ -211,7 +211,133 @@ function previousReportRuns($tenantId, $reportId) {
   return $out;
 }
 
+function users(){
+  Global $conn;
+  $table = "user";
+  $headerData = array(
+    [
+	    'label' => 'id',
+      'name' => $table . "_id"
+	  ],
+		[
+	    'label' => 'email',
+      'name' => 'email'
+	  ] ,
+    [
+	    'label' => 'expired',
+      'name' => 'expired'
+	  ],
+		[
+	    'label' => 'role',
+      'name' => 'role'
+    ],
+		[
+	    'label' => 'created',
+      'name' => 'created'
+	  ] 
+    );
+ 
+  $sql = "SELECT * FROM " . $table . " ORDER BY created DESC";
+  $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
+  $result = mysqli_query($conn, $sql);
+  $out = "<div class='listheader'>Management Rules</div>";
+  if($result) {
+    $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    //var_dump($rows);
+    if($rows) {
+      $out .= genericTable($rows, $headerData, $toolsTemplate, null);
+    }
+    
+  }
+  return $out;
+}
 
+function editUser($error){
+  Global $conn;
+  $table = "user";
+  $pk = gvfw($table . "_id");
+  
+  
+  $submitLabel = "save user";
+  if($pk  == "") {
+    $submitLabel = "create user";
+    $source = $_POST;
+  } else {
+    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk);
+    $result = mysqli_query($conn, $sql);
+    if($result) {
+      $source = mysqli_fetch_array($result);
+    }
+  }
+  if(!$pk){
+    $pk = "NULL";
+  }
+  $formData = array(
+    [
+	    'label' => 'id',
+      'name' => $table . "_id",
+      'type' => 'read_only'
+	  ],
+		[
+	    'label' => 'email',
+      'name' => 'email',
+      'type' => 'text',
+      'value' => gvfa("email", $source)
+	  ],
+    [
+	    'label' => 'password',
+      'name' => 'password',
+      'type' => 'text',
+      'value' => gvfa("password", $source)
+	  ] ,
+    [
+	    'label' => 'expired',
+      'name' => 'expired',
+      'type' => 'datetime',
+      'value' => gvfa("expired", $source)
+	  ] ,
+    [
+	    'label' => 'role',
+      'name' => 'role',
+      'type' => 'text',
+      'value' => gvfa("role", $source)
+	  ],
+		[
+	    'label' => 'created',
+      'name' => 'created',
+      'type' => 'datetime',
+      'value' => gvfa("created", $source)
+    ],
+    [
+	    'label' => 'tenants',
+      'name' => 'tenant_id',
+      'type' => 'many-to-many',
+      'mapping_table' => 'tenant_user',
+ 
+	    'value' => gvfa("tenant_id", $source), 
+      'error' => gvfa("tenant_id", $error),
+      'item_tool' => 'tenantTool',
+      'values' => "SELECT 
+              t.tenant_id, 
+              t.name AS 'text', 
+              MAX(tu.user_id = " . $pk . ") AS has
+          FROM 
+              tenant t
+          LEFT JOIN 
+              tenant_user tu
+          ON 
+              t.tenant_id = tu.tenant_id 
+ 
+          GROUP BY 
+              t.tenant_id, t.name
+          ORDER BY 
+              t.name ASC;"
+	  ] 
+  );
+ 
+  $form = genericForm($formData, $submitLabel);
+  return $form;
+}
 
 function editDeviceFeature($error,  $tenantId) {
   Global $conn;
@@ -583,7 +709,7 @@ function managementRules($tenantId, $deviceId){
   $table = "management_rule";
   $headerData = array(
     [
-	    'label' => 'management_rulide_id',
+	    'label' => 'id',
       'name' => $table . "_id"
 	  ],
 		[

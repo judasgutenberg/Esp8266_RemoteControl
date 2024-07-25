@@ -62,7 +62,9 @@ if($_POST || gvfw("table")) { //gvfw("table")
 	}  else if (strtolower($table) == "run") {
     //oh, we're a utility, though we never get here
   } else if(beginsWith(strtolower($action), "save") || beginsWith(strtolower($action), "create")) {
-    $errors = genericEntitySave($tenantId, $table);
+    if($table != "user" || $user["role"] == "super") {
+      $errors = genericEntitySave($tenantId, $table);
+    }
   }
 } else {
  
@@ -198,7 +200,10 @@ if ($user) {
     header('Location: '.$_SERVER['PHP_SELF'] . "?table=" . $table);
   } elseif($action == "json"){
     if($table!= "user" || $user["role"]  == "super") {
-      $sql = "SELECT * FROM " .  $table  . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "' AND tenant_id='" . $tenantId . "'";
+      $sql = "SELECT * FROM " .  $table  . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "'";
+      if($table != "tenant") {
+        $sql .= " AND tenant_id='" . $tenantId . "'";
+      } 
       $result = mysqli_query($conn, $sql);
       $valueArray = mysqli_fetch_assoc($result);
       die(json_encode($valueArray, JSON_FORCE_OBJECT));
@@ -234,6 +239,14 @@ if ($user) {
       $out .=  editManagementRule($errors,  $tenantId);
     } else {
       $out .= managementRules($tenantId, $deviceId);
+    }
+	} else if($table == "user") {
+    if ($action == "startcreate" || gvfw("user_id") != "") {
+      $out .=  editUser($errors);
+    } else {
+      if($user["role"]  == "super"){
+        $out .= users();
+      }
     }
   } else if ($action == "startcreate") {
     $out .= genericEntityForm($tenantId, $table, $errors);
