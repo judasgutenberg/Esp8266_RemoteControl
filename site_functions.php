@@ -1708,7 +1708,7 @@ function checkJsonSyntax($json) {
   } else {
     $errors = getJsonErrorMessage(json_last_error());
   }
-  return ["errors"=>$errors];  
+  return ["errors"=>[$errors]];  
 }
 
 
