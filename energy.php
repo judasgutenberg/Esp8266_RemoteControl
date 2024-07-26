@@ -17,7 +17,7 @@ $poser = null;
 $poserString = "";
 $out = "";
 $conn = mysqli_connect($servername, $username, $password, $database);
-$user = logIn();
+$user = autoLogin();
 $content = "";
 $action = gvfw("action");
 if ($action == "login") {

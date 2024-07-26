@@ -515,7 +515,8 @@ function editReport($error,  $tenantId) {
       'width' => 500,
       'height'=> 200,
 	    'value' => gvfa("form", $source), 
-      'error' => gvfa('form', $error)
+      'error' => gvfa('form', $error),
+      'frontend_validation' => "checkJsonSyntax('sql')"
 	  ],
     [
 	    'label' => 'sql',
@@ -524,7 +525,8 @@ function editReport($error,  $tenantId) {
       'width' => 500,
       'height'=> 200,
 	    'value' => gvfa("sql", $source), 
-      'error' => gvfa('sql', $error)
+      'error' => gvfa('sql', $error),
+      'frontend_validation' => "checkSqlSyntax('sql')"
 	  ]
     );
   $form = genericForm($formData, $submitLabel);

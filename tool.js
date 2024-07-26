@@ -44,6 +44,49 @@ function formSubmitTasks() {
   
 }
 
+function checkJsonSyntax(formElementName) {
+	const inputElement = document.querySelector(`input[name="${formElementName}"]`);
+	var xmlhttp = new XMLHttpRequest();
+	if (inputElement) {
+		xmlhttp.onreadystatechange = function() {
+
+			// Step 1: Find the form input whose name is in the variable 'name'
+			let data = JSON.parse(xmlhttp.responseText);
+			if(data["errors"].length > 0) {
+				
+					// Step 2: Find the first div with class 'genericformerror' by traversing backwards from the input element
+					let currentElement = inputElement.previousElementSibling;
+					let errorDiv = null;
+					
+					while (currentElement) {
+						if (currentElement.classList && currentElement.classList.contains('genericformerror')) {
+							errorDiv = currentElement;
+							break;
+						}
+						currentElement = currentElement.previousElementSibling;
+					}
+					
+					// Step 3: Put the text "found you" in that div if found
+					if (errorDiv) {
+						errorDiv.textContent = data["errors"][0];
+					} else {
+						console.log('Error div with class "genericformerror" not found.');
+					}
+			
+			}
+		}
+
+		const params = new URLSearchParams();
+		params.append("sql", inputElement.value);
+		params.append("action", "checkjsonsyntax");
+		let url = "tool.php"; 
+		//console.log(url);
+		xmlhttp.open("POST", url, true);
+		xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+		xmlhttp.send(params);
+	}
+}
+
 
 function showDataInPanelTool(data){
   let html = "<div class='list'>";

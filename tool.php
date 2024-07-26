@@ -20,7 +20,7 @@ $conn = mysqli_connect($servername, $username, $password, $database);
 
 $table = strtolower(filterStringForSqlEntities(gvfw('table', "device"))); //make sure this table name doesn't contain injected SQL
 $action = strtolower(gvfw('action', "list"));
-$user = logIn();
+$user = autoLogin();
 $tenantId = gvfa("tenant_id", $user);
 
 $deviceId = gvfa('device_id', $_GET);
@@ -72,7 +72,15 @@ if($_POST || gvfw("table")) { //gvfw("table")
  
 if ($user) {
 	$out .= "<div>\n";
-  if($action == "getdevices") {
+  if($action == "checksqlsyntax") {
+    $sql = gvfw('sql');
+    $out = json_encode(checkMySqlSyntax($sql));
+    die( $out);
+  } else if($action == "checkjsonsyntax") {
+      $sql = gvfw('json');
+      $out = json_encode(checkJsonSyntax($sql));
+      die($out);
+  } else if($action == "getdevices") {
     $out = getDevices($tenantId);
     die(json_encode($out));
   } else if($action == "getcolumns") {

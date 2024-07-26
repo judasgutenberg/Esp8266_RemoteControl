@@ -90,8 +90,6 @@ function bodyWrap($content, $user, $deviceId, $poser = null) {
   return $out;
 }
 
-
-
 function filterStringForSqlEntities($input) {
   // Replace characters that are not letters, numbers, dashes, or underscores with an empty string
   $filtered = preg_replace('/[^a-zA-Z0-9-_]/', '', $input);
@@ -99,7 +97,7 @@ function filterStringForSqlEntities($input) {
   return $filtered;
 }
 
-function logIn() {
+function autoLogin($tenantId = null) {
   Global $encryptionPassword;
   Global $cookiename;
   if(!isset($_COOKIE[$cookiename])) {
@@ -109,7 +107,7 @@ function logIn() {
    $cookieValue = $_COOKIE[$cookiename];
    $email = openssl_decrypt($cookieValue, "AES-128-CTR", $encryptionPassword);
    if(strpos($email, "@") > 0){
-      return getUser($email);
+      return getUser($email, $tenantId);
       
    } else {
       return  false;
@@ -138,66 +136,6 @@ function loginForm() {
   $out .= "<div> or  <div class='basicbutton'><a href=\"tool.php?table=user&action=startcreate\">Create Account</a></div></div>\n";
   $out .= "</form>\n";
   return $out;
-}
-
-
-function xForm($error = NULL, $wordId, $tenantId, $wordListId = "", $source = null) {
-  Global $conn;
-  if($wordId  != "") {
-    $sql = "SELECT * FROM `word` WHERE tenant_id = " . intval($tenantId) . " AND word_id = " . intval($wordId);
-    $result = mysqli_query($conn, $sql);
-    $row = $result->fetch_assoc();
-    $source = $row;
-  } else if ($_POST){
-    $source = $_POST;
-  } else if(is_null($source) && array_key_exists("word_id", $source)) {
-    $source = array("word_list_id"=> $wordListId);
-    
-  }
-  if(!$wordId) {
-    $wordId = $source["word_id"];
-  }
-  $submitLabel = "save word";
-  if($wordId  == "") {
-    $submitLabel = "create word";
-  }
-	$formData = array(
-		[
-	    'label' => 'word',
-      'name' => 'word',
-      'width' => 400,
-	    'value' => gvfa("word", $source), 
-      'error' => gvfa('word', $error)
-	  ],
-    [
-	    'label' => 'type',
-      'name' => 'type',
-      'type' => 'select',
-	    'value' => gvfa("type", $source), 
-      'error' => gvfa('type', $error),
-      'values' => [
-        'white',
-        'black' 
-      ],
-	  ],
-    [
-	    'label' => 'list',
-      'name' => 'word_list_id',
-      'type' => 'select',
-	    'value' => gvfa("word_list_id", $source), 
-      'error' => gvfa('word_list_id', $error),
-      'values' => "SELECT word_list_id, name as 'text' FROM word_list WHERE tenant_id='" . $tenantId  . "' ORDER BY name ASC",
-	  ]
-    ,
-	  [
-	    'label' => '',
-      'name' => 'word_id',
-      'value' => gvfa("word_id", $source),
-      'type' => 'hidden',
-      'error' => gvfa('word_id', $error)
-	  ]
-    );
-  return genericForm($formData, $submitLabel);
 }
 
 function newUserForm($error = NULL) {
@@ -244,8 +182,6 @@ function presentList($data) {
   $out .=  "</ul>\n";
   return $out;
 }
-
- 
 
 function camelCaseToWords($input) { //thanks, chatgpt!
   // Use a regular expression to add spaces before each uppercase letter
@@ -445,6 +381,11 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
   $columnCount = 0;
 	foreach($data as &$datum) {
 		$label = gvfa("label", $datum);
+    $frontendValidation = gvfa("frontend_validation", $datum);
+    $validationString = "";
+    if($frontendValidation){
+      $validationString = ' onblur=\" . $frontendValidation . "\"';
+    }
 		$value = str_replace("\\\\", "\\", gvfa("value", $datum)); 
 		$name = gvfa("name", $datum); 
 		$type = strtolower(gvfa("type", $datum)); 
@@ -491,7 +432,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         }
     
       } else if($type == 'select') {
-
+ 
         $out .= "<select  name='" . $name . "' />";
         if(is_string($values)) {
           $out .= "<option value='0'>none</option>";
@@ -500,19 +441,26 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
           }
           //echo $values;
           $result = mysqli_query($conn, $values); //REALLY NEED TO SANITIZE $values since it contains RAW SQL!!!
-          $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
-          foreach($rows as $row){
-            $selected = "";
-            if(!$value){
-              $value = gvfw($name);
-            }
-            if($row[$name] == $value) {
-              $selected = " selected='selected' ";
+          
+   
+          if($result){
+            $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+  
+            if($rows){
+              foreach($rows as $row){
+                $selected = "";
+                if(!$value){
+                  $value = gvfw($name);
+                }
+                if($row[$name] == $value) {
+                  $selected = " selected='selected' ";
 
-            }
-            $out .= "<option " . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>\n";
+                }
+                $out .= "<option " . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>\n";
 
+              }
           }
+        }
           
 
         } else if(is_array($values)){
@@ -609,7 +557,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
           array_push($textareaIds, $textAreaId);
           $codeLanguage = gvfa("code_language", $datum, "html");
           array_push($codeLanguages, $codeLanguage);
-          $out .= "<textarea " .  $idString . " style='width:" . $width . "px;height:" . $height . "px' name='" . $name . "'  />" .  $value  . "</textarea>\n";
+          $out .= "<textarea " . $validationString . " " .  $idString . " style='width:" . $width . "px;height:" . $height . "px' name='" . $name . "'  />" .  $value  . "</textarea>\n";
         } else {
           $specialNumberAttribs = "";
           if ($type == "number") {
@@ -619,7 +567,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
             $type == "number";
             $specialNumberAttribs = " step='1' ";
           }
-          $out .= "<input style='width:" . $width . "px'  " . $idString. " " . $specialNumberAttribs . "  name='" . $name . "' value=\"" .  $value . "\" type='" . $type . "'/>\n";
+          $out .= "<input " . $validationString . " style='width:" . $width . "px'  " . $idString. " " . $specialNumberAttribs . "  name='" . $name . "' value=\"" .  $value . "\" type='" . $type . "'/>\n";
         }
         
       }
@@ -796,7 +744,7 @@ function getUserById($id) {
 
 //needs to be made so users and tenants can be many to many
 //also returns tenant information
-function getUser($email) {
+function getUser($email, $tenantId = null) {
   Global $conn;
   $user = null;
   $sql = "SELECT * FROM `user` WHERE email = '" . mysqli_real_escape_string($conn, $email) . "'";
@@ -804,22 +752,30 @@ function getUser($email) {
   if($result){
     $user = $result->fetch_assoc();
     $role = $user["role"];
-    $sql = "SELECT * FROM `tenant_user` tu JOIN tenant t ON tu.tenant_id=t.tenant_id WHERE user_id = '" . $user["user_id"] . "' LIMIT 0, 1 ";
+    $sql = "SELECT * FROM `tenant_user` tu JOIN tenant t ON tu.tenant_id=t.tenant_id WHERE user_id = '" . $user["user_id"] . "'";
+    if($tenantId){
+      $sql .= " AND t.tenant = " . intval($tenantId);
+    }
     $result = mysqli_query($conn, $sql);
+    $user["tenants"] = null;
     if($result){
-      $tenant = $result->fetch_assoc();
-      $tenant["role"] = $role;//a temporary hack that will probably be good for awhile -- overwrite the mapping table role with the user role;
-      $user  = array_merge($user, $tenant);
+      $tenants = mysqli_fetch_all($result, MYSQLI_ASSOC);
+      if(count($tenants) > 0) {
+        $tenant = $tenants[0];
+        $tenant["role"] = $role;//a temporary hack that will probably be good for awhile -- overwrite the mapping table role with the user role;
+        $user["tenants"] = $tenants;
+        $user  = array_merge($user, $tenant);
+      }
     }
   }
   //var_dump($user);
   return $user;
 }
 
-function impersonateUser($impersonatedtenantId) {
+function impersonateUser($impersonatedUserId) {
   Global $encryptionPassword;
   Global $poserCookieName;
-  setcookie($poserCookieName, openssl_encrypt($impersonatedtenantId, "AES-128-CTR", $encryptionPassword), time() + (30 * 365 * 24 * 60 * 60));
+  setcookie($poserCookieName, openssl_encrypt($impersonatedUserId, "AES-128-CTR", $encryptionPassword), time() + (30 * 365 * 24 * 60 * 60));
   header("location: .");
 }
 
@@ -1006,7 +962,9 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
       array_push($headerData, array("label"=>$key, "name"=>$key));
     }
   }
- ;
+  if(!$headerData){
+    $headerData = [];
+  }
   $out = "";
   if($searchData) {
     $out .=  "<form>\n";
@@ -1026,6 +984,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
 
   $out .="<div class='listheader'>\n";
   $cellNumber = 0;
+ 
   foreach($headerData as &$headerCell) {
   	$out.= "<span class='headerlink' onclick='sortTable(event, " . $cellNumber . ")'>" . $headerCell['label'] . "</span>\n";
     $cellNumber++;
@@ -1113,7 +1072,9 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
 function tokenReplace($template, $data,  $tableName = "", $strDelimiterBegin = "<", $strDelimiterEnd = "/>"){
   Global $encryptionPassword;
   foreach($data as $key => $value) {
-    $template = str_replace($strDelimiterBegin . $key . $strDelimiterEnd, $value, $template);
+    if(!is_array($value)) {
+      $template = str_replace($strDelimiterBegin . $key . $strDelimiterEnd, $value, $template);
+    }
   }
   if($tableName!= "") {
     $hashedEntities = crypt($tableName . $tableName . "_id" . $data[$tableName . "_id"], $encryptionPassword);
@@ -1633,3 +1594,122 @@ function doReport($user, $reportId, $reportLogId = null){
   $out .= $data;
   return $out;
 }
+
+function replaceCharacterWithinQuotes($str, $char, $repl) {
+  if ( strpos( $str, $char ) === false ) return $str ;
+
+  $placeholder = chr(7) ;
+  $inSingleQuote = false ;
+  $inDoubleQuotes = false ;
+  $inBackQuotes = false ;
+  for ($p = 0 ; $p < strlen($str) ; $p++ ) {
+      switch ( $str[$p] ) {
+          case "'": if ( ! $inDoubleQuotes && ! $inBackquotes ) $inSingleQuote = ! $inSingleQuote ; break ;
+          case '"': if ( ! $inSingleQuote && ! $inBackquotes ) $inDoubleQuotes = ! $inDoubleQuotes ; break ;
+          case '`': if ( ! $inSingleQuote && ! $inDoubleQuotes ) $inBackquotes  = ! $inBackquotes ; break ;
+          case '\\': $p++ ; break ;
+          case $char: if ( $inSingleQuote || $inDoubleQuotes || $inBackQuotes) $str[$p] = $placeholder ; break ;
+      }
+  }
+  return str_replace($placeholder, $repl, $str) ;
+}
+function getJsonErrorMessage($errorCode) {
+  switch ($errorCode) {
+      case JSON_ERROR_NONE:
+          return;
+      case JSON_ERROR_DEPTH:
+          return 'Maximum stack depth exceeded';
+      case JSON_ERROR_STATE_MISMATCH:
+          return 'Underflow or the modes mismatch';
+      case JSON_ERROR_CTRL_CHAR:
+          return 'Unexpected control character found';
+      case JSON_ERROR_SYNTAX:
+          return 'Syntax error, malformed JSON';
+      case JSON_ERROR_UTF8:
+          return 'Malformed UTF-8 characters, possibly incorrectly encoded';
+      case JSON_ERROR_RECURSION:
+          return 'One or more recursive references in the value to be encoded';
+      case JSON_ERROR_INF_OR_NAN:
+          return 'One or more NAN or INF values in the value to be encoded';
+      case JSON_ERROR_UNSUPPORTED_TYPE:
+          return 'A value of a type that cannot be encoded was given';
+      case JSON_ERROR_INVALID_PROPERTY_NAME:
+          return 'A property name that cannot be encoded was given';
+      case JSON_ERROR_UTF16:
+          return 'Malformed UTF-16 characters, possibly incorrectly encoded';
+      default:
+          return 'Unknown error';
+  }
+}
+
+function checkMySqlSyntax($query) {
+  global $conn;
+  $errors = [];
+
+  if (trim($query)) {
+      // Replace characters within string literals that may mess up the process
+      $query = replaceCharacterWithinQuotes($query, '#', '%');
+      $query = replaceCharacterWithinQuotes($query, ';', ':');
+
+      // Prepare the query to make a valid EXPLAIN query
+      // Remove comments # comment ; or # comment newline
+      // Remove SET @var=val;
+      // Remove empty statements
+      // Remove last ;
+      // Put EXPLAIN in front of every MySQL statement (separated by ;)
+      $query = "EXPLAIN " .
+          preg_replace(
+              [
+                  "/#[^\n\r;]*([\n\r;]|$)/",
+                  "/[Ss][Ee][Tt]\s+\@[A-Za-z0-9_]+\s*:?=\s*[^;]+(;|$)/",
+                  "/;\s*;/",
+                  "/;\s*$/",
+                  "/;/"
+              ],
+              [
+                  "",
+                  "",
+                  ";",
+                  "",
+                  "; EXPLAIN "
+              ],
+              $query
+          );
+
+      foreach (explode(';', $query) as $q) {
+          if (trim($q)) {
+              try {
+                  $result = $conn->query($q);
+                  if (!$result) {
+                    $error =  mysqli_error($conn);
+                    //echo "one" . $error;
+                    $errors[] = $error;
+                  }
+              } catch (Exception $e) {
+                echo "two";
+                  $errors[] = $e->getMessage();
+              }
+          }
+      }
+  }
+  $errors = array_filter($errors);
+  //var_dump($errors);
+  //$errors = array_filter($errors);
+  return ["errors"=>$errors];  
+}
+
+function checkJsonSyntax($json) {
+  // Decode the JSON string
+  json_decode($json);
+  // Check for JSON parsing errors
+  $lastError = json_last_error();
+  if($lastError == 0) {
+    $errors = [];
+  } else {
+    $errors = getJsonErrorMessage(json_last_error());
+  }
+  return ["errors"=>$errors];  
+}
+
+
+ 
