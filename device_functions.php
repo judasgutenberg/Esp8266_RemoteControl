@@ -866,7 +866,7 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
 function getCurrentSolarData($tenant) {
   Global $conn;
   $baseUrl = "https://www.solarkcloud.com";
-  $mostRecentInverterRecord = getMostRecentInverterRecord($user);
+  $mostRecentInverterRecord = getMostRecentInverterRecord($tenant);
   $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
   $nowTime = strtotime($formatedDateTime);
