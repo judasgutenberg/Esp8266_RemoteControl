@@ -810,7 +810,7 @@ function getDevices($tenantId){
 }
 function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $loadPower, 
   $solarString1, $solarString2, $batteryVoltage, 
-  $solarPotential,
+  $mysteryValue3,
   $mysteryValue1,
   $mysteryValue2,
   $changer1,
@@ -827,7 +827,7 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
   $nowTime = strtotime($formatedDateTime);
   $loggingSql = "INSERT INTO inverter_log ( tenant_id, recorded, 
   solar_power, load_power, grid_power, battery_percentage, battery_power,
-  battery_voltage, solar_potential,
+  battery_voltage, mystery_value3,
   mystery_value1,
   mystery_value2,
   changer1,
@@ -846,7 +846,7 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
    $batteryPercent . "," . 
    $batteryPower . "," .  
    $batteryVoltage . "," .  
-   $solarPotential . "," .
+   $mysteryValue3 . "," .
    $mysteryValue1 . "," .
    $mysteryValue2 . "," .
    $changer1 . "," .

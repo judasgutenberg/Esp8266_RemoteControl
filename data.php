@@ -97,7 +97,7 @@ if($_REQUEST) {
 						$solarString1 = $arrEnergyData[5];
 						$solarString2 = $arrEnergyData[6];
 						$batteryVoltage = intval($arrEnergyData[7])/100;
-						$solarPotential =  $arrEnergyData[8];
+						$mysteryValue3 =  $arrEnergyData[8];
 						$mysteryValue1 = $arrEnergyData[9];
 						$mysteryValue2 = $arrEnergyData[10];
 						$changer1 = $arrEnergyData[11];
@@ -110,7 +110,7 @@ if($_REQUEST) {
 						$energyInfo = saveSolarData($tenant, $gridPower, $batteryPercent,  
 						$batteryPower, $loadPower, $solarString1, $solarString2, 
 							$batteryVoltage, 
-							$solarPotential,
+							$mysteryValue3,
 							$mysteryValue1,
 							$mysteryValue2,
 							$changer1,
