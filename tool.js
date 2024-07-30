@@ -54,7 +54,6 @@ function checkSqlSyntax(formElementName) {
 			if (xmlhttp.readyState === XMLHttpRequest.DONE) {
 				if (xmlhttp.status === 200) {
 					let data = JSON.parse(xmlhttp.responseText.trim());
-		
 					let currentElement = inputElement.previousElementSibling;
 					let errorDiv = null;
 					
@@ -106,7 +105,6 @@ function replaceXMLTagsWithOne(input) {
 
 function checkJsonSyntax(formElementName) {
 	const inputElement = document.querySelector(`textarea[name="${formElementName}"]`);
-	console.log(formElementName, inputElement);
 	var xmlhttp = new XMLHttpRequest();
 	if (inputElement) {
 		xmlhttp.onreadystatechange = function() {
@@ -136,8 +134,6 @@ function checkJsonSyntax(formElementName) {
 					}
 				}
 			}
-			
-	 
 		}
 
 		const params = new URLSearchParams();

@@ -271,7 +271,10 @@ function genericEntityList($tenantId, $table) {
     }
   }
   $out = "<div class='listtools'><div class='basicbutton'><a href='?table=" . $table . "&action=startcreate" . $additionalValueQueryString . "'>Create</a></div> a new " . $table . "<//div>\n";
-  $thisDataSql = "SELECT * FROM " . $table . " WHERE tenant_id=" . intval($tenantId);
+  $thisDataSql = "SELECT * FROM " . $table;
+  if($table != "tenant"  && $table != "user") {
+    $thisDataSql .= " WHERE tenant_id=" . intval($tenantId);
+  }
   $deviceId = gvfw("device_id");
   if($deviceId && $table== "device_feature" ){
     $thisDataSql .= " AND device_id=" . intval($deviceId);
@@ -295,8 +298,11 @@ function genericEntityForm($tenantId, $table, $errors){
   Global $conn;
   $data = schemaArrayFromSchema($table, $pk);
   $pkValue =  gvfa($pk, $_GET);
-  $thisDataSql = "SELECT * FROM " . $table . " WHERE " . $pk . " = '" . $pkValue . "' AND tenant_id=" . intval($tenantId);
-
+  $thisDataSql = "SELECT * FROM " . $table . " WHERE " . $pk . " = '" . $pkValue . "'";
+   
+  if($table != "user"  && $table != "tenant") {
+    $thisDataSql .= " AND tenant_id=" . intval($tenantId);
+  }
   $thisDataResult = mysqli_query($conn, $thisDataSql);
   if($thisDataResult) {
     $thisDataRows = mysqli_fetch_all($thisDataResult, MYSQLI_ASSOC);
@@ -322,7 +328,7 @@ function genericEntitySave($tenantId, $table) {
   unset($data['action']);
   unset($data[$pk]);
   unset($data['created']);
-  if($table != "user") {
+  if($table != "user"  && $table != "tenant") {
     $data["tenant_id"] = $tenantId;
   } else {
     //unset($data["tenant_id"]);
@@ -928,6 +934,10 @@ function tabNav($user) {
   
   if($user && $user["role"] == "super") {
     $tabData[] =   [
+      'label' => 'Tenants',
+      'table' => 'tenant' 
+    ];
+    $tabData[] =   [
       'label' => 'Users',
       'table' => 'user' 
     ];
@@ -983,6 +993,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
     $headerData = [];
   }
   $out = "";
+
   if($searchData) {
     $out .=  "<form>\n";
     $out .=  "<input type='hidden' id='action' name='action' value='" . $searchData["action"] . "' />\n";
@@ -1579,11 +1590,19 @@ function doReport($user, $reportId, $reportLogId = null){
       //die($sql);
       $start = microtime(true);
       $reportResult = mysqli_query($conn, $sql);
-      if($reportResult) {
+      $error = mysqli_error($conn);
+      $affectedRows = mysqli_affected_rows($conn);
+      if($reportResult || $error) {
         if($decodedForm != "") {
           $decodedForm = mergeValues($decodedForm, $_POST);
         }
-        $rows = mysqli_fetch_all($reportResult, MYSQLI_ASSOC);
+        if($error) {
+          $rows = [["error" => $error]];
+        } else if($affectedRows) {
+          $rows = [["Affected records" => $affectedRows]];
+        } else {
+          $rows = mysqli_fetch_all($reportResult, MYSQLI_ASSOC);
+        }
         $timeElapsedSecs = microtime(true) - $start;
         $reportLogSql = "INSERT INTO report_log (tenant_id, report_id, run, records_returned, runtime, `data`) VALUES (" . intval($tenantId) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . count($rows)  . "," .  intval($timeElapsedSecs * 1000) . ",'" . json_encode($decodedForm) . "');";
         $reportLogResult = mysqli_query($conn, $reportLogSql);
