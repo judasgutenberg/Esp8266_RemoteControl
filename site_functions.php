@@ -387,6 +387,9 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
   $out .= "</script>\n";
 	$out .= "<div class='genericform'>\n";
   $columnCount = 0;
+  if(!$data){
+    return;
+  }
 	foreach($data as &$datum) {
 		$label = gvfa("label", $datum);
     $frontendValidation = gvfa("frontend_validation", $datum);
@@ -1559,25 +1562,33 @@ function doReport($user, $reportId, $reportLogId = null){
     $sql = $reportData["sql"];
     $form = $reportData["form"];
     $decodedForm = "";
+    $decodedFormToUse = "";
     $output = null;
     if($form){
       $decodedForm = json_decode($form, true);
-      if(array_key_exists("form", $decodedForm)) {
+      if($decodedForm){
+ 
         if(array_key_exists("output", $decodedForm)) {
           $output = $decodedForm["output"];
+          $decodedFormToUse = "";
+        } else {
+          $decodedFormToUse = $decodedForm;
         }
-        $decodedForm = $decodedForm["form"];
+        if(array_key_exists("form", $decodedForm)){
+          $decodedFormToUse = $decodedForm["form"];
+        }
+        
       }
     }
-    if($form != "" && gvfw("action") == "fetch" || gvfw("action") == "rerun") {
+    if($decodedFormToUse != "" && gvfw("action") == "fetch" || gvfw("action") == "rerun") {
       $out .= "<div class='listtitle'>Prepare to Run Report  '" . $reportData["name"] . "' " . $editButton . "</div>";
  
-      if($historicDataObject){
+      if($historicDataObject  && $decodedFormToUse){
 
-        $decodedForm = copyValuesFromSourceToDest($decodedForm, $historicDataObject);
+        $decodedFormToUse = copyValuesFromSourceToDest($decodedFormToUse, $historicDataObject);
       }
- 
-      $out .= genericForm($decodedForm, "Run", "Running Report...", $user);
+
+      $out .= genericForm($decodedFormToUse, "Run", "Running Report...", $user);
       $out .= "<div class='listtitle'>Past Runs:</div>";
       $out .= previousReportRuns($tenantId, $reportId);
     } else {
@@ -1595,8 +1606,8 @@ function doReport($user, $reportId, $reportLogId = null){
       $rows = false;
       //echo $reportResult . "-" . $error  . "=" . $affectedRows;
       if($reportResult || $error || $affectedRows) {
-        if($decodedForm != "") {
-          $decodedForm = mergeValues($decodedForm, $_POST);
+        if($decodedFormToUse != "") {
+          $decodedFormToUse = mergeValues($decodedFormToUse, $_POST);
         }
         if($error) {
           $rows = [["error" => $error]];

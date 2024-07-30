@@ -171,6 +171,7 @@ CREATE TABLE report_log(
   tenant_id INT,
   run DATETIME,
   data TEXT NULL,
+  `sql` TEXT NULL,
   records_returned int,
   runtime int
 );
@@ -245,7 +246,7 @@ CREATE TABLE tenant_user(
 --ALTER TABLE weather_data ADD device_feature_id INT NULL;
 --ALTER TABLE inverter_log ADD battery_voltage DECIMAL(8,5) NULL;
 --ALTER TABLE inverter_log ADD solar_potential INT NULL;
-
+--ALTER TABLE report_log ADD sql TEXT NULL;
 
   ALTER TABLE inverter_log ADD mystery_value1 INT NULL;
   ALTER TABLE inverter_log ADD mystery_value2 INT NULL;

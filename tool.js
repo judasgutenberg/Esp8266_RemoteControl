@@ -654,73 +654,62 @@ function formatJSON(jsonString, indent = 2) {
   } catch (error) {
       // Handle errors in case of invalid JSON
       console.error("Invalid JSON string:", error);
-      return null;
+      return jsonString; //but then just return whatever it was, because we don't want to just throw out the baby with the bathwater
   }
 }
 
 function formatSQL(sql) {
-  const indentString = "  "; // Two spaces for indentation
-  const keywords = [
-      "SELECT", "FROM", "WHERE", "AND", "OR", "INSERT", "INTO", "VALUES",
-      "UPDATE", "SET", "DELETE", "JOIN", "INNER JOIN", "LEFT JOIN", "RIGHT JOIN",
-      "ON", "GROUP BY", "ORDER BY", "LIMIT", "OFFSET", "HAVING", "DISTINCT"
-  ];
+	// Define SQL keywords and keywords that cause a new line
+	const keywords = ['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'OUTER JOIN', 'JOIN', 'ON', 'HAVING'];
+	const newlineKeywords = new Set(['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT', 'JOIN', 'ON', 'HAVING']);
+	const indentKeywords = new Set(['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT']);
+	
+	let formatted = '';
+	let indentLevel = 0;
+	let lines = sql.replace(/\s+/g, ' ').trim().split(' ');
+	
+	function addNewline() {
+	  formatted += '\n' + '  '.repeat(indentLevel);
+	}
   
-  const keywordSet = new Set(keywords.map(k => k.toUpperCase()));
-  let formattedSQL = "";
-  let indentLevel = 0;
-  let isSelectClause = false;
-
-  const tokens = sql.split(/\s+/);
-  let i = 0;
-
-  while (i < tokens.length) {
-      const token = tokens[i].trim();
-      if (!token) {
-          i++;
-          continue;
-      }
-
-      const upperToken = token.toUpperCase();
-      if (keywordSet.has(upperToken)) {
-          if (formattedSQL.trim().length > 0) {
-              formattedSQL += "\n";
-          }
-
-          if (upperToken === "SELECT") {
-              isSelectClause = true;
-          } else {
-              isSelectClause = false;
-          }
-
-          if (upperToken === "FROM" || upperToken === "WHERE" || upperToken === "JOIN" || upperToken === "ON" || upperToken === "GROUP BY" || upperToken === "ORDER BY" || upperToken === "LIMIT") {
-              indentLevel = 1;
-          } else {
-              indentLevel = 0;
-          }
-
-          formattedSQL += `${indentString.repeat(indentLevel)}${upperToken}`;
-      } else {
-          if (isSelectClause) {
-              // Handle columns in SELECT clause
-              formattedSQL += `\n${indentString.repeat(indentLevel + 1)}${token}`;
-              if (tokens[i + 1] && tokens[i + 1] !== ',' && tokens[i + 1].toUpperCase() !== 'FROM') {
-                  formattedSQL += ",";
-              }
-          } else {
-              formattedSQL += (i > 0 && formattedSQL.slice(-1) !== "\n" ? " " : "") + token;
-          }
-      }
-
-      if (upperToken === "SELECT" || upperToken === "INSERT" || upperToken === "UPDATE" || upperToken === "DELETE") {
-          indentLevel = 1;
-      }
-
-      i++;
+	function increaseIndent() {
+	  indentLevel++;
+	}
+  
+	function decreaseIndent() {
+	  if (indentLevel > 0) {
+		indentLevel--;
+	  }
+	}
+	
+	for (let i = 0; i < lines.length; i++) {
+	  let word = lines[i].toUpperCase();
+	  let originalWord = lines[i];
+  
+	  if (newlineKeywords.has(word)) {
+		addNewline();
+		if (indentKeywords.has(word)) {
+		  increaseIndent();
+		}
+		formatted += word;
+	  } else if (word === ',') {
+		formatted += ',';
+		addNewline();
+	  } else if (word === ')') {
+		decreaseIndent();
+		addNewline();
+		formatted += word;
+	  } else if (word === '(') {
+		formatted += word;
+		increaseIndent();
+		addNewline();
+	  } else {
+		formatted += ' ' + originalWord;
+	  }
+	}
+	
+	return formatted;
   }
-
-  return formattedSQL.trim();
-}
 
 
 //uses charts.js library to make all sorts of graphs. also a serves as the launch point for other viewOptions like google maps and calendar
