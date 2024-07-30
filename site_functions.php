@@ -1609,7 +1609,7 @@ function doReport($user, $reportId, $reportLogId = null){
           $count = count($rows);
         }
         $timeElapsedSecs = microtime(true) - $start;
-        $reportLogSql = "INSERT INTO report_log (tenant_id, report_id, run, records_returned, runtime, `data`) VALUES (" . intval($tenantId) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . $count  . "," .  intval($timeElapsedSecs * 1000) . ",'" . mysqli_real_escape_string($conn, json_encode($decodedForm)) . "');";
+        $reportLogSql = "INSERT INTO report_log (tenant_id, report_id, run, records_returned, runtime, `data`, `sql`) VALUES (" . intval($tenantId) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . $count  . "," .  intval($timeElapsedSecs * 1000) . ",'" . mysqli_real_escape_string($conn, json_encode($decodedForm)) . "','" . mysqli_real_escape_string($conn, $sql) . "');";
         //echo $reportLogSql;
         $reportLogResult = mysqli_query($conn, $reportLogSql);
         //var_dump($rows);
