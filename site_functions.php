@@ -380,7 +380,6 @@ function updateDataWithRows($data, $thisDataRows) {
 function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user = null) { //$data also includes any errors
   Global $conn;
   $textareaIds = [];
-  $codeLanguages = [];
 	$out = "";
   $onSubmitManyToManyItems = [];
   $out .= "<script>\n";
@@ -565,7 +564,6 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
           $idString = "id='" . $textAreaId  . "'";
           array_push($textareaIds, $textAreaId);
           $codeLanguage = gvfa("code_language", $datum, "html");
-          array_push($codeLanguages, $codeLanguage);
           $out .= "<textarea " . $validationString . " " .  $idString . " style='width:" . $width . "px;height:" . $height . "px' name='" . $name . "'  />" .  $value  . "</textarea>\n";
         } else {
           $specialNumberAttribs = "";
@@ -611,14 +609,13 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
     $out .= "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/sql/sql.min.js\"></script>\n";
     $out .= "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js\"></script>\n";
     $out .= "\n<script>\n";
- 
     $out.= "let textAreaCount = 0;\n";
     $out.= "let textareaIds = ['" . implode("','", $textareaIds) . "'];\n";
-    $out.= "let codeLanguages = ['" . implode("','", $codeLanguages) . "'];\n";
     $out .= "\ntextareaIds.forEach(id => {\n";
     $out .= "let textArea = document.getElementById(id);\n";
     $out .= "let textAreaName = textArea.name;\n";
-    $out .= "let codeLanguage=codeLanguages[textAreaCount];\n";
+    $out .= "let formItemInfoRecord = findObjectByName(formSpec, textAreaName);\n";
+    $out .= "let codeLanguage = formItemInfoRecord[\"code_language\"];\n";
     $out .= "formattedCode = textArea.value;\n";
     $out .= "if (codeLanguage == 'sql'){;\n";
     $out .= "formattedCode = formatSQL(textArea.value);\n";
@@ -639,11 +636,12 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
     $out .= "autoCloseBrackets: true,\n";
     $out .= "lineWrapping: true\n";
     $out .= "});\n";
+    $out .= "editor.setSize(formItemInfoRecord['width'] + 'px', formItemInfoRecord['height'] + 'px');\n";
 
     $out .= "editor.on('blur', (cm) => {
           console.log('Editor lost focus');
           // Handle your blur event here
-          const formItemInfoRecord = findObjectByName(formSpec, textAreaName);
+          
           console.log(formItemInfoRecord);
           editor.save(); 
           eval(formItemInfoRecord[\"frontend_validation\"]);
