@@ -51,35 +51,32 @@ function checkSqlSyntax(formElementName) {
 	var xmlhttp = new XMLHttpRequest();
 	if (inputElement) {
 		xmlhttp.onreadystatechange = function() {
-
-			// Step 1: Find the form input whose name is in the variable 'name'
-			console.log(xmlhttp.responseText);
-			let data = JSON.parse(xmlhttp.responseText.trim());
-	
+			if (xmlhttp.readyState === XMLHttpRequest.DONE) {
+				if (xmlhttp.status === 200) {
+					let data = JSON.parse(xmlhttp.responseText.trim());
 		
-			// Step 2: Find the first div with class 'genericformerror' by traversing backwards from the input element
-			let currentElement = inputElement.previousElementSibling;
-			let errorDiv = null;
-			
-			while (currentElement) {
-				if (currentElement.classList && currentElement.classList.contains('genericformerror')) {
-					errorDiv = currentElement;
-					break;
+					let currentElement = inputElement.previousElementSibling;
+					let errorDiv = null;
+					
+					while (currentElement) {
+						if (currentElement.classList && currentElement.classList.contains('genericformerror')) {
+							errorDiv = currentElement;
+							break;
+						}
+						currentElement = currentElement.previousElementSibling;
+					}
+				
+					if (errorDiv) {
+						if(data["errors"].length > 0) {
+							errorDiv.textContent = data["errors"][0];
+						} else {
+							errorDiv.textContent = "";
+						}
+					} else {
+						console.log('Error div with class "genericformerror" not found.');
+					}
 				}
-				currentElement = currentElement.previousElementSibling;
 			}
-			
-			// Step 3: Put the text "found you" in that div if found
-			if (errorDiv) {
-				if(data["errors"].length > 0) {
-					errorDiv.textContent = data["errors"][0];
-				} else {
-					errorDiv.textContent = "";
-				}
-			} else {
-				console.log('Error div with class "genericformerror" not found.');
-			}
-			
 
 		}
 		let sql = inputElement.value;
@@ -97,7 +94,6 @@ function checkSqlSyntax(formElementName) {
 		params.append("sql", sql.trim());
 		params.append("action", "checksqlsyntax");
 		let url = "tool.php"; 
-		//console.log(url);
 		xmlhttp.open("POST", url, true);
 		xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
 		xmlhttp.send(params);
@@ -114,13 +110,10 @@ function checkJsonSyntax(formElementName) {
 	var xmlhttp = new XMLHttpRequest();
 	if (inputElement) {
 		xmlhttp.onreadystatechange = function() {
-
-			// Step 1: Find the form input whose name is in the variable 'name'
-			console.log(xmlhttp.responseText);
-			let data = JSON.parse(xmlhttp.responseText.trim());
-			
-				
-					// Step 2: Find the first div with class 'genericformerror' by traversing backwards from the input element
+			if (xmlhttp.readyState === XMLHttpRequest.DONE) {
+				if (xmlhttp.status === 200) {
+					let data = JSON.parse(xmlhttp.responseText.trim());
+ 
 					let currentElement = inputElement.previousElementSibling;
 					let errorDiv = null;
 					
@@ -131,8 +124,7 @@ function checkJsonSyntax(formElementName) {
 						}
 						currentElement = currentElement.previousElementSibling;
 					}
-					
-					// Step 3: Put the text "found you" in that div if found
+ 
 					if (errorDiv) {
 						if(data["errors"]!="") {
 							errorDiv.textContent = data["errors"];
@@ -142,6 +134,8 @@ function checkJsonSyntax(formElementName) {
 					} else {
 						console.log('Error div with class "genericformerror" not found.');
 					}
+				}
+			}
 			
 	 
 		}
