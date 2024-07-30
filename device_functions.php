@@ -200,7 +200,7 @@ function copyValuesFromSourceToDest($dest, $source) {
 
 function previousReportRuns($tenantId, $reportId) {
   Global $conn;
-  $sql = "SELECT report_log_id, run, records_returned, runtime, SUBSTRING(`sql`, 1, 40)  FROM report_log WHERE report_id=" . intval($reportId) . " AND tenant_id=" . intval($tenantId) . " ORDER BY run DESC";
+  $sql = "SELECT report_log_id, run, records_returned, runtime, SUBSTRING(`sql`, 1, 40) as `sql`  FROM report_log WHERE report_id=" . intval($reportId) . " AND tenant_id=" . intval($tenantId) . " ORDER BY run DESC";
   $result = mysqli_query($conn, $sql);
   $out = "";
   if($result) {
