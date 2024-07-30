@@ -516,7 +516,7 @@ function editReport($error,  $tenantId) {
       'height'=> 200,
 	    'value' => gvfa("form", $source), 
       'error' => gvfa('form', $error),
-      'frontend_validation' => "checkJsonSyntax('sql')"
+      'frontend_validation' => "checkJsonSyntax('form')"
 	  ],
     [
 	    'label' => 'sql',

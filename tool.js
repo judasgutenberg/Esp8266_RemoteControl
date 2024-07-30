@@ -44,15 +44,81 @@ function formSubmitTasks() {
   
 }
 
-function checkJsonSyntax(formElementName) {
-	const inputElement = document.querySelector(`input[name="${formElementName}"]`);
+
+function checkSqlSyntax(formElementName) {
+	const inputElement = document.querySelector(`textarea[name="${formElementName}"]`);
+	
 	var xmlhttp = new XMLHttpRequest();
 	if (inputElement) {
 		xmlhttp.onreadystatechange = function() {
 
 			// Step 1: Find the form input whose name is in the variable 'name'
-			let data = JSON.parse(xmlhttp.responseText);
-			if(data["errors"].length > 0) {
+			console.log(xmlhttp.responseText);
+			let data = JSON.parse(xmlhttp.responseText.trim());
+	
+		
+			// Step 2: Find the first div with class 'genericformerror' by traversing backwards from the input element
+			let currentElement = inputElement.previousElementSibling;
+			let errorDiv = null;
+			
+			while (currentElement) {
+				if (currentElement.classList && currentElement.classList.contains('genericformerror')) {
+					errorDiv = currentElement;
+					break;
+				}
+				currentElement = currentElement.previousElementSibling;
+			}
+			
+			// Step 3: Put the text "found you" in that div if found
+			if (errorDiv) {
+				if(data["errors"].length > 0) {
+					errorDiv.textContent = data["errors"][0];
+				} else {
+					errorDiv.textContent = "";
+				}
+			} else {
+				console.log('Error div with class "genericformerror" not found.');
+			}
+			
+
+		}
+		let sql = inputElement.value;
+		let skipTest = false;
+		if(stripXMLTags(sql).trim() == "") {
+			skipTest = true;
+		}
+		if(skipTest){
+			sql = "SELECT 1"; //sql that always passes!
+		} else {
+			sql = replaceXMLTagsWithOne(sql); //so tokenized sql won't fail check
+		}
+		
+		const params = new URLSearchParams();
+		params.append("sql", sql.trim());
+		params.append("action", "checksqlsyntax");
+		let url = "tool.php"; 
+		//console.log(url);
+		xmlhttp.open("POST", url, true);
+		xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+		xmlhttp.send(params);
+	}
+}
+
+function replaceXMLTagsWithOne(input) {
+	return input.replace(/<[^>]*>/g, '1');
+  }
+
+function checkJsonSyntax(formElementName) {
+	const inputElement = document.querySelector(`textarea[name="${formElementName}"]`);
+	console.log(formElementName, inputElement);
+	var xmlhttp = new XMLHttpRequest();
+	if (inputElement) {
+		xmlhttp.onreadystatechange = function() {
+
+			// Step 1: Find the form input whose name is in the variable 'name'
+			console.log(xmlhttp.responseText);
+			let data = JSON.parse(xmlhttp.responseText.trim());
+			
 				
 					// Step 2: Find the first div with class 'genericformerror' by traversing backwards from the input element
 					let currentElement = inputElement.previousElementSibling;
@@ -68,16 +134,20 @@ function checkJsonSyntax(formElementName) {
 					
 					// Step 3: Put the text "found you" in that div if found
 					if (errorDiv) {
-						errorDiv.textContent = data["errors"][0];
+						if(data["errors"]!="") {
+							errorDiv.textContent = data["errors"];
+						} else {
+							errorDiv.textContent = "";
+						}
 					} else {
 						console.log('Error div with class "genericformerror" not found.');
 					}
 			
-			}
+	 
 		}
 
 		const params = new URLSearchParams();
-		params.append("sql", inputElement.value);
+		params.append("json", inputElement.value);
 		params.append("action", "checkjsonsyntax");
 		let url = "tool.php"; 
 		//console.log(url);
@@ -277,6 +347,14 @@ function deleteListRows(idOfParent, classToKill) { //thanks chatgpt!
   }
 }
 
+function findObjectByName(array, nameValue) {
+    return array.find(obj => obj.name === nameValue);
+}
+
+function stripXMLTags(input) {
+	return input.replace(/<[^>]*>/g, '');
+}
+  
 
 if(document.getElementById('file')) {
   document.getElementById('file').onchange = function() {

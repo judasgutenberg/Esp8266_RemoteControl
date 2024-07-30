@@ -377,6 +377,9 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
   $codeLanguages = [];
 	$out = "";
   $onSubmitManyToManyItems = [];
+  $out .= "<script>\n";
+  $out .= "let formSpec = " . json_encode($data) . ";";
+  $out .= "</script>\n";
 	$out .= "<div class='genericform'>\n";
   $columnCount = 0;
 	foreach($data as &$datum) {
@@ -608,6 +611,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
     $out.= "let codeLanguages = ['" . implode("','", $codeLanguages) . "'];\n";
     $out .= "\ntextareaIds.forEach(id => {\n";
     $out .= "let textArea = document.getElementById(id);\n";
+    $out .= "let textAreaName = textArea.name;\n";
     $out .= "let codeLanguage=codeLanguages[textAreaCount];\n";
     $out .= "formattedCode = textArea.value;\n";
     $out .= "if (codeLanguage == 'sql'){;\n";
@@ -629,6 +633,19 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
     $out .= "autoCloseBrackets: true,\n";
     $out .= "lineWrapping: true\n";
     $out .= "});\n";
+
+    $out .= "editor.on('blur', (cm) => {
+          console.log('Editor lost focus');
+          // Handle your blur event here
+          const formItemInfoRecord = findObjectByName(formSpec, textAreaName);
+          console.log(formItemInfoRecord);
+          editor.save(); 
+          eval(formItemInfoRecord[\"frontend_validation\"]);
+          //console.log('CodeMirror content:', value);
+      });\n";
+
+
+
     $out.= "textAreaCount++;\n";
     $out .= "});\n";
 
@@ -1704,11 +1721,11 @@ function checkJsonSyntax($json) {
   // Check for JSON parsing errors
   $lastError = json_last_error();
   if($lastError == 0) {
-    $errors = [];
+    $error = "";
   } else {
-    $errors = getJsonErrorMessage(json_last_error());
+    $error = getJsonErrorMessage(json_last_error());
   }
-  return ["errors"=>[$errors]];  
+  return ["errors"=>$error];  
 }
 
 
