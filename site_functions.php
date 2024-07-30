@@ -1588,23 +1588,30 @@ function doReport($user, $reportId, $reportLogId = null){
       //gotta merge form values in here:
       $sql =  tokenReplace($sql, $_POST);
       //die($sql);
+      //delete from report_log where report_log_id=149;
       $start = microtime(true);
       $reportResult = mysqli_query($conn, $sql);
       $error = mysqli_error($conn);
       $affectedRows = mysqli_affected_rows($conn);
-      if($reportResult || $error) {
+      $count = 0;
+      $rows = false;
+      //echo $reportResult . "-" . $error  . "=" . $affectedRows;
+      if($reportResult || $error || $affectedRows) {
         if($decodedForm != "") {
           $decodedForm = mergeValues($decodedForm, $_POST);
         }
         if($error) {
           $rows = [["error" => $error]];
-        } else if($affectedRows) {
+          $count = 0;
+        } else if($affectedRows &&  $reportResult===true) {
           $rows = [["Affected records" => $affectedRows]];
-        } else {
+          $count = count($rows);
+        } else if($reportResult !== false  && $reportResult !== true){
           $rows = mysqli_fetch_all($reportResult, MYSQLI_ASSOC);
+          $count = count($rows);
         }
         $timeElapsedSecs = microtime(true) - $start;
-        $reportLogSql = "INSERT INTO report_log (tenant_id, report_id, run, records_returned, runtime, `data`) VALUES (" . intval($tenantId) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . count($rows)  . "," .  intval($timeElapsedSecs * 1000) . ",'" . json_encode($decodedForm) . "');";
+        $reportLogSql = "INSERT INTO report_log (tenant_id, report_id, run, records_returned, runtime, `data`) VALUES (" . intval($tenantId) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . $count  . "," .  intval($timeElapsedSecs * 1000) . ",'" . json_encode($decodedForm) . "');";
         $reportLogResult = mysqli_query($conn, $reportLogSql);
         //var_dump($rows);
         if($rows) {
