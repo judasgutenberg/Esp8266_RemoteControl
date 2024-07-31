@@ -59,7 +59,8 @@ if($_POST || gvfw("table")) { //gvfw("table")
     $tenantId = gvfa("tenant_id", $_GET);
 		$tenantSelector = loginUser(NULL, $tenantId);
   } else if (strtolower($action) == "create user"  && array_key_exists("password2", $_POST)) {
-		$errors = createUser(); //only use this for self-creates
+    $encryptedTenantId = gvfw("encrypted_tenant_id");
+		$errors = createUser($encryptedTenantId); //only use this for self-creates
 	}  else if (strtolower($table) == "run") {
     //oh, we're a utility, though we never get here
   } else if(beginsWith(strtolower($action), "save") || beginsWith(strtolower($action), "create")) {
@@ -279,7 +280,8 @@ if ($user) {
 } else {
  
   if ($table == "user" || !is_null($errors)) {
-    $out .= newUserForm($errors);
+    $encryptedTenantId = gvfw("encrypted_tenant_id");
+    $out .= newUserForm($errors, $encryptedTenantId);
   } else if(gvfa("password", $_POST) != "") {
  
     if(!$tenantSelector){

@@ -1144,35 +1144,54 @@ function utilities($tenant, $viewMode = "list") {
 
       ]
     ]
-      ,
-      
+    ,
+    
+    [
+      'label' => 'Recent Error Log',
+      'url' => '?table=utilities&action=recenterrorlogs',
+      'description' => "Also beats having to use putty.",
+      'action' => 'errorLog(<device_id/>, <number/>)',
+      'key' => 'recenterrorlogs',
+      'role' => "super",
+      'form' => 
       [
-        'label' => 'Recent Error Log',
-        'url' => '?table=utilities&action=recenterrorlogs',
-        'description' => "Also beats having to use putty.",
-        'action' => 'errorLog(<device_id/>, <number/>)',
-        'key' => 'recenterrorlogs',
-        'role' => "super",
-        'form' => 
         [
-          [
-            'label' => 'Number of Records',
-            'name' => 'number',
-            'value' => gvfa("tenant_id", $_POST),
-            'type' => 'select',
-            'values' => [10, 20, 40, 60, 100, 200, 500, 1000, 2000, 5000, 10000]
-          ],
-          [
-            'label' => 'Location',
-            'name' => 'device_id',
-            'value' => gvfa("device_id", $_POST),
-            'type' => 'select',
-            'values' => "SELECT name as text, device_id FROM device WHERE tenant_id=<tenant_id/>"
-          ]
-  
+          'label' => 'Number of Records',
+          'name' => 'number',
+          'value' => gvfa("tenant_id", $_POST),
+          'type' => 'select',
+          'values' => [10, 20, 40, 60, 100, 200, 500, 1000, 2000, 5000, 10000]
+        ],
+        [
+          'label' => 'Location',
+          'name' => 'device_id',
+          'value' => gvfa("device_id", $_POST),
+          'type' => 'select',
+          'values' => "SELECT name as text, device_id FROM device WHERE tenant_id=<tenant_id/>"
         ]
+
       ]
- 
+    ]
+    ,
+    
+    [
+      'label' => 'Get Invitation Link to Create User for Tenant',
+      'url' => '?table=utilities&action=tenantlink',
+      'description' => "Send this to someone to get them to join your tenant.",
+      'action' => '"http://" . $_SERVER["SERVER_NAME"] .  $_SERVER["PHP_SELF"] . "?table=user&action=startcreate&encrypted_tenant_id=" . siteEncrypt(<tenant_id/>)',
+      'key' => 'tenantlink',
+      'role' => "super",
+      'form' => 
+      [
+        [
+          'label' => 'Tenant',
+          'name' => 'tenant_id',
+          'value' => gvfa("tenant_id", $_POST),
+          'type' => 'select',
+          'values' => "SELECT tenant_id, name as text FROM tenant ORDER BY name"
+        ] 
+      ]
+    ]
   
   );
 

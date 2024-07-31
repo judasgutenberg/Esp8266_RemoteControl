@@ -147,7 +147,7 @@ function loginForm() {
   return $out;
 }
 
-function newUserForm($error = NULL) {
+function newUserForm($error = NULL, $encryptedTenantId = NULL) {
 	$formData = array(
   [
     'label' => 'email',
@@ -170,6 +170,17 @@ function newUserForm($error = NULL) {
     'error' => gvfa('password2', $error)
 	   ]
 	);
+  if($encryptedTenantId) {
+    if(!$encryptedTenantId) {
+      $encryptedTenantId = gvfw("encrypted_tenant_id");
+    }
+    $formData[] =   [
+      'name' => 'encrypted_tenant_id',
+      'type' => 'hidden',
+      'value' =>  $encryptedTenantId,
+      'error' => gvfa('encrypted_tenant_id', $error)
+    ];
+  }
   $out = genericForm($formData, "create user");
   $out.= "<div style='padding-left:180px'><a href='?action=login'>Go back to login</a></div>";
   return $out;
@@ -452,14 +463,14 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         }
     
       } else if($type == 'select') {
- 
+        //echo $values;
         $out .= "<select  name='" . $name . "' />";
         if(is_string($values)) {
           $out .= "<option value='0'>none</option>";
           if($user) {
             $values = tokenReplace($values, $user); //I'd has something embarrassingly hardcoded here until I had $user available
           }
-          //echo $values;
+          
           $result = mysqli_query($conn, $values); //REALLY NEED TO SANITIZE $values since it contains RAW SQL!!!
           
    
@@ -883,9 +894,8 @@ function loginUser($source = NULL, $tenant_id = NULL) {
       //die($passwordHashed . "*" . $passwordIn);
       //for debugging:
       //echo crypt($passwordIn, $encryptionPassword);
-      //die($passwordIn . "*" . crypt($passwordIn, $encryptionPassword) . "*" . $passwordHashed . "*" . password_verify($passwordIn, $passwordHashed) . "*");
+      //die($passwordIn . "*" . crypt($passwordIn, $encryptionPassword) . "*" . $passwordHashed . "*" . siteEncrypt($passwordIn) . "*" .password_verify($passwordIn, $passwordHashed) . "*");
       if (password_verify($passwordIn, $passwordHashed)) {
-        //echo "DDDADA";
           setcookie($cookiename, siteEncrypt($email), time() + (30 * 365 * 24 * 60 * 60));
           setcookie($tenantCookieName, siteEncrypt($tenant_id), time() + (30 * 365 * 24 * 60 * 60));
           header('Location: '.$_SERVER['PHP_SELF']);
@@ -1208,9 +1218,10 @@ function endsWith($strIn, $what) {
 	return false;
 }
 
-
-function createUser(){
+//if a user gets an email with an encryptedTenantId, they can create a user belonging to that tenant
+function createUser($encryptedTenantId = NULL){
   Global $conn;
+  Global $encryptionPassword;
   $errors = NULL;
   $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
   $formatedDateTime =  $date->format('Y-m-d H:i:s'); 
@@ -1225,23 +1236,30 @@ function createUser(){
   }
 
   if(is_null($errors)) {
-  	$encryptedPassword =  siteEncrypt($password);
+  	$encryptedPassword =  crypt($password, $encryptionPassword); //siteEncrypt($password); //we need one-way encryption for this, not siteEncrypt!
     $userList = userList();
     $tenantSql = "";
+    $sql = "INSERT INTO user(email, password, created) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" .$formatedDateTime . "')"; 
     if(count(userList()) == 0) {
       //if there are no users, create the first one as admin. we also need a Tenant and we need to add the user to that Tenant
       $sql = "INSERT INTO user(email, password, created, role) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" .$formatedDateTime . "','super')"; 
+      
       $tenantSql = "INSERT INTO tenant(name, created) VALUES  ('First Tenant', '" . $formatedDateTime . "')";
+    } else if ($encryptedTenantId){
+      $tenantId = siteDecrypt($encryptedTenantId);
     } else {
-  	  $sql = "INSERT INTO user(email, password, created) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" .$formatedDateTime . "')"; 
+      //might make a tenant, not sure
     }
+    //die($sql);
 	  //echo $sql;
     //die();
     $result = mysqli_query($conn, $sql);
     $userId = mysqli_insert_id($conn);
-    if($tenantSql){
-      $result = mysqli_query($conn, $tenantSql);
-      $tenantId = mysqli_insert_id($conn);
+    if($tenantSql || $encryptedTenantId){
+      if($tenantSql ){
+        $result = mysqli_query($conn, $tenantSql);
+        $tenantId = mysqli_insert_id($conn);
+      }
       $tenantSql = "INSERT INTO tenant_user(user_id, tenant_id, created) VALUES  (" . $userId . "," . $tenantId  . ",'" . $formatedDateTime . "')";
       $result = mysqli_query($conn, $tenantSql);
     }
@@ -1599,6 +1617,7 @@ function doReport($user, $reportId, $reportLogId = null){
       if($historyData){
         $data = $historyData["data"];
         $reportId = $historyData["report_id"];
+        //var_dump($data);
         //trouble with carriage feeds:
  
         $data = sanitizeForJson($data);
@@ -1684,7 +1703,7 @@ function doReport($user, $reportId, $reportLogId = null){
           $count = count($rows);
         }
         $timeElapsedSecs = microtime(true) - $start;
-        $reportLogSql = "INSERT INTO report_log (tenant_id, report_id, run, records_returned, runtime, `data`, `sql`) VALUES (" . intval($tenantId) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . $count  . "," .  intval($timeElapsedSecs * 1000) . ",'" . mysqli_real_escape_string($conn, json_encode($decodedForm)) . "','" . mysqli_real_escape_string($conn, $sql) . "');";
+        $reportLogSql = "INSERT INTO report_log (tenant_id, report_id, run, records_returned, runtime, `data`, `sql`) VALUES (" . intval($tenantId) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . $count  . "," .  intval($timeElapsedSecs * 1000) . ",'" . mysqli_real_escape_string($conn, json_encode($decodedFormToUse)) . "','" . mysqli_real_escape_string($conn, $sql) . "');";
         //echo $reportLogSql;
         $reportLogResult = mysqli_query($conn, $reportLogSql);
         //var_dump($rows);
