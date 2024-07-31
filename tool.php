@@ -46,6 +46,8 @@ if ($action == "logout") {
   logOut();
   header("Location: ?action=login");
   die();
+} else if ($action == 'settenant') {
+  setTenant(gvfw("encrypted_tenant_id"));
 } else if  ($action == "disimpersonate") {
   disImpersonate();
   header("Location: .");

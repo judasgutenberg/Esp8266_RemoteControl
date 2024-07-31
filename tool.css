@@ -480,8 +480,9 @@ body
 
 .innercontent {
   width:1600px;
-  border-width: 1px 1px 0 1px;
+  border-width: 1px 1px 1px 1px;
   border-color: #000000;
+  border-style: solid;
   background-color:#ffffff;
   FONT-FAMILY:  helvetica;
   FONT-SIZE: 12px;
@@ -491,6 +492,16 @@ body
   margin-top:0px;
   padding-top:5px;
   margin: 0px;
+}
+
+.tenantpicker{
+	border-width: 1px 1px 1px 1px;
+	border-style: solid;
+	width:300px;
+	border-color: #000000;
+	line-height: 15px;
+	border-radius: 4px;
+	padding:10px;
 }
 
 

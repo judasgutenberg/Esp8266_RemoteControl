@@ -99,20 +99,20 @@ function filterStringForSqlEntities($input) {
 }
 
 function autoLogin() {
-  Global $encryptionPassword;
   Global $cookiename;
   Global $tenantCookieName;
-  if(!isset($_COOKIE[$cookiename])) {
+  //var_dump($_COOKIE);
+  if(!isset($_COOKIE[$cookiename]) || !isset($_COOKIE[$tenantCookieName])) {
+    //die("wuuup");
     return false;
   } else {
-  
    $cookieValue = $_COOKIE[$cookiename];
    
-   $email = openssl_decrypt($cookieValue, "AES-128-CTR", $encryptionPassword);
-   $tenantId = openssl_decrypt($_COOKIE[$tenantCookieName], "AES-128-CTR", $encryptionPassword);
+   $email = siteDecrypt($cookieValue);
+   $tenantId = siteDecrypt($_COOKIE[$tenantCookieName]);
  
    if(strpos($email, "@") > 0){
- 
+      //die("yeee!!");
       return getUser($email, $tenantId);
       
    } else {
@@ -129,7 +129,9 @@ function disImpersonate() {
 
 function logOut() {
 	Global $cookiename;
-	setcookie($cookiename, "");
+  Global $tenantCookieName;
+  setcookie($cookiename, "");
+	setcookie($tenantCookieName, "");
 	return false;
 }
  
@@ -806,21 +808,25 @@ function getUser($email, $tenantId = null) {
 }
 
 function impersonateUser($impersonatedUserId) {
-  Global $encryptionPassword;
   Global $poserCookieName;
-  setcookie($poserCookieName, openssl_encrypt($impersonatedUserId, "AES-128-CTR", $encryptionPassword), time() + (30 * 365 * 24 * 60 * 60));
+  setcookie($poserCookieName, siteEncrypt($impersonatedUserId), time() + (30 * 365 * 24 * 60 * 60));
   header("location: .");
 }
 
 function getImpersonator($justId = true){
-  Global $encryptionPassword;
   Global $poserCookieName;
-  $poserId = openssl_decrypt(gvfa($poserCookieName, $_COOKIE), "AES-128-CTR", $encryptionPassword);
+  $poserId = siteDecrypt(gvfa($poserCookieName, $_COOKIE));
   //die($poserCookieName . " " . $poserId );
   if($justId){
     return $poserId;
   }
   return getUserById($poserId);
+}
+
+function setTenant($encryptedTenantId){
+  Global $tenantCookieName;
+  setcookie($tenantCookieName, $encryptedTenantId, time() + (30 * 365 * 24 * 60 * 60));
+  header('Location: '.$_SERVER['PHP_SELF']);
 }
 
 function loginUser($source = NULL, $tenant_id = NULL) {
@@ -851,15 +857,22 @@ function loginUser($source = NULL, $tenant_id = NULL) {
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     //var_dump( $rows);
     if(count($rows) > 1) {
-      $out ="<div class='heading'>Pick a Tenant</div>";
+      $out ="<div class='tenantpicker'>\n";
+      $out .="<div class='listtitle'>Pick a Tenant</div>\n";
       $row = $rows[0];
       $email = $row["email"];
-      //setcookie($cookiename, openssl_encrypt($email, "AES-128-CTR", $encryptionPassword, 0, $iv), time() + (30 * 365 * 24 * 60 * 60));
-      foreach($rows as &$row) {
-        $out .="<div><a href='?action=login&tenant_id=" . $row["tenant_id"]. "'>" .$row["tenant_name"] . "</a></div>";
+      $passwordHashed = $row["password"];
+      if (password_verify($passwordIn, $passwordHashed)) {
+        //die("we are setting a cookie");
+        setcookie($cookiename, siteEncrypt($email), time() + (30 * 365 * 24 * 60 * 60));
+        foreach($rows as &$row) {
+          $out .="<div><a href='?action=settenant&encrypted_tenant_id=" . urlencode(siteEncrypt($row["tenant_id"])). "'>" .$row["tenant_name"] . "</a></div>";
 
+        }
+        //echo $out;
+        return $out;
       }
-      return $out;
+      $out .="</div>\n";
     } else if($rows && count($rows) > 0) {
       $row = $rows[0];
     }
@@ -873,8 +886,8 @@ function loginUser($source = NULL, $tenant_id = NULL) {
       //die($passwordIn . "*" . crypt($passwordIn, $encryptionPassword) . "*" . $passwordHashed . "*" . password_verify($passwordIn, $passwordHashed) . "*");
       if (password_verify($passwordIn, $passwordHashed)) {
         //echo "DDDADA";
-          setcookie($cookiename, openssl_encrypt($email, "AES-128-CTR", $encryptionPassword), time() + (30 * 365 * 24 * 60 * 60));
-          setcookie($tenantCookieName, openssl_encrypt($tenant_id , "AES-128-CTR", $encryptionPassword), time() + (30 * 365 * 24 * 60 * 60));
+          setcookie($cookiename, siteEncrypt($email), time() + (30 * 365 * 24 * 60 * 60));
+          setcookie($tenantCookieName, siteEncrypt($tenant_id), time() + (30 * 365 * 24 * 60 * 60));
           header('Location: '.$_SERVER['PHP_SELF']);
           //echo "LOGGED IN!!!" . $email ;
           die;
@@ -887,6 +900,25 @@ function loginUser($source = NULL, $tenant_id = NULL) {
   //}
 }
 
+function siteEncrypt($text){
+  Global $encryptionPassword;
+  $ivLength  = openssl_cipher_iv_length('AES-128-CTR');
+  $iv = openssl_random_pseudo_bytes($ivLength);
+  $out = base64_encode($iv . openssl_encrypt($text , "AES-128-CTR", $encryptionPassword, 0, $iv));
+  return $out;
+}
+
+function siteDecrypt($encrytedText){
+  Global $encryptionPassword;
+  $ivLength = openssl_cipher_iv_length('AES-128-CTR');
+  $data = base64_decode($encrytedText);
+  
+  $iv = substr($data, 0, $ivLength);
+  $encrypted = substr($data, $ivLength);
+  //echo $encrytedText . "|" . $iv . "|" . $encrypted ;
+  // Decrypt the data
+  return openssl_decrypt($encrypted, 'AES-128-CTR', $encryptionPassword, 0, $iv);
+}
 
 function topmostNav() {
 	$tabData = array(
@@ -1179,7 +1211,6 @@ function endsWith($strIn, $what) {
 
 function createUser(){
   Global $conn;
-  Global $encryptionPassword;
   $errors = NULL;
   $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
   $formatedDateTime =  $date->format('Y-m-d H:i:s'); 
@@ -1194,7 +1225,7 @@ function createUser(){
   }
 
   if(is_null($errors)) {
-  	$encryptedPassword =  crypt($password, $encryptionPassword);
+  	$encryptedPassword =  siteEncrypt($password);
     $userList = userList();
     $tenantSql = "";
     if(count(userList()) == 0) {
