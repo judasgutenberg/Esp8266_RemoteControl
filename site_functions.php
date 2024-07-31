@@ -1,11 +1,12 @@
 <?php 
 
-function utilityForm($foundData) {
+function utilityForm($user, $foundData) {
   $out = "";
   if(array_key_exists("form", $foundData)){
     $out .= "<div class='issuesheader'>" . $foundData["label"]. "</div>";
     $out .= "<div>" . $foundData["description"] . "</div>";
-    $form = genericForm($foundData["form"], "Run", "Running " . $foundData["label"]);
+    $mergedData =  $foundData["form"];
+    $form = genericForm($mergedData, "Run", "Running " . $foundData["label"], $user);
     $confirmJs  = "onclick=\"return(confirm('Are you sure you want to run " . $foundData["label"] . "?'))\"";
     $form = str_replace("value='Run' type='submit'/>", "value='Run' type='submit'  " . $confirmJs  . "/>", $form);
     $out .= $form;
@@ -845,20 +846,25 @@ function loginUser($source = NULL, $tenant_id = NULL) {
 
   }
   //try{
+    $row  = NULL;
+    $iv = "0x12345678123456";
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     //var_dump( $rows);
     if(count($rows) > 1) {
       $out ="<div class='heading'>Pick a Tenant</div>";
+      $row = $rows[0];
+      $email = $row["email"];
+      //setcookie($cookiename, openssl_encrypt($email, "AES-128-CTR", $encryptionPassword, 0, $iv), time() + (30 * 365 * 24 * 60 * 60));
       foreach($rows as &$row) {
         $out .="<div><a href='?action=login&tenant_id=" . $row["tenant_id"]. "'>" .$row["tenant_name"] . "</a></div>";
 
       }
       return $out;
-    } else{
+    } else if($rows && count($rows) > 0) {
       $row = $rows[0];
     }
     if($row  && $row["email"] && $row["password"]) {
-      $tenant_id = $row["tenant_id"];
+      //$tenant_id = $row["tenant_id"];
       $email = $row["email"];
       $passwordHashed = $row["password"];
       //die($passwordHashed . "*" . $passwordIn);

@@ -157,8 +157,9 @@ if ($user) {
               $redirect = true;
               $codeToRun = tokenReplace($foundData["action"], $_GET);
               $codeToRun = tokenReplace($codeToRun, $_POST) . ";";
-   
+              
               try {
+
                 //$result = @eval($evalcode . "; return true;");
                 
                 //die(var_dump($result));
@@ -185,7 +186,7 @@ if ($user) {
         
       } else if ($action) {
  
-        $out .= utilityForm($foundData);
+        $out .= utilityForm($user, $foundData);
       }
    }  
    
