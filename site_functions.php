@@ -1243,12 +1243,16 @@ function createUser($encryptedTenantId = NULL){
     if(count(userList()) == 0) {
       //if there are no users, create the first one as admin. we also need a Tenant and we need to add the user to that Tenant
       $sql = "INSERT INTO user(email, password, created, role) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" .$formatedDateTime . "','super')"; 
-      
       $tenantSql = "INSERT INTO tenant(name, created) VALUES  ('First Tenant', '" . $formatedDateTime . "')";
     } else if ($encryptedTenantId){
       $tenantId = siteDecrypt($encryptedTenantId);
     } else {
-      //might make a tenant, not sure
+      //also make a tenant for this user if there's just a new user
+      $tenantName = "New";
+      if(strpos($email, "@") > 0){
+        $tenantName = explode("@", $email)[1];
+      }
+      $tenantSql = "INSERT INTO tenant(name, created) VALUES  ('" . mysqli_real_escape_string($conn, $tenantName) . " Tenant', '" . $formatedDateTime . "')";
     }
     //die($sql);
 	  //echo $sql;
