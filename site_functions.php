@@ -97,16 +97,21 @@ function filterStringForSqlEntities($input) {
   return $filtered;
 }
 
-function autoLogin($tenantId = null) {
+function autoLogin() {
   Global $encryptionPassword;
   Global $cookiename;
+  Global $tenantCookieName;
   if(!isset($_COOKIE[$cookiename])) {
     return false;
   } else {
   
    $cookieValue = $_COOKIE[$cookiename];
+   
    $email = openssl_decrypt($cookieValue, "AES-128-CTR", $encryptionPassword);
+   $tenantId = openssl_decrypt($_COOKIE[$tenantCookieName], "AES-128-CTR", $encryptionPassword);
+ 
    if(strpos($email, "@") > 0){
+ 
       return getUser($email, $tenantId);
       
    } else {
@@ -779,12 +784,14 @@ function getUser($email, $tenantId = null) {
     $role = $user["role"];
     $sql = "SELECT * FROM `tenant_user` tu JOIN tenant t ON tu.tenant_id=t.tenant_id WHERE user_id = '" . $user["user_id"] . "'";
     if($tenantId){
-      $sql .= " AND t.tenant = " . intval($tenantId);
+      $sql .= " AND t.tenant_id = " . intval($tenantId);
     }
+    //echo $sql;
     $result = mysqli_query($conn, $sql);
     $user["tenants"] = null;
     if($result){
       $tenants = mysqli_fetch_all($result, MYSQLI_ASSOC);
+      //var_dump($tenants);
       if(count($tenants) > 0) {
         $tenant = $tenants[0];
         $tenant["role"] = $role;//a temporary hack that will probably be good for awhile -- overwrite the mapping table role with the user role;

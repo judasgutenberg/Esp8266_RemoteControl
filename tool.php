@@ -22,7 +22,7 @@ $table = strtolower(filterStringForSqlEntities(gvfw('table', "device"))); //make
 $action = strtolower(gvfw('action', "list"));
 $user = autoLogin();
 $tenantId = gvfa("tenant_id", $user);
-
+ 
 $deviceId = gvfa('device_id', $_GET);
 $userId = gvfa("user_id", $user);
 
