@@ -1178,7 +1178,7 @@ function utilities($tenant, $viewMode = "list") {
       'label' => 'Get Invitation Link to Create User for Tenant',
       'url' => '?table=utilities&action=tenantlink',
       'description' => "Send this to someone to get them to join your tenant.",
-      'action' => '"http://" . $_SERVER["SERVER_NAME"] .  $_SERVER["PHP_SELF"] . "?table=user&action=startcreate&encrypted_tenant_id=" . siteEncrypt(<tenant_id/>)',
+      'action' => 'generateCurrentUrl() . "?table=user&action=startcreate&encrypted_tenant_id=" . siteEncrypt(<tenant_id/>)',
       'key' => 'tenantlink',
       'role' => "super",
       'form' => 

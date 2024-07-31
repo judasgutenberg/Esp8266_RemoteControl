@@ -1506,6 +1506,15 @@ function blendColors($color1, $color2) {
   return $result;
 }
 
+function generateCurrentUrl() {
+  // Determine the protocol
+  $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+  $host = $_SERVER['HTTP_HOST'];
+  $scriptName = $_SERVER['SCRIPT_NAME'];
+  $fullUrl = $protocol . $host . $scriptName;
+  return $fullUrl;
+}
+
  
 function encryptLongString($plaintext, $password) {
     // Generate a random initialization vector
