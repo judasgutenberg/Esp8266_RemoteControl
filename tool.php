@@ -34,7 +34,7 @@ if ($poser) {
 }
 $out = "";
 $errors = NULL;
- 
+$tenantSelector = "";
  
  
 $page = gvfw('page');
@@ -53,10 +53,9 @@ if ($action == "logout") {
 }
 
 if($_POST || gvfw("table")) { //gvfw("table") 
-
- 
 	if ($action == "login") {
-		loginUser();
+    $tenantId = gvfa("tenant_id", $_GET);
+		$tenantSelector = loginUser(NULL, $tenantId);
   } else if (strtolower($action) == "create user"  && array_key_exists("password2", $_POST)) {
 		$errors = createUser(); //only use this for self-creates
 	}  else if (strtolower($table) == "run") {
@@ -279,10 +278,17 @@ if ($user) {
   if ($table == "user" || !is_null($errors)) {
     $out .= newUserForm($errors);
   } else if(gvfa("password", $_POST) != "") {
-    $out .= "<div class='genericformerror'>The credentials you entered have failed.</div>";
+ 
+    if(!$tenantSelector){
+      $out .= "<div class='genericformerror'>The credentials you entered have failed.</div>";
+    }
    }
   if($action != "startcreate"){
-    $out .= loginForm();
+    if(!$tenantSelector) {
+      $out .= loginForm();
+    } else {
+      $out .= $tenantSelector;
+    }
   }
 }
 

@@ -132,6 +132,7 @@ function loginForm() {
   $out .= "<form method='post' name='loginform' id='loginform'>\n";
   $out .= "<strong>Login here:</strong>  email: <input name='email' type='text'>\n";
   $out .= "password: <input name='password' type='password'>\n";
+  $out .= "<input name='tenant_id' value='" . gvfa("tenant_id", $_GET). "' type='hidden'>\n";
   $out .= "<input name='action' value='login' type='submit'>\n";
   $out .= "<div> or  <div class='basicbutton'><a href=\"tool.php?table=user&action=startcreate\">Create Account</a></div></div>\n";
   $out .= "</form>\n";
@@ -814,18 +815,22 @@ function getImpersonator($justId = true){
   return getUserById($poserId);
 }
 
-function loginUser($source = NULL) {
+function loginUser($source = NULL, $tenant_id = NULL) {
   Global $conn;
   Global $encryptionPassword;
   Global $cookiename;
+  Global $tenantCookieName;
   if($source == NULL) {
   	$source = $_REQUEST;
   }
   $email = gvfa("email", $source);
   $passwordIn = gvfa("password", $source);
-  $sql = "SELECT `email`, `password` FROM `user` WHERE email = '" . mysqli_real_escape_string($conn, $email) . "' ";
-  //die($sql);
+  $sql = "SELECT `email`, `password`, t.tenant_id, name as tenant_name FROM `user` u JOIN tenant_user tu ON u.user_id=tu.user_id JOIN tenant t ON tu.tenant_id = t.tenant_id WHERE email = '" . mysqli_real_escape_string($conn, $email) . "' AND (u.expired IS NULL OR u.expired>NOW()) AND (t.expired IS NULL OR t.expired>NOW()) ";
 
+  if($tenant_id){
+    $sql .= " AND t.tenant_id = " . $tenant_id;
+  }
+  //die($sql);
   $result = mysqli_query($conn, $sql);
   if(!$result){
     header("location: .");
@@ -833,15 +838,30 @@ function loginUser($source = NULL) {
 
   }
   //try{
-    $row = $result->fetch_assoc();
+    $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    //var_dump( $rows);
+    if(count($rows) > 1) {
+      $out ="<div class='heading'>Pick a Tenant</div>";
+      foreach($rows as &$row) {
+        $out .="<div><a href='?action=login&tenant_id=" . $row["tenant_id"]. "'>" .$row["tenant_name"] . "</a></div>";
+
+      }
+      return $out;
+    } else{
+      $row = $rows[0];
+    }
     if($row  && $row["email"] && $row["password"]) {
+      $tenant_id = $row["tenant_id"];
       $email = $row["email"];
       $passwordHashed = $row["password"];
+      //die($passwordHashed . "*" . $passwordIn);
       //for debugging:
       //echo crypt($passwordIn, $encryptionPassword);
+      //die($passwordIn . "*" . crypt($passwordIn, $encryptionPassword) . "*" . $passwordHashed . "*" . password_verify($passwordIn, $passwordHashed) . "*");
       if (password_verify($passwordIn, $passwordHashed)) {
         //echo "DDDADA";
           setcookie($cookiename, openssl_encrypt($email, "AES-128-CTR", $encryptionPassword), time() + (30 * 365 * 24 * 60 * 60));
+          setcookie($tenantCookieName, openssl_encrypt($tenant_id , "AES-128-CTR", $encryptionPassword), time() + (30 * 365 * 24 * 60 * 60));
           header('Location: '.$_SERVER['PHP_SELF']);
           //echo "LOGGED IN!!!" . $email ;
           die;
