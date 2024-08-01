@@ -711,6 +711,7 @@ function formatSQL(sql) {
 	return formatted;
 }
 
+//the result of a productive back-and-forth with ChatGPT:
 function smoothArray(intArray, windowSize, weightFactor) {
 	// Create a new array to store the smoothed values
 	let smoothedArray = [];
@@ -725,9 +726,9 @@ function smoothArray(intArray, windowSize, weightFactor) {
 		weightFactor = 1;
 	}
 	// Generate weights based on weightFactor
-	for (let i = -windowSize; i <= windowSize; i++) {
+	for (let i = -windowSize; i <= windowSize; i++) { //originally ChatGPT offered a fixed window of only three data points, which was far too small
 	  let distance = Math.abs(i);
-	  let weight = Math.pow(weightFactor, windowSize - distance);
+	  let weight = Math.pow(weightFactor, windowSize - distance); //this kinda defeats the purpose of large windows for weightFactors bigger than one, but it might be useful
 	  weights.push(weight);
 	  fullWeightSum += weight;
 	}
