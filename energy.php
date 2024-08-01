@@ -54,6 +54,7 @@ if(!$user) {
   <!--For offline ESP graphs see this tutorial https://circuits4you.com/2018/03/10/esp8266-jquery-and-ajax-web-server/ -->
   <script src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>  
   <link rel='stylesheet' href='tool.css?version=1711570359'>
+  <script src='tool.js'></script>
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
 </head>
 
@@ -158,12 +159,15 @@ function showGraph(locationId){
                 backgroundColor: 'rgba( 111, 111, 156 , 1)', //Dot marker color
                 borderColor: 'rgba( 243, 1, 156 , 1)', //Graph Line Color
                 data: batteryPercents,
+				//steppedLine: steppedLine,
+				//cubicInterpolationMode: 'monotone',
+				tension: 0,
 				yAxisID: 'B'
             },
             ],
         },
         options: {
- 
+			
             hover: {mode: null},
             title: {
                     display: true,
@@ -175,7 +179,7 @@ function showGraph(locationId){
                         radius: 0
                     },
 				line: {
-						tension: 0.5 //Smoothening (Curved) of data lines
+						//tension: 0.2 //Smoothening (Curved) of data lines
 					}
             },
             scales: {
@@ -234,7 +238,6 @@ function getInverterData() {
 			let dataObject = JSON.parse(this.responseText); 
 			//let tbody = document.getElementById("tableBody");
 			//tbody.innerHTML = '';
-			
 			for(let datum of dataObject[0]) {
 				//console.log(datum);
 				//console.log("!");
@@ -249,9 +252,12 @@ function getInverterData() {
 				loadValues.push(load);
  
 				batteryValues.push(battery);
-				batteryPercents.push(batteryPercent);
+ 
+				batteryPercents.push(parseInt(batteryPercent));
+ 
 				timeStamp.push(time);
 			}
+			batteryPercents = smoothArray(batteryPercents, 44, 1); //smooth out the battery percentages, which are integers and too jagged
 			//console.log(batteryPercents);
 			glblChart = showGraph();  //Update Graphs
 	    }

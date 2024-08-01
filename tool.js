@@ -709,6 +709,52 @@ function formatSQL(sql) {
 	}
 	
 	return formatted;
+}
+
+function smoothArray(intArray, windowSize, weightFactor) {
+	// Create a new array to store the smoothed values
+	let smoothedArray = [];
+	
+	// Precompute the weights
+	let fullWeightSum = 0;
+	let weights = [];
+	if(!windowSize){
+		windowSize = 10;
+	}
+	if(!weightFactor){
+		weightFactor = 1;
+	}
+	// Generate weights based on weightFactor
+	for (let i = -windowSize; i <= windowSize; i++) {
+	  let distance = Math.abs(i);
+	  let weight = Math.pow(weightFactor, windowSize - distance);
+	  weights.push(weight);
+	  fullWeightSum += weight;
+	}
+  
+	// Iterate over each element in the array
+	for (let i = 0; i < intArray.length; i++) {
+	  let weightedSum = 0;
+	  let actualWeightSum = 0;
+  
+	  // Calculate the weighted sum of values within the window
+	  for (let j = -windowSize; j <= windowSize; j++) {
+		let index = i + j;
+  
+		// Check if index is within bounds
+		if (index >= 0 && index < intArray.length) {
+		  let weight = weights[j + windowSize];
+		  weightedSum += intArray[index] * weight;
+		  actualWeightSum += weight;
+		}
+	  }
+  
+	  // Calculate the weighted average and round to two decimal places
+	  let smoothedValue = (weightedSum / actualWeightSum).toFixed(2);
+	  smoothedArray.push(Number(smoothedValue));
+	}
+  
+	return smoothedArray;
   }
 
 
