@@ -374,12 +374,18 @@ body
 {
 	display: block;
 	vertical-align: text-bottom;
+	margin-top:3px;
+	margin-right: 3px;
 	padding:1px;
   	font-size:9px;
 	font-weight:bold;
 	text-align:left;
-	background:#f8f8f8;
-	color: #999999;
+	background-color:#d0d0d0;
+	border-width: 1px 1px 1px 1px;
+	border-color: #666666;
+	border-style: solid;
+	border-radius: 4px;
+	color: #666666;
 	width:250px;
 	float: right;
 }
@@ -472,10 +478,15 @@ body
 }
 
 .outercontent {
-  margin-left:0px;
-  margin-top:-10px;
-  padding-top:0px;
-  width:1600px;
+	border-width: 1px 1px 1px 1px;
+	border-color: #000000;
+	border-style: solid;
+	background-color:#f0f0f0;
+	border-radius: 4px;
+	margin-left:0px;
+	margin-top:-11px;
+	padding-top:0px;
+	width:1600px;
 }
 
 .innercontent {

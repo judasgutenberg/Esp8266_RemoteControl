@@ -79,44 +79,44 @@ if(!$user) {
 	
  
 	$out .= "</div>";
-	$out .= "<div class='innercontent'>";
+	//$out .= "<div class='innercontent'>";
 	echo $out; 
   ?>
 
-    <div style="text-align:center;"><b>Weather Information Log</b></div>
-    <div class="chart-container" position: relative; height:350px; width:100%">
-        <canvas id="Chart" width="400" height="700"></canvas>
-    </div>
-<div>
-	<div style='display:inline-block;vertical-align:top'>
-<table id="dataTable">
-<?php 
-//lol, it's easier to specify an object in json and decode it than it is just specify it in PHP
+		<div style="text-align:center;"><b>Weather Information Log</b></div>
+		<div class="chart-container" position: relative; height:350px; width:100%">
+			<canvas id="Chart" width="400" height="700"></canvas>
+		</div>
+		<div>
+			<div style='display:inline-block;vertical-align:top'>
+				<table id="dataTable">
+				<?php 
+				//lol, it's easier to specify an object in json and decode it than it is just specify it in PHP
 
-$thisDataSql = "SELECT location_name as text, device_id as value FROM device WHERE location_name <> '' AND location_name IS NOT NULL AND tenant_id=" . intval($user["tenant_id"]) . " ORDER BY location_name ASC;";
-$result = mysqli_query($conn, $thisDataSql);
-if($result) {
-  $selectData = mysqli_fetch_all($result, MYSQLI_ASSOC); 
-}
+				$thisDataSql = "SELECT location_name as text, device_id as value FROM device WHERE location_name <> '' AND location_name IS NOT NULL AND tenant_id=" . intval($user["tenant_id"]) . " ORDER BY location_name ASC;";
+				$result = mysqli_query($conn, $thisDataSql);
+				if($result) {
+				$selectData = mysqli_fetch_all($result, MYSQLI_ASSOC); 
+				}
 
-//$selectData = json_decode('[{"text":"Outside Cabin","value":1},{"text":"Cabin Downstairs","value":2},{"text":"Cabin Watchdog","value":3}]');
-//var_dump($selectData);
-//echo  json_last_error_msg();
-$selectId = "locationDropdown";
-$handler = "getWeatherData(document.getElementById('" . $selectId . "')[document.getElementById('" . $selectId  . "').selectedIndex].value)";
-echo "<tr><td>Location:</td><td>" . genericSelect($selectId, "locationId", $locationId, $selectData, "onchange", $handler) . "</td></tr>";
+				//$selectData = json_decode('[{"text":"Outside Cabin","value":1},{"text":"Cabin Downstairs","value":2},{"text":"Cabin Watchdog","value":3}]');
+				//var_dump($selectData);
+				//echo  json_last_error_msg();
+				$selectId = "locationDropdown";
+				$handler = "getWeatherData(document.getElementById('" . $selectId . "')[document.getElementById('" . $selectId  . "').selectedIndex].value)";
+				echo "<tr><td>Location:</td><td>" . genericSelect($selectId, "locationId", $locationId, $selectData, "onchange", $handler) . "</td></tr>";
 
 
 
-$scaleData = json_decode('[{"text":"detailed","value":"fine"},{"text":"hourly","value":"hour"}, {"text":"daily","value":"day"}]', true);
-echo "<tr><td>Time Scale:</td><td>" . genericSelect("scaleDropdown", "scale", "fine", $scaleData, "onchange", $handler) . "</td></tr>";
-?>
-</table>
-</div>
-<div style='display:inline-block' id='officialweather'>
-</div>
-</div>
-</div>
+				$scaleData = json_decode('[{"text":"detailed","value":"fine"},{"text":"hourly","value":"hour"}, {"text":"daily","value":"day"}]', true);
+				echo "<tr><td>Time Scale:</td><td>" . genericSelect("scaleDropdown", "scale", "fine", $scaleData, "onchange", $handler) . "</td></tr>";
+				?>
+				</table>
+		</div>
+		<div style='display:inline-block' id='officialweather'>
+		</div>
+	</div>
+<!--</div>-->
 </div>
 </div>
 <script>
@@ -256,6 +256,7 @@ function getWeatherData(locationId) {
 			glblChart = showGraph(locationId);  //Update Graphs
 			officialWeather(locationId);
 	    }
+		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
 	  };
 
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266

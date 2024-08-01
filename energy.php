@@ -79,35 +79,35 @@ if(!$user) {
 		
  
 		$out .= "</div>";
-		$out .= "<div class='innercontent'>";
+		//$out .= "<div class='innercontent'>";
 		echo $out; 
   ?>
 
     <div style="text-align:center;"><b>Inverter Information Log</b></div>
-    <div class="chart-container" position: relative; height:350px; width:100%">
-        <canvas id="Chart" width="400" height="700"></canvas>
-    </div>
-<div>
-<table id="dataTable">
-<?php 
-//lol, it's easier to specify an object in json and decode it than it is just specify it in PHP
+		<div class="chart-container" position: relative; height:350px; width:100%">
+			<canvas id="Chart" width="400" height="700"></canvas>
+		</div>
+		<div>
+			<table id="dataTable">
+			<?php 
+			//lol, it's easier to specify an object in json and decode it than it is just specify it in PHP
 
- 
+			
 
-//$selectData = json_decode('[{"text":"Outside Cabin","value":1},{"text":"Cabin Downstairs","value":2},{"text":"Cabin Watchdog","value":3}]');
-//var_dump($selectData);
-//echo  json_last_error_msg();
- 
- 
-$handler = "getInverterData()";
+			//$selectData = json_decode('[{"text":"Outside Cabin","value":1},{"text":"Cabin Downstairs","value":2},{"text":"Cabin Watchdog","value":3}]');
+			//var_dump($selectData);
+			//echo  json_last_error_msg();
+			
+			
+			$handler = "getInverterData()";
 
-$scaleData = json_decode('[{"text":"ultra-fine","value":"ultra-fine"},{"text":"fine","value":"fine"},{"text":"hourly","value":"hour"}, {"text":"daily","value":"day"}]', true);
-echo "<tr><td>Time Scale:</td><td>" . genericSelect("scaleDropdown", "scale", "fine", $scaleData, "onchange", $handler) . "</td></tr>";
-?>
-</table>
-</div>
-</div>
-</div>
+			$scaleData = json_decode('[{"text":"ultra-fine","value":"ultra-fine"},{"text":"fine","value":"fine"},{"text":"hourly","value":"hour"}, {"text":"daily","value":"day"}]', true);
+			echo "<tr><td>Time Scale:</td><td>" . genericSelect("scaleDropdown", "scale", "fine", $scaleData, "onchange", $handler) . "</td></tr>";
+			?>
+			</table>
+		</div>
+	</div>
+<!--</div>-->
 </div>
 <script>
 let glblChart = null;
@@ -261,6 +261,7 @@ function getInverterData() {
 			//console.log(batteryPercents);
 			glblChart = showGraph();  //Update Graphs
 	    }
+		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
 	  };
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
   xhttp.send();
