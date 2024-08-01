@@ -263,6 +263,14 @@ if ($user) {
         $out .= users();
       }
     }
+	} else if($table == "tenant") {
+    if ($action == "startcreate" || gvfw("user_id") != "") {
+      $out .=  editTenant($errors, $user);
+    } else {
+      if($user["role"]  == "super" || $user["role"]  == "admin"){
+        $out .= tenants($user);
+      }
+    }
   } else if ($action == "startcreate") {
     $out .= genericEntityForm($tenantId, $table, $errors);
   } else if($table!= "user" || $user["role"]  == "super") {

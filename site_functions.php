@@ -1007,12 +1007,13 @@ function tabNav($user) {
     'table' => 'sensors' 
   ] 
 	);
-  
-  if($user && $user["role"] == "super") {
+  if($user && ($user["role"] == "super" || $user["role"] == "admin")){
     $tabData[] =   [
       'label' => 'Tenants',
       'table' => 'tenant' 
     ];
+  }
+  if($user && $user["role"] == "super") {
     $tabData[] =   [
       'label' => 'Users',
       'table' => 'user' 
@@ -1239,7 +1240,11 @@ function createUser($encryptedTenantId = NULL){
   	$encryptedPassword =  crypt($password, $encryptionPassword); //siteEncrypt($password); //we need one-way encryption for this, not siteEncrypt!
     $userList = userList();
     $tenantSql = "";
-    $sql = "INSERT INTO user(email, password, created) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" .$formatedDateTime . "')"; 
+    $role = "normal";
+    if (!$encryptedTenantId){
+      $role = "admin"; //admin can alter the tenant and run reports.  super can do ANYTHING. normal can only do the basics
+    }
+    $sql = "INSERT INTO user(email, password, role, created) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" . $role . "','" . $formatedDateTime . "')"; 
     if(count(userList()) == 0) {
       //if there are no users, create the first one as admin. we also need a Tenant and we need to add the user to that Tenant
       $sql = "INSERT INTO user(email, password, created, role) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" .$formatedDateTime . "','super')"; 

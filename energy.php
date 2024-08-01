@@ -257,7 +257,7 @@ function getInverterData() {
  
 				timeStamp.push(time);
 			}
-			batteryPercents = smoothArray(batteryPercents, 44, 1); //smooth out the battery percentages, which are integers and too jagged
+			batteryPercents = smoothArray(batteryPercents, 19, 1); //smooth out the battery percentages, which are integers and too jagged
 			//console.log(batteryPercents);
 			glblChart = showGraph();  //Update Graphs
 	    }

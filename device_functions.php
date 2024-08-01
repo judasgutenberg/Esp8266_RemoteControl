@@ -343,6 +343,160 @@ function editUser($error){
   return $form;
 }
 
+function tenants($user){
+  Global $conn;
+  $table = "tenant";
+  $out = "<div class='listheader'>Users</div>";
+  $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a new user</div>\n";
+  $headerData = array(
+    [
+	    'label' => 'id',
+      'name' => $table . "_id"
+	  ],
+		[
+	    'label' => 'name',
+      'name' => 'name'
+	  ] ,
+    [
+	    'label' => 'expired',
+      'name' => 'expired'
+	  ],
+		//[
+	  //  'label' => 'role',
+    //  'name' => 'role'
+    //],
+		[
+	    'label' => 'created',
+      'name' => 'created'
+	  ] 
+    );
+  if($user["role"] == "super"){
+    $sql = "SELECT * from " . $table . " ORDER BY name ASC";
+  } else if($user["role"] == "admin"){
+    $sql = "SELECT * from " . $table . " t JOIN tenant_user tu ON t.tenant_id=tu.tenant_id WHERE tu.user_id=" . intval($user["user_id"]) . " AND tu.tenant_id=" . intval($user["tenant_id"]) . " ORDER BY t.name";
+ 
+  }
+  //echo $sql;
+  $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
+  $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
+  $result = mysqli_query($conn, $sql);
+  
+  if($result) {
+    $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    //var_dump($rows);
+    if($rows) {
+      // genericTable($rows, $headerData, $toolsTemplate, null,  $table, $table . "_id", $sql);
+      $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id");
+    }
+    
+  }
+  return $out;
+}
+
+function editTenant($error, $user){
+  Global $conn;
+  $table = "tenant";
+  $pk = gvfw($table . "_id");
+  
+  
+  $submitLabel = "save tenant";
+  if($pk  == "") {
+    $submitLabel = "create tenant";
+    $source = $_POST;
+  } else {
+    $sql = "SELECT * from " . $table . " u JOIN tenant_user tu ON u.user_id=tu.user_id WHERE u." . $table . "_id=" . intval($pk);
+    $result = mysqli_query($conn, $sql);
+    if($result) {
+      $source = mysqli_fetch_array($result);
+    }
+  }
+  if(!$pk){
+    $pk = "NULL";
+  }
+  $formData = array(
+    [
+	    'label' => 'id',
+      'name' => $table . "_id",
+      'type' => 'read_only'
+	  ],
+ 
+    [
+	    'label' => 'name',
+      'name' => 'name',
+      'type' => 'text',
+      'value' => gvfa("name", $source)
+	  ] ,
+    [
+	    'label' => 'expired',
+      'name' => 'expired',
+      'type' => 'datetime',
+      'value' => gvfa("expired", $source)
+	  ] 
+ 
+    ,
+    [
+	    'label' => 'storage_password',
+      'name' => 'storage_password',
+      'type' => 'text',
+      'value' => gvfa("storage_password", $source)
+	  ] 
+    ,
+    [
+	    'label' => 'Energy API username',
+      'name' => 'energy_api_username',
+      'type' => 'text',
+      'value' => gvfa("energy_api_username", $source)
+	  ],
+		[
+	    'label' => 'Energy API password',
+      'name' => 'energy_api_password',
+      'type' => 'text',
+      'value' => gvfa("energy_api_password", $source)
+    ],
+    [
+	    'label' => 'Energy API plant id',
+      'name' => 'energy_api_plant_id',
+      'type' => 'text',
+      'value' => gvfa("energy_api_plant_id", $source)
+    ],
+    [
+	    'label' => 'Open_weather API key',
+      'name' => 'open_weather_api_key',
+      'type' => 'text',
+      'value' => gvfa("open_weather_api_key", $source)
+    ],
+    
+    [
+	    'label' => 'users',
+      'name' => 'user_id',
+      'type' => 'many-to-many',
+      'mapping_table' => 'tenant_user',
+ 
+	    'value' => gvfa("user_id", $source), 
+      'error' => gvfa("user_id", $error),
+      'item_tool' => 'tenantTool',
+      'values' => "SELECT 
+              u.user_id, 
+              u.email AS 'text', 
+              MAX(tu.tenant_id = " . $pk . ") AS has
+          FROM 
+              user u
+          LEFT JOIN 
+              tenant_user tu
+          ON 
+              u.user_id = tu.tenant_id 
+ 
+          GROUP BY 
+              u.user_id, t.name
+          ORDER BY 
+              u.email ASC;"
+	  ] 
+  );
+ 
+  $form = genericForm($formData, $submitLabel);
+  return $form;
+}
+
 function editDeviceFeature($error,  $tenantId) {
   Global $conn;
   $table = "device_feature";
