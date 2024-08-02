@@ -1244,7 +1244,7 @@ function createUser($encryptedTenantId = NULL){
     if (!$encryptedTenantId){
       $role = "admin"; //admin can alter the tenant and run reports.  super can do ANYTHING. normal can only do the basics
     }
-    $sql = "INSERT INTO user(email, password, role, created) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" . $role . "','" . $formatedDateTime . "')"; 
+    $sql = "tenant_id(email, password, role, created) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" . $role . "','" . $formatedDateTime . "')"; 
     if(count(userList()) == 0) {
       //if there are no users, create the first one as admin. we also need a Tenant and we need to add the user to that Tenant
       $sql = "INSERT INTO user(email, password, created, role) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" .$formatedDateTime . "','super')"; 
@@ -1433,7 +1433,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
           $mappingTable = gvfa("mapping_table", $datum);
           $countingColumn = gvfa("counting_column", $datum);
           $laterSql .= "\nDELETE FROM " . $mappingTable . " WHERE <whereclause/> ";
-          if($tableName  != "user"){
+          if($tableName  != "user" &&  $tableName  != "tenant"){
             $laterSql .= "AND tenant_id='".  $data["tenant_id"] .  "'"; 
           }
           $laterSql .= ";";
@@ -1448,7 +1448,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
                 $extraM2MValues = ", " . $count;
               }
               $insertSql = "\n INSERT INTO " . $mappingTable . "(<tenant_id/> " . implode(",", array_keys($primaryKey)) . "," . $column . ",created" . $extraM2MColumns  . ") VALUES(<tenant_id_value/> '" . implode("','", array_values($primaryKey)) . "','" . $valueItem . "','" .  $formatedDateTime . "'" . $extraM2MValues . ");\n";
-              if($tableName  != "user"){
+              if($tableName  != "user" && $tableName  != "tenant"){
                 $insertSql = str_replace("<tenant_id/>", "tenant_id,", $insertSql);
                 $insertSql = str_replace("<tenant_id_value/>", $data["tenant_id"] . ",", $insertSql);
               } else {

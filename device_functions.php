@@ -397,14 +397,19 @@ function editTenant($error, $user){
   Global $conn;
   $table = "tenant";
   $pk = gvfw($table . "_id");
-  
+  $source = null;
   
   $submitLabel = "save tenant";
   if($pk  == "") {
     $submitLabel = "create tenant";
     $source = $_POST;
   } else {
-    $sql = "SELECT * from " . $table . " u JOIN tenant_user tu ON u.user_id=tu.user_id WHERE u." . $table . "_id=" . intval($pk);
+    if ($user["role"] == "super"){
+      $sql = "SELECT * from " . $table . " WHERE  " . $table . "_id=" . intval($pk);
+    } else {
+      $sql = "SELECT * from " . $table . " t JOIN tenant_user tu ON t.tenant_id=tu.tenant_id WHERE tu.user_id=" . $user["user_id"] . " AND  t." . $table . "_id=" . intval($pk);
+    }
+    
     $result = mysqli_query($conn, $sql);
     if($result) {
       $source = mysqli_fetch_array($result);
@@ -484,10 +489,10 @@ function editTenant($error, $user){
           LEFT JOIN 
               tenant_user tu
           ON 
-              u.user_id = tu.tenant_id 
+              u.user_id = tu.user_id 
  
           GROUP BY 
-              u.user_id, t.name
+              u.user_id, u.email
           ORDER BY 
               u.email ASC;"
 	  ] 

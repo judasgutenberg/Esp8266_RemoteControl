@@ -264,7 +264,7 @@ if ($user) {
       }
     }
 	} else if($table == "tenant") {
-    if ($action == "startcreate" || gvfw("user_id") != "") {
+    if ($action == "startcreate" || gvfw("tenant_id") != "") {
       $out .=  editTenant($errors, $user);
     } else {
       if($user["role"]  == "super" || $user["role"]  == "admin"){
