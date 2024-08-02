@@ -469,8 +469,13 @@ function editTenant($error, $user){
       'name' => 'open_weather_api_key',
       'type' => 'text',
       'value' => gvfa("open_weather_api_key", $source)
-    ],
+    ]
     
+
+  );
+  //only allow super users to manage users belonging to a tenant
+  if($user["role"] == "super"){
+    $formData[] =
     [
 	    'label' => 'users',
       'name' => 'user_id',
@@ -495,9 +500,9 @@ function editTenant($error, $user){
               u.user_id, u.email
           ORDER BY 
               u.email ASC;"
-	  ] 
-  );
- 
+	  ];
+
+  }
   $form = genericForm($formData, $submitLabel);
   return $form;
 }

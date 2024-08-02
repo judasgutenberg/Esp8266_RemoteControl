@@ -162,7 +162,8 @@ CREATE TABLE report(
   created DATETIME,
   modified DATETIME,
   form TEXT NULL,
-  `sql` TEXT NULL
+  `sql` TEXT NULL,
+  role VARCHAR(50) NULL
 );
 
 CREATE TABLE report_log(
@@ -248,15 +249,16 @@ CREATE TABLE tenant_user(
 --ALTER TABLE inverter_log ADD solar_potential INT NULL;
 --ALTER TABLE report_log ADD sql TEXT NULL;
 
-  ALTER TABLE inverter_log ADD mystery_value1 INT NULL;
-  ALTER TABLE inverter_log ADD mystery_value2 INT NULL;
-  ALTER TABLE inverter_log ADD changer1 INT NULL;
-  ALTER TABLE inverter_log ADD changer2 INT NULL;
-  ALTER TABLE inverter_log ADD changer3 INT NULL;
-  ALTER TABLE inverter_log ADD changer4 INT NULL;
-  ALTER TABLE inverter_log ADD changer5 INT NULL;
-  ALTER TABLE inverter_log ADD changer6 INT NULL;
-  ALTER TABLE inverter_log ADD changer7 INT NULL;
+  --ALTER TABLE inverter_log ADD mystery_value1 INT NULL;
+  --ALTER TABLE inverter_log ADD mystery_value2 INT NULL;
+  --ALTER TABLE inverter_log ADD changer1 INT NULL;
+  --ALTER TABLE inverter_log ADD changer2 INT NULL;
+  --ALTER TABLE inverter_log ADD changer3 INT NULL;
+  --ALTER TABLE inverter_log ADD changer4 INT NULL;
+  --ALTER TABLE inverter_log ADD changer5 INT NULL;
+  --ALTER TABLE inverter_log ADD changer6 INT NULL;
+  --ALTER TABLE inverter_log ADD changer7 INT NULL;
+  --ALTER TABLE report ADD role VARCHAR(50) NULL;
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
 INSERT INTO device (name, device_type_id, created) VALUES ('Hotspot Watchdog', 1, NOW());
