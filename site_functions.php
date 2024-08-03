@@ -841,6 +841,10 @@ function setTenant($encryptedTenantId){
   header('Location: '.$_SERVER['PHP_SELF']);
 }
 
+function availableRoles(){
+  return ["", "viewer", "operator", "subadmin", "admin", "super"];
+}
+
 function loginUser($source = NULL, $tenant_id = NULL) {
   Global $conn;
   Global $encryptionPassword;

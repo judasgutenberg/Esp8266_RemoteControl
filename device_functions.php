@@ -294,8 +294,9 @@ function editUser($error){
     [
 	    'label' => 'role',
       'name' => 'role',
-      'type' => 'text',
-      'value' => gvfa("role", $source)
+      'type' => 'select',
+      'value' => gvfa("role", $source),
+      'values'=> availableRoles()
 	  ],
 		[
 	    'label' => 'created',
@@ -474,7 +475,7 @@ function editTenant($error, $user){
 
   );
   //only allow super users to manage users belonging to a tenant
-  if($user["role"] == "super"){
+  if($user["role"] == "super" || $user["role"] == "admin"){ //it's okay if admins can see other users on the server and can add or subtract them from their tenant
     $formData[] =
     [
 	    'label' => 'users',
@@ -675,9 +676,9 @@ function editReport($error,  $tenantId) {
     [
 	    'label' => 'role',
       'name' => 'role',
-      'width' => 50,
-	    'value' => gvfa("role", $source), 
-      'error' => gvfa('role', $error)
+      'type' => 'select',
+      'value' => gvfa("role", $source),
+      'values'=> availableRoles()
 	  ],
 		[
 	    'label' => 'form',
