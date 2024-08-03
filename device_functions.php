@@ -125,7 +125,7 @@ function devices($tenantId) {
 
 }
 
-function reports($tenantId) {
+function reports($tenantId, $user) {
   Global $conn;
   $table = "report";
   $sql = "SELECT *  FROM " . $table . "  WHERE tenant_id=" . intval($tenantId);
@@ -145,7 +145,10 @@ function reports($tenantId) {
       'label' => 'name',
       'name' => 'name' 
     ],
- 
+    [
+      'label' => 'role',
+      'name' => 'role' 
+    ],
     [
       'label' => 'created',
       'name' => 'created' 
@@ -155,10 +158,11 @@ function reports($tenantId) {
       'name' => 'modified' 
     ],
     );
-    $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
-    $toolsTemplate .= " | <a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>&action=fetch'>Run</a>";
-    $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
-
+    $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>&action=fetch'>Run</a>";
+    if($user["role"] == "super") {
+      $toolsTemplate .= " | <a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
+      $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
+    }
     if($result) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
       
@@ -671,6 +675,13 @@ function editReport($error,  $tenantId) {
       'width' => 400,
 	    'value' => gvfa("name", $source), 
       'error' => gvfa('name', $error)
+	  ],
+    [
+	    'label' => 'role',
+      'name' => 'role',
+      'width' => 50,
+	    'value' => gvfa("role", $source), 
+      'error' => gvfa('role', $error)
 	  ],
 		[
 	    'label' => 'form',

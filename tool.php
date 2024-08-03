@@ -64,8 +64,10 @@ if($_POST || gvfw("table")) { //gvfw("table")
 	}  else if (strtolower($table) == "run") {
     //oh, we're a utility, though we never get here
   } else if(beginsWith(strtolower($action), "save") || beginsWith(strtolower($action), "create")) {
-    if($table != "user" || $user["role"] == "super") {
+    if($table != "user"  &&  $table != "report" || $user["role"] == "super") {
       $errors = genericEntitySave($tenantId, $table);
+    } else {
+      $out.= "You lack permissions to make changes to a " . $table . ".";
     }
   }
 } else {
@@ -235,7 +237,7 @@ if ($user) {
     } else if ($action == "startcreate" || gvfw("report_id") != "") {
       $out .=  editReport($errors,  $tenantId);
     } else {
-      $out .= reports($tenantId);
+      $out .= reports($tenantId, $user);
     }
 	} else if($table == "device") {
     if ($action == "startcreate" || gvfw("device_id") != "") {

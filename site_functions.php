@@ -1005,7 +1005,11 @@ function tabNav($user) {
   [
     'label' => 'Sensor Data',
     'table' => 'sensors' 
-  ] 
+  ],
+  [
+    'label' => 'Reports',
+    'table' => 'report' 
+  ]
 	);
   if($user && ($user["role"] == "super" || $user["role"] == "admin")){
     $tabData[] =   [
@@ -1017,10 +1021,6 @@ function tabNav($user) {
     $tabData[] =   [
       'label' => 'Users',
       'table' => 'user' 
-    ];
-    $tabData[] =   [
-      'label' => 'Reports',
-      'table' => 'report' 
     ];
     $tabData[] =   [
       'label' => 'Utilities',
@@ -1621,6 +1621,26 @@ function deleteLink($table, $pkName) {
   return $out;
 }
 
+//this permissions model applies to reports with roles, but it could apply to other things
+//like device management and the automation editor, among other things
+function canUserDoThing($user, $thingRole){
+  $userRole = $user["role"];
+  if($userRole == "super"){
+    return true;
+  }
+  if($userRole == $thingRole || !$thingRole){
+    return true;
+  }
+  if($thingRole != "super"  && $userRole == "admin"){
+    return true;
+  }
+  if(($thingRole != "super" && $thingRole != "admin")  && $userRole == "subadmin"){
+    return true;
+  }
+  return false;
+
+}
+
 function doReport($user, $reportId, $reportLogId = null){
   Global $conn;
   $tenantId = $user["tenant_id"];
@@ -1650,6 +1670,7 @@ function doReport($user, $reportId, $reportLogId = null){
   $sql = "SELECT * FROM report WHERE report_id=" . intval($reportId) . " AND tenant_id=" . intval($tenantId);
   //die($sql);
   $result = mysqli_query($conn, $sql);
+
   $data = "";
   $out = "";
   $ran = false;
@@ -1660,6 +1681,9 @@ function doReport($user, $reportId, $reportLogId = null){
   if($result) {
     
     $reportData = mysqli_fetch_array($result);
+    if(!canUserDoThing($user, $reportData["role"])) {
+      return "You lack permissions to run this report.";
+    }
     $sql = $reportData["sql"];
     $form = $reportData["form"];
     $decodedForm = "";
