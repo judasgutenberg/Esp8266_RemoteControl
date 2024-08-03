@@ -64,7 +64,7 @@ if($_POST || gvfw("table")) { //gvfw("table")
 	}  else if (strtolower($table) == "run") {
     //oh, we're a utility, though we never get here
   } else if(beginsWith(strtolower($action), "save") || beginsWith(strtolower($action), "create")) {
-    if($table != "user"  &&  $table != "report" || $user["role"] == "super") {
+    if($user["role"] != "viewer" && ($table != "user"  &&  $table != "report") || $user["role"] == "super") {
       $errors = genericEntitySave($tenantId, $table);
     } else {
       $out.= "You lack permissions to make changes to a " . $table . ".";
@@ -109,8 +109,9 @@ if ($user) {
     }
     //a little safer only because it allows a user to screw up records connected to their tenantId but mabe revisit!!!
     $sql = "UPDATE ". filterStringForSqlEntities($table) . " SET " . filterStringForSqlEntities($name) . "='" .  mysqli_real_escape_string($conn, $value) . "' WHERE tenant_id=" . intval($tenantId) . " AND " . filterStringForSqlEntities($primaryKeyName) . "='" . intval($primaryKeyValue) . "'";
-    
-    $result = mysqli_query($conn, $sql);
+    if($user["role"] != "viewer" && ($table != "user"  &&  $table != "report") || $user["role"] == "super") { //can't have just anybody do this
+      $result = mysqli_query($conn, $sql); 
+    }
     var_dump($result);
     die($sql);
   

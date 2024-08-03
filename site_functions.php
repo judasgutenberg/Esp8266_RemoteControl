@@ -640,13 +640,14 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
     $out .= "let formItemInfoRecord = findObjectByName(formSpec, textAreaName);\n";
     $out .= "let codeLanguage = formItemInfoRecord[\"code_language\"];\n";
     $out .= "formattedCode = textArea.value;\n";
+    $out .= "mode = 'text/x-html';";
     $out .= "if (codeLanguage == 'sql'){;\n";
-    $out .= "formattedCode = formatSQL(textArea.value);\n";
-    $out .= "mode = 'text/x-' + codeLanguage;\n";
+    $out .= " formattedCode = formatSQL(textArea.value);\n";
+    $out .= " mode = 'text/x-' + codeLanguage;\n";
     $out .= "}\n;";
     $out .= "if (codeLanguage == 'json'){;\n";
-    $out .= "formattedCode = formatJSON(textArea.value);\n";
-    $out .= "mode = 'application/' + codeLanguage;\n";
+    $out .= " formattedCode = formatJSON(textArea.value);\n";
+    $out .= " mode = 'application/' + codeLanguage;\n";
     $out .= "}\n;";
     $out .= "textArea.value = formattedCode;\n";
     $out .= "let editor = CodeMirror.fromTextArea(textArea, {\n";
@@ -850,7 +851,7 @@ function loginUser($source = NULL, $tenant_id = NULL) {
   }
   $email = gvfa("email", $source);
   $passwordIn = gvfa("password", $source);
-  $sql = "SELECT `email`, `password`, t.tenant_id, name as tenant_name FROM `user` u JOIN tenant_user tu ON u.user_id=tu.user_id JOIN tenant t ON tu.tenant_id = t.tenant_id WHERE email = '" . mysqli_real_escape_string($conn, $email) . "' AND (u.expired IS NULL OR u.expired>NOW()) AND (t.expired IS NULL OR t.expired>NOW()) ";
+  $sql = "SELECT `email`, `password`, t.tenant_id, name as tenant_name, about FROM `user` u JOIN tenant_user tu ON u.user_id=tu.user_id JOIN tenant t ON tu.tenant_id = t.tenant_id WHERE email = '" . mysqli_real_escape_string($conn, $email) . "' AND (u.expired IS NULL OR u.expired>NOW()) AND (t.expired IS NULL OR t.expired>NOW()) ";
 
   if($tenant_id){
     $sql .= " AND t.tenant_id = " . $tenant_id;
@@ -877,7 +878,7 @@ function loginUser($source = NULL, $tenant_id = NULL) {
         //die("we are setting a cookie");
         setcookie($cookiename, siteEncrypt($email), time() + (30 * 365 * 24 * 60 * 60));
         foreach($rows as &$row) {
-          $out .="<div><a href='?action=settenant&encrypted_tenant_id=" . urlencode(siteEncrypt($row["tenant_id"])). "'>" .$row["tenant_name"] . "</a></div>";
+          $out .="<div><a href='?action=settenant&encrypted_tenant_id=" . urlencode(siteEncrypt($row["tenant_id"])). "'>" .$row["tenant_name"] . "</a> <div class='description'>" . $row["about"]  . "</div></div>";
 
         }
         //echo $out;
@@ -1638,7 +1639,19 @@ function canUserDoThing($user, $thingRole){
     return true;
   }
   return false;
+}
 
+function previousReportRuns($user, $reportId) {
+  Global $conn;
+  $sql = "SELECT report_log_id, run, records_returned, runtime, SUBSTRING(`sql`, 1, 40) as `sql`  FROM report_log WHERE report_id=" . intval($reportId) . " AND tenant_id=" . intval($user["tenant_id"]) . " AND user_id=" . intval($user["user_id"]) . " ORDER BY run DESC";
+  $result = mysqli_query($conn, $sql);
+  $out = "";
+  if($result) {
+    $reportRuns = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    $toolsTemplate = "<a href='?action=rerun&table=report&report_log_id=<report_log_id/>'>Re-Run</a> ";
+    $out = genericTable($reportRuns, null, $toolsTemplate, null);
+  }
+  return $out;
 }
 
 function doReport($user, $reportId, $reportLogId = null){
@@ -1647,7 +1660,7 @@ function doReport($user, $reportId, $reportLogId = null){
   $historicDataObject = null;
 
   if($reportLogId != null) {
-    $sql = "SELECT data, report_id FROM report_log WHERE report_log_id = " . intval($reportLogId) . " AND tenant_id=" . intval($tenantId);
+    $sql = "SELECT data, report_id FROM report_log WHERE report_log_id = " . intval($reportLogId) . " AND tenant_id=" . intval($tenantId) . " AND user_id=" . intval($user["user_id"]);
    
     $historyResult = mysqli_query($conn, $sql);
     if($historyResult) {
@@ -1715,7 +1728,7 @@ function doReport($user, $reportId, $reportLogId = null){
 
       $out .= genericForm($decodedFormToUse, "Run", "Running Report...", $user);
       $out .= "<div class='listtitle'>Past Runs:</div>";
-      $out .= previousReportRuns($tenantId, $reportId);
+      $out .= previousReportRuns($user, $reportId);
     } else {
       $ran = true;
       $out = "<div class='listtitle'>Running Report  '" . $reportData["name"] . "' " . $editButton . " " . $reRunButton  . "</div>";
@@ -1745,7 +1758,7 @@ function doReport($user, $reportId, $reportLogId = null){
           $count = count($rows);
         }
         $timeElapsedSecs = microtime(true) - $start;
-        $reportLogSql = "INSERT INTO report_log (tenant_id, report_id, run, records_returned, runtime, `data`, `sql`) VALUES (" . intval($tenantId) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . $count  . "," .  intval($timeElapsedSecs * 1000) . ",'" . mysqli_real_escape_string($conn, json_encode($decodedFormToUse)) . "','" . mysqli_real_escape_string($conn, $sql) . "');";
+        $reportLogSql = "INSERT INTO report_log (tenant_id, user_id, report_id, run, records_returned, runtime, `data`, `sql`) VALUES (" . intval($tenantId) . "," . intval($user["user_id"]) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . $count  . "," .  intval($timeElapsedSecs * 1000) . ",'" . mysqli_real_escape_string($conn, json_encode($decodedFormToUse)) . "','" . mysqli_real_escape_string($conn, $sql) . "');";
         //echo $reportLogSql;
         $reportLogResult = mysqli_query($conn, $reportLogSql);
         //var_dump($rows);

@@ -174,12 +174,14 @@ CREATE TABLE report_log(
   data TEXT NULL,
   `sql` TEXT NULL,
   records_returned int,
-  runtime int
+  runtime int,
+  user_id INT NULL
 );
 
 CREATE TABLE tenant(
   tenant_id  INT AUTO_INCREMENT PRIMARY KEY,
   `name` VARCHAR(100),
+  `about` VARCHAR(300),
   expired   DATETIME NULL,
   created     DATETIME,
   preferences  TEXT NULL,
@@ -249,16 +251,18 @@ CREATE TABLE tenant_user(
 --ALTER TABLE inverter_log ADD solar_potential INT NULL;
 --ALTER TABLE report_log ADD sql TEXT NULL;
 
-  --ALTER TABLE inverter_log ADD mystery_value1 INT NULL;
-  --ALTER TABLE inverter_log ADD mystery_value2 INT NULL;
-  --ALTER TABLE inverter_log ADD changer1 INT NULL;
-  --ALTER TABLE inverter_log ADD changer2 INT NULL;
-  --ALTER TABLE inverter_log ADD changer3 INT NULL;
-  --ALTER TABLE inverter_log ADD changer4 INT NULL;
-  --ALTER TABLE inverter_log ADD changer5 INT NULL;
-  --ALTER TABLE inverter_log ADD changer6 INT NULL;
-  --ALTER TABLE inverter_log ADD changer7 INT NULL;
-  --ALTER TABLE report ADD role VARCHAR(50) NULL;
+--ALTER TABLE inverter_log ADD mystery_value1 INT NULL;
+--ALTER TABLE inverter_log ADD mystery_value2 INT NULL;
+--ALTER TABLE inverter_log ADD changer1 INT NULL;
+--ALTER TABLE inverter_log ADD changer2 INT NULL;
+--ALTER TABLE inverter_log ADD changer3 INT NULL;
+--ALTER TABLE inverter_log ADD changer4 INT NULL;
+--ALTER TABLE inverter_log ADD changer5 INT NULL;
+--ALTER TABLE inverter_log ADD changer6 INT NULL;
+--ALTER TABLE inverter_log ADD changer7 INT NULL;
+--ALTER TABLE report ADD role VARCHAR(50) NULL;
+--ALTER TABLE report_log ADD user_id INT NULL;
+--ALTER TABLE tenant ADD about TEXT NULL;
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
 INSERT INTO device (name, device_type_id, created) VALUES ('Hotspot Watchdog', 1, NOW());

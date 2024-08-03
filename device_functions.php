@@ -202,19 +202,6 @@ function copyValuesFromSourceToDest($dest, $source) {
   return $dest;
 }
 
-function previousReportRuns($tenantId, $reportId) {
-  Global $conn;
-  $sql = "SELECT report_log_id, run, records_returned, runtime, SUBSTRING(`sql`, 1, 40) as `sql`  FROM report_log WHERE report_id=" . intval($reportId) . " AND tenant_id=" . intval($tenantId) . " ORDER BY run DESC";
-  $result = mysqli_query($conn, $sql);
-  $out = "";
-  if($result) {
-    $reportRuns = mysqli_fetch_all($result, MYSQLI_ASSOC);
-    $toolsTemplate = "<a href='?action=rerun&table=report&report_log_id=<report_log_id/>'>Re-Run</a> ";
-    $out = genericTable($reportRuns, null, $toolsTemplate, null);
-  }
-  return $out;
-}
-
 function users(){
   Global $conn;
   $table = "user";
@@ -434,6 +421,15 @@ function editTenant($error, $user){
       'name' => 'name',
       'type' => 'text',
       'value' => gvfa("name", $source)
+	  ] ,
+     
+    [
+	    'label' => 'about',
+      'name' => 'about',
+      'type' => 'text',
+      'width' => 400,
+      'height'=> 50,
+      'value' => gvfa("about", $source)
 	  ] ,
     [
 	    'label' => 'expired',
