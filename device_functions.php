@@ -1285,9 +1285,17 @@ function getWeatherForecast($latitude, $longitude, $apiKey) {
   return $weatherData;
 }
 
-
+function tenantListSql($user){
+  if($user["role"] == "super") {
+    $tenantListSql = "SELECT tenant_id, name as text FROM tenant ORDER BY name";
+  } else {
+    $tenantListSql = "SELECT t.tenant_id, name as text FROM tenant t JOIN tenant_user tu ON t.tenant_id=tu.tenant_id WHERE tu.user_id=" . intval($user["user_id"]) . " ORDER BY name";
+  }
+  return $tenantListSql;
+}
 
 function utilities($user, $viewMode = "list") {
+  
   $utilitiesData = array(
 
     [
@@ -1297,6 +1305,7 @@ function utilities($user, $viewMode = "list") {
       'action' => 'visitorLog(<device_id/>, <number/>)',
       'key' => 'recentvisitorlogs',
       'role' => "super",
+      'skip_confirmation' => true,
       'form' => 
       [
         [
@@ -1325,6 +1334,7 @@ function utilities($user, $viewMode = "list") {
       'action' => 'errorLog(<device_id/>, <number/>)',
       'key' => 'recenterrorlogs',
       'role' => "super",
+      'skip_confirmation' => true,
       'form' => 
       [
         [
@@ -1353,6 +1363,7 @@ function utilities($user, $viewMode = "list") {
       'action' => 'generateCurrentUrl() . "?table=user&action=startcreate&encrypted_tenant_id=" . siteEncrypt(<tenant_id/>)',
       'key' => 'tenantlink',
       'role' => "admin",
+      'skip_confirmation' => true,
       'form' => 
       [
         [
@@ -1360,7 +1371,7 @@ function utilities($user, $viewMode = "list") {
           'name' => 'tenant_id',
           'value' => gvfa("tenant_id", $_POST),
           'type' => 'select',
-          'values' => "SELECT tenant_id, name as text FROM tenant ORDER BY name"
+          'values' => tenantListSql($user)
         ] 
       ]
     ]

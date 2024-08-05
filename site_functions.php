@@ -7,7 +7,10 @@ function utilityForm($user, $foundData) {
     $out .= "<div>" . $foundData["description"] . "</div>";
     $mergedData =  $foundData["form"];
     $form = genericForm($mergedData, "Run", "Running " . $foundData["label"], $user);
-    $confirmJs  = "onclick=\"return(confirm('Are you sure you want to run " . $foundData["label"] . "?'))\"";
+    $confirmJs = "";
+    if($foundData["skip_confirmation"] === true) {
+      $confirmJs  = "onclick=\"return(confirm('Are you sure you want to run " . $foundData["label"] . "?'))\"";
+    }
     $form = str_replace("value='Run' type='submit'/>", "value='Run' type='submit'  " . $confirmJs  . "/>", $form);
     $out .= $form;
   }
