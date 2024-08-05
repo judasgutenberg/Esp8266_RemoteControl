@@ -157,7 +157,7 @@ if ($user) {
       if ($_POST ||  gvfa("action", $foundData) && !gvfa("form", $foundData)) {
         //dealing with a utility that has a form
         $role = gvfa("role", $foundData);
-        if (doesUserHaveRole($user, $role) && $action) { //don't actually need to do this here any more
+        if (canUserDoThing($user, $role) && $action) { //don't actually need to do this here any more
           
           if(array_key_exists("action", $foundData)) {
               $redirect = true;
@@ -173,8 +173,8 @@ if ($user) {
                 //if($result){
                   eval('$result  =' . $codeToRun . ";");
                 //}
-                echo "<plaintext>" . $result;
-                die();
+                $out .= "<pre>" . $result . "</pre>";
+                //die();
                 //die($codeToRun);
               }
               catch(ParseError $error) { //this shit does not work. does try/catch ever work in PHP?

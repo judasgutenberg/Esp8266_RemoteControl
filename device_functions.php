@@ -1287,7 +1287,7 @@ function getWeatherForecast($latitude, $longitude, $apiKey) {
 
 
 
-function utilities($tenant, $viewMode = "list") {
+function utilities($user, $viewMode = "list") {
   $utilitiesData = array(
 
     [
@@ -1352,7 +1352,7 @@ function utilities($tenant, $viewMode = "list") {
       'description' => "Send this link to someone to get them to become a specific tenant's user.",
       'action' => 'generateCurrentUrl() . "?table=user&action=startcreate&encrypted_tenant_id=" . siteEncrypt(<tenant_id/>)',
       'key' => 'tenantlink',
-      'role' => "super",
+      'role' => "admin",
       'form' => 
       [
         [
@@ -1368,8 +1368,9 @@ function utilities($tenant, $viewMode = "list") {
   );
 
 
-  $filteredData = array_filter($utilitiesData, function ($subData) use ($tenant) {
-    return doesUserHaveRole($tenant, gvfa("role", $subData));
+  $filteredData = array_filter($utilitiesData, function ($subData) use ($user) {
+    return canUserDoThing($user, gvfa("role", $subData));
+    //return doesUserHaveRole($tenant, gvfa("role", $subData));
   });
   //echo $viewMode;
   //var_dump($filteredData );
