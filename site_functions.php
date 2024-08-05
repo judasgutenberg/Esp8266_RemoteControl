@@ -1018,6 +1018,10 @@ function tabNav($user) {
 	);
   if($user && ($user["role"] == "super" || $user["role"] == "admin")){
     $tabData[] =   [
+      'label' => 'Utilities',
+      'table' => 'utilities' 
+    ];
+    $tabData[] =   [
       'label' => 'Tenants',
       'table' => 'tenant' 
     ];
@@ -1027,10 +1031,7 @@ function tabNav($user) {
       'label' => 'Users',
       'table' => 'user' 
     ];
-    $tabData[] =   [
-      'label' => 'Utilities',
-      'table' => 'utilities' 
-    ];
+
   }
 	$out = "<div class='nav'>";
   $currentMode = gvfa('table', $_REQUEST);
