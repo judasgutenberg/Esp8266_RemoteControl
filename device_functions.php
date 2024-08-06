@@ -1375,7 +1375,62 @@ function utilities($user, $viewMode = "list") {
         ] 
       ]
     ]
-  
+    ,
+    [
+      'label' => 'Copy Tenant Table Data as Template Values',
+      'url' => '?table=utilities&action=copytotenanttemplate',
+      'description' => "Copies user data from select tables to the 'template' tenant. Used to save data from an especially well-curated tenant to templates for the initiation of new tenants.",
+      'key' => 'copytotenanttemplate',
+      'role' => "super",
+      'action' => "copyTenantToTemplates(<tenant_id/>, '<table_name/>')",
+      'skip_confirmation' => false,
+      'form' => 
+      [
+        [
+          'label' => 'Tenant to Get Data From',
+          'name' => 'tenant_id',
+          'value' => gvfa("tenant_id", $_POST),
+          'type' => 'select',
+          'values' => "SELECT tenant_id, name as text from tenant ORDER BY name"
+        ],
+        [
+          'label' => 'Tables',
+          'name' => 'table_name',
+          'value' => gvfa("table_name", $_POST),
+          'type' => 'multiselect',
+          'values' => ["feature_type",  "device_type", "device_type_feature", "management_rule"]
+        ]
+
+      ]
+    ]
+    ,
+    [
+      'label' => 'Copy Template Table Data to Tenant',
+      'url' => '?table=utilities&action=copyfromtenanttemplate',
+      'description' => "Copies template data from select tables to a specific tenant.  Used as part of tenant setup or when rebuilding a tenant from scratch.",
+      'key' => 'copyfromtenanttemplate',
+      'role' => "super",
+      'action' => "copyTemplatesToTenant(<tenant_id/>, '<table_name/>')",
+      'skip_confirmation' => false,
+      'form' => 
+      [
+        [
+          'label' => 'Tenant to Get Data From',
+          'name' => 'tenant_id',
+          'value' => gvfa("tenant_id", $_POST),
+          'type' => 'select',
+          'values' => "SELECT tenant_id, name as text from tenant ORDER BY name"
+        ],
+        [
+          'label' => 'Tables',
+          'name' => 'table_name',
+          'value' => gvfa("table_name", $_POST),
+          'type' => 'multiselect',
+          'values' => ["feature_type",  "device_type", "device_type_feature", "management_rule"]
+        ]
+
+      ]
+    ]
   );
 
 
@@ -1400,21 +1455,88 @@ function utilities($user, $viewMode = "list") {
       
 }
 
-  function visitorLog($deviceId, $number) {
-    $lines=array();
-    $logFile = "/var/log/apache2/access.log";
-    $strToExec = "grep \"locationId=" . $deviceId . "\" " . $logFile . " | tail -n " . $number;
-    $output = shell_exec($strToExec);
-    return $output;
-
+//tables is a comma-delimited string
+function copyTenantToTemplates($tenantId, $tablesString){
+  Global $conn;
+  Global $database;
+  $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
+  $formatedDateTime =  $date->format('Y-m-d H:i:s');
+  $tables = explode(",", $tablesString);
+  foreach($tables as $currentTableName) {
+    $currentTableName = trim($currentTableName);
+    $columnSql = "
+    SELECT GROUP_CONCAT(COLUMN_NAME) AS columns
+    FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE table_schema='" . $database . "' AND table_name='" . $currentTableName . "' AND COLUMN_KEY != 'PRI' AND COLUMN_NAME != 'created' AND COLUMN_NAME != 'tenant_id'";
+ 
+    $result = $conn->query($columnSql);
+    $row = $result->fetch_assoc();
+    $columnString = $row["columns"];
+    $deleteSql = "DELETE FROM " . $currentTableName . " WHERE tenant_id=0";
+    $sql = "INSERT INTO " . $currentTableName . "(" . $columnString  . ",created,tenant_id)";
+    $sql .= " SELECT " . $columnString . ",'" . $formatedDateTime . "', 0 FROM " . $currentTableName . " WHERE tenant_id=" . intval($tenantId);
+    echo $sql;
+    $result = $conn->query($deleteSql);
+    $result = $conn->query($sql);
+    $error = mysqli_error($conn);
+    if(!$error){
+      return "Template for tables: " . $tablesString  . " updated.";
+    } else {
+      return $error;
+    }
   }
+ 
+}
 
-
-  function errorLog($deviceId, $number) {
-    $lines=array();
-    $logFile = "/var/log/apache2/error.log";
-    $strToExec = "grep \"locationId=" . $deviceId . "\" " . $logFile . " | tail -n " . $number;
-    $output = shell_exec($strToExec);
-    return $output;
-
+//tables is a comma-delimited string
+function copyTemplatesToTenant($tenantId, $tablesString){
+  Global $conn;
+  Global $database;
+  $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
+  $formatedDateTime =  $date->format('Y-m-d H:i:s');
+  $tables = explode(",", $tablesString);
+  foreach($tables as $currentTableName) {
+    $currentTableName = trim($currentTableName);
+    $columnSql = "
+    SELECT GROUP_CONCAT(COLUMN_NAME) AS columns
+    FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE table_schema='" . $database . "' AND table_name='" . $currentTableName . "' AND COLUMN_KEY != 'PRI' AND COLUMN_NAME != 'created' AND COLUMN_NAME != 'tenant_id'";
+ 
+    $result = $conn->query($columnSql);
+    $row = $result->fetch_assoc();
+    $columnString = $row["columns"];
+    $deleteSql = "DELETE FROM " . $currentTableName . " WHERE tenant_id=" . intval($tenantId);
+    $sql = "INSERT INTO " . $currentTableName . "(" . $columnString  . ",created,tenant_id)";
+    $sql .= " SELECT " . $columnString . ",'" . $formatedDateTime . "', " . intval($tenantId). " FROM " . $currentTableName . " WHERE tenant_id=0";
+    echo $sql;
+    $result = $conn->query($deleteSql);
+    $result = $conn->query($sql);
+    $error = mysqli_error($conn);
+    if(!$error){
+      return "Tenant tables: " . $tablesString  . " restored from template.";
+    } else {
+      return $error;
+    }
   }
+ 
+}
+
+
+function visitorLog($deviceId, $number) {
+  $lines=array();
+  $logFile = "/var/log/apache2/access.log";
+  $strToExec = "grep \"locationId=" . $deviceId . "\" " . $logFile . " | tail -n " . $number;
+  $output = shell_exec($strToExec);
+  return $output;
+
+}
+
+
+function errorLog($deviceId, $number) {
+  $lines=array();
+  $logFile = "/var/log/apache2/error.log";
+  $strToExec = "grep \"locationId=" . $deviceId . "\" " . $logFile . " | tail -n " . $number;
+  $output = shell_exec($strToExec);
+  return $output;
+
+}

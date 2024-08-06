@@ -356,6 +356,7 @@ function genericEntitySave($tenantId, $table) {
   } else {
     //unset($data["tenant_id"]);
   }
+ 
   $sql = insertUpdateSql($conn, $table, array($pk => gvfw($table . '_id')), $data);
   //echo $sql;
   //die();
@@ -464,7 +465,19 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
           $out .= generateSubFormFromJson($name, $template, $template);
 
         }
-    
+      } else if($type == 'multiselect') {
+        foreach($values as $specificValue){
+          $checkPart = "";
+          if(is_array($value)) {
+            foreach($value as $selectedValue){
+              if($selectedValue == $specificValue){
+                $checkPart  = " checked='checked'";
+              }
+            }
+
+          }
+          $out .= "<input type='checkbox' name='" . $name . "[]' value='" . $specificValue . " " . $checkPart . "'/> " . $specificValue . "<br/>";
+        }
       } else if($type == 'select') {
         //echo $values;
         $out .= "<select  name='" . $name . "' />";
@@ -1185,9 +1198,15 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
 
 function tokenReplace($template, $data,  $tableName = "", $strDelimiterBegin = "<", $strDelimiterEnd = "/>"){
   Global $encryptionPassword;
+  //var_dump($data);
   foreach($data as $key => $value) {
     if(!is_array($value)) {
       $template = str_replace($strDelimiterBegin . $key . $strDelimiterEnd, $value, $template);
+    } else {
+      if(array_is_list($value) && count($value) > 0 && is_array($value[0]) == false) {
+        $values = implode(",", $value);
+        $template = str_replace($strDelimiterBegin . $key . $strDelimiterEnd, $values, $template);
+      }
     }
   }
   if($tableName!= "") {
@@ -1195,6 +1214,16 @@ function tokenReplace($template, $data,  $tableName = "", $strDelimiterBegin = "
     $template = str_replace($strDelimiterBegin . "hashed_entities" . $strDelimiterEnd, $hashedEntities, $template);
   }
   return $template;
+}
+
+if (!function_exists('array_is_list')) {
+  function array_is_list(array $arr)
+  {
+      if ($arr === []) {
+          return true;
+      }
+      return array_keys($arr) === range(0, count($arr) - 1);
+  }
 }
 
 function gvfw($name, $fail = false){ //get value from wherever

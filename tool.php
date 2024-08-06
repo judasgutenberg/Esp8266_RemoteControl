@@ -41,7 +41,8 @@ $page = gvfw('page');
 $datatype = gvfw('datatype'); 
 //echo $table  . "*" . $action. "*" .  $datatype;
 //$formatedDateTime =  $date->format('H:i');
- 
+
+
 if ($action == "logout") {
   logOut();
   header("Location: ?action=login");
@@ -54,7 +55,10 @@ if ($action == "logout") {
   die();
 }
 
+
 if($_POST || gvfw("table")) { //gvfw("table") 
+
+
 	if ($action == "login") {
     $tenantId = gvfa("tenant_id", $_GET);
 		$tenantSelector = loginUser(NULL, $tenantId);
@@ -75,6 +79,7 @@ if($_POST || gvfw("table")) { //gvfw("table")
 }
  
 if ($user) {
+
 	$out .= "<div>\n";
   if($action == "checksqlsyntax") {
     $sql = gvfw('sql');
@@ -92,6 +97,7 @@ if ($user) {
     die(json_encode($out));
   } else if($action == "genericformsave") { //this should be pretty secure now that i am hashing all the descriptive information to make sure it isn't tampered with
     //mostly works for numbers, colors, and checkboxes
+
     $name = filterStringForSqlEntities(gvfw('name'));
     $value = gvfw('value');
     $primaryKeyName = filterStringForSqlEntities(gvfw('primary_key_name'));
@@ -145,25 +151,45 @@ if ($user) {
   if ($table == "sensors") {//a pseudo-table, as sensors are either one-to-a-device or a device_feature
     $out .= currentSensorData($user);
   } else if ($table == "utilities") {
-    
+
+ 
     $action = gvfa('action', $_GET); //$_POST will have this as "run"
+    
     $data = json_decode(gvfw("_data")); //don't actually need this
-    //var_dump($data);
-    $foundData = getUtilityInfo($user, $action);
-    //echo "SADASDASD" . $action;
-    //var_dump($foundData);
+    $foundData = getUtilityInfo($user, $action); 
+ 
     if($foundData) {
-      
+      $role = gvfa("role", $foundData);
+ 
+
+
       if ($_POST ||  gvfa("action", $foundData) && !gvfa("form", $foundData)) {
         //dealing with a utility that has a form
         $role = gvfa("role", $foundData);
         if (canUserDoThing($user, $role) && $action) { //don't actually need to do this here any more
-          
-          if(array_key_exists("action", $foundData)) {
+          if(array_key_exists("sql", $foundData)) { //allows the guts of a report to work as a utility
+
+            $sql = $foundData["sql"];
+            $sql =  tokenReplace($sql, $_POST);
+            $reportResult = mysqli_query($conn, $sql);
+            $error = mysqli_error($conn);
+            $affectedRows = mysqli_affected_rows($conn);
+            $out .= "<pre>Affected rows: " . $affectedRows . "\n";
+            if($error){
+              $out .= "Error: " . $error . "\n";
+            }
+            
+            $out .= "</pre>";
+            if($reportResult !== false  && $reportResult !== true) {
+              $rows = mysqli_fetch_all($reportResult, MYSQLI_ASSOC);
+              $out .= genericTable($rows, null, null, null);
+            }
+
+          } else if(array_key_exists("action", $foundData)) {
               $redirect = true;
               $codeToRun = tokenReplace($foundData["action"], $_GET);
               $codeToRun = tokenReplace($codeToRun, $_POST) . ";";
-              
+ 
               try {
 
                 //$result = @eval($evalcode . "; return true;");
@@ -188,7 +214,7 @@ if ($user) {
               }
           }
         }
-      } else if($action == "xxxxx") {
+ 
         
       } else if ($action) {
  
@@ -198,6 +224,7 @@ if ($user) {
    
     
    if(!$action) {
+
     $out .= utilities($user, "list");
    } else if(!$foundData && false) {
     $out .= "<div class='generalerror'>Utility not yet developed.</div>";
@@ -267,6 +294,7 @@ if ($user) {
       }
     }
 	} else if($table == "tenant") {
+    
     if ($action == "startcreate" || gvfw("tenant_id") != "") {
       $out .=  editTenant($errors, $user);
     } else {
