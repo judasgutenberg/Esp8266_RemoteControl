@@ -680,6 +680,7 @@ function editReport($error,  $tenantId) {
       'value' => gvfa("role", $source),
       'values'=> availableRoles()
 	  ],
+    //templateable, when set to true, makes it so this report is good enough (and secure enough) to be part of the starter-pack for new tenants
     [
 	    'label' => 'templateable',
       'name' => 'templateable',
@@ -1300,14 +1301,18 @@ function tenantListSql($user){
   return $tenantListSql;
 }
 
+//all the tables that implement templating
 function templateableTables() {
   return ["feature_type", "device_type", "device_type_feature", "management_rule", "report"];
 }
 
-function utilities($user, $viewMode = "list") {
-  
-  $utilitiesData = array(
+//all the tables of this system
+function schemaTables() {
+  return ["device device_feature device_feature_log device_feature_management_rule device_type device_type_feature feature_type inverter_log  management_rule reboot_log report report_log tenant tenant_user user weather_data"];
+}
 
+function utilities($user, $viewMode = "list") {
+  $utilitiesData = array(
     [
       'label' => 'Rececent Visitor Log',
       'url' => '?table=utilities&action=recentvisitorlogs',
@@ -1332,7 +1337,6 @@ function utilities($user, $viewMode = "list") {
           'type' => 'select',
           'values' => "SELECT name as text, device_id FROM device WHERE tenant_id=<tenant_id/>"
         ]
-
       ]
     ]
     ,
@@ -1432,6 +1436,16 @@ function utilities($user, $viewMode = "list") {
         ]
 
       ]
+    ]
+    ,
+    [
+      'label' => 'Create Database Initialization Script',
+      'url' => '?table=utilities&action=buildinitializationscript',
+      'description' => "Copies template data from select tables to a specific tenant.  Used as part of tenant setup or when rebuilding a tenant from scratch.",
+      'key' => 'buildinitializationscript',
+      'role' => "super",
+      'action' => "sqlInitializationScript()",
+      'skip_confirmation' => false
     ]
   );
 
@@ -1541,6 +1555,19 @@ function errorLog($deviceId, $number) {
   $lines=array();
   $logFile = "/var/log/apache2/error.log";
   $strToExec = "cat " . $logFile . " | tail -n " . $number;
+  $output = shell_exec($strToExec);
+  return $output;
+
+}
+
+
+function sqlInitializationScript() {
+  Global $username;
+  Global $password;
+  Global $database;
+  $backupPath = "./sql_backup/";
+  $strToExec = "./sql_backup.sh " . $username . " " . $password . " " . $database . " " . $backupPath .  " \"" . implode(' ', schemaTables())  . "\" \"" . implode(' ', templateableTables())  . "\"";
+  //echo  $strToExec ;
   $output = shell_exec($strToExec);
   return $output;
 

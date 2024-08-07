@@ -1773,6 +1773,7 @@ function doReport($user, $reportId, $reportLogId = null){
       $sql =  tokenReplace($sql, $_POST);
       //die($sql);
       //delete from report_log where report_log_id=149;
+      //echo $sql;
       $start = microtime(true);
       $reportResult = mysqli_query($conn, $sql);
       $error = mysqli_error($conn);

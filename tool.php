@@ -151,19 +151,14 @@ if ($user) {
   if ($table == "sensors") {//a pseudo-table, as sensors are either one-to-a-device or a device_feature
     $out .= currentSensorData($user);
   } else if ($table == "utilities") {
-
- 
     $action = gvfa('action', $_GET); //$_POST will have this as "run"
-    
+    //die("SAASDAS");
     $data = json_decode(gvfw("_data")); //don't actually need this
     $foundData = getUtilityInfo($user, $action); 
- 
     if($foundData) {
       $role = gvfa("role", $foundData);
- 
+      if ($_POST ||  gvfa("action", $foundData) ) { //&& !gvfa("form", $foundData)
 
-
-      if ($_POST ||  gvfa("action", $foundData) && !gvfa("form", $foundData)) {
         //dealing with a utility that has a form
         $role = gvfa("role", $foundData);
         if (canUserDoThing($user, $role) && $action) { //don't actually need to do this here any more
@@ -189,7 +184,7 @@ if ($user) {
               $redirect = true;
               $codeToRun = tokenReplace($foundData["action"], $_GET);
               $codeToRun = tokenReplace($codeToRun, $_POST) . ";";
- 
+              //die($codeToRun);
               try {
 
                 //$result = @eval($evalcode . "; return true;");
