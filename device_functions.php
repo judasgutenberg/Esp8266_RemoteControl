@@ -1343,14 +1343,7 @@ function utilities($user, $viewMode = "list") {
           'value' => gvfa("tenant_id", $_POST),
           'type' => 'select',
           'values' => [10, 20, 40, 60, 100, 200, 500, 1000, 2000, 5000, 10000]
-        ],
-        [
-          'label' => 'Location',
-          'name' => 'device_id',
-          'value' => gvfa("device_id", $_POST),
-          'type' => 'select',
-          'values' => "SELECT name as text, device_id FROM device WHERE tenant_id=<tenant_id/>"
-        ]
+        ] 
 
       ]
     ]
@@ -1535,7 +1528,7 @@ function visitorLog($deviceId, $number) {
 function errorLog($deviceId, $number) {
   $lines=array();
   $logFile = "/var/log/apache2/error.log";
-  $strToExec = "grep \"locationId=" . $deviceId . "\" " . $logFile . " | tail -n " . $number;
+  $strToExec = "cat " . $logFile . " | tail -n " . $number;
   $output = shell_exec($strToExec);
   return $output;
 
