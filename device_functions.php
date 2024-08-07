@@ -1439,9 +1439,9 @@ function utilities($user, $viewMode = "list") {
     ]
     ,
     [
-      'label' => 'Create Database Initialization Script',
+      'label' => 'Build Database Initialization Script',
       'url' => '?table=utilities&action=buildinitializationscript',
-      'description' => "Copies template data from select tables to a specific tenant.  Used as part of tenant setup or when rebuilding a tenant from scratch.",
+      'description' => "Using the present schema and template data, build an initial SQL install script.",
       'key' => 'buildinitializationscript',
       'role' => "super",
       'action' => "sqlInitializationScript()",
