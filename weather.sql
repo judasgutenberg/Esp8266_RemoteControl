@@ -163,7 +163,8 @@ CREATE TABLE report(
   modified DATETIME,
   form TEXT NULL,
   `sql` TEXT NULL,
-  role VARCHAR(50) NULL
+  role VARCHAR(50) NULL,
+  templateable TINYINT DEFAULT 0
 );
 
 CREATE TABLE report_log(
@@ -263,6 +264,7 @@ CREATE TABLE tenant_user(
 --ALTER TABLE report ADD role VARCHAR(50) NULL;
 --ALTER TABLE report_log ADD user_id INT NULL;
 --ALTER TABLE tenant ADD about TEXT NULL;
+--ALTER TABLE report ADD templateable TINYINT NULL;
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
 INSERT INTO device (name, device_type_id, created) VALUES ('Hotspot Watchdog', 1, NOW());

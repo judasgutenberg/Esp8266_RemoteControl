@@ -680,6 +680,12 @@ function editReport($error,  $tenantId) {
       'value' => gvfa("role", $source),
       'values'=> availableRoles()
 	  ],
+    [
+	    'label' => 'templateable',
+      'name' => 'templateable',
+      'type' => 'bool',
+      'value' => gvfa("templateable", $source)
+	  ],
 		[
 	    'label' => 'form',
       'name' => 'form',
@@ -1294,6 +1300,10 @@ function tenantListSql($user){
   return $tenantListSql;
 }
 
+function templateableTables() {
+  return ["feature_type", "device_type", "device_type_feature", "management_rule", "report"];
+}
+
 function utilities($user, $viewMode = "list") {
   
   $utilitiesData = array(
@@ -1344,7 +1354,6 @@ function utilities($user, $viewMode = "list") {
           'type' => 'select',
           'values' => [10, 20, 40, 60, 100, 200, 500, 1000, 2000, 5000, 10000]
         ] 
-
       ]
     ]
     ,
@@ -1391,7 +1400,7 @@ function utilities($user, $viewMode = "list") {
           'name' => 'table_name',
           'value' => gvfa("table_name", $_POST),
           'type' => 'multiselect',
-          'values' => ["feature_type",  "device_type", "device_type_feature", "management_rule"]
+          'values' => templateableTables()
         ]
 
       ]
@@ -1419,7 +1428,7 @@ function utilities($user, $viewMode = "list") {
           'name' => 'table_name',
           'value' => gvfa("table_name", $_POST),
           'type' => 'multiselect',
-          'values' => ["feature_type",  "device_type", "device_type_feature", "management_rule"]
+          'values' => templateableTables()
         ]
 
       ]
@@ -1464,11 +1473,14 @@ function copyTenantToTemplates($tenantId, $tablesString){
  
     $result = $conn->query($columnSql);
     $row = $result->fetch_assoc();
-    $columnString = $row["columns"];
+    $columnString = "`" . str_replace(",", "`,`", $row["columns"]) . "`";
     $deleteSql = "DELETE FROM " . $currentTableName . " WHERE tenant_id=0";
     $sql = "INSERT INTO " . $currentTableName . "(" . $columnString  . ",created,tenant_id)";
     $sql .= " SELECT " . $columnString . ",'" . $formatedDateTime . "', 0 FROM " . $currentTableName . " WHERE tenant_id=" . intval($tenantId);
-    echo $sql;
+    if(strpos($columnString, "templateable") !== false){
+      $sql .= " AND templateable = 1 ";
+    }
+    //echo $sql;
     $result = $conn->query($deleteSql);
     $result = $conn->query($sql);
     $error = mysqli_error($conn);
@@ -1497,11 +1509,11 @@ function copyTemplatesToTenant($tenantId, $tablesString){
  
     $result = $conn->query($columnSql);
     $row = $result->fetch_assoc();
-    $columnString = $row["columns"];
+    $columnString = "`" . str_replace(",", "`,`", $row["columns"]) . "`";
     $deleteSql = "DELETE FROM " . $currentTableName . " WHERE tenant_id=" . intval($tenantId);
     $sql = "INSERT INTO " . $currentTableName . "(" . $columnString  . ",created,tenant_id)";
     $sql .= " SELECT " . $columnString . ",'" . $formatedDateTime . "', " . intval($tenantId). " FROM " . $currentTableName . " WHERE tenant_id=0";
-    echo $sql;
+    //echo $sql;
     $result = $conn->query($deleteSql);
     $result = $conn->query($sql);
     $error = mysqli_error($conn);
