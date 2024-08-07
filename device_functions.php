@@ -1409,17 +1409,17 @@ function utilities($user, $viewMode = "list") {
       'url' => '?table=utilities&action=copyfromtenanttemplate',
       'description' => "Copies template data from select tables to a specific tenant.  Used as part of tenant setup or when rebuilding a tenant from scratch.",
       'key' => 'copyfromtenanttemplate',
-      'role' => "super",
+      'role' => "admin",
       'action' => "copyTemplatesToTenant(<tenant_id/>, '<table_name/>')",
       'skip_confirmation' => false,
       'form' => 
       [
         [
-          'label' => 'Tenant to Get Data From',
+          'label' => 'Tenant Data to Overwrite',
           'name' => 'tenant_id',
           'value' => gvfa("tenant_id", $_POST),
           'type' => 'select',
-          'values' => "SELECT tenant_id, name as text from tenant ORDER BY name"
+          'values' => tenantListSql($user)
         ],
         [
           'label' => 'Tables',
