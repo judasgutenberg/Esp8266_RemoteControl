@@ -157,8 +157,8 @@ if ($user) {
     $foundData = getUtilityInfo($user, $action); 
     if($foundData) {
       $role = gvfa("role", $foundData);
-      if ($_POST ||  gvfa("action", $foundData) ) { //&& !gvfa("form", $foundData)
-
+      if ($_POST && gvfa("action", $foundData)) { // ||  (gvfa("action", $foundData) && gvfa("form", $foundData))
+        $out .= "<div class='issuesheader'>" .  gvfa("label", $foundData)  . "</div>";
         //dealing with a utility that has a form
         $role = gvfa("role", $foundData);
         if (canUserDoThing($user, $role) && $action) { //don't actually need to do this here any more
@@ -213,7 +213,12 @@ if ($user) {
         
       } else if ($action) {
  
-        $out .= utilityForm($user, $foundData);
+        if(!gvfa("form", $foundData)){
+          $out .= "<div class='issuesheader'>" .  gvfa("label", $foundData)  . "</div>";
+          $out .= "<form method='post'><input name='run' type='submit' value='run'/></form>"; //make a quick and dirty form
+        } else {
+          $out .= utilityForm($user, $foundData);
+        }
       }
    }  
    
