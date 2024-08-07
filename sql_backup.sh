@@ -18,7 +18,7 @@ WHERE_CLAUSE="tenant_id=0"
 # File paths
 SCHEMA_ONLY_FILE="${BACKUP_DIR}/schema_only.sql"
 DATA_FILE="${BACKUP_DIR}/data_with_where.sql"
-FINAL_BACKUP_FILE="${BACKUP_DIR}/final_backup.sql"
+FINAL_BACKUP_FILE="./remote_control.sql"
 
 # Create backup directory if it doesn't exist
 mkdir -p ${BACKUP_DIR}
