@@ -345,7 +345,7 @@ function genericEntitySave($tenantId, $table) {
   //$data = schemaArrayFromSchema($table, $pk);
   $pk = $table . "_id";
   $data = $_POST;
-  if(array_key_exists("password", $data) && !array_key_exists("password2", $data)){
+  if(array_key_exists("password", $data) &&  (array_key_exists("_new_password", $data) &&  gvfa("_new_password", $data) == true)){
     $data["password"] =  crypt($data["password"], $encryptionPassword);
   }
   unset($data['action']);
@@ -613,7 +613,14 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
             $type == "number";
             $specialNumberAttribs = " step='1' ";
           }
-          $out .= "<input " . $validationString . " style='width:" . $width . "px'  " . $idString. " " . $specialNumberAttribs . "  name='" . $name . "' value=\"" .  $value . "\" type='" . $type . "'/>\n";
+          $inputJavascript = "";
+          if($type == "plaintext_password") {
+            $inputJavascript = "onchange=\"document.getElementById('_new_password').checked=true\"";
+          }
+          $out .= "<input " . $inputJavascript  . " " . $validationString . " style='width:" . $width . "px'  " . $idString. " " . $specialNumberAttribs . "  name='" . $name . "' value=\"" .  $value . "\" type='" . $type . "'/>\n";
+          if($type == "plaintext_password") {
+            $out .= "<input id='_new_password' name='_new_password' value='1' type='checkbox'>\n password not yet encrypted";
+          }
         }
         
       }
@@ -915,7 +922,7 @@ function loginUser($source = NULL, $tenant_id = NULL) {
       //die($passwordHashed . "*" . $passwordIn);
       //for debugging:
       //echo crypt($passwordIn, $encryptionPassword);
-      //die($passwordIn . "*" . crypt($passwordIn, $encryptionPassword) . "*" . $passwordHashed . "*" . siteEncrypt($passwordIn) . "*" .password_verify($passwordIn, $passwordHashed) . "*");
+      //die(crypt("public", $encryptionPassword) . "*" . $passwordIn . "*" . crypt($passwordIn, $encryptionPassword) . "*" . $passwordHashed . "*" .password_verify($passwordIn, $passwordHashed) . "*");
       if (password_verify($passwordIn, $passwordHashed)) {
           setcookie($cookiename, siteEncrypt($email), time() + (30 * 365 * 24 * 60 * 60));
           setcookie($tenantCookieName, siteEncrypt($tenant_id), time() + (30 * 365 * 24 * 60 * 60));
@@ -1282,7 +1289,7 @@ function createUser($encryptedTenantId = NULL){
     if (!$encryptedTenantId){
       $role = "admin"; //admin can alter the tenant and run reports.  super can do ANYTHING. normal can only do the basics
     }
-    $sql = "tenant_id(email, password, role, created) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" . $role . "','" . $formatedDateTime . "')"; 
+    $sql = "INSERT INTO user(email, password, role, created) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" . $role . "','" . $formatedDateTime . "')"; 
     if(count(userList()) == 0) {
       //if there are no users, create the first one as admin. we also need a Tenant and we need to add the user to that Tenant
       $sql = "INSERT INTO user(email, password, created, role) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" .$formatedDateTime . "','super')"; 
@@ -1423,7 +1430,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
     //echo $column ."<BR>";
     $type =  strtolower(gvfa("type", $datum, ""));
     $value = gvfa($column, $data, "");
-    if($column  != "_data"  && !array_key_exists($column, $primaryKey)) {
+    if(!beginsWith($column, "_")  && !array_key_exists($column, $primaryKey)) {
       //echo  $column . "=" . $value . ", " . $type . "<BR>";
       $skip = false;
       if($type == "many-to-many") {
@@ -1502,7 +1509,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
  
 
 
-        } else if ($column != "created" && $column != "_data" && array_key_exists($column, $primaryKey) == false) {
+        } else if ($column != "created" && !beginsWith($column, "_")  && array_key_exists($column, $primaryKey) == false) {
           
           if(($type == "bool"  || $type == "checkbox") && !$value){
             $sanitized = '0';

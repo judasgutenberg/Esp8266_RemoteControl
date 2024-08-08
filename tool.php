@@ -246,9 +246,10 @@ if ($user) {
   } elseif($action == "json"){
     if($table!= "user" || $user["role"]  == "super") {
       $sql = "SELECT * FROM " .  $table  . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "'";
-      if($table != "tenant") {
+      if($table != "tenant" && $table != "user"){
         $sql .= " AND tenant_id='" . $tenantId . "'";
       } 
+      //echo $sql;
       $result = mysqli_query($conn, $sql);
       $valueArray = mysqli_fetch_assoc($result);
       die(json_encode($valueArray, JSON_FORCE_OBJECT));

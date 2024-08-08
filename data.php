@@ -37,13 +37,23 @@ $storagePassword = "";
 $multipleSensorArray = [];
 
 
+$user = autoLogin(); //if we are using this as a backend for the inverter or weather page, we don't need to pass the storagePassword at all.  this will only work once the user has logged in and selected a single tenant
+
+
  
 if($_POST) {
 	logPost(gvfa("data", $_POST)); //help me debug
 }
 if($_REQUEST) {
+	
 	if(array_key_exists("storagePassword", $_REQUEST)) {
 		$storagePassword  = $_REQUEST["storagePassword"];
+	} else if($user) {
+		//var_dump($user);
+		$storagePassword  = $user['storage_password'];
+		//echo "ccccccccccccccc" . $user['storage_password'] . "*" . $storagePassword;
+	}
+	if($storagePassword){
 		$deviceIds = deriveDeviceIdsFromStoragePassword($storagePassword);
 	}
 	if(array_key_exists("mode", $_REQUEST)) {

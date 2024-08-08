@@ -16,18 +16,32 @@ function managementRuleTool(item) {
 function tenantTool(item) {
 	let xmlhttp = new XMLHttpRequest();
 	xmlhttp.onreadystatechange = function() {
-	  console.log(xmlhttp.responseText);
-	  let data = JSON.parse(xmlhttp.responseText);
-	  showDataInPanelTool(data);
-	  //console.log(data);
+		console.log(xmlhttp.responseText);
+		let data = JSON.parse(xmlhttp.responseText);
+		showDataInPanelTool(data);
+		//console.log(data);
 	}
 	console.log(item.value);
 	let url = "?table=tenant&action=json&tenant_id=" + item.value;
 	xmlhttp.open("GET", url, true);
 	xmlhttp.send();
-   
-  }
 
+}
+
+function userTool(item) {
+	let xmlhttp = new XMLHttpRequest();
+	xmlhttp.onreadystatechange = function() {
+		console.log(xmlhttp.responseText);
+		let data = JSON.parse(xmlhttp.responseText);
+		showDataInPanelTool(data);
+		//console.log(data);
+	}
+	console.log(item.value);
+	let url = "?table=user&action=json&user_id=" + item.value;
+	xmlhttp.open("GET", url, true);
+	xmlhttp.send();
+
+}
 
 function formSubmitTasks() {
   if(onSubmitManyToManyItems){
@@ -147,13 +161,18 @@ function checkJsonSyntax(formElementName) {
 	}
 }
 
+function escapeHTML(unsafeText) {
+    let div = document.createElement('div');
+    div.innerText = unsafeText;
+    return div.innerHTML;
+}
 
 function showDataInPanelTool(data){
   let html = "<div class='list'>";
   let panelId = "";
   for (let key in data) {
     console.log(key);
-    html += "<div class='listrow'><span><b>" + key + "</b></span><span>" + data[key] + "</span></div>";
+    html += "<div class='listrow'><span><b>" + key + "</b></span><span>" + escapeHTML(data[key]) + "</span></div>";
     if(document.getElementById("panel_" + key)) {
       panelId = "panel_" + key;
     }

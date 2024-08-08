@@ -223,7 +223,7 @@ function getWeatherData(locationId) {
 	//console.log("got data");
 	let scale = document.getElementById('scaleDropdown')[document.getElementById('scaleDropdown').selectedIndex].value;
 	let xhttp = new XMLHttpRequest();
-	let endpointUrl = "./data.php?storagePassword=<?php echo $user['storage_password'];?>&scale=" + scale + "&mode=getData&locationId=" + locationId;
+	let endpointUrl = "./data.php?scale=" + scale + "&mode=getData&locationId=" + locationId;
 	xhttp.onreadystatechange = function() {
 	    if (this.readyState == 4 && this.status == 200) {
 	     //Push the data in array
@@ -283,7 +283,7 @@ function ctof(inVal){
 
 function officialWeather(locationId) {
 	let xhttp = new XMLHttpRequest();
-	let endpointUrl = "./data.php?storagePassword=<?php echo $user['storage_password'];?>&mode=getOfficialWeatherData&locationId=" + locationId;
+	let endpointUrl = "./data.php?mode=getOfficialWeatherData&locationId=" + locationId;
 	xhttp.onreadystatechange = function() {
 	    if (this.readyState == 4 && this.status == 200) {
 	     //Push the data in array

@@ -282,7 +282,7 @@ function editUser($error){
     [
 	    'label' => 'password',
       'name' => 'password',
-      'type' => 'text',
+      'type' => 'plaintext_password',
       'value' => gvfa("password", $source)
 	  ] ,
     [
@@ -485,7 +485,7 @@ function editTenant($error, $user){
  
 	    'value' => gvfa("user_id", $source), 
       'error' => gvfa("user_id", $error),
-      'item_tool' => 'tenantTool',
+      'item_tool' => 'userTool',
       'values' => "SELECT 
               u.user_id, 
               u.email AS 'text', 
