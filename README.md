@@ -73,7 +73,7 @@ Management_rules can be edited in the management_rule editor, which looks like t
 At the bottom is a tool you can use to automatically construct a value token to place in conditions.  Treat these as variables in an expression to be evaluated as true or false.  You can use multiple tokens, parentheses, arithmatic operators, and scalar numbers in such expressions.
 
 ## Reports
-There is support for reports (currently restricted to superusers), which are defined as a form (using JSON) and SQL. Simple reports can just be SQL, though if you need to send parameters to a report, you will need to define a form.  Perhaps forms definitions are best shown by example.
+There is support for reports, which are defined as a form (using JSON) and SQL. Simple reports can just be SQL, though if you need to send parameters to a report, you will need to define a form.  Perhaps forms definitions are best shown by example.
 
 This JSON defines a form with one parameter
 
@@ -93,4 +93,4 @@ SELECT  &lt;changerX/&gt;, battery_percentage, solar_power, load_power, battery_
 
 the "values" parameter in the form JSON can also be a SQL string to generate a list of options from the database.  If so, the SQL needs to return a 'text' column for a proper dropdown list of options to be displayed.  A log of reports is kept with enough information to allow them to be re-run with the same set of parameters as the original run.
 
-Obviously there is a lot of power in such a system, since, depending on MySQL user permissions, a report-writer might have access to any data on the database server;  only fully trusted users should get access to report creation and some reports are too powerful for anyone but admins to run.
+Obviously there is a lot of power in such a system, since, depending on MySQL user permissions, a report-writer might have access to any data on the database server;  only fully trusted users should get access to report creation and some reports are too powerful for anyone but users with the role 'super' to run.  Currently only 'super' users can create and edit reports, though, depending on the role given to a report, less-powerful users may be able to run it.
