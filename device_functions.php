@@ -1490,6 +1490,9 @@ function copyTenantToTemplates($tenantId, $tablesString){
     $row = $result->fetch_assoc();
     $columnString = "`" . str_replace(",", "`,`", $row["columns"]) . "`";
     $deleteSql = "DELETE FROM " . $currentTableName . " WHERE tenant_id=0";
+    if(strpos($columnString, "templateable") !== false){
+      $deleteSql .= " AND templateable = 1 ";
+    }
     $sql = "INSERT INTO " . $currentTableName . "(" . $columnString  . ",created,tenant_id)";
     $sql .= " SELECT " . $columnString . ",'" . $formatedDateTime . "', 0 FROM " . $currentTableName . " WHERE tenant_id=" . intval($tenantId);
     if(strpos($columnString, "templateable") !== false){
@@ -1526,8 +1529,14 @@ function copyTemplatesToTenant($tenantId, $tablesString){
     $row = $result->fetch_assoc();
     $columnString = "`" . str_replace(",", "`,`", $row["columns"]) . "`";
     $deleteSql = "DELETE FROM " . $currentTableName . " WHERE tenant_id=" . intval($tenantId);
+    if(strpos($columnString, "templateable") !== false){
+      $deleteSql .= " AND templateable = 1 ";
+    }
     $sql = "INSERT INTO " . $currentTableName . "(" . $columnString  . ",created,tenant_id)";
     $sql .= " SELECT " . $columnString . ",'" . $formatedDateTime . "', " . intval($tenantId). " FROM " . $currentTableName . " WHERE tenant_id=0";
+    if(strpos($columnString, "templateable") !== false){
+      $sql .= " AND templateable = 1 ";
+    }
     //echo $sql;
     $result = $conn->query($deleteSql);
     $result = $conn->query($sql);
