@@ -39,7 +39,11 @@ $multipleSensorArray = [];
 
 $user = autoLogin(); //if we are using this as a backend for the inverter or weather page, we don't need to pass the storagePassword at all.  this will only work once the user has logged in and selected a single tenant
 
-
+if(array_key_exists("mode", $_REQUEST)) {
+	$mode = $_REQUEST["mode"];
+} else {
+	$mode = "getData";
+}
  
 if($_POST) {
 	logPost(gvfa("data", $_POST)); //help me debug
@@ -52,15 +56,14 @@ if($_REQUEST) {
 		//var_dump($user);
 		$storagePassword  = $user['storage_password'];
 		//echo "ccccccccccccccc" . $user['storage_password'] . "*" . $storagePassword;
+		if(!in_array($mode, ["getOfficialWeatherData", "getInverterData", "getData"])){ //keeps certain kinds of hacks from working
+			die(json_encode(["error"=>"your brilliant hack has failed"]));
+		}
 	}
 	if($storagePassword){
 		$deviceIds = deriveDeviceIdsFromStoragePassword($storagePassword);
 	}
-	if(array_key_exists("mode", $_REQUEST)) {
-		$mode = $_REQUEST["mode"];
-	} else {
-		$mode = "getData";
-	}
+
 	//i may end up deciding that locationId and deviceId are the same thing, and for now they are
 	//but maybe some day they will be different things
 	if(array_key_exists("locationId", $_REQUEST)) {
@@ -492,7 +495,7 @@ if($_REQUEST) {
 				$managementCache = []; //save us some database lookups
 				//SELECT pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=11 ORDER BY i2c, pin_number;
 				//the part where we include any data from our remote control system:
-				$deviceSql = "SELECT allow_automatic_management, last_known_device_value, pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id 
+				$deviceSql = "SELECT allow_automatic_management, last_known_device_value, pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id, automation_disabled_when, restore_automation_after
 					FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id 
 					WHERE pin_number IS NOT NULL AND sensor_type IS NULL AND device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
 				//echo $deviceSql;
@@ -503,6 +506,8 @@ if($_REQUEST) {
 					//logSql($mustSaveLastKnownDeviceValueAsValue . "^" . $lines[2] . "^" . "------------------------------");
 					foreach($rows as $row) {
 						$allowAutomaticManagement = $row["allow_automatic_management"];
+						$automationDisabledWhen = $row["automation_disabled_when"];
+						$restoreAutomationAfter = $row["restore_automation_after"];
 						$deviceFeatureId = $row["device_feature_id"];
 						$pinNumber = $row["pin_number"];
 						$sqlIfDataGoingUpstream = "";
@@ -636,6 +641,9 @@ if($_REQUEST) {
 						//this part update device_feature so we can tell from the server if the device has taken on the server's value
 						//var_dump($pinValuesKnownToDevice);
 						//echo $deviceFeatureId  . "*" .  intval(count($pinValuesKnownToDevice) > $pinCursor)  . "*" .  $pinValuesKnownToDevice[$pinCursor] . "*" . intval(is_numeric($pinValuesKnownToDevice[$pinCursor])) ."<BR>";
+
+
+						//if we have a pinValuesKnownToDevice change AND there is allowAutomaticManagement 
 						if(count($pinValuesKnownToDevice) > $pinCursor && is_numeric($pinValuesKnownToDevice[$pinCursor])) {
 							//echo $deviceFeatureId   . "<BR>";
 							$lastModified = " last_known_device_modified='" . $formatedDateTime . "',";
@@ -708,6 +716,9 @@ if($_REQUEST) {
 							unset($row["device_feature_id"]);//make things as lean as possible for IoT device
 							unset($row["last_known_device_value"]);//make things as lean as possible for IoT device
 							unset($row["allow_automatic_management"]);//make things as lean as possible for IoT device
+							unset($row["automation_disabled_when"]);//make things as lean as possible for IoT device
+							unset($row["restore_automation_after"]);//make things as lean as possible for IoT device
+							
 							$out["device_data"][] = $row;
 						}
 						//echo $sqlToUpdateDeviceFeature . "<BR>";
