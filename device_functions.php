@@ -423,7 +423,22 @@ function editTenant($error, $user){
       'type' => 'text',
       'value' => gvfa("name", $source)
 	  ] ,
-     
+    [
+	    'label' => 'latitude',
+      'name' => 'latitude',
+      'type' => "number",
+      'width' => 200,
+	    'value' => gvfa("latitude", $source), 
+      'error' => gvfa('latitude', $error)
+	  ],
+    [
+	    'label' => 'longitude',
+      'name' => 'longitude',
+      'type' => "number",
+      'width' => 200,
+	    'value' => gvfa("longitude", $source), 
+      'error' => gvfa('longitude', $error)
+	  ],
     [
 	    'label' => 'about',
       'name' => 'about',
@@ -592,6 +607,20 @@ function editDeviceFeature($error,  $tenantId) {
       'type' => 'bool',
 	    'value' => gvfa("allow_automatic_management", $source), 
       'error' => gvfa('allow_automatic_management', $error)
+	  ],
+    [
+	    'label' => 'temporary automation suspension time (in hours)',
+      'name' => 'restore_automation_after',
+      'type' => 'int',
+	    'value' => gvfa("restore_automation_after", $source), 
+      'error' => gvfa('restore_automation_after', $error)
+	  ],
+    [
+	    'label' => 'when automation was suspended',
+      'name' => 'automation_disabled_when',
+      'type' => 'datetime',
+	    'value' => gvfa("automation_disabled_when", $source), 
+      'error' => gvfa('automation_disabled_when', $error)
 	  ],
     [
 	    'label' => 'management rules',
@@ -1004,6 +1033,19 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
   $date = new DateTime("now", new DateTimeZone('America/New_York'));
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
   $nowTime = strtotime($formatedDateTime);
+
+  $weatherDescriptionKey = "weather_description";
+  $weatherDescription = readMemoryCache($weatherDescriptionKey, 10);
+  if(!$weatherDescription) {
+    $weatherData = getWeatherDataByCoordinates($tenant["latitude"], $tenant["longitude"], $tenant["open_weather_api_key"]);
+    //var_dump($weatherData);
+    $weatherDescription = $weatherData["weather"][0]["description"];
+    writeMemoryCache($weatherDescriptionKey, $weatherDescription);
+  }
+  if($weatherDescription == "") {
+    $weatherDescription = "none";
+  }
+  
   $loggingSql = "INSERT INTO inverter_log ( tenant_id, recorded, 
   solar_power, load_power, grid_power, battery_percentage, battery_power,
   battery_voltage, mystery_value3,
@@ -1015,8 +1057,8 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
   changer4,
   changer5,
   changer6,
-  changer7
-  
+  changer7,
+  weather
   ) VALUES (";
   $loggingSql .= $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," .
    intval(intval($solarString1) + intval($solarString2)) . "," . 
@@ -1034,8 +1076,9 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
    $changer4 . "," .
    $changer5 . "," .
    $changer6 . "," .
-   $changer7 .
-   ")";
+   $changer7 . ",'" .
+   $weatherDescription .
+   "')";
   $loggingResult = mysqli_query($conn, $loggingSql);
 
 }
@@ -1341,7 +1384,6 @@ function utilities($user, $viewMode = "list") {
       ]
     ]
     ,
-    
     [
       'label' => 'Recent Error Log',
       'url' => '?table=utilities&action=recenterrorlogs',
@@ -1362,7 +1404,6 @@ function utilities($user, $viewMode = "list") {
       ]
     ]
     ,
-    
     [
       'label' => 'Get Invitation Link to Create User for Tenant',
       'url' => '?table=utilities&action=tenantlink',

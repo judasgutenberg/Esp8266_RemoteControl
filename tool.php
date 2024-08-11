@@ -155,14 +155,14 @@ if ($user) {
     //die("SAASDAS");
     $data = json_decode(gvfw("_data")); //don't actually need this
     $foundData = getUtilityInfo($user, $action); 
-    if($foundData) {
+    if ($foundData) {
       $role = gvfa("role", $foundData);
-      if ($_POST && gvfa("action", $foundData)) { // ||  (gvfa("action", $foundData) && gvfa("form", $foundData))
+      if($_POST && gvfa("action", $foundData)) { // ||  (gvfa("action", $foundData) && gvfa("form", $foundData))
         $out .= "<div class='issuesheader'>" .  gvfa("label", $foundData)  . "</div>";
         //dealing with a utility that has a form
         $role = gvfa("role", $foundData);
         if (canUserDoThing($user, $role) && $action) { //don't actually need to do this here any more
-          if(array_key_exists("sql", $foundData)) { //allows the guts of a report to work as a utility
+          if (array_key_exists("sql", $foundData)) { //allows the guts of a report to work as a utility
 
             $sql = $foundData["sql"];
             $sql =  tokenReplace($sql, $_POST);
@@ -173,30 +173,19 @@ if ($user) {
             if($error){
               $out .= "Error: " . $error . "\n";
             }
-            
             $out .= "</pre>";
             if($reportResult !== false  && $reportResult !== true) {
               $rows = mysqli_fetch_all($reportResult, MYSQLI_ASSOC);
               $out .= genericTable($rows, null, null, null);
             }
-
           } else if(array_key_exists("action", $foundData)) {
               $redirect = true;
               $codeToRun = tokenReplace($foundData["action"], $_GET);
               $codeToRun = tokenReplace($codeToRun, $_POST) . ";";
               //die($codeToRun);
               try {
-
-                //$result = @eval($evalcode . "; return true;");
-                
-                //die(var_dump($result));
-                //die($result);
-                //if($result){
-                  eval('$result  =' . $codeToRun . ";");
-                //}
+                eval('$result  =' . $codeToRun . ";");
                 $out .= "<pre>" . $result . "</pre>";
-                //die();
-                //die($codeToRun);
               }
               catch(ParseError $error) { //this shit does not work. does try/catch ever work in PHP?
                 //var_dump($error);
@@ -213,7 +202,7 @@ if ($user) {
         
       } else if ($action) {
  
-        if(!gvfa("form", $foundData)){
+        if (!gvfa("form", $foundData)){
           $out .= "<div class='issuesheader'>" .  gvfa("label", $foundData)  . "</div>";
           $out .= "<form method='post'><input name='run' type='submit' value='run'/></form>"; //make a quick and dirty form
         } else {
