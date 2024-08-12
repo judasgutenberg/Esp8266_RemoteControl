@@ -117,9 +117,17 @@ if ($user) {
     $sql = "UPDATE ". filterStringForSqlEntities($table) . " SET " . filterStringForSqlEntities($name) . "='" .  mysqli_real_escape_string($conn, $value) . "' WHERE tenant_id=" . intval($tenantId) . " AND " . filterStringForSqlEntities($primaryKeyName) . "='" . intval($primaryKeyValue) . "'";
     if($user["role"] != "viewer" && ($table != "user"  &&  $table != "report") || $user["role"] == "super") { //can't have just anybody do this
       $result = mysqli_query($conn, $sql); 
+    } else {
+      echo "You lack permissions.<br/>";
     }
-    var_dump($result);
-    die($sql);
+    if(!$result)
+    {
+      echo $sql;
+    } else {
+      var_dump($result);
+    }
+     
+    die();
   
   } else if ($action == "runencryptedsql") { //this is secure because the sql is very hard to decrypt if you don't know the encryption key
  
