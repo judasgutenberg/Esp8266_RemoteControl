@@ -1388,7 +1388,7 @@ function utilities($user, $viewMode = "list") {
       'label' => 'Recent Error Log',
       'url' => '?table=utilities&action=recenterrorlogs',
       'description' => "Also beats having to use putty.",
-      'action' => 'errorLog(<device_id/>, <number/>)',
+      'action' => 'errorLog(<number/>)',
       'key' => 'recenterrorlogs',
       'role' => "super",
       'skip_confirmation' => true,
@@ -1595,14 +1595,19 @@ function copyTemplatesToTenant($tenantId, $tablesString){
 function visitorLog($deviceId, $number) {
   $lines=array();
   $logFile = "/var/log/apache2/access.log";
-  $strToExec = "grep \"locationId=" . $deviceId . "\" " . $logFile . " | tail -n " . $number;
+  if($deviceId){
+    $strToExec = "grep \"locationId=" . $deviceId . "\" " . $logFile . " | tail -n " . $number;
+  } else {
+    $strToExec = "cat " . $logFile . " | tail -n " . $number;
+  }
+  
   $output = shell_exec($strToExec);
   return $output;
 
 }
 
 
-function errorLog($deviceId, $number) {
+function errorLog($number) {
   $lines=array();
   $logFile = "/var/log/apache2/error.log";
   $strToExec = "cat " . $logFile . " | tail -n " . $number;
