@@ -427,9 +427,14 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
       $validationString = ' onblur=\" . $frontendValidation . "\"';
     }
 		$value = str_replace("\\\\", "\\", gvfa("value", $datum)); 
+    //var_dump($datum);
 		$name = gvfa("name", $datum); 
 		$type = strtolower(gvfa("type", $datum)); 
+    $accentColor = gvfa("accent_color", $datum, "#66eeee");
+    //echo $name .  " " . $accentColor . "<BR>";
     $width = 200;
+ 
+ 
     
     if(endsWith($name, "_id") && $columnCount == 0  && ($type == "" || $type == "number")) { //make first column read-only if it's an _id
       $type = "read_only";
@@ -481,11 +486,11 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
             }
 
           }
-          $out .= "<input type='checkbox' name='" . $name . "[]' value='" . $specificValue . " " . $checkPart . "'/> " . $specificValue . "<br/>";
+          $out .= "<input style='accent-color:" .  $accentColor . "' type='checkbox' name='" . $name . "[]' value='" . $specificValue . " " . $checkPart . "'/> " . $specificValue . "<br/>";
         }
       } else if($type == 'select') {
         //echo $values;
-        $out .= "<select  name='" . $name . "' />";
+        $out .= "<select name='" . $name . "' />";
         if(is_string($values)) {
           $out .= "<option value='0'>none</option>";
           if($user) {
@@ -544,7 +549,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         if($height == ""){
           $height = 5;
         }
-        $out .= "<select multiple='multiple' name='" . $name . "[]' id='dest_" . $name . "' size='" . intval($height) . "'/>";
+        $out .= "<select  style='accent-color:" .  $accentColor . "'  multiple='multiple' name='" . $name . "[]' id='dest_" . $name . "' size='" . intval($height) . "'/>";
         if($rows) {
           foreach($rows as $row){
             $selected = "";
@@ -571,7 +576,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         $out .= "</div>\n"; 
         $out .= "<div class='sourceitems'>\n";
         $out .= "available:<br/>";
-        $out .= "<select name='source_" . $name . "' id='source_" . $name . "' size='" . intval($height) . "'/>";
+        $out .= "<select style='accent-color:" . $accentColor . "' name='source_" . $name . "' id='source_" . $name . "' size='" . intval($height) . "'/>";
         if($rows) {
           foreach($rows as $row){
             $selected = "";
@@ -599,7 +604,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
 
             $checked = "checked";
           }
-        $out .= "<input value='1' name='" . $name . "'  " . $checked . " type='checkbox'/>\n";
+        $out .= "<input style='accent-color:" .  $accentColor . "' value='1' name='" . $name . "'  " . $checked . " type='checkbox'/>\n";
       } else if ($type == "read_only"){
         $out .= $value . "\n";
       } else {
@@ -608,7 +613,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
           $idString = "id='" . $textAreaId  . "'";
           array_push($textareaIds, $textAreaId);
           $codeLanguage = gvfa("code_language", $datum, "html");
-          $out .= "<textarea " . $validationString . " " .  $idString . " style='width:" . $width . "px;height:" . $height . "px' name='" . $name . "'  />" .  $value  . "</textarea>\n";
+          $out .= "<textarea " . $validationString . " " .  $idString . " style='width:" . $width . "px;height:" . $height . "px;accent-color:" . $accentColor . "' name='" . $name . "'  />" .  $value  . "</textarea>\n";
         } else {
           $specialNumberAttribs = "";
           if ($type == "number") {
@@ -622,7 +627,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
           if($type == "plaintext_password") {
             $inputJavascript = "onchange=\"document.getElementById('_new_password').checked=true\"";
           }
-          $out .= "<input " . $inputJavascript  . " " . $validationString . " style='width:" . $width . "px'  " . $idString. " " . $specialNumberAttribs . "  name='" . $name . "' value=\"" .  $value . "\" type='" . $type . "'/>\n";
+          $out .= "<input " . $inputJavascript  . " " . $validationString . " style='width:" . $width . "px;accent-color:" . $accentColor . "' " . $idString. " " . $specialNumberAttribs . "  name='" . $name . "' value=\"" .  $value . "\" type='" . $type . "'/>\n";
           if($type == "plaintext_password") {
             $out .= "<input id='_new_password' name='_new_password' value='1' type='checkbox'>\n password not yet encrypted";
           }
@@ -1141,6 +1146,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
       //var_dump($headerItem);
       $name = gvfa("name", $headerItem);
       $label = gvfa("label", $headerItem);
+      $accentColor = gvfa("accent_color", $headerItem, "#66eeee");
       $function = gvfa("function", $headerItem);
       if (array_key_exists("type", $headerItem)){
         $type = $headerItem["type"];
@@ -1175,10 +1181,10 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
 
         if(($type == "color"  || $type == "text"  || $type == "number" || $type == "string") &&  $primaryKeyName != $name){
           $hashedEntities =  crypt($name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
-          $out .= "<input style='width:55px' onchange='genericListActionBackend(\"" . $name . "\",  this.value ,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\")' value='" . $value . "'  name='" . $name . "' type='" . $type . "' />\n";
+          $out .= "<input style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",  this.value ,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\")' value='" . $value . "'  name='" . $name . "' type='" . $type . "' />\n";
         } else if(($type == "checkbox" || $type == "bool")  &&  $primaryKeyName != $name) {
           $hashedEntities =  crypt($name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
-          $out .= "<input style='width:55px' onchange='genericListActionBackend(\"" . $name . "\",this.checked,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\")' name='" . $name . "' type='checkbox' value='1' " . $checkedString . "/>\n";
+          $out .= "<input style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",this.checked,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\")' name='" . $name . "' type='checkbox' value='1' " . $checkedString . "/>\n";
         } else {
           $out .= $row[$name];
         }

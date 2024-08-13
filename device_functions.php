@@ -31,6 +31,7 @@ function deviceFeatures($tenantId, $deviceId) {
       'name' => 'enabled',
       'liveChangeable' => true,
       'name' => 'enabled',
+      'accent_color' => "red",
       'type' => 'bool'
     ],
     [
@@ -49,12 +50,14 @@ function deviceFeatures($tenantId, $deviceId) {
       'label' => 'auto-manage',
       'name' => 'allow_automatic_management',
       'liveChangeable' => true,
+      'accent_color' => "red",
       'type' => 'bool'
     ],
     [
       'label' => 'power on',
       'name' => 'value',
       'liveChangeable' => true,
+      'accent_color' => "blue",
       'type' => 'bool'
     ],
     [
@@ -586,6 +589,7 @@ function editDeviceFeature($error,  $tenantId) {
 	  ] ,
     [
 	    'label' => 'enabled',
+      'accent_color' => "red",
       'name' => 'enabled',
       'type' => 'bool',
 	    'value' => gvfa("enabled", $source), 
@@ -593,6 +597,7 @@ function editDeviceFeature($error,  $tenantId) {
 	  ],
     [
 	    'label' => 'value',
+      'accent_color' => "blue",
       'name' => 'value',
       'type' => 'number',
       'width' => 100,
@@ -609,6 +614,7 @@ function editDeviceFeature($error,  $tenantId) {
 	  ] ,
     [
 	    'label' => 'allow automation',
+      'accent_color' => "red",
       'name' => 'allow_automatic_management',
       'type' => 'bool',
 	    'value' => gvfa("allow_automatic_management", $source), 
