@@ -74,7 +74,8 @@ function deviceFeatures($tenantId, $deviceId) {
     ],
     [
       'label' => 'last known device modified',
-      'name' => 'last_known_device_modified' 
+      'name' => 'last_known_device_modified',
+      "type" => "datetime"
     ],
     );
     $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a>  | ";
@@ -595,6 +596,7 @@ function editDeviceFeature($error,  $tenantId) {
 	    'value' => gvfa("enabled", $source), 
       'error' => gvfa('enabled', $error)
 	  ],
+
     [
 	    'label' => 'value',
       'accent_color' => "blue",
@@ -634,6 +636,11 @@ function editDeviceFeature($error,  $tenantId) {
 	    'value' => gvfa("automation_disabled_when", $source), 
       'error' => gvfa('automation_disabled_when', $error)
 	  ],
+    [
+      'label' => 'last known device modified',
+      'name' => 'last_known_device_modified',
+      "type" => "datetime"
+    ],
     [
 	    'label' => 'management rules',
       'name' => 'management_rule_id',

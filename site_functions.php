@@ -1452,8 +1452,12 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
         $skip  = true;
 
 
-      } else if($column == "last_known_device_modified" || $column == "created" || $column == "modified") {
-        $sanitized = "'" . $formatedDateTime . "'";
+      } else if($column == "last_known_device_modified" || $column == "created" || $column == "modified"  || $type=="datetime") {
+        if($type == "datetime" && $value=="" && $column != "created" && $column != "modified" ){
+          $sanitized = 'NULL';
+        } else {
+          $sanitized = "'" . $formatedDateTime . "'";
+        }
       } else if ($column == "expired"){
         $skip = true;
       } else if(($type == "bool"  || $type == "checkbox") && !$value){
@@ -1521,8 +1525,10 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
 
 
         } else if ($column != "created" && !beginsWith($column, "_")  && array_key_exists($column, $primaryKey) == false) {
-          
-          if(($type == "bool"  || $type == "checkbox") && !$value){
+          echo $column .  " " . $value . "<BR>";
+          if($type == "datetime" && $value=="" && $column != "created" && $column != "modified") {
+            $sanitized = "NULL";
+          } else if(($type == "bool"  || $type == "checkbox") && !$value){
             $sanitized = '0';
           } else if (beginsWith($type, "number") && !$value) {
             $sanitized = 'NULL';
