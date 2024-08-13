@@ -339,14 +339,19 @@ function genericEntityForm($tenantId, $table, $errors){
 }
 
  
-function genericEntitySave($tenantId, $table) {
+function genericEntitySave($user, $table) {
   Global $conn;
   Global $encryptionPassword;
+  $tenantId = $user["tenant_id"];
+  $tablesThatRequireUser = ["device_feature"];
   //$data = schemaArrayFromSchema($table, $pk);
   $pk = $table . "_id";
   $data = $_POST;
   if(array_key_exists("password", $data) &&  (array_key_exists("_new_password", $data) &&  gvfa("_new_password", $data) == true)){
     $data["password"] =  crypt($data["password"], $encryptionPassword);
+  }
+  if(in_array($table, $tablesThatRequireUser)){
+    $data["user_id"] = $user["user_id"];
   }
   unset($data['action']);
   unset($data[$pk]);

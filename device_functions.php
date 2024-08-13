@@ -5,7 +5,7 @@
 function deviceFeatures($tenantId, $deviceId) {
   Global $conn;
   $table = "device_feature";
-  $sql = "SELECT df.name as name, pin_number, df.enabled, df.device_type_feature_id, df.device_feature_id, df.created, last_known_device_value, last_known_device_modified, df.value  
+  $sql = "SELECT df.name as name, pin_number, allow_automatic_management, df.enabled, df.device_type_feature_id, df.device_feature_id, df.created, last_known_device_value, last_known_device_modified, df.value  
           FROM " . $table . " df 
           JOIN device_type_feature dtf 
             ON df.device_type_feature_id=dtf.device_type_feature_id AND df.tenant_id=dtf.tenant_id WHERE df.tenant_id=" . intval($tenantId);
@@ -44,6 +44,12 @@ function deviceFeatures($tenantId, $deviceId) {
     [
       'label' => 'device type feature id',
       'name' => 'device_type_feature_id' 
+    ],
+    [
+      'label' => 'auto-manage',
+      'name' => 'allow_automatic_management',
+      'liveChangeable' => true,
+      'type' => 'bool'
     ],
     [
       'label' => 'power on',

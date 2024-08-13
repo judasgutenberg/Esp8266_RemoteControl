@@ -69,7 +69,7 @@ if($_POST || gvfw("table")) { //gvfw("table")
     //oh, we're a utility, though we never get here
   } else if(beginsWith(strtolower($action), "save") || beginsWith(strtolower($action), "create")) {
     if($user["role"] != "viewer" && ($table != "user"  &&  $table != "report") || $user["role"] == "super") {
-      $errors = genericEntitySave($tenantId, $table);
+      $errors = genericEntitySave($user, $table);
     } else {
       $out.= "You lack permissions to make changes to a " . $table . ".";
     }

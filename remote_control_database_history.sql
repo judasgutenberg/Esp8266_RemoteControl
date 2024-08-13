@@ -98,7 +98,8 @@ CREATE TABLE device_feature(
   last_known_device_modified DATETIME,
   allow_automatic_management TINYINT DEFAULT 1
   restore_automation_after INT NULL,
-  automation_disabled_when DATETIME NULL
+  automation_disabled_when DATETIME NULL,
+  user_id INT NULL
 );
 
 CREATE TABLE device_feature_management_rule(
@@ -118,7 +119,8 @@ CREATE TABLE device_feature_log(
   beginning_state INT,
   end_state INT,
   management_rule_id INT NULL,
-  mechanism VARCHAR(20) NULL
+  mechanism VARCHAR(20) NULL,
+  user_id INT NULL
 )
 
 CREATE TABLE management_rule(
@@ -275,7 +277,8 @@ CREATE TABLE tenant_user(
 --ALTER TABLE inverter_log ADD weather VARCHAR(50) NULL;
 --ALTER TABLE tenant ADD latitude DECIMAL(8,5) NULL;
 --ALTER TABLE tenant ADD longitude DECIMAL(8,5) NULL;
-
+--ALTER TABLE device_feature ADD  user_id INT NULL;
+--ALTER TABLE device_feature_log ADD user_id INT NULL;
 
 INSERT INTO device_type (name, architecture, power_voltage, created) VALUES ('NodeMCU', 'ESP8266', 3.3, NOW());
 INSERT INTO device (name, device_type_id, created) VALUES ('Hotspot Watchdog', 1, NOW());
