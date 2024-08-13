@@ -49,7 +49,7 @@ CREATE TABLE `device` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:11
+-- Dump completed on 2024-08-13 20:48:07
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -89,6 +89,9 @@ CREATE TABLE `device_feature` (
   `last_known_device_value` int(11) DEFAULT NULL,
   `last_known_device_modified` datetime DEFAULT NULL,
   `allow_automatic_management` tinyint(4) DEFAULT 1,
+  `restore_automation_after` int(11) DEFAULT NULL,
+  `automation_disabled_when` datetime DEFAULT NULL,
+  `user_id` int(11) DEFAULT NULL,
   PRIMARY KEY (`device_feature_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -102,7 +105,7 @@ CREATE TABLE `device_feature` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:11
+-- Dump completed on 2024-08-13 20:48:07
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -136,8 +139,9 @@ CREATE TABLE `device_feature_log` (
   `end_state` int(11) DEFAULT NULL,
   `management_rule_id` int(11) DEFAULT NULL,
   `mechanism` varchar(20) DEFAULT NULL,
+  `user_id` int(11) DEFAULT NULL,
   PRIMARY KEY (`device_feature_log_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=129138 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=129390 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -149,7 +153,7 @@ CREATE TABLE `device_feature_log` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:11
+-- Dump completed on 2024-08-13 20:48:07
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -192,7 +196,7 @@ CREATE TABLE `device_feature_management_rule` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:11
+-- Dump completed on 2024-08-13 20:48:07
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -226,7 +230,7 @@ CREATE TABLE `device_type` (
   `created` datetime DEFAULT NULL,
   `tenant_id` int(11) NOT NULL,
   PRIMARY KEY (`device_type_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -238,7 +242,7 @@ CREATE TABLE `device_type` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:11
+-- Dump completed on 2024-08-13 20:48:07
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -279,7 +283,7 @@ CREATE TABLE `device_type_feature` (
   `sensor_sub_type` int(11) DEFAULT NULL,
   `power_pin` int(11) DEFAULT NULL,
   PRIMARY KEY (`device_type_feature_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=48 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -291,7 +295,7 @@ CREATE TABLE `device_type_feature` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:11
+-- Dump completed on 2024-08-13 20:48:07
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -323,7 +327,7 @@ CREATE TABLE `feature_type` (
   `created` datetime DEFAULT NULL,
   `tenant_id` int(11) NOT NULL,
   PRIMARY KEY (`feature_type_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -335,7 +339,7 @@ CREATE TABLE `feature_type` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:11
+-- Dump completed on 2024-08-13 20:48:07
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -380,8 +384,9 @@ CREATE TABLE `inverter_log` (
   `changer5` int(11) DEFAULT NULL,
   `changer6` int(11) DEFAULT NULL,
   `changer7` int(11) DEFAULT NULL,
+  `weather` varchar(50) DEFAULT NULL,
   PRIMARY KEY (`inverter_log_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=190820 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=217053 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -393,7 +398,7 @@ CREATE TABLE `inverter_log` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:11
+-- Dump completed on 2024-08-13 20:48:07
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -429,7 +434,7 @@ CREATE TABLE `management_rule` (
   `conditions` text DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   PRIMARY KEY (`management_rule_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=44 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -441,7 +446,7 @@ CREATE TABLE `management_rule` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:11
+-- Dump completed on 2024-08-13 20:48:07
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -471,7 +476,7 @@ CREATE TABLE `reboot_log` (
   `location_id` int(11) DEFAULT NULL,
   `recorded` datetime DEFAULT NULL,
   PRIMARY KEY (`reboot_log_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4434 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5024 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -483,7 +488,7 @@ CREATE TABLE `reboot_log` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:11
+-- Dump completed on 2024-08-13 20:48:07
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -519,7 +524,7 @@ CREATE TABLE `report` (
   `role` varchar(50) DEFAULT NULL,
   `templateable` tinyint(4) DEFAULT 0,
   PRIMARY KEY (`report_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -531,7 +536,7 @@ CREATE TABLE `report` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:11
+-- Dump completed on 2024-08-13 20:48:07
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -567,7 +572,7 @@ CREATE TABLE `report_log` (
   `sql` text DEFAULT NULL,
   `user_id` int(11) DEFAULT NULL,
   PRIMARY KEY (`report_log_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=364 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=428 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -579,7 +584,7 @@ CREATE TABLE `report_log` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:11
+-- Dump completed on 2024-08-13 20:48:07
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -616,6 +621,8 @@ CREATE TABLE `tenant` (
   `open_weather_api_key` varchar(100) DEFAULT NULL,
   `name` varchar(100) NOT NULL,
   `about` text DEFAULT NULL,
+  `latitude` decimal(8,5) DEFAULT NULL,
+  `longitude` decimal(8,5) DEFAULT NULL,
   PRIMARY KEY (`tenant_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -629,7 +636,7 @@ CREATE TABLE `tenant` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:11
+-- Dump completed on 2024-08-13 20:48:07
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -672,7 +679,7 @@ CREATE TABLE `tenant_user` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:12
+-- Dump completed on 2024-08-13 20:48:08
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -706,7 +713,7 @@ CREATE TABLE `user` (
   `role` varchar(50) DEFAULT 'normal',
   `preferences` text DEFAULT NULL,
   PRIMARY KEY (`user_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -718,7 +725,7 @@ CREATE TABLE `user` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:12
+-- Dump completed on 2024-08-13 20:48:08
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -758,7 +765,7 @@ CREATE TABLE `weather_data` (
   `sensor_id` int(11) DEFAULT NULL,
   `device_feature_id` int(11) DEFAULT NULL,
   PRIMARY KEY (`weather_data_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=308775 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=316583 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -770,7 +777,7 @@ CREATE TABLE `weather_data` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:12
+-- Dump completed on 2024-08-13 20:48:08
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -794,6 +801,7 @@ CREATE TABLE `weather_data` (
 
 LOCK TABLES `feature_type` WRITE;
 /*!40000 ALTER TABLE `feature_type` DISABLE KEYS */;
+INSERT INTO `feature_type` VALUES (29,'GPIO pin','','2024-08-13 16:47:59',0),(30,'GPIO pin via I2C','','2024-08-13 16:47:59',0),(31,'Sensor','','2024-08-13 16:47:59',0);
 /*!40000 ALTER TABLE `feature_type` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -805,7 +813,7 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:12
+-- Dump completed on 2024-08-13 20:48:08
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -829,7 +837,7 @@ UNLOCK TABLES;
 
 LOCK TABLES `device_type` WRITE;
 /*!40000 ALTER TABLE `device_type` DISABLE KEYS */;
-INSERT INTO `device_type` VALUES (16,'NodeMCU Weather-Remote','','ESP8266',3.300,'2024-08-06 19:37:23',0),(17,'SolArk Monitor','','ESP8266',3.000,'2024-08-06 19:37:23',0);
+INSERT INTO `device_type` VALUES (22,'NodeMCU Weather-Remote','','ESP8266',3.300,'2024-08-13 16:47:59',0),(23,'SolArk Monitor','','ESP8266',3.300,'2024-08-13 16:47:59',0);
 /*!40000 ALTER TABLE `device_type` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -841,7 +849,7 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:12
+-- Dump completed on 2024-08-13 20:48:08
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -865,6 +873,7 @@ UNLOCK TABLES;
 
 LOCK TABLES `device_type_feature` WRITE;
 /*!40000 ALTER TABLE `device_type_feature` DISABLE KEYS */;
+INSERT INTO `device_type_feature` VALUES (33,1,1,1,1,'D14',NULL,'2024-08-13 16:47:59',13,0,NULL,NULL,NULL,NULL),(34,1,1,1,NULL,'GPIO12','','2024-08-13 16:47:59',12,0,NULL,NULL,NULL,NULL),(35,1,1,1,NULL,'GPIO13','','2024-08-13 16:47:59',13,0,NULL,NULL,NULL,NULL),(36,1,1,1,0,'GPIO16','','2024-08-13 16:47:59',16,0,NULL,NULL,NULL,NULL),(37,1,1,1,0,'Pin 3 on Slave','','2024-08-13 16:47:59',3,0,20,NULL,NULL,NULL),(38,1,1,1,0,'gpio14','','2024-08-13 16:47:59',14,0,0,NULL,NULL,NULL),(39,1,1,1,0,'Pin 7 on i2c 20','','2024-08-13 16:47:59',7,0,20,NULL,NULL,NULL),(40,1,1,1,0,'pin 8 on i2c 20','','2024-08-13 16:47:59',8,0,20,NULL,NULL,NULL),(41,1,1,1,0,'Pin 15','','2024-08-13 16:47:59',15,0,NULL,NULL,NULL,NULL),(42,1,1,1,0,'Pin 10 on Arduino Slave','','2024-08-13 16:47:59',10,0,20,NULL,NULL,NULL),(43,0,1,1,0,'pin 11 on slave i2c 20','','2024-08-13 16:47:59',13,0,20,NULL,NULL,NULL),(44,4,0,0,0,'BMP280 Sensor @ 0x77','','2024-08-13 16:47:59',NULL,0,119,280,NULL,NULL),(45,4,0,0,0,'DHT on pin 14','','2024-08-13 16:47:59',14,0,NULL,2301,11,99),(46,NULL,1,1,0,'gpio2','','2024-08-13 16:47:59',2,0,NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `device_type_feature` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -876,7 +885,7 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:12
+-- Dump completed on 2024-08-13 20:48:08
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -900,6 +909,7 @@ UNLOCK TABLES;
 
 LOCK TABLES `management_rule` WRITE;
 /*!40000 ALTER TABLE `management_rule` DISABLE KEYS */;
+INSERT INTO `management_rule` VALUES (29,0,'is battery near 100?',1,'',NULL,NULL,'<inverter_log[].battery_percentage> > 90','2024-08-13 16:47:59'),(30,0,'big test 2',1,'',NULL,NULL,'yerp','2024-08-13 16:47:59'),(31,0,'is battery less than 70?',0,'',NULL,NULL,'<inverter_log[].battery_percentage> < 70','2024-08-13 16:47:59'),(32,0,'Solar Power Above 2000 and Battery near full',1,'',NULL,NULL,'<inverter_log[].solar_power> > 2000 && <inverter_log[].battery_percentage> > 90','2024-08-13 16:47:59'),(33,0,'not much power being used and battery pretty full',1,'',NULL,NULL,'<inverter_log[].load_power> < 500 && <inverter_log[].battery_percentage> > 60','2024-08-13 16:47:59'),(34,0,'battery less than half full',0,'',NULL,NULL,'<inverter_log[].battery_percentage> < 54','2024-08-13 16:47:59'),(35,0,'kill if solar gets a bit weak',NULL,'',NULL,NULL,'<inverter_log[].solar_power> < 1000 && <inverter_log[].battery_percentage> < 100','2024-08-13 16:47:59'),(36,0,'temperature above 70',1,'',NULL,NULL,'<weather_data[1].temperature/>  > 21','2024-08-13 16:47:59'),(37,0,'temperature below 70',0,'',NULL,NULL,' <weather_data[1].temperature/>  < 20','2024-08-13 16:47:59');
 /*!40000 ALTER TABLE `management_rule` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -911,7 +921,7 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:12
+-- Dump completed on 2024-08-13 20:48:08
 -- MariaDB dump 10.19  Distrib 10.5.23-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: weathertron
@@ -935,6 +945,7 @@ UNLOCK TABLES;
 
 LOCK TABLES `report` WRITE;
 /*!40000 ALTER TABLE `report` DISABLE KEYS */;
+INSERT INTO `report` VALUES (24,0,'Run SQL','2024-08-13 16:47:59','2024-08-08 10:29:04','{\r\n  \"form\": [\r\n    {\r\n      \"name\": \"sql\",\r\n      \"type\": \"text\",\r\n      \"code_language\": \"sql\",\r\n      \"height\": 100,\r\n      \"width\": 400\r\n    }\r\n  ]\r\n}',' <sql/>','super',1);
 /*!40000 ALTER TABLE `report` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -946,4 +957,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-08-07 18:42:12
+-- Dump completed on 2024-08-13 20:48:08

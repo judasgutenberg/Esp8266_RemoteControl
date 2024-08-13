@@ -695,7 +695,7 @@ if($_REQUEST) {
 								
 								
 								$sqlToUpdateDeviceFeature = str_replace("<lastmodified/>", $lastModified, $sqlToUpdateDeviceFeature);
-								if($allowAutomaticManagement) {
+								if($allowAutomaticManagement && !$automatedChangeMade) {
 									$sqlToUpdateDeviceFeature .= " automation_disabled_when='" . $formatedDateTime . "',";
 								}
 								$oldValue = $row["value"];

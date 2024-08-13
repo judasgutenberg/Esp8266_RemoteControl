@@ -114,7 +114,12 @@ if ($user) {
       $value = 1;
     }
     //a little safer only because it allows a user to screw up records connected to their tenantId but mabe revisit!!!
-    $sql = "UPDATE ". filterStringForSqlEntities($table) . " SET " . filterStringForSqlEntities($name) . "='" .  mysqli_real_escape_string($conn, $value) . "' WHERE tenant_id=" . intval($tenantId) . " AND " . filterStringForSqlEntities($primaryKeyName) . "='" . intval($primaryKeyValue) . "'";
+    $userClause = "";
+    if(in_array($table, tablesThatRequireUser())){
+      $userClause = ", user_id=" . intval($user["user_id"]);
+    }
+    $sql = "UPDATE ". filterStringForSqlEntities($table) . " SET " . filterStringForSqlEntities($name) . "='" .  mysqli_real_escape_string($conn, $value) . "' " . $userClause . " WHERE tenant_id=" . intval($tenantId) . " AND " . filterStringForSqlEntities($primaryKeyName) . "='" . intval($primaryKeyValue) . "'";
+
     if($user["role"] != "viewer" && ($table != "user"  &&  $table != "report") || $user["role"] == "super") { //can't have just anybody do this
       $result = mysqli_query($conn, $sql); 
     } else {
@@ -165,15 +170,20 @@ if ($user) {
     $foundData = getUtilityInfo($user, $action); 
     if ($foundData) {
       $role = gvfa("role", $foundData);
-      if($_POST && gvfa("action", $foundData)) { // ||  (gvfa("action", $foundData) && gvfa("form", $foundData))
+      $outputFormat = gvfa("output_format", $foundData);
+      $path = gvfa("path", $foundData);
+      $friendlyName = gvfa("friendly_name", $foundData);
+      if($_POST && (gvfa("action", $foundData) || $outputFormat)) { // ||  (gvfa("action", $foundData) && gvfa("form", $foundData))
         $out .= "<div class='issuesheader'>" .  gvfa("label", $foundData)  . "</div>";
         //dealing with a utility that has a form
         $role = gvfa("role", $foundData);
-        if (canUserDoThing($user, $role) && $action) { //don't actually need to do this here any more
+        if (canUserDoThing($user, $role) && ($action || $outputFormat)) { //don't actually need to do this here any more
           if (array_key_exists("sql", $foundData)) { //allows the guts of a report to work as a utility
 
             $sql = $foundData["sql"];
             $sql =  tokenReplace($sql, $_POST);
+            
+
             $reportResult = mysqli_query($conn, $sql);
             $error = mysqli_error($conn);
             $affectedRows = mysqli_affected_rows($conn);
@@ -186,14 +196,25 @@ if ($user) {
               $rows = mysqli_fetch_all($reportResult, MYSQLI_ASSOC);
               $out .= genericTable($rows, null, null, null);
             }
-          } else if(array_key_exists("action", $foundData)) {
+          } else if(array_key_exists("action", $foundData) || $outputFormat) {
               $redirect = true;
-              $codeToRun = tokenReplace($foundData["action"], $_GET);
-              $codeToRun = tokenReplace($codeToRun, $_POST) . ";";
-              //die($codeToRun);
+              $codeToRun = "";
+              if($foundData["action"]) {
+                $codeToRun = tokenReplace($foundData["action"], $_GET);
+                $codeToRun = tokenReplace($codeToRun, $_POST) . ";";
+              }
+ 
               try {
-                eval('$result  =' . $codeToRun . ";");
-                $out .= "<pre>" . $result . "</pre>";
+                if($codeToRun) {
+                  eval('$result  =' . $codeToRun . ";");
+                }
+                if($outputFormat == "download") {
+                  download($path, $friendlyName);
+                  die();
+                } else {
+                  $out .= "<pre>" . $result . "</pre>";
+                }
+                
               }
               catch(ParseError $error) { //this shit does not work. does try/catch ever work in PHP?
                 //var_dump($error);

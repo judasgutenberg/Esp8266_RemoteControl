@@ -343,7 +343,7 @@ function genericEntitySave($user, $table) {
   Global $conn;
   Global $encryptionPassword;
   $tenantId = $user["tenant_id"];
-  $tablesThatRequireUser = ["device_feature"];
+  $tablesThatRequireUser = tablesThatRequireUser();
   //$data = schemaArrayFromSchema($table, $pk);
   $pk = $table . "_id";
   $data = $_POST;

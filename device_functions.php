@@ -1355,7 +1355,9 @@ function tenantListSql($user){
   }
   return $tenantListSql;
 }
-
+function tablesThatRequireUser(){
+  return ["device_feature"];
+}
 //all the tables that implement templating
 function templateableTables() {
   return ["feature_type", "device_type", "device_type_feature", "management_rule", "report"];
@@ -1368,6 +1370,7 @@ function schemaTables() {
 }
 
 function utilities($user, $viewMode = "list") {
+  Global $database;
   $utilitiesData = array(
     [
       'label' => 'Rececent Visitor Log',
@@ -1501,8 +1504,33 @@ function utilities($user, $viewMode = "list") {
       'action' => "sqlInitializationScript()",
       'skip_confirmation' => false
     ]
+    ,
+    [
+      'label' => 'Backup Database',
+      'url' => '?table=utilities&action=backupdatabase',
+      'description' => "Do a complete backup.",
+      'key' => 'backupdatabase',
+      'role' => "super",
+      'action' => "backupDatabase()",
+      'skip_confirmation' => false
+    ]
+    ,
+    [
+      'label' => 'Download Database',
+      'url' => '?table=utilities&action=downloaddatabase',
+      'description' => "Download the latest database backup.",
+      'key' => 'downloaddatabase',
+      'role' => "super",
+      'path' => "./sql_backup/" . $database . ".sql",
+      'friendly_name' => $database . "_" . date('Y-m-d_His'),
+      'action' => "",
+      'skip_confirmation' => false,
+      'output_format' => 'download'
+    ]
   );
 
+ 
+ 
 
   $filteredData = array_filter($utilitiesData, function ($subData) use ($user) {
     return canUserDoThing($user, gvfa("role", $subData));
@@ -1538,7 +1566,7 @@ function copyTenantToTemplates($tenantId, $tablesString){
     SELECT GROUP_CONCAT(COLUMN_NAME) AS columns
     FROM INFORMATION_SCHEMA.COLUMNS
       WHERE table_schema='" . $database . "' AND table_name='" . $currentTableName . "' AND COLUMN_KEY != 'PRI' AND COLUMN_NAME != 'created' AND COLUMN_NAME != 'tenant_id'";
- 
+    //echo $columnSql . "<P>";
     $result = $conn->query($columnSql);
     $row = $result->fetch_assoc();
     $columnString = "`" . str_replace(",", "`,`", $row["columns"]) . "`";
@@ -1555,13 +1583,12 @@ function copyTenantToTemplates($tenantId, $tablesString){
     $result = $conn->query($deleteSql);
     $result = $conn->query($sql);
     $error = mysqli_error($conn);
-    if(!$error){
-      return "Template for tables: " . $tablesString  . " updated.";
-    } else {
-      return $error;
-    }
   }
- 
+  if(!$error){
+    return "Template for tables: " . $tablesString  . " updated.";
+  } else {
+    return $error;
+  }
 }
 
 //tables is a comma-delimited string
@@ -1640,3 +1667,16 @@ function sqlInitializationScript() {
   return $output;
 
 }
+
+
+function backupDatabase() {
+  Global $username;
+  Global $password;
+  Global $database;
+  $backupLoc = "./sql_backup/" . $database . ".sql";
+  $strToExec = " ./full_sql_backup.sh  " .  $username . "  " . $password . " " . $database . " " . $backupLoc;
+  $output = shell_exec($strToExec);
+  return "Database backed up.";
+}
+
+ 
