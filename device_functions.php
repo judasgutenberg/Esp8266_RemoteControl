@@ -636,11 +636,8 @@ function editDeviceFeature($error,  $tenantId) {
 	    'value' => gvfa("automation_disabled_when", $source), 
       'error' => gvfa('automation_disabled_when', $error)
 	  ],
-    [
-      'label' => 'last known device modified',
-      'name' => 'last_known_device_modified',
-      "type" => "datetime"
-    ],
+ 
+ 
     [
 	    'label' => 'management rules',
       'name' => 'management_rule_id',
