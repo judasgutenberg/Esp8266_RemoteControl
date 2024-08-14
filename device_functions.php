@@ -333,7 +333,6 @@ function editUser($error){
               tenant_user tu
           ON 
               t.tenant_id = tu.tenant_id 
- 
           GROUP BY 
               t.tenant_id, t.name
           ORDER BY 
@@ -533,8 +532,9 @@ function editTenant($error, $user){
   return $form;
 }
 
-function editDeviceFeature($error,  $tenantId) {
+function editDeviceFeature($error,  $user) {
   Global $conn;
+  $tenantId = $user["tenant_id"];
   $table = "device_feature";
   $pk = gvfw($table . "_id");
   
@@ -650,20 +650,22 @@ function editDeviceFeature($error,  $tenantId) {
       //SELECT m.management_rule_id, name as 'text', (d.device_feature_id IS NOT NULL) AS has FROM management_rule m LEFT JOIN device_feature_management_rule d ON m.management_rule_id=d.management_rule_id AND   m.tenant_id=d.tenant_id WHERE d.device_feature_id IS NULL OR d.device_feature_id=3 AND m.tenant_id='1'  ORDER BY m.name ASC
       //SELECT m.management_rule_id, name as 'text', (d.device_feature_id = 3) AS has FROM management_rule m LEFT JOIN device_feature_management_rule d ON m.management_rule_id=d.management_rule_id AND   m.tenant_id=d.tenant_id group by m.management_rule_id, name   ORDER BY m.name ASC 
       'values' => "SELECT 
-              m.management_rule_id, 
-              m.name AS 'text', 
-              MAX(d.device_feature_id = " . $pk . ") AS has
-          FROM 
-              management_rule m
-          LEFT JOIN 
-              device_feature_management_rule d 
-          ON 
-              m.management_rule_id = d.management_rule_id 
-              AND m.tenant_id = d.tenant_id
-          GROUP BY 
-              m.management_rule_id, m.name
-          ORDER BY 
-              d.management_priority ASC, m.name ASC;"
+                      m.management_rule_id, 
+                      m.name AS 'text', 
+                      MAX(CASE WHEN d.device_feature_id = " . $pk . " AND d.tenant_id = " . $tenantId . " THEN 1 ELSE 0 END) AS has
+                  FROM 
+                      management_rule m
+                  LEFT JOIN 
+                      device_feature_management_rule d 
+                  ON 
+                      m.management_rule_id = d.management_rule_id 
+                      AND m.tenant_id = d.tenant_id
+                  WHERE 
+                      m.tenant_id = " . $tenantId . " 
+                  GROUP BY 
+                      m.management_rule_id, m.name
+                  ORDER BY 
+                      m.name ASC;"
 	  ] 
     );
   $form = genericForm($formData, $submitLabel);
@@ -988,6 +990,10 @@ function deviceFeatureLog($deviceFeatureId, $tenantId){
     [
       'label' => 'mechanism',
       'name' => 'mechanism' 
+    ],
+    [
+      'label' => 'user',
+      'name' => 'user_id' 
     ],
     [
       'label' => 'rule',
