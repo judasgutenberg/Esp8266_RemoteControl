@@ -1275,6 +1275,18 @@ function endsWith($strIn, $what) {
 	return false;
 }
 
+function formatBytes($bytes, $precision = 2) {
+  $units = ['bytes', 'kilobytes', 'megabytes', 'gigabytes', 'terabytes'];
+  if ($bytes == 0) {
+      return '0 bytes';
+  }
+  $base = log($bytes, 1024);
+  $unitIndex = (int) floor($base);
+  $size = round(pow(1024, $base - $unitIndex), $precision);
+  return $size . ' ' . $units[$unitIndex];
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
 //if a user gets an email with an encryptedTenantId, they can create a user belonging to that tenant
 function createUser($encryptedTenantId = NULL){
   Global $conn;
@@ -1525,7 +1537,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
 
 
         } else if ($column != "created" && !beginsWith($column, "_")  && array_key_exists($column, $primaryKey) == false) {
-          echo $column .  " " . $value . "<BR>";
+          //echo $column .  " " . $value . "<BR>";
           if($type == "datetime" && $value=="" && $column != "created" && $column != "modified") {
             $sanitized = "NULL";
           } else if(($type == "bool"  || $type == "checkbox") && !$value){
@@ -1979,5 +1991,8 @@ function writeMemoryCache($key, $value) {
   apcu_store($key . "_time", time());
   apcu_store($key . "_value", $value);
 }
+
+
+
 
  

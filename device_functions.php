@@ -1684,9 +1684,16 @@ function backupDatabase() {
   Global $password;
   Global $database;
   $backupLoc = "./sql_backup/" . $database . ".sql";
+  if (file_exists($backupLoc)) {
+    unlink($backupLoc);
+  }
   $strToExec = " ./full_sql_backup.sh  " .  $username . "  " . $password . " " . $database . " " . $backupLoc;
   $output = shell_exec($strToExec);
-  return "Database backed up.";
+  $fileSize = filesize($backupLoc);
+  return "The database <b>" . $database . "</b> was backed up.  It came to " . formatBytes($fileSize) . ".";
 }
+
+
+
 
  
