@@ -993,7 +993,7 @@ function deviceFeatureLog($deviceFeatureId, $tenantId){
     ],
     [
       'label' => 'user',
-      'name' => 'user_id' 
+      'name' => 'email' 
     ],
     [
       'label' => 'rule',
@@ -1001,7 +1001,7 @@ function deviceFeatureLog($deviceFeatureId, $tenantId){
     ]
     );
   $deviceFeatureName = getDeviceFeature($deviceFeatureId, $tenantId)["name"];
-  $sql = "SELECT recorded, beginning_state, end_state, mechanism, m.name AS rule_name FROM device_feature_log f LEFT JOIN management_rule m ON m.management_rule_id=f.management_rule_id  AND m.tenant_id=f.tenant_id WHERE f.tenant_id =" . intval($tenantId) . " AND device_feature_id=" . intval($deviceFeatureId) . " ORDER BY recorded DESC";
+  $sql = "SELECT recorded, beginning_state, end_state, mechanism, m.name AS rule_name , email, u.user_id  FROM device_feature_log f LEFT JOIN management_rule m ON m.management_rule_id=f.management_rule_id  AND m.tenant_id=f.tenant_id LEFT JOIN user u ON f.user_id = u.user_id WHERE f.tenant_id =" . intval($tenantId) . " AND device_feature_id=" . intval($deviceFeatureId) . " ORDER BY recorded DESC";
   $result = mysqli_query($conn, $sql);
   $out = "<div class='listheader'>Device Feature Log: " . $deviceFeatureName . "</div>";
   if($result) {
