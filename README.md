@@ -21,8 +21,24 @@ https://github.com/judasgutenberg/Generic_Arduino_I2C_Slave and just add the I2C
 
 ![alt text](esp8266-remote-schematic.jpg?raw=true)
 
-## Setup
-Some of the code (remote.ino, config.h, config.c, and index.h) is designed to be compiled in the Arduino environment and uploaded to an ESP8266. (I used a NodeMCU, which is cheap and physically easy to work with.)  The rest of the code needs to be placed on a server that can process PHP pages and communicate with a MySQL database. (It's not a pretty language, but I like PHP because it runs pretty well and doesn't require compilation or setup headaches on most servers or Raspberry Pis.) 
+## Arduino Setup
+Some of the code (remote.ino, config.h, config.c, and index.h) is designed to be compiled in the Arduino environment and uploaded to an ESP8266. (I used a NodeMCU, which is cheap and physically easy to work with.)  The Arduino code is designed to be able to handle a diverse collection of common sensors with the ability to dynamically change sensor types without requiring a recompilation or even a restart.  This requires that the libraries are all installed at compilation time.  As the code exists now, those libraries are as follows:
+
+Adafruit DHT, a temperature/humidity sensor: [https://www.arduino.cc/reference/en/libraries/dht-sensor-library/](https://www.arduino.cc/reference/en/libraries/dht-sensor-library/)
+Adafruut BMP085, a temperature/air-pressure sensor: [https://github.com/adafruit/Adafruit-BMP085-Library](https://github.com/adafruit/Adafruit-BMP085-Library)
+BME680, a temperature/air-pressure/humidity sensor: [https://github.com/Zanduino/BME680/blob/master/src/Zanshin_BME680.h](https://github.com/Zanduino/BME680/blob/master/src/Zanshin_BME680.h)
+BMP180, a temperature/air-pressure sensor:  [https://github.com/LowPowerLab/SFE_BMP180](https://github.com/LowPowerLab/SFE_BMP180)
+LM75, a temperature sensor: [https://github.com/jeremycole/Temperature_LM75_Derived](https://github.com/jeremycole/Temperature_LM75_Derived)
+Adafruut BMP280, a temperature/air-pressure sensor: [https://github.com/adafruit/Adafruit-BMP085-Library ](https://github.com/adafruit/Adafruit_BMP280_Library/blob/master/Adafruit_BMP280.h)
+
+This system also requires a few external libraries:
+https://github.com/bblanchon/ArduinoJson
+https://github.com/arduino-libraries/NTPClient
+https://github.com/esp8266/Arduino/blob/master/libraries/ESP8266WiFi/src/WiFiUdp.h
+https://github.com/spacehuhn/SimpleMap
+
+## Sever Setup
+The rest of the code needs to be placed on a server that can process PHP pages and communicate with a MySQL database. (It's not a pretty language, but I like PHP because it runs pretty well and doesn't require compilation or setup headaches on most servers or Raspberry Pis.) 
 
 To get this installed, first create an initial database by running remote_control.sql on the server and then change config.php so the PHP will know how to connect to the database.  You then create a tenant and a user connected to that tenant via tenant_user and give that tenant a storage_password so that the ESP8266 will be able to authenticate communication with the backend.  This storage password is then set as storage_password (along with other important config information like your WiFi credentials and the domain and path where your backend is hosted) in config.c before compiling the Arduino code and uploading it to an ESP8266.  Then you create a device and give it device_features, and set the device_id of the ESP8266 to the device_id of that device in config.c so that the backend will know what ESP8266 is polling to either log sensor data or pick up remote control settings and additional sensors.
 
