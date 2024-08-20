@@ -20,6 +20,8 @@ To expand the number of pins usable for remote control, you can add one or more 
 https://github.com/judasgutenberg/Generic_Arduino_I2C_Slave and just add the I2C address of the slave Arduino to the device_type_feature record.
 
 ![alt text](esp8266-remote-schematic.jpg?raw=true)
+## Hardware Setup
+This system expect an ESP-8266-based device programmed in the Ardunio environment to be able to control whatever systems you need to be turned on or off.  I've had success connecting a NodeMCU to a ULN2003 and having that switch 12 volt power to 12 volt relays capable of switching enormous loads.   See the schematic for how I connected seven relays using both a NodeMCU and an Arduino Mini running at 3.3 volts that I flashes with my Arduino Slave firmware.  To see other examples of the ULN2003 used, see (for example) https://microcontrollerslab.com/relay-driver-circuit-using-uln2003/.
 
 ## Arduino Setup
 Some of the code (remote.ino, config.h, config.c, and index.h) is designed to be compiled in the Arduino environment and uploaded to an ESP8266. (I used a NodeMCU, which is cheap and physically easy to work with.)  The Arduino code is designed to be able to handle a diverse collection of common sensors with the ability to dynamically change sensor types without requiring a recompilation or even a restart.  This requires that the libraries are all installed at compilation time.  As the code exists now, those libraries are as follows:
@@ -50,12 +52,11 @@ This is another advancement from my Moxee Hotspot Watchdog system, which was its
 
 From there, here's an overview of how to set up control for a particular system controlled by a pin on your ESP8266:
 
-1. Connect the system to be turned on or off to the ESP8266 somehow (see schematic for how I connected seven relays).  Usually this involves a relay and a relay driver circuit such as the ULN2003 (there are lots of examples of this online, for example https://microcontrollerslab.com/relay-driver-circuit-using-uln2003/).
-2. Add a record to the device table to represent your particular ESP8266.  In the code, device_id and location_id refer to the same entity. Your ESP8266 will send that id as device_id to the server whenever it polls it to get updates on what values the device with its pins should have.  You will need to set device_id to this value in config.c before compiling the code for you ESP8266.
-3. Add a record to the device_type table describing your particular type of device (in this case, ESP8266).  Details for this don't matter much.
-4. Add a record to the device_type_feature table describing the pin (mostly the pin number and, if it is on an Arduino slave, the I2C address).
-5. Add a record to the device_feature table describing the specific pin (here a human readable name would be useful).
-6. You can change the state of a particular ESP8266's pin by changing the state of the value column in the device_feature record.  Make sure to set enabled to 1 as well.  Depending on the speed of your network and how frequently you set polling, the change should manifest within a minute or so.
+1. Add a record to the device table to represent your particular ESP8266.  In the code, device_id and location_id refer to the same entity. Your ESP8266 will send that id as device_id to the server whenever it polls it to get updates on what values the device with its pins should have.  You will need to set device_id to this value in config.c before compiling the code for you ESP8266.
+2. Add a record to the device_type table describing your particular type of device (in this case, ESP8266).  Details for this don't matter much.
+3. Add a record to the device_type_feature table describing the pin (mostly the pin number and, if it is on an Arduino slave, the I2C address).
+4. Add a record to the device_feature table describing the specific pin (here a human readable name would be useful).
+5. You can change the state of a particular ESP8266's pin by changing the state of the value column in the device_feature record.  Make sure to set enabled to 1 as well.  Depending on the speed of your network and how frequently you set polling, the change should manifest within a minute or so.
 
 Here is the user interface, which allows you to turn items on and off in the list by checking the "power on" column. (You do it all from the device_feature list view.)
 
