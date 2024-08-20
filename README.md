@@ -40,6 +40,8 @@ This system also requires a few external libraries:
 <li>https://github.com/esp8266/Arduino/blob/master/libraries/ESP8266WiFi/src/WiFiUdp.h
 <li>https://github.com/spacehuhn/SimpleMap
 </ul> 
+
+
 ## Server Setup
 The rest of the code needs to be placed on a server that can process PHP pages and communicate with a MySQL database. (It's not a pretty language, but I like PHP because it runs pretty well and doesn't require compilation or setup headaches on most servers or Raspberry Pis.) 
 
