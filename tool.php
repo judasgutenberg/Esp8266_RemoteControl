@@ -40,7 +40,8 @@ $tenantSelector = "";
 $page = gvfw('page');
 $datatype = gvfw('datatype'); 
 //echo $table  . "*" . $action. "*" .  $datatype;
-//$formatedDateTime =  $date->format('H:i');
+$date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
+$formatedDateTime =  $date->format('Y-m-d H:i:s');
 
 
 if ($action == "logout") {
@@ -117,6 +118,9 @@ if ($user) {
     $userClause = "";
     if(in_array($table, tablesThatRequireUser())){
       $userClause = ", user_id=" . intval($user["user_id"]);
+    }
+    if(in_array($table, tablesThatRequireModified())){
+      $userClause = ", modified='" . $formatedDateTime . "'";
     }
     $sql = "UPDATE ". filterStringForSqlEntities($table) . " SET " . filterStringForSqlEntities($name) . "='" .  mysqli_real_escape_string($conn, $value) . "' " . $userClause . " WHERE tenant_id=" . intval($tenantId) . " AND " . filterStringForSqlEntities($primaryKeyName) . "='" . intval($primaryKeyValue) . "'";
 
@@ -294,7 +298,7 @@ if ($user) {
     }
 	} else if($table == "device_feature") {
     if ($action == "startcreate" || gvfw("device_feature_id") != "") {
-      $out .=  editDeviceFeature($errors,  $tenantId);
+      $out .=  editDeviceFeature($errors,  $user);
     } else {
       $out .= deviceFeatures($tenantId, $deviceId);
     }

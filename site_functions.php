@@ -1399,6 +1399,16 @@ function genericSelect($id, $name, $defaultValue, $data, $event = "", $handler= 
 }
  
 
+function timeDifferenceInMinutes($datetimeOld, $datetimeNew) {
+  $dateOld = new DateTime($datetimeOld);
+  $dateNew= new DateTime($datetimeNew);
+  $interval = $dateOld->diff($dateNew);
+  $minutes = ($interval->days * 24 * 60) + ($interval->h * 60) + $interval->i;
+  return $minutes;
+}
+
+
+
 function stringToAscii($input) {
   $asciiCodes = [];
   $length = strlen($input);

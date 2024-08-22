@@ -565,6 +565,12 @@ function editDeviceFeature($error,  $user) {
       'type' => 'read_only',
 	    'value' => gvfa("created", $source)
 	  ],
+    [
+	    'label' => 'modified',
+      'name' => "modified",
+      'type' => 'read_only',
+	    'value' => gvfa("modified", $source)
+	  ],
 		[
 	    'label' => 'name',
       'name' => 'name',
@@ -1001,7 +1007,8 @@ function deviceFeatureLog($deviceFeatureId, $tenantId){
     ]
     );
   $deviceFeatureName = getDeviceFeature($deviceFeatureId, $tenantId)["name"];
-  $sql = "SELECT recorded, beginning_state, end_state, mechanism, m.name AS rule_name , email, u.user_id  FROM device_feature_log f LEFT JOIN management_rule m ON m.management_rule_id=f.management_rule_id  AND m.tenant_id=f.tenant_id LEFT JOIN user u ON f.user_id = u.user_id WHERE f.tenant_id =" . intval($tenantId) . " AND device_feature_id=" . intval($deviceFeatureId) . " ORDER BY recorded DESC";
+  $sql = "SELECT recorded, beginning_state, end_state, mechanism, m.name AS rule_name , email, u.user_id  FROM device_feature_log f LEFT JOIN management_rule m ON m.management_rule_id=f.management_rule_id  AND m.tenant_id=f.tenant_id LEFT JOIN user u ON f.user_id = u.user_id WHERE f.tenant_id =" . intval($tenantId) . " AND device_feature_id=" . intval($deviceFeatureId) . " ORDER BY recorded DESC LIMIT 0,500";
+  //die($sql);
   $result = mysqli_query($conn, $sql);
   $out = "<div class='listheader'>Device Feature Log: " . $deviceFeatureName . "</div>";
   if($result) {
@@ -1368,6 +1375,11 @@ function tenantListSql($user){
 function tablesThatRequireUser(){
   return ["device_feature"];
 }
+
+function tablesThatRequireModified(){
+  return ["device_feature"];
+}
+
 //all the tables that implement templating
 function templateableTables() {
   return ["feature_type", "device_type", "device_type_feature", "management_rule", "report"];

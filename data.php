@@ -495,7 +495,19 @@ if($_REQUEST) {
 				$managementCache = []; //save us some database lookups
 				//SELECT pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=11 ORDER BY i2c, pin_number;
 				//the part where we include any data from our remote control system:
-				$deviceSql = "SELECT allow_automatic_management, last_known_device_value, pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id, automation_disabled_when, restore_automation_after, f.user_id
+				$deviceSql = "SELECT 
+						allow_automatic_management, 
+						last_known_device_value, 
+						pin_number, f.name, 
+						value, 
+						enabled, 
+						can_be_analog, 
+						IFNULL(via_i2c_address, 0) AS i2c, 
+						device_feature_id, 
+						automation_disabled_when, 
+						restore_automation_after, 
+						f.user_id, 
+						f.modified
 					FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id 
 					WHERE pin_number IS NOT NULL AND sensor_type IS NULL AND device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
 				//echo $deviceSql;
@@ -511,6 +523,7 @@ if($_REQUEST) {
 						$deviceFeatureId = $row["device_feature_id"];
 						$pinNumber = $row["pin_number"];
 						$userId = $row["user_id"];
+						$modified = $row["modified"];
 						if(!$userId){
 							$userId = "NULL";
 						}
@@ -528,8 +541,15 @@ if($_REQUEST) {
 							$inTheFutureWhenWeRestoreManagement->modify($restoreAutomationAfter . ' hours');
 						}
 						$formattedInTheFuture = $inTheFutureWhenWeRestoreManagement->format('Y-m-d H:i:s');
-
-						if($allowAutomaticManagement  && ($automationDisabledWhen == null || $formattedInTheFuture >= $formatedDateTime)) {
+						if(gvfa("debug", $_REQUEST) == 'suspension'){
+							echo "<BR>". $row["name"] ."; feature id: " . $deviceFeatureId;
+							echo "<BR>formatted in future: " . $formattedInTheFuture;
+							echo "<BR>now time: " . $formatedDateTime;
+							echo "<BR>automationDisabledWhen: " . $automationDisabledWhen  ;
+							echo "<BR>allowAutomaticManagement: " . $allowAutomaticManagement . "<BR>";
+							echo "<hr>";
+						}
+						if($allowAutomaticManagement  && ($automationDisabledWhen == null || $formattedInTheFuture < $formatedDateTime)) {
 							$automationSql = "SELECT m.* FROM management_rule m JOIN device_feature_management_rule d ON m.management_rule_id = d.management_rule_id AND m.tenant_id=d.tenant_id WHERE d.device_feature_id = " . $deviceFeatureId . " ORDER BY management_priority DESC";
 							//logSql("management sql:" .  $automationSql);
 							$automationResult = mysqli_query($conn, $automationSql);
@@ -633,12 +653,15 @@ if($_REQUEST) {
 
 											//logSql("management judgment:" . $managementJudgment);
 											if($managementJudgment == 1  && $row["value"] != $managementResultValue){
-												$mechanism = "automation";
-												$managementRuleId = $managementRuleIdIfNeeded;
-												//echo intval($managementResultValue) . "<BR>";
-												//we need to make this value explicitly numeric or we have trouble later:
-												$pinValuesKnownToDevice[$pinCursor] =   intval($managementResultValue);
-												$automatedChangeMade = true;
+												//don't automate a change within five minutes of a user change
+												if(timeDifferenceInMinutes($modified, $formatedDateTime) > 5) {
+													$mechanism = "automation";
+													$managementRuleId = $managementRuleIdIfNeeded;
+													//echo intval($managementResultValue) . "<BR>";
+													//we need to make this value explicitly numeric or we have trouble later:
+													$pinValuesKnownToDevice[$pinCursor] = intval($managementResultValue);
+													$automatedChangeMade = true;
+												}
 												//logSql($managementRuleName . "; setting #" . $deviceFeatureId . " to " . $pinValuesKnownToDevice[$pinCursor]);
 											}
 										}
@@ -666,11 +689,12 @@ if($_REQUEST) {
 							
 							//echo $sqlToUpdateDeviceFeature  . "<BR> " . $specificPin  . "<BR>";
 							$sqlIfDataGoingUpstream = " value =" . $pinValuesKnownToDevice[$pinCursor] . ",";
-							if($automatedChangeMade) {
-								$sqlToUpdateDeviceFeature = str_replace("<lastknowndevice/>", "", $sqlToUpdateDeviceFeature); 
-							} else {
+							//suspect:  i had been doing this:
+							//if($automatedChangeMade) {
+								//$sqlToUpdateDeviceFeature = str_replace("<lastknowndevice/>", "", $sqlToUpdateDeviceFeature); 
+							//} else {
 								$sqlToUpdateDeviceFeature = str_replace("<lastknowndevice/>", $lastKnownDevice, $sqlToUpdateDeviceFeature);
-							}
+							//}
 						}
 						//echo $deviceFeatureId  . "*" . $mustSaveLastKnownDeviceValueAsValue  . "*" . $automatedChangeMade . "<BR>";
 						if($mustSaveLastKnownDeviceValueAsValue || $automatedChangeMade){ //actually update the pin values here too!
@@ -695,7 +719,7 @@ if($_REQUEST) {
 								
 								
 								$sqlToUpdateDeviceFeature = str_replace("<lastmodified/>", $lastModified, $sqlToUpdateDeviceFeature);
-								if($allowAutomaticManagement && !$automatedChangeMade) {
+								if($allowAutomaticManagement && !$automatedChangeMade) {  
 									$sqlToUpdateDeviceFeature .= " automation_disabled_when='" . $formatedDateTime . "',";
 								}
 								$oldValue = $row["value"];
@@ -709,6 +733,27 @@ if($_REQUEST) {
 								//also log this change in the new device_feature_log table!  we're going to need that for when device_features get changed automatically based on data as well!
 								$loggingSql = "INSERT INTO device_feature_log (device_feature_id, tenant_id, recorded, beginning_state, end_state, management_rule_id, mechanism, user_id) VALUES (";
 								$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "'," . $userId .")";
+								
+								
+								/*
+								$loggingSql = "INSERT INTO device_feature_log (device_feature_id, tenant_id, recorded, beginning_state, end_state, management_rule_id, mechanism, user_id) SELECT ";
+								$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "'," . $userId;
+								
+								$loggingSql .= " WHERE NOT EXISTS (
+									SELECT 1 FROM device_feature_log
+									WHERE device_feature_id = " . nullifyOrNumber($row["device_feature_id"]) . "
+									AND tenant_id = " . $tenant["tenant_id"] . "
+									AND beginning_state = " . intval($oldValue) . "
+									AND end_state = " . intval($newValue) . "
+									AND management_rule_id = " . nullifyOrNumber($managementRuleId) . "
+									AND mechanism = '" . $mechanism . "'
+									AND user_id = " . $userId . "
+								)";
+								
+								*/
+								
+								
+								
 								//if($mechanism == "automation"){
 									//logSql("logging sql: " . $loggingSql);
 									//logSql("update sql: " . $sqlToUpdateDeviceFeature);
@@ -737,6 +782,7 @@ if($_REQUEST) {
 							unset($row["automation_disabled_when"]);//make things as lean as possible for IoT device
 							unset($row["restore_automation_after"]);//make things as lean as possible for IoT device
 							unset($row["user_id"]);//make things as lean as possible for IoT device
+							unset($row["modified"]);//make things as lean as possible for IoT device
 							$out["device_data"][] = $row;
 						}
 						//echo $sqlToUpdateDeviceFeature . "<BR>";
@@ -759,6 +805,10 @@ if($_REQUEST) {
 							}
 							//echo $sqlToUpdateDeviceFeature . "<BR>";
 							if($sqlToUpdateDeviceFeature != "") {
+								if(gvfa("debug", $_REQUEST) == 'updatefeature'){
+									echo "<BR>automated change: " . $automatedChangeMade;
+									echo "<BR>" . $sqlToUpdateDeviceFeature . "<BR>";
+								}
 								$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
 								$error = mysqli_error($conn);
 								if($error != ""){
