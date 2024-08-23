@@ -26,12 +26,12 @@ This system expect an ESP-8266-based device programmed in the Ardunio environmen
 ## Arduino Setup
 Some of the code (remote.ino, config.h, config.c, and index.h) is designed to be compiled in the Arduino environment and uploaded to an ESP8266. (I used a NodeMCU, which is cheap and physically easy to work with.)  The Arduino code is designed to be able to handle a diverse collection of common sensors with the ability to dynamically change sensor types without requiring a recompilation or even a restart.  This requires that the libraries are all installed at compilation time.  As the code exists now, those libraries are as follows:
 <ul>
-<li>Adafruit DHT, a temperature/humidity sensor: [https://www.arduino.cc/reference/en/libraries/dht-sensor-library/](https://www.arduino.cc/reference/en/libraries/dht-sensor-library/)
-<li>Adafruut BMP085, a temperature/air-pressure sensor: [https://github.com/adafruit/Adafruit-BMP085-Library](https://github.com/adafruit/Adafruit-BMP085-Library)
-<li>BME680, a temperature/air-pressure/humidity sensor: [https://github.com/Zanduino/BME680/blob/master/src/Zanshin_BME680.h](https://github.com/Zanduino/BME680/blob/master/src/Zanshin_BME680.h)
-<li>BMP180, a temperature/air-pressure sensor:  [https://github.com/LowPowerLab/SFE_BMP180](https://github.com/LowPowerLab/SFE_BMP180)
-<li>LM75, a temperature sensor: [https://github.com/jeremycole/Temperature_LM75_Derived](https://github.com/jeremycole/Temperature_LM75_Derived)
-<li>Adafruut BMP280, a temperature/air-pressure sensor: [https://github.com/adafruit/Adafruit-BMP085-Library ](https://github.com/adafruit/Adafruit_BMP280_Library/blob/master/Adafruit_BMP280.h)
+<li>Adafruit DHT, a temperature/humidity sensor: (https://www.arduino.cc/reference/en/libraries/dht-sensor-library/)
+<li>Adafruut BMP085, a temperature/air-pressure sensor: (https://github.com/adafruit/Adafruit-BMP085-Library)
+<li>BME680, a temperature/air-pressure/humidity sensor: (https://github.com/Zanduino/BME680/blob/master/src/Zanshin_BME680.h)
+<li>BMP180, a temperature/air-pressure sensor: (https://github.com/LowPowerLab/SFE_BMP180)
+<li>LM75, a temperature sensor: (https://github.com/jeremycole/Temperature_LM75_Derived)
+<li>Adafruut BMP280, a temperature/air-pressure sensor: (https://github.com/adafruit/Adafruit_BMP280_Library/blob/master/Adafruit_BMP280.h)
 </ul>
 This system also requires a few external libraries:
 <ul>
