@@ -763,7 +763,9 @@ if($_REQUEST) {
 								logSql("specific pin: ".$specificPin . " pinCursor:" . $pinCursor  );
 								logSql("querystring: ". $_SERVER['QUERY_STRING']  );
 								if($automatedChangeMade || $specificPin > -1 && $specificPin == $pinCursor  || $specificPin == -1){ //otherwise we get too much logging if we're in one-pin-at-a-mode time
-									$loggingResult = mysqli_query($conn, $loggingSql);
+									if(intval($oldValue) != intval($newValue) ) { //let's only log ch-ch-ch-changes
+										$loggingResult = mysqli_query($conn, $loggingSql);
+									}
 									$error = mysqli_error($conn);
 									if($error != ""){
 										$badSql = $loggingSql;
