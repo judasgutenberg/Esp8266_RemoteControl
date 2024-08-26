@@ -53,9 +53,7 @@ if($_REQUEST) {
 	if(array_key_exists("storagePassword", $_REQUEST)) {
 		$storagePassword  = $_REQUEST["storagePassword"];
 	} else if($user) {
-		//var_dump($user);
 		$storagePassword  = $user['storage_password'];
-		//echo "ccccccccccccccc" . $user['storage_password'] . "*" . $storagePassword;
 		if(!in_array($mode, ["getOfficialWeatherData", "getInverterData", "getData"])){ //keeps certain kinds of hacks from working
 			die(json_encode(["error"=>"your brilliant hack has failed"]));
 		}
@@ -719,9 +717,7 @@ if($_REQUEST) {
 								
 								
 								$sqlToUpdateDeviceFeature = str_replace("<lastmodified/>", $lastModified, $sqlToUpdateDeviceFeature);
-								if($allowAutomaticManagement && !$automatedChangeMade) {  
-									$sqlToUpdateDeviceFeature .= " automation_disabled_when='" . $formatedDateTime . "',";
-								}
+
 								$oldValue = $row["value"];
 								$newValue = $pinValuesKnownToDevice[$pinCursor];
 								
@@ -730,6 +726,9 @@ if($_REQUEST) {
 									$oldValue = $row["last_known_device_value"];
 									$newValue = $row["value"];
 								} 
+								if($allowAutomaticManagement && !$automatedChangeMade && intval($oldValue) != intval($newValue)) {  
+									$sqlToUpdateDeviceFeature .= " automation_disabled_when='" . $formatedDateTime . "',";
+								}
 								//also log this change in the new device_feature_log table!  we're going to need that for when device_features get changed automatically based on data as well!
 								$loggingSql = "INSERT INTO device_feature_log (device_feature_id, tenant_id, recorded, beginning_state, end_state, management_rule_id, mechanism, user_id) VALUES (";
 								$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "'," . $userId .")";
