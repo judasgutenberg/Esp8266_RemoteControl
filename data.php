@@ -726,7 +726,7 @@ if($_REQUEST) {
 									$oldValue = $row["last_known_device_value"];
 									$newValue = $row["value"];
 								} 
-								if($allowAutomaticManagement && !$automatedChangeMade && intval($oldValue) != intval($newValue)) {  
+								if(!$automationDisabledWhen && $allowAutomaticManagement && !$automatedChangeMade && intval($oldValue) != intval($newValue)) {  
 									$sqlToUpdateDeviceFeature .= " automation_disabled_when='" . $formatedDateTime . "',";
 								}
 								//also log this change in the new device_feature_log table!  we're going to need that for when device_features get changed automatically based on data as well!
