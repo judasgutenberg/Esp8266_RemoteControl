@@ -386,7 +386,12 @@ function genericEntitySave($user, $table) {
 
 
   $id = mysqli_insert_id($conn);
-  header("Location: ?table=" . $table);
+  $url = "?table=" . $table;
+  $deviceId = gvfw("device_id");
+  if($deviceId && $table != "device"){
+    $url .=  "&device_id=" . $deviceId;
+  }
+  header("Location: " . $url);
 }
 
 function updateDataWithRows($data, $thisDataRows) {

@@ -119,7 +119,7 @@ let batteryPercents = [];
 let timeStamp = [];
 
 function showGraph(locationId){
-	console.log(timeStamp);
+	//console.log(timeStamp);
 	if(glblChart){
 		glblChart.destroy();
 	}

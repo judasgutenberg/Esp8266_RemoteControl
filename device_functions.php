@@ -566,7 +566,7 @@ function editDeviceFeature($error,  $user) {
 	    'value' => gvfa("created", $source)
 	  ],
     [
-	    'label' => 'modified',
+	    'label' => 'user modified',
       'name' => "modified",
       'type' => 'read_only',
 	    'value' => gvfa("modified", $source)
