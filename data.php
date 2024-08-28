@@ -21,14 +21,14 @@ $badSql = "";
 $out = [];
 $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
 $pastDate = $date;
-$twoMinutesPastDate = $date;
+$aFewMinutesPastDate = $date;
 $formatedDateTime =  $date->format('Y-m-d H:i:s');
 $currentTime = $date->format('H:i:s');
 $pastDate->modify('-20 minutes');
 
 $formatedDateTime20MinutesAgo =  $pastDate->format('Y-m-d H:i:s');
-$twoMinutesPastDate->modify('-2 minutes');
-$formatedDateTime2MinutesAgo =  $twoMinutesPastDate->format('Y-m-d H:i:s');
+$aFewMinutesPastDate->modify('-6 minutes');
+$formatedDateTimeAFewMinutesAgo =  $aFewMinutesPastDate->format('Y-m-d H:i:s');
 //$formatedDateTime =  $date->format('H:i');
 $deviceId = "";
 $locationId = "";
@@ -39,8 +39,7 @@ $nonJsonPinData = 0;
 $justGetDeviceInfo = 0;
 $storagePassword = "";
 $multipleSensorArray = [];
-$loggingKeys = [];
-
+ 
 
 $user = autoLogin(); //if we are using this as a backend for the inverter or weather page, we don't need to pass the storagePassword at all.  this will only work once the user has logged in and selected a single tenant
 
@@ -744,15 +743,15 @@ if($_REQUEST) {
 									$sqlToUpdateDeviceFeature .= " automation_disabled_when='" . $formatedDateTime . "',";
 								}
 								//also log this change in the new device_feature_log table!  we're going to need that for when device_features get changed automatically based on data as well!
-								$loggingKeyItem = $row["device_feature_id"] . "|" . $tenant["tenant_id"] . "|" . intval($oldValue) . "|" . intval($newValue) . "|" .  intval($managementRuleId) . "|" . $mechanism . "|" . $userId;
+ 
 
 
-								$weJustHadALogItemLikeThis = intval($historicWas) == intval($oldValue) && intval($historicBecame) == intval($newValue) && $historicMechanism == $mechanism && $historicRecorded > $formatedDateTime2MinutesAgo;
+								$weJustHadALogItemLikeThis = intval($historicWas) == intval($oldValue) && intval($historicBecame) == intval($newValue) && $historicMechanism == $mechanism && $historicRecorded > $formatedDateTimeAFewMinutesAgo;
 
-								if(!array_search($loggingKeyItem, $loggingKeys) && !$weJustHadALogItemLikeThis) {
+								if(!$weJustHadALogItemLikeThis) {
 									$loggingSql = "INSERT INTO device_feature_log (device_feature_id, tenant_id, recorded, beginning_state, end_state, management_rule_id, mechanism, user_id) VALUES (";
 									$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "'," . $userId .")";
-									$loggingKeys[] = $loggingKeyItem;
+				 
 									
 									/*
 									$loggingSql = "INSERT INTO device_feature_log (device_feature_id, tenant_id, recorded, beginning_state, end_state, management_rule_id, mechanism, user_id) SELECT ";
