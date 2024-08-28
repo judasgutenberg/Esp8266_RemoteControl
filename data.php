@@ -21,10 +21,14 @@ $badSql = "";
 $out = [];
 $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
 $pastDate = $date;
+$twoMinutesPastDate = $date;
 $formatedDateTime =  $date->format('Y-m-d H:i:s');
 $currentTime = $date->format('H:i:s');
 $pastDate->modify('-20 minutes');
+
 $formatedDateTime20MinutesAgo =  $pastDate->format('Y-m-d H:i:s');
+$twoMinutesPastDate->modify('-2 minutes');
+$formatedDateTime2MinutesAgo =  $twoMinutesPastDate->format('Y-m-d H:i:s');
 //$formatedDateTime =  $date->format('H:i');
 $deviceId = "";
 $locationId = "";
@@ -35,6 +39,7 @@ $nonJsonPinData = 0;
 $justGetDeviceInfo = 0;
 $storagePassword = "";
 $multipleSensorArray = [];
+$loggingKeys = [];
 
 
 $user = autoLogin(); //if we are using this as a backend for the inverter or weather page, we don't need to pass the storagePassword at all.  this will only work once the user has logged in and selected a single tenant
@@ -505,8 +510,13 @@ if($_REQUEST) {
 						automation_disabled_when, 
 						restore_automation_after, 
 						f.user_id, 
-						f.modified
-					FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id 
+						f.modified,
+						(SELECT beginning_state FROM device_feature_log  dfl WHERE dfl.device_feature_id=f.device_feature_id ORDER BY device_feature_log_id DESC LIMIT 0,1) as historic_was,
+						(SELECT end_state FROM device_feature_log  dfl WHERE dfl.device_feature_id=f.device_feature_id ORDER BY device_feature_log_id DESC LIMIT 0,1) as historic_became,
+						(SELECT mechanism FROM device_feature_log  dfl WHERE dfl.device_feature_id=f.device_feature_id ORDER BY device_feature_log_id DESC LIMIT 0,1) as historic_mechanism,
+						(SELECT recorded FROM device_feature_log  dfl WHERE dfl.device_feature_id=f.device_feature_id ORDER BY device_feature_log_id DESC LIMIT 0,1) as historic_recorded
+					FROM device_feature f 
+					LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id 
 					WHERE pin_number IS NOT NULL AND sensor_type IS NULL AND device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
 				//echo $deviceSql;
 				$result = mysqli_query($conn, $deviceSql);
@@ -515,6 +525,10 @@ if($_REQUEST) {
 					$pinCursor = 0;
 					//logSql($mustSaveLastKnownDeviceValueAsValue . "^" . $lines[2] . "^" . "------------------------------");
 					foreach($rows as $row) {
+						$historicWas = $row["historic_was"];
+						$historicBecame = $row["historic_became"];
+						$historicMechanism = $row["historic_mechanism"];
+						$historicRecorded = $row["historic_recorded"];
 						$allowAutomaticManagement = $row["allow_automatic_management"];
 						$automationDisabledWhen = $row["automation_disabled_when"];
 						$restoreAutomationAfter = $row["restore_automation_after"];
@@ -730,46 +744,55 @@ if($_REQUEST) {
 									$sqlToUpdateDeviceFeature .= " automation_disabled_when='" . $formatedDateTime . "',";
 								}
 								//also log this change in the new device_feature_log table!  we're going to need that for when device_features get changed automatically based on data as well!
-								$loggingSql = "INSERT INTO device_feature_log (device_feature_id, tenant_id, recorded, beginning_state, end_state, management_rule_id, mechanism, user_id) VALUES (";
-								$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "'," . $userId .")";
+								$loggingKeyItem = $row["device_feature_id"] . "|" . $tenant["tenant_id"] . "|" . intval($oldValue) . "|" . intval($newValue) . "|" .  intval($managementRuleId) . "|" . $mechanism . "|" . $userId;
+
+
+								$weJustHadALogItemLikeThis = intval($historicWas) == intval($oldValue) && intval($historicBecame) == intval($newValue) && $historicMechanism == $mechanism && $historicRecorded > $formatedDateTime2MinutesAgo;
+
+								if(!array_search($loggingKeyItem, $loggingKeys) && !$weJustHadALogItemLikeThis) {
+									$loggingSql = "INSERT INTO device_feature_log (device_feature_id, tenant_id, recorded, beginning_state, end_state, management_rule_id, mechanism, user_id) VALUES (";
+									$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "'," . $userId .")";
+									$loggingKeys[] = $loggingKeyItem;
+									
+									/*
+									$loggingSql = "INSERT INTO device_feature_log (device_feature_id, tenant_id, recorded, beginning_state, end_state, management_rule_id, mechanism, user_id) SELECT ";
+									$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "'," . $userId;
+									
+									$loggingSql .= " WHERE NOT EXISTS (
+										SELECT 1 FROM device_feature_log
+										WHERE device_feature_id = " . nullifyOrNumber($row["device_feature_id"]) . "
+										AND tenant_id = " . $tenant["tenant_id"] . "
+										AND beginning_state = " . intval($oldValue) . "
+										AND end_state = " . intval($newValue) . "
+		
+										AND mechanism = '" . $mechanism . "'
+										AND user_id = " . $userId . "
+										AND recorded > '" . $formatedDateTime2MinutesAgo . "'
+									)";
+									*/
+									//--AND management_rule_id = " . nullifyOrNumber($managementRuleId) . "
+								
+							 
 								
 								
-								/*
-								$loggingSql = "INSERT INTO device_feature_log (device_feature_id, tenant_id, recorded, beginning_state, end_state, management_rule_id, mechanism, user_id) SELECT ";
-								$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "'," . $userId;
-								
-								$loggingSql .= " WHERE NOT EXISTS (
-									SELECT 1 FROM device_feature_log
-									WHERE device_feature_id = " . nullifyOrNumber($row["device_feature_id"]) . "
-									AND tenant_id = " . $tenant["tenant_id"] . "
-									AND beginning_state = " . intval($oldValue) . "
-									AND end_state = " . intval($newValue) . "
-									AND management_rule_id = " . nullifyOrNumber($managementRuleId) . "
-									AND mechanism = '" . $mechanism . "'
-									AND user_id = " . $userId . "
-								)";
-								
-								*/
-								
-								
-								
-								//if($mechanism == "automation"){
-									//logSql("logging sql: " . $loggingSql);
-									//logSql("update sql: " . $sqlToUpdateDeviceFeature);
-								//}
-								//echo $loggingSql;
-								logSql($sqlToUpdateDeviceFeature);
-								logSql("specific pin: ".$specificPin . " pinCursor:" . $pinCursor  );
-								logSql("querystring: ". $_SERVER['QUERY_STRING']  );
-								if($automatedChangeMade || $specificPin > -1 && $specificPin == $pinCursor  || $specificPin == -1){ //otherwise we get too much logging if we're in one-pin-at-a-mode time
-									if(intval($oldValue) != intval($newValue) ) { //let's only log ch-ch-ch-changes
-										$loggingResult = mysqli_query($conn, $loggingSql);
-									}
-									$error = mysqli_error($conn);
-									if($error != ""){
-										$badSql = $loggingSql;
-										$out["error"] = $error;
-										$out["sql"] = $badSql;
+									//if($mechanism == "automation"){
+										//logSql("logging sql: " . $loggingSql);
+										//logSql("update sql: " . $sqlToUpdateDeviceFeature);
+									//}
+									//echo $loggingSql;
+									logSql($sqlToUpdateDeviceFeature);
+									logSql("specific pin: ".$specificPin . " pinCursor:" . $pinCursor  );
+									logSql("querystring: ". $_SERVER['QUERY_STRING']  );
+									if($automatedChangeMade || $specificPin > -1 && $specificPin == $pinCursor  || $specificPin == -1){ //otherwise we get too much logging if we're in one-pin-at-a-mode time
+										if(intval($oldValue) != intval($newValue) ) { //let's only log ch-ch-ch-changes
+											$loggingResult = mysqli_query($conn, $loggingSql);
+										}
+										$error = mysqli_error($conn);
+										if($error != ""){
+											$badSql = $loggingSql;
+											$out["error"] = $error;
+											$out["sql"] = $badSql;
+										}
 									}
 								}
 							} else {
@@ -784,6 +807,10 @@ if($_REQUEST) {
 							unset($row["restore_automation_after"]);//make things as lean as possible for IoT device
 							unset($row["user_id"]);//make things as lean as possible for IoT device
 							unset($row["modified"]);//make things as lean as possible for IoT device
+							unset($row["historic_was"]);//make things as lean as possible for IoT device
+							unset($row["historic_became"]);//make things as lean as possible for IoT device
+							unset($row["historic_mechanism"]);//make things as lean as possible for IoT device
+							unset($row["historic_recorded"]);//make things as lean as possible for IoT device
 							$out["device_data"][] = $row;
 						}
 						//echo $sqlToUpdateDeviceFeature . "<BR>";
