@@ -1393,6 +1393,7 @@ function schemaTables() {
 
 function utilities($user, $viewMode = "list") {
   Global $database;
+  Global $backupLocation;
   $utilitiesData = array(
     [
       'label' => 'Rececent Visitor Log',
@@ -1543,7 +1544,7 @@ function utilities($user, $viewMode = "list") {
       'description' => "Download the latest database backup.",
       'key' => 'downloaddatabase',
       'role' => "super",
-      'path' => "./sql_backup/" . $database . ".sql",
+      'path' => $backupLocation . "/" . $database . ".sql",
       'friendly_name' => $database . "_" . date('Y-m-d_His'),
       'action' => "",
       'skip_confirmation' => false,
@@ -1682,7 +1683,8 @@ function sqlInitializationScript() {
   Global $username;
   Global $password;
   Global $database;
-  $backupPath = "./sql_backup/";
+  Global $backupLocation;
+  $backupPath = $backupLocation . "/";
   $strToExec = "./sql_backup.sh " . $username . " " . $password . " " . $database . " " . $backupPath .  " \"" . implode(' ', schemaTables())  . "\" \"" . implode(' ', templateableTables())  . "\"";
   //echo  $strToExec ;
   $output = shell_exec($strToExec);
@@ -1695,7 +1697,8 @@ function backupDatabase() {
   Global $username;
   Global $password;
   Global $database;
-  $backupLoc = "./sql_backup/" . $database . ".sql";
+  Global $backupLocation;
+  $backupLoc = $backupLocation . "/" . $database . ".sql";
   if (file_exists($backupLoc)) {
     unlink($backupLoc);
   }
