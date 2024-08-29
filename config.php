@@ -10,3 +10,4 @@ $encryptionPassword = "your secret just for you";
 $cookiename = "email";
 $poserCookieName = "poser_id";
 $tenantCookieName = "tenant";
+$backupLocation = "./someplace_secret_or_perhaps_not_in_your_web_tree
