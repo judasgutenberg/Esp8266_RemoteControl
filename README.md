@@ -113,4 +113,39 @@ SELECT  &lt;changerX/&gt;, battery_percentage, solar_power, load_power, battery_
 
 the "values" parameter in the form JSON can also be a SQL string to generate a list of options from the database.  If so, the SQL needs to return a 'text' column for a proper dropdown list of options to be displayed.  A log of reports is kept with enough information to allow them to be re-run with the same set of parameters as the original run.
 
+Here is the JSON for a report that generates a graph:
+<code>
+
+{
+  "output": {
+    "labelColumn": "recorded",
+    "colors": "ff0000,00ff00,0000ff",
+    "color": "ff0000,00ff00,0000ff",
+    "plots": [
+      {
+        "column": "battery_percentage",
+        "darkenBy": "changer7",
+        "darkenByDivisor": 100,
+        "color": "green",
+        "label": "battery_percentage",
+        "shape": {
+          "radius": 1
+        }
+      },
+      {
+        "column": "battery_voltage",
+        "darkenBy": "changer7",
+        "darkenByDivisor": 100,
+        "color": "red",
+        "label": "battery_voltage",
+        "shape": {
+          "radius": 1
+        }
+      }
+    ]
+  }
+}
+
+</code>
+
 Obviously there is a lot of power in such a system, since, depending on MySQL user permissions, a report-writer might be given access to any data on the database server;  only fully trusted users should get access to report creation and some reports are too powerful for anyone but users with the role 'super' to run.  Currently only 'super' users can create and edit reports, though, depending on the role given to a report, less-powerful users may be able to run it.  It's also possible to write reports that give enormous power to users, and such reports should be restricted (via role) to 'super.'
