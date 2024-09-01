@@ -16,7 +16,7 @@ Device_features can also be sensors reachable by a GPIO pin or I2C, and if multi
 
 One caveat: this system is one where the server tells the microcontroller what pins do what and can change assignments without a need to reflash or even restart the microcontroller. For some pins (notably GPIO10 and GPIO9 on an ESP8266, which are used for accessing on-board flash storage), setting them to outputs and forcing them to take a value will cause the ESP8266 to crash and restart.  So definitely test all your pin control arrangements while local to the ESP8266 before using it remotely.
 
-To expand the number of pins usable for remote control, you can add one or more slave Arduinos running my slave software (be sure to give them all different I2C addresses):
+To expand the number of pins usable for remote control, you can add one or more slave Arduinos running my slave software (be sure to give them all different I2C addresses, which is a small code tweak to the Arduino firmware):
 https://github.com/judasgutenberg/Generic_Arduino_I2C_Slave and just add the I2C address of the slave Arduino to the device_type_feature record.
 
 ![alt text](esp8266-remote-schematic.jpg?raw=true)
