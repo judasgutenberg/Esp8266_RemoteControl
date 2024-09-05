@@ -81,7 +81,7 @@ There is also an inverter-related endpoint in data.php to return live inverter i
 
 <inverter_log[].battery_percentage> > 80
 
-which would set the connected device_feature's value to result if the condition is met and allow_automatic_management in the device_feature record is true.  Multiple management_rules can be added to device_features in the device_feature editor, which looks like this:
+which would set the connected device_feature's value to the value of management_rule.result if the condition is met and allow_automatic_management in the device_feature record is true.  Multiple management_rules can be added to device_features in the device_feature editor, which looks like this:
 
 ![alt text](devicefeature.jpg?raw=true)
 
