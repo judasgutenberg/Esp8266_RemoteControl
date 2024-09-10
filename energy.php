@@ -2,6 +2,7 @@
 <?php 
 include("config.php");
 include("site_functions.php");
+include("device_functions.php");
 //ini_set('display_errors', 1);
 //ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
@@ -19,6 +20,8 @@ $out = "";
 $conn = mysqli_connect($servername, $username, $password, $database);
 $user = autoLogin();
 $tenantSelector = "";
+$scaleConfig =  timeScales();
+//$scaleConfig = '[{"text":"ultra-fine","value":"ultra-fine", "period_size": 1, "period_scale": "hour"},{"text":"fine","value":"fine", "period_size": 1, "period_scale": "day"},{"text":"hourly","value":"hour", "period_size": 7, "period_scale": "day"}, {"text":"daily","value":"day", "period_size": 1, "period_scale": "year"}]';
 
 $content = "";
 $action = gvfw("action");
@@ -53,6 +56,9 @@ if(!$user) {
   <title>Inverter Information</title>
   <!--For offline ESP graphs see this tutorial https://circuits4you.com/2018/03/10/esp8266-jquery-and-ajax-web-server/ -->
   <script src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>  
+  <script>
+  let scaleConfig = JSON.parse('<?php echo json_encode(timeScales()); ?>');
+  </script>
   <link rel='stylesheet' href='tool.css?version=1711570359'>
   <script src='tool.js'></script>
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
@@ -91,18 +97,18 @@ if(!$user) {
 			<table id="dataTable">
 			<?php 
 			//lol, it's easier to specify an object in json and decode it than it is just specify it in PHP
-
-			
-
 			//$selectData = json_decode('[{"text":"Outside Cabin","value":1},{"text":"Cabin Downstairs","value":2},{"text":"Cabin Watchdog","value":3}]');
 			//var_dump($selectData);
 			//echo  json_last_error_msg();
-			
-			
 			$handler = "getInverterData()";
 
-			$scaleData = json_decode('[{"text":"ultra-fine","value":"ultra-fine"},{"text":"fine","value":"fine"},{"text":"hourly","value":"hour"}, {"text":"daily","value":"day"}]', true);
-			echo "<tr><td>Time Scale:</td><td>" . genericSelect("scaleDropdown", "scale", "fine", $scaleData, "onchange", $handler) . "</td></tr>";
+			//$scaleConfig = json_decode('[{"text":"ultra-fine","value":"ultra-fine"},{"text":"fine","value":"fine"},{"text":"hourly","value":"hour"}, {"text":"daily","value":"day"}]', true);
+			echo "<tr><td>Time Scale:</td><td>";
+			echo genericSelect("scaleDropdown", "scale", "fine", $scaleConfig, "onchange", $handler);
+			echo "</td></tr>";
+			$startDateData = recentOrdinalDateArray(30);
+			echo "<tr><td>Date Begin:</td><td id='placeforscaledropdown'></td></tr>";
+			//echo "<script>createTimescalePeriodDropdown(scaleConfig, 31, 'fine', 'change', 'getInverterData()');</script>";
 			?>
 			</table>
 		</div>
@@ -203,10 +209,15 @@ function showGraph(locationId){
 	return Chart2;
 }
 
+
+
+
 //On Page load show graphs
 window.onload = function() {
-  console.log(new Date().toLocaleTimeString());
-  //showGraph(5,10,4,58);
+	console.log(new Date().toLocaleTimeString());
+	//showGraph(5,10,4,58);
+	createTimescalePeriodDropdown(scaleConfig, 31, 'fine', 'change', 'getInverterData()');
+
 };
 
 //Ajax script to get ADC voltage at every 5 Seconds 
@@ -221,9 +232,17 @@ window.onload = function() {
  
 function getInverterData() {
 	//console.log("got data");
-	let scale = document.getElementById('scaleDropdown')[document.getElementById('scaleDropdown').selectedIndex].value;
+	let scale = "fine";
+	let periodAgo = 0;
+	if(document.getElementById('scaleDropdown')){
+		scale = document.getElementById('scaleDropdown')[document.getElementById('scaleDropdown').selectedIndex].value;
+	}	
+	if(document.getElementById('startDateDropdown')){
+		periodAgo = document.getElementById('startDateDropdown')[document.getElementById('startDateDropdown').selectedIndex].value;
+	}	
 	let xhttp = new XMLHttpRequest();
-	let endpointUrl = "./data.php?scale=" + scale + "&mode=getInverterData";
+	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getInverterData";
+	//console.log(endpointUrl);
 	xhttp.onreadystatechange = function() {
 	    if (this.readyState == 4 && this.status == 200) {
 	     //Push the data in array
@@ -238,30 +257,35 @@ function getInverterData() {
 			let dataObject = JSON.parse(this.responseText); 
 			//let tbody = document.getElementById("tableBody");
 			//tbody.innerHTML = '';
-			for(let datum of dataObject[0]) {
-				//console.log(datum);
-				//console.log("!");
-				let time = datum["recorded"];
-				let panel = datum["solar_power"];
-	 
- 
-				let load = datum["load_power"];
-				let battery = datum["battery_power"];
-				let batteryPercent = datum["battery_percentage"];
-				panelValues.push(panel);
-				loadValues.push(load);
- 
-				batteryValues.push(battery);
- 
-				batteryPercents.push(parseInt(batteryPercent));
- 
-				timeStamp.push(time);
+			if(dataObject && dataObject[0] && dataObject[0].length>0) {
+				for(let datum of dataObject[0]) {
+					//console.log(datum);
+					//console.log("!");
+					let time = datum["recorded"];
+					let panel = datum["solar_power"];
+		
+	
+					let load = datum["load_power"];
+					let battery = datum["battery_power"];
+					let batteryPercent = datum["battery_percentage"];
+					panelValues.push(panel);
+					loadValues.push(load);
+	
+					batteryValues.push(battery);
+	
+					batteryPercents.push(parseInt(batteryPercent));
+	
+					timeStamp.push(time);
+				}
+			} else {
+				console.log("No data was found.");
 			}
 			batteryPercents = smoothArray(batteryPercents, 19, 1); //smooth out the battery percentages, which are integers and too jagged
 			//console.log(batteryPercents);
 			glblChart = showGraph();  //Update Graphs
 	    }
 		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
+		createTimescalePeriodDropdown(scaleConfig, 31, scale, 'change', 'getInverterData()');
 	  };
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
   xhttp.send();
@@ -272,5 +296,17 @@ getInverterData(<?php echo $locationId?>);
 </body>
 
 </html>
+<?php
+function recentOrdinalDateArray($numberOfDays) {
+    $dateArray = [];
+    for ($i = 0; $i <= $numberOfDays; $i++) {
+        $date = date('Y/m/d', strtotime("-$i days"));
+        $dateArray[] = [
+            'text' => $date,
+            'value' => $i
+        ];
+    }
+    return $dateArray;
+}
 
  

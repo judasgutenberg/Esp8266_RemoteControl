@@ -2008,6 +2008,15 @@ function writeMemoryCache($key, $value) {
 }
 
 
+function findRecordByKey($records, $keyName, $value) {
+  foreach ($records as $record) {
+      if ($record[$keyName] === $value) {
+          return $record;
+      }
+  }
+  return null;
+}
+
 
 
  

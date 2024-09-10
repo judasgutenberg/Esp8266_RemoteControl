@@ -1418,3 +1418,59 @@ function centerOfGeoPlot(plot, records) {
 	}
 
 }
+
+function timescales() {
+	return [
+		{"text":"ultra-fine","value":"ultra-fine", "period_size": 1, "period_scale": "hour"},
+		{"text":"fine","value":"fine", "period_size": 1, "period_scale": "day"},
+		{"text":"hourly","value":"hour", "period_size": 7, "period_scale": "day"},
+		{"text":"daily","value":"day", "period_size": 1, "period_scale": "year"}
+	];
+}
+
+function createTimescalePeriodDropdown(scales, numberOfPeriods, scaleName, event, eventAction) {
+	//console.log(scales);
+    const scale = scales.find(s => s.text === scaleName);
+    if (!scale) {
+        console.error("Scale not found!");
+        return;
+    }
+    const { period_size, period_scale } = scale;
+    const dropdown = document.createElement('select');
+	dropdown.id = 'startDateDropdown';
+	if(event){
+		dropdown.addEventListener(event, function(event) {
+			// Access the selected value via event.target.value
+			//console.log('Selected value:', event.target.value);
+			if(eventAction){
+				eval(eventAction);
+			}
+		});
+	}
+    const now = new Date();
+    const timeUnitMap = {
+        'hour': 'Hours',
+        'day': 'Date',
+        'year': 'FullYear'
+    };
+
+    for (let i = 0; i < numberOfPeriods; i++) {
+        const option = document.createElement('option');
+        const currentDate = new Date(now);
+
+        currentDate[`set${timeUnitMap[period_scale]}`](now[`get${timeUnitMap[period_scale]}`]() - (i * period_size));
+
+        let label;
+        if (period_scale === 'hour') {
+            label = currentDate.toISOString().substring(0, 16).replace('T', ' ');  // YYYY-MM-DD HH:mm format
+        } else {
+            label = currentDate.toISOString().substring(0, 10);  // YYYY-MM-DD format
+        }
+
+        option.text = label;
+        option.value = i;
+        dropdown.appendChild(option);
+    }
+	document.getElementById('placeforscaledropdown').replaceChildren(dropdown);
+    return dropdown;
+}

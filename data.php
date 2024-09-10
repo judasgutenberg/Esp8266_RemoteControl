@@ -39,7 +39,6 @@ $nonJsonPinData = 0;
 $justGetDeviceInfo = 0;
 $storagePassword = "";
 $multipleSensorArray = [];
- 
 
 $user = autoLogin(); //if we are using this as a backend for the inverter or weather page, we don't need to pass the storagePassword at all.  this will only work once the user has logged in and selected a single tenant
 
@@ -53,7 +52,14 @@ if($_POST) {
 	logPost(gvfa("data", $_POST)); //help me debug
 }
 if($_REQUEST) {
-	
+	$periodAgo = 0;
+	$scale = "";
+	if(array_key_exists("scale", $_REQUEST)) {
+		$scale = $_REQUEST["scale"];
+	} 
+	if(array_key_exists("period_ago", $_REQUEST)) {
+		$periodAgo = intval($_REQUEST["period_ago"]);
+	}  
 	if(array_key_exists("storagePassword", $_REQUEST)) {
 		$storagePassword  = $_REQUEST["storagePassword"];
 	} else if($user) {
@@ -213,42 +219,52 @@ if($_REQUEST) {
 					$out["official_weather"] = getWeatherDataByCoordinates($latitude, $longitude, $apiKey);
 				}
 			} else if ($mode=="getInverterData") {
-				if(array_key_exists("scale", $_REQUEST)) {
-					$scale = $_REQUEST["scale"];
-				} else {
-					$scale = "";
-				}
+
 				if(!$conn) {
 					$out = ["error"=>"bad database connection"];
 				} else {
-					
+					$scaleRecord = findRecordByKey(timeScales(), "text", $scale);
+					$periodSize = $scaleRecord["period_size"];
+					$periodScale = $scaleRecord["period_scale"];
+					$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
 					if($scale == "ultra-fine") {
 						$sql = "SELECT * FROM " . $database . ".inverter_log  
-						WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -5 HOUR) 
-						 
-						ORDER BY inverter_log_id ASC";
+						WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . $periodAgo . " "  .$periodScale . " ), INTERVAL -" . intval($periodSize + $initialOffset) . " " . $periodScale . ") ";
+						if($periodAgo  > 0) {
+							$sql .= " AND recorded < DATE_ADD(NOW(), INTERVAL -" . intval($periodAgo - $periodSize) . " " .$periodScale . ") "; 
+						}
+						$sql .= " ORDER BY inverter_log_id ASC";
+						//die($sql);
 					} else if($scale == ""  || $scale == "fine") {
 						$sql = "SELECT *  FROM " . $database . ".inverter_log  
-						WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -1 DAY) 
-						 
-						GROUP BY YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded), MINUTE(recorded)
+						WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . $periodAgo . " " . $periodScale . " ), INTERVAL -" . $periodSize . " " . $periodScale ." )  ";
+						if($periodAgo  > 0) {
+							$sql .= " AND recorded < DATE_ADD(NOW(), INTERVAL -" . intval($periodAgo - $periodSize) . " "  . $periodScale . ") ";
+						}
+						$sql .= " GROUP BY YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded), MINUTE(recorded)
 						ORDER BY inverter_log_id ASC";
+						//die($sql);
 					} else {
-						if($scale == "hour") {
+						if($scale == "hourly") {
 							$sql = "SELECT
 							*,
 							YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded) FROM " . $database . ".inverter_log  
-							WHERE tenant_id = " . $tenant["tenant_id"] . " AND recorded > DATE_ADD(NOW(), INTERVAL -7 DAY) 
-								 
-								GROUP BY YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded)
+							WHERE tenant_id = " . $tenant["tenant_id"] . " AND recorded > DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . $periodAgo . " " . $periodScale . "), INTERVAL - " . $periodSize . " " . $periodScale . ") ";
+							if($periodAgo  > 0) {
+								$sql .= " AND recorded < DATE_ADD(NOW(), INTERVAL -" . intval($periodAgo - $periodSize) . " " . $periodScale . ") ";
+							}
+							$sql .= " GROUP BY YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded)
 								ORDER BY inverter_log_id ASC";
 						}
-						if($scale == "day") {
+						if($scale == "daily") {
 							$sql = "SELECT 	 
 							*,
-							YEAR(recorded), DAYOFYEAR(recorded) FROM " . $database . ".inverter_log  
-								 
-								GROUP BY YEAR(recorded), DAYOFYEAR(recorded)
+							YEAR(recorded), DAYOFYEAR(recorded) FROM " . $database . ".inverter_log  ";
+							if($periodAgo  > 0) {
+								$sql .= " WHERE recorded <  DATE_ADD(NOW(), INTERVAL -" . intval($periodAgo - $periodSize) . " " . $periodScale . ") ";
+								$sql .= " AND recorded > DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . $periodAgo . " " . $periodScale . "), INTERVAL -" . $periodSize . " " . " )  ";
+							}
+							$sql .= " GROUP BY YEAR(recorded), DAYOFYEAR(recorded)
 								ORDER BY inverter_log_id ASC";
 						}
 					}
@@ -266,11 +282,6 @@ if($_REQUEST) {
 				$method  = "read";	
 
 			} else if ($mode=="getData") {
-				if(array_key_exists("scale", $_REQUEST)) {
-					$scale = $_REQUEST["scale"];
-				} else {
-					$scale = "";
-				}
 				
 				if(!$conn) {
 					$out = ["error"=>"bad database connection"];
@@ -524,6 +535,7 @@ if($_REQUEST) {
 					$pinCursor = 0;
 					//logSql($mustSaveLastKnownDeviceValueAsValue . "^" . $lines[2] . "^" . "------------------------------");
 					foreach($rows as $row) {
+						$canUpdateDeviceFeature = true;
 						$historicWas = $row["historic_was"];
 						$historicBecame = $row["historic_became"];
 						$historicMechanism = $row["historic_mechanism"];
@@ -734,6 +746,7 @@ if($_REQUEST) {
 								$oldValue = $row["value"];
 								$newValue = $pinValuesKnownToDevice[$pinCursor];
 								
+								//mechanism is the ipAddress or "automation" at this point
 								if($row["last_known_device_value"] !=  $row["value"]) {
 									$mechanism = "server-side";
 									$oldValue = $row["last_known_device_value"];
@@ -742,13 +755,18 @@ if($_REQUEST) {
 								if(!$automationDisabledWhen && $allowAutomaticManagement && !$automatedChangeMade && intval($oldValue) != intval($newValue)) {  
 									$sqlToUpdateDeviceFeature .= " automation_disabled_when='" . $formatedDateTime . "',";
 								}
+
+								//if this is an ipaddress-mechanism change undoing a recent automation change, then don't bother
+								if($historicMechanism == "automation" && intval($historicBecame) != intval($newValue)  &&  $mechanism == $ipAddress && $historicRecorded > $formatedDateTimeAFewMinutesAgo){
+									$canUpdateDeviceFeature = false;
+								}
 								//also log this change in the new device_feature_log table!  we're going to need that for when device_features get changed automatically based on data as well!
  
 
 
 								$weJustHadALogItemLikeThis = intval($historicWas) == intval($oldValue) && intval($historicBecame) == intval($newValue) && $historicMechanism == $mechanism && $historicRecorded > $formatedDateTimeAFewMinutesAgo;
 
-								if(!$weJustHadALogItemLikeThis) {
+								if(!$weJustHadALogItemLikeThis && $canUpdateDeviceFeature) {
 									$loggingSql = "INSERT INTO device_feature_log (device_feature_id, tenant_id, recorded, beginning_state, end_state, management_rule_id, mechanism, user_id) VALUES (";
 									$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "'," . $userId .")";
 				 
@@ -831,7 +849,7 @@ if($_REQUEST) {
 								logSql("logging sql:" . $loggingSql);
 							}
 							//echo $sqlToUpdateDeviceFeature . "<BR>";
-							if($sqlToUpdateDeviceFeature != "") {
+							if($sqlToUpdateDeviceFeature != ""  && $canUpdateDeviceFeature) {
 								if(gvfa("debug", $_REQUEST) == 'updatefeature'){
 									echo "<BR>automated change: " . $automatedChangeMade;
 									echo "<BR>" . $sqlToUpdateDeviceFeature . "<BR>";

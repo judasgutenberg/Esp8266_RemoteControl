@@ -89,7 +89,16 @@ function deviceFeatures($tenantId, $deviceId) {
       }
     }
     return $out;
+}
 
+function timeScales() {
+  $out = json_decode('[
+    {"text":"ultra-fine","value":"ultra-fine", "period_size": 1, "period_scale": "hour", "initial_offset": 5},
+    {"text":"fine","value":"fine", "period_size": 1, "period_scale": "day"},
+    {"text":"hourly","value":"hourly", "period_size": 7, "period_scale": "day"},
+    {"text":"daily","value":"daily", "period_size": 1, "period_scale": "year"}
+  ]', true);
+  return $out;
 }
 
 function devices($tenantId) {
@@ -1545,7 +1554,7 @@ function utilities($user, $viewMode = "list") {
       'key' => 'downloaddatabase',
       'role' => "super",
       'path' => $backupLocation . "/" . $database . ".sql",
-      'friendly_name' => $database . "_" . date('Y-m-d_His'),
+      'friendly_name' => $database . "_" . date('Y-m-d_His') . ".sql",
       'action' => "",
       'skip_confirmation' => false,
       'output_format' => 'download'
