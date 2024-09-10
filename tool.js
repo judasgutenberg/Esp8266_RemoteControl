@@ -1428,7 +1428,7 @@ function timescales() {
 	];
 }
 
-function createTimescalePeriodDropdown(scales, numberOfPeriods, scaleName, event, eventAction) {
+function createTimescalePeriodDropdown(scales, numberOfPeriods, thisPeriod, scaleName, event, eventAction) {
 	//console.log(scales);
     const scale = scales.find(s => s.text === scaleName);
     if (!scale) {
@@ -1469,6 +1469,9 @@ function createTimescalePeriodDropdown(scales, numberOfPeriods, scaleName, event
 
         option.text = label;
         option.value = i;
+		if(thisPeriod == i){
+			option.selected = true; 
+		}
         dropdown.appendChild(option);
     }
 	document.getElementById('placeforscaledropdown').replaceChildren(dropdown);

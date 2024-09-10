@@ -216,7 +216,7 @@ function showGraph(locationId){
 window.onload = function() {
 	console.log(new Date().toLocaleTimeString());
 	//showGraph(5,10,4,58);
-	createTimescalePeriodDropdown(scaleConfig, 31, 'fine', 'change', 'getInverterData()');
+	createTimescalePeriodDropdown(scaleConfig, 31, 0, 'fine', 'change', 'getInverterData()');
 
 };
 
@@ -285,7 +285,7 @@ function getInverterData() {
 			glblChart = showGraph();  //Update Graphs
 	    }
 		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
-		createTimescalePeriodDropdown(scaleConfig, 31, scale, 'change', 'getInverterData()');
+		createTimescalePeriodDropdown(scaleConfig, 31, periodAgo, scale, 'change', 'getInverterData()');
 	  };
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
   xhttp.send();
