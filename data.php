@@ -25,7 +25,6 @@ $aFewMinutesPastDate = $date;
 $formatedDateTime =  $date->format('Y-m-d H:i:s');
 $currentTime = $date->format('H:i:s');
 $pastDate->modify('-20 minutes');
-
 $formatedDateTime20MinutesAgo =  $pastDate->format('Y-m-d H:i:s');
 $aFewMinutesPastDate->modify('-6 minutes');
 $formatedDateTimeAFewMinutesAgo =  $aFewMinutesPastDate->format('Y-m-d H:i:s');
@@ -231,7 +230,7 @@ if($_REQUEST) {
 					$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
 					$groupBy = gvfa("group_by", $scaleRecord, "");
 					$sql = "SELECT * FROM " . $database . ".inverter_log  
-					WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . ") ";
+						WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . ") ";
 					if($periodAgo  > 0) {
 						$sql .= " AND recorded < DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo) + $initialOffset)) . " " . $periodScale . ") "; 
 					}
@@ -240,8 +239,6 @@ if($_REQUEST) {
 					}
 					$sql .= " ORDER BY inverter_log_id ASC";
 					//die($sql);
-					
-
 					if($sql) {
 						$result = mysqli_query($conn, $sql);
 						$error = mysqli_error($conn);
@@ -259,7 +256,6 @@ if($_REQUEST) {
 				$method  = "read";	
 
 			} else if ($mode=="getData") {
-				
 				if(!$conn) {
 					$out = ["error"=>"bad database connection"];
 				} else {
@@ -914,7 +910,8 @@ function disable_gzip() { //i wanted this to work so the microcontroller wouldn'
 	@apache_setenv('no-gzip', 1);	
 }
 
-//this only works if you make sure your users all have distinct storagePasswords!
+//this only works if you make sure your tenants all have distinct storagePasswords!
+//which i am not actually enforcing 
 function deriveDeviceIdsFromStoragePassword($storagePassword) {
 	Global $conn;
 	$deviceIds = [];
