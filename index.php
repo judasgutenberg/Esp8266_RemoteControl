@@ -252,9 +252,10 @@ function getWeatherData(locationId) {
 			let dataObject = JSON.parse(this.responseText); 
 			//let tbody = document.getElementById("tableBody");
 			//tbody.innerHTML = '';
+			//console.log(dataObject);
 			if(dataObject) {
-				if(dataObject["sql"]){
-					console.log(dataObject["sql"], dataObject["error"]);
+				if(dataObject[0] && dataObject[0]["sql"]){
+					console.log(dataObject[0]["sql"], dataObject[0]["error"]);
 				} else {
 					for(let datum of dataObject) {
 						//console.log(datum);
@@ -310,7 +311,7 @@ function officialWeather(locationId) {
 	    if (this.readyState == 4 && this.status == 200) {
 	     //Push the data in array
 			 
-			console.log(this.responseText);
+			//console.log(this.responseText);
 			let dataObject = JSON.parse(this.responseText); 
 			let weatherDescription = dataObject["official_weather"]["weather"][0]["description"];
 			let temperature = dataObject["official_weather"]["main"]["temp"];
