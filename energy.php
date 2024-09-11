@@ -106,8 +106,7 @@ if(!$user) {
 			echo "<tr><td>Time Scale:</td><td>";
 			echo genericSelect("scaleDropdown", "scale", "fine", $scaleConfig, "onchange", $handler);
 			echo "</td></tr>";
-			$startDateData = recentOrdinalDateArray(30);
-			echo "<tr><td>Date Begin:</td><td id='placeforscaledropdown'></td></tr>";
+			echo "<tr><td>Date/Time Begin:</td><td id='placeforscaledropdown'></td></tr>";
 			//echo "<script>createTimescalePeriodDropdown(scaleConfig, 31, 'fine', 'change', 'getInverterData()');</script>";
 			?>
 			</table>
@@ -216,7 +215,7 @@ function showGraph(locationId){
 window.onload = function() {
 	console.log(new Date().toLocaleTimeString());
 	//showGraph(5,10,4,58);
-	createTimescalePeriodDropdown(scaleConfig, 31, 0, 'fine', 'change', 'getInverterData()');
+	//createTimescalePeriodDropdown(scaleConfig, 31, 0, 'fine', 'change', 'getInverterData()');
 
 };
 
@@ -257,25 +256,30 @@ function getInverterData() {
 			let dataObject = JSON.parse(this.responseText); 
 			//let tbody = document.getElementById("tableBody");
 			//tbody.innerHTML = '';
-			if(dataObject && dataObject[0] && dataObject[0].length>0) {
-				for(let datum of dataObject[0]) {
-					//console.log(datum);
-					//console.log("!");
-					let time = datum["recorded"];
-					let panel = datum["solar_power"];
+			//console.log(dataObject[0]);
+			if(dataObject && dataObject[0]) {
+				if(dataObject[0]["sql"]){
+					console.log(dataObject[0]["sql"], dataObject[0]["error"]);
+				} else {
+					for(let datum of dataObject[0]) {
+						//console.log(datum);
+						//console.log("!");
+						let time = datum["recorded"];
+						let panel = datum["solar_power"];
+			
 		
-	
-					let load = datum["load_power"];
-					let battery = datum["battery_power"];
-					let batteryPercent = datum["battery_percentage"];
-					panelValues.push(panel);
-					loadValues.push(load);
-	
-					batteryValues.push(battery);
-	
-					batteryPercents.push(parseInt(batteryPercent));
-	
-					timeStamp.push(time);
+						let load = datum["load_power"];
+						let battery = datum["battery_power"];
+						let batteryPercent = datum["battery_percentage"];
+						panelValues.push(panel);
+						loadValues.push(load);
+		
+						batteryValues.push(battery);
+		
+						batteryPercents.push(parseInt(batteryPercent));
+		
+						timeStamp.push(time);
+					}
 				}
 			} else {
 				console.log("No data was found.");

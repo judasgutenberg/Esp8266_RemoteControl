@@ -94,9 +94,9 @@ function deviceFeatures($tenantId, $deviceId) {
 function timeScales() {
   $out = json_decode('[
     {"text":"ultra-fine","value":"ultra-fine", "period_size": 1, "period_scale": "hour", "initial_offset": 5},
-    {"text":"fine","value":"fine", "period_size": 1, "period_scale": "day"},
-    {"text":"hourly","value":"hourly", "period_size": 7, "period_scale": "day"},
-    {"text":"daily","value":"daily", "period_size": 1, "period_scale": "year"}
+    {"text":"fine","value":"fine", "period_size": 1, "period_scale": "day", "group_by": "YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded), MINUTE(recorded)"},
+    {"text":"hourly","value":"hourly", "period_size": 7, "period_scale": "day", "group_by": "YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded)"},
+    {"text":"daily","value":"daily", "period_size": 1, "period_scale": "year", "group_by": "YEAR(recorded), DAYOFYEAR(recorded)" }
   ]', true);
   return $out;
 }

@@ -2,6 +2,7 @@
 <?php 
 include("config.php");
 include("site_functions.php");
+include("device_functions.php");
 //ini_set('display_errors', 1);
 //ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
@@ -18,6 +19,7 @@ $out = "";
 $conn = mysqli_connect($servername, $username, $password, $database);
 $user = autoLogin();
 $tenantSelector = "";
+$scaleConfig =  timeScales();
 
 $content = "";
 $action = gvfw("action");
@@ -52,6 +54,10 @@ if(!$user) {
   <title>Weather Information</title>
   <!--For offline ESP graphs see this tutorial https://circuits4you.com/2018/03/10/esp8266-jquery-and-ajax-web-server/ -->
   <script src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>  
+  <script>
+  	let scaleConfig = JSON.parse('<?php echo json_encode(timeScales()); ?>');
+  </script>
+  <script src='tool.js'></script>
   <link rel='stylesheet' href='tool.css?version=1711570359'>
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
 
@@ -105,11 +111,12 @@ if(!$user) {
 				$selectId = "locationDropdown";
 				$handler = "getWeatherData(document.getElementById('" . $selectId . "')[document.getElementById('" . $selectId  . "').selectedIndex].value)";
 				echo "<tr><td>Location:</td><td>" . genericSelect($selectId, "locationId", $locationId, $selectData, "onchange", $handler) . "</td></tr>";
-
-
-
 				$scaleData = json_decode('[{"text":"detailed","value":"fine"},{"text":"hourly","value":"hour"}, {"text":"daily","value":"day"}]', true);
-				echo "<tr><td>Time Scale:</td><td>" . genericSelect("scaleDropdown", "scale", "fine", $scaleData, "onchange", $handler) . "</td></tr>";
+				echo "<tr><td>Time Scale:</td><td>";
+				echo genericSelect("scaleDropdown", "scale", "fine", $scaleConfig, "onchange", $handler);
+				echo "</td></tr>";
+				echo "<tr><td>Date/Time Begin:</td><td id='placeforscaledropdown'></td></tr>";
+				
 				?>
 				</table>
 		</div>
@@ -221,9 +228,18 @@ window.onload = function() {
  
 function getWeatherData(locationId) {
 	//console.log("got data");
-	let scale = document.getElementById('scaleDropdown')[document.getElementById('scaleDropdown').selectedIndex].value;
+
+	let scale = "fine";
+	let periodAgo = 0;
+	if(document.getElementById('scaleDropdown')){
+		scale = document.getElementById('scaleDropdown')[document.getElementById('scaleDropdown').selectedIndex].value;
+	}	
+	if(document.getElementById('startDateDropdown')){
+		periodAgo = document.getElementById('startDateDropdown')[document.getElementById('startDateDropdown').selectedIndex].value;
+	}	
+	
 	let xhttp = new XMLHttpRequest();
-	let endpointUrl = "./data.php?scale=" + scale + "&mode=getData&locationId=" + locationId;
+	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getData&locationId=" + locationId;
 	xhttp.onreadystatechange = function() {
 	    if (this.readyState == 4 && this.status == 200) {
 	     //Push the data in array
@@ -236,27 +252,33 @@ function getWeatherData(locationId) {
 			let dataObject = JSON.parse(this.responseText); 
 			//let tbody = document.getElementById("tableBody");
 			//tbody.innerHTML = '';
-			
-			for(let datum of dataObject) {
-				//console.log(datum);
-				let time = datum[2];
-				let temperature = datum[3];
-				temperature = temperature * (9/5) + 32;
-				//convert temperature to fahrenheitformula
-				let pressure = datum[4];
-				let humidity = datum[5];
-				temperatureValues.push(temperature);
-				humidityValues.push(humidity);
-				pressureSkewed = pressure;//so we can see some detail in pressure
-				if(pressure > 0) {
-					pressureValues.push(pressure); 
+			if(dataObject) {
+				if(dataObject["sql"]){
+					console.log(dataObject["sql"], dataObject["error"]);
+				} else {
+					for(let datum of dataObject) {
+						//console.log(datum);
+						let time = datum[2];
+						let temperature = datum[3];
+						temperature = temperature * (9/5) + 32;
+						//convert temperature to fahrenheitformula
+						let pressure = datum[4];
+						let humidity = datum[5];
+						temperatureValues.push(temperature);
+						humidityValues.push(humidity);
+						pressureSkewed = pressure;//so we can see some detail in pressure
+						if(pressure > 0) {
+							pressureValues.push(pressure); 
+						}
+						timeStamp.push(time);
+					}
 				}
-				timeStamp.push(time);
 			}
 			glblChart = showGraph(locationId);  //Update Graphs
 			officialWeather(locationId);
 	    }
 		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
+		createTimescalePeriodDropdown(scaleConfig, 31, periodAgo, scale, 'change', 'getWeatherData(' + locationId + ')');
 	  };
 
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266

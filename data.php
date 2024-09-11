@@ -223,59 +223,36 @@ if($_REQUEST) {
 				if(!$conn) {
 					$out = ["error"=>"bad database connection"];
 				} else {
+					//i have a hardcoded config for all the different time scales in device_functions.php at or around
+					//line 94 and it is used by both Javascript and PHP
 					$scaleRecord = findRecordByKey(timeScales(), "text", $scale);
 					$periodSize = $scaleRecord["period_size"];
 					$periodScale = $scaleRecord["period_scale"];
 					$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
-					if($scale == "ultra-fine") {
-						$sql = "SELECT * FROM " . $database . ".inverter_log  
-						WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . $periodAgo . " "  .$periodScale . " ), INTERVAL -" . intval($periodSize + $initialOffset) . " " . $periodScale . ") ";
-						if($periodAgo  > 0) {
-							$sql .= " AND recorded < DATE_ADD(NOW(), INTERVAL -" . intval($periodAgo - $periodSize) . " " .$periodScale . ") "; 
-						}
-						$sql .= " ORDER BY inverter_log_id ASC";
-						//die($sql);
-					} else if($scale == ""  || $scale == "fine") {
-						$sql = "SELECT *  FROM " . $database . ".inverter_log  
-						WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . $periodAgo . " " . $periodScale . " ), INTERVAL -" . $periodSize . " " . $periodScale ." )  ";
-						if($periodAgo  > 0) {
-							$sql .= " AND recorded < DATE_ADD(NOW(), INTERVAL -" . intval($periodAgo - $periodSize) . " "  . $periodScale . ") ";
-						}
-						$sql .= " GROUP BY YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded), MINUTE(recorded)
-						ORDER BY inverter_log_id ASC";
-						//die($sql);
-					} else {
-						if($scale == "hourly") {
-							$sql = "SELECT
-							*,
-							YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded) FROM " . $database . ".inverter_log  
-							WHERE tenant_id = " . $tenant["tenant_id"] . " AND recorded > DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . $periodAgo . " " . $periodScale . "), INTERVAL - " . $periodSize . " " . $periodScale . ") ";
-							if($periodAgo  > 0) {
-								$sql .= " AND recorded < DATE_ADD(NOW(), INTERVAL -" . intval($periodAgo - $periodSize) . " " . $periodScale . ") ";
-							}
-							$sql .= " GROUP BY YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded)
-								ORDER BY inverter_log_id ASC";
-						}
-						if($scale == "daily") {
-							$sql = "SELECT 	 
-							*,
-							YEAR(recorded), DAYOFYEAR(recorded) FROM " . $database . ".inverter_log  ";
-							if($periodAgo  > 0) {
-								$sql .= " WHERE recorded <  DATE_ADD(NOW(), INTERVAL -" . intval($periodAgo - $periodSize) . " " . $periodScale . ") ";
-								$sql .= " AND recorded > DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . $periodAgo . " " . $periodScale . "), INTERVAL -" . $periodSize . " " . " )  ";
-							}
-							$sql .= " GROUP BY YEAR(recorded), DAYOFYEAR(recorded)
-								ORDER BY inverter_log_id ASC";
-						}
+					$groupBy = gvfa("group_by", $scaleRecord, "");
+					$sql = "SELECT * FROM " . $database . ".inverter_log  
+					WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . ") ";
+					if($periodAgo  > 0) {
+						$sql .= " AND recorded < DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo) + $initialOffset)) . " " . $periodScale . ") "; 
 					}
+					if($groupBy){
+						$sql .= " GROUP BY " . $groupBy . " ";
+					}
+					$sql .= " ORDER BY inverter_log_id ASC";
+					//die($sql);
+					
 
 					if($sql) {
 						$result = mysqli_query($conn, $sql);
+						$error = mysqli_error($conn);
 						$out = [];
 						if($result && $canAccessData) {
 							while($row = mysqli_fetch_all($result, MYSQLI_ASSOC)) {
 								array_push($out, $row);
 							}
+						}
+						if(count($out) <1){
+							array_push($out, ["sql" => $sql, "error"=>$error]);
 						}
 					}
 				}
@@ -286,36 +263,35 @@ if($_REQUEST) {
 				if(!$conn) {
 					$out = ["error"=>"bad database connection"];
 				} else {
-					
-					if($scale == ""  || $scale == "fine") {
-						$sql = "SELECT * FROM " . $database . ".weather_data  
-						WHERE recorded > DATE_ADD(NOW(), INTERVAL -1 DAY) AND location_id=" . $locationId . " 
-						ORDER BY weather_data_id ASC";
-					} else {
-						if($scale == "hour") {
-							$sql = "SELECT
-							*,
-							YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded) FROM " . $database . ".weather_data  
-							WHERE recorded > DATE_ADD(NOW(), INTERVAL -7 DAY) AND location_id=" . $locationId . " 
-								GROUP BY YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded)
-								ORDER BY weather_data_id ASC";
-						}
-						if($scale == "day") {
-							$sql = "SELECT 	 
-							*,
-							YEAR(recorded), DAYOFYEAR(recorded) FROM " . $database . ".weather_data  
-							WHERE location_id=" . $locationId . " 
-								GROUP BY YEAR(recorded), DAYOFYEAR(recorded)
-								ORDER BY weather_data_id ASC";
-						}
+					//i have a hardcoded config for all the different time scales in device_functions.php at or around
+					//line 94 and it is used by both Javascript and PHP
+					$scaleRecord = findRecordByKey(timeScales(), "text", $scale);
+					$periodSize = $scaleRecord["period_size"];
+					$periodScale = $scaleRecord["period_scale"];
+					$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
+					$groupBy = gvfa("group_by", $scaleRecord, "");
+
+					$sql = "SELECT * FROM " . $database . ".weather_data  
+						WHERE  location_id=" . $locationId . " AND recorded > DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . ") ";
+					if($periodAgo  > 0) {
+						$sql .= " AND recorded < DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo) + $initialOffset)) . " " . $periodScale . ") "; 
 					}
+					if($groupBy){
+						$sql .= " GROUP BY " . $groupBy . " ";
+					}
+					$sql .= " ORDER BY weather_data_id ASC";
+					
 					if($sql) {
 						$result = mysqli_query($conn, $sql);
+						$error = mysqli_error($conn);
 						$out = [];
 						if($result && $canAccessData) {
 							while($row = mysqli_fetch_array($result)) {
 								array_push($out, $row);
 							}
+						}
+						if(count($out) < 1){
+							array_push($out, ["sql" => $sql, "error"=>$error]);
 						}
 					}
 				}

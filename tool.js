@@ -1458,7 +1458,7 @@ function createTimescalePeriodDropdown(scales, numberOfPeriods, thisPeriod, scal
         const option = document.createElement('option');
         const currentDate = new Date(now);
 
-        currentDate[`set${timeUnitMap[period_scale]}`](now[`get${timeUnitMap[period_scale]}`]() - (i * period_size));
+        currentDate[`set${timeUnitMap[period_scale]}`](now[`get${timeUnitMap[period_scale]}`]() - ((i + 1 )* period_size));
 
         let label;
         if (period_scale === 'hour') {
