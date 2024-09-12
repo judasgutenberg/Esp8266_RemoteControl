@@ -289,10 +289,11 @@ function getInverterData() {
 			glblChart = showGraph();  //Update Graphs
 	    }
 		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
-		createTimescalePeriodDropdown(scaleConfig, 31, periodAgo, scale, 'change', 'getInverterData()');
+		
 	  };
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
   xhttp.send();
+  createTimescalePeriodDropdown(scaleConfig, 31, periodAgo, scale, 'change', 'getInverterData()', 'inverter_log', '');
 }
 
 getInverterData(<?php echo $locationId?>);

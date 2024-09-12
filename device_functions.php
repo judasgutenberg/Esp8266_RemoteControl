@@ -277,7 +277,7 @@ function editUser($error){
     $submitLabel = "create user";
     $source = $_POST;
   } else {
-    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk);
+    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk);
     $result = mysqli_query($conn, $sql);
     if($result) {
       $source = mysqli_fetch_array($result);

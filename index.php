@@ -279,11 +279,12 @@ function getWeatherData(locationId) {
 			officialWeather(locationId);
 	    }
 		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
-		createTimescalePeriodDropdown(scaleConfig, 31, periodAgo, scale, 'change', 'getWeatherData(' + locationId + ')');
+		
 	  };
 
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
   xhttp.send();
+  createTimescalePeriodDropdown(scaleConfig, 31, periodAgo, scale, 'change', 'getWeatherData(' + locationId + ')', 'inverter_log', locationId);
 }
 
 

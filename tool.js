@@ -1419,61 +1419,65 @@ function centerOfGeoPlot(plot, records) {
 
 }
 
-function timescales() {
-	return [
-		{"text":"ultra-fine","value":"ultra-fine", "period_size": 1, "period_scale": "hour"},
-		{"text":"fine","value":"fine", "period_size": 1, "period_scale": "day"},
-		{"text":"hourly","value":"hour", "period_size": 7, "period_scale": "day"},
-		{"text":"daily","value":"day", "period_size": 1, "period_scale": "year"}
-	];
-}
-
-function createTimescalePeriodDropdown(scales, numberOfPeriods, thisPeriod, scaleName, event, eventAction) {
-	//console.log(scales);
-    const scale = scales.find(s => s.text === scaleName);
+function createTimescalePeriodDropdown(scales, numberOfPeriods, thisPeriod, scaleName, event, eventAction, tableName, locationId) {
+    const scale = scales.find(s => s.value === scaleName);
+	//let's find how far back data goes
     if (!scale) {
         console.error("Scale not found!");
         return;
     }
-    const { period_size, period_scale } = scale;
-    const dropdown = document.createElement('select');
-	dropdown.id = 'startDateDropdown';
-	if(event){
-		dropdown.addEventListener(event, function(event) {
-			// Access the selected value via event.target.value
-			//console.log('Selected value:', event.target.value);
-			if(eventAction){
-				eval(eventAction);
+    const periodSize = scale.period_size;
+	const periodScale = scale.period_scale;
+	//console.log(periodSize, periodScale);
+	let xmlhttp = new XMLHttpRequest();
+    xmlhttp.onreadystatechange = function() {
+		if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+			let jsonData = xmlhttp.responseText;
+			//console.log(jsonData);
+			recordedData = JSON.parse(jsonData);
+			let minimalDate = recordedData["recorded"];
+			const dropdown = document.createElement('select');
+			dropdown.id = 'startDateDropdown';
+			if(event){
+				dropdown.addEventListener(event, function(event) {
+					// Access the selected value via event.target.value
+					//console.log('Selected value:', event.target.value);
+					if(eventAction){
+						eval(eventAction);
+					}
+				});
 			}
-		});
-	}
-    const now = new Date();
-    const timeUnitMap = {
-        'hour': 'Hours',
-        'day': 'Date',
-        'year': 'FullYear'
-    };
-
-    for (let i = 0; i < numberOfPeriods; i++) {
-        const option = document.createElement('option');
-        const currentDate = new Date(now);
-
-        currentDate[`set${timeUnitMap[period_scale]}`](now[`get${timeUnitMap[period_scale]}`]() - ((i + 1 )* period_size));
-
-        let label;
-        if (period_scale === 'hour') {
-            label = currentDate.toISOString().substring(0, 16).replace('T', ' ');  // YYYY-MM-DD HH:mm format
-        } else {
-            label = currentDate.toISOString().substring(0, 10);  // YYYY-MM-DD format
-        }
-
-        option.text = label;
-        option.value = i;
-		if(thisPeriod == i){
-			option.selected = true; 
+			const now = new Date();
+			const timeUnitMap = {
+				'hour': 'Hours',
+				'day': 'Date',
+				'year': 'FullYear'
+			};
+			for (let i = 0; i < numberOfPeriods; i++) {
+				const option = document.createElement('option');
+				const currentDate = new Date(now);
+				currentDate[`set${timeUnitMap[periodScale]}`](now[`get${timeUnitMap[periodScale]}`]() - ((i + 1 )* periodSize));
+				let label;
+				if (periodScale === 'hour') {
+					label = currentDate.toISOString().substring(0, 16).replace('T', ' ');  // YYYY-MM-DD HH:mm format
+				} else {
+					label = currentDate.toISOString().substring(0, 10);  // YYYY-MM-DD format
+				}
+				option.text = label;
+				option.value = i;
+				if(thisPeriod == i){
+					option.selected = true; 
+				}
+				//console.log(minimalDate, label);
+				if(minimalDate <= label  || i==0){//filter out options where there is no data
+					dropdown.appendChild(option); 
+				}
+			}
+			document.getElementById('placeforscaledropdown').replaceChildren(dropdown);
 		}
-        dropdown.appendChild(option);
-    }
-	document.getElementById('placeforscaledropdown').replaceChildren(dropdown);
-    return dropdown;
+	}
+
+	let url = "data.php?mode=getEarliestRecorded&table=" + tableName + "&locationId=" + locationId; 
+    xmlhttp.open("GET", url, true);
+    xmlhttp.send();
 }

@@ -63,7 +63,7 @@ if($_REQUEST) {
 		$storagePassword  = $_REQUEST["storagePassword"];
 	} else if($user) {
 		$storagePassword  = $user['storage_password'];
-		if(!in_array($mode, ["getOfficialWeatherData", "getInverterData", "getData"])){ //keeps certain kinds of hacks from working
+		if(!in_array($mode, ["getOfficialWeatherData", "getInverterData", "getData", "getEarliestRecorded"])){ //keeps certain kinds of hacks from working
 			die(json_encode(["error"=>"your brilliant hack has failed"]));
 		}
 	}
@@ -217,6 +217,19 @@ if($_REQUEST) {
 				if($latitude  && $longitude && $apiKey) {
 					$out["official_weather"] = getWeatherDataByCoordinates($latitude, $longitude, $apiKey);
 				}
+			} else if ($mode==="getEarliestRecorded") {
+				$tableName = filterStringForSqlEntities(gvfw("table"));
+				$sql = "SELECT MIN(recorded) AS recorded FROM " . $tableName . " WHERE tenant_id=" . $tenant["tenant_id"];
+				if($locationId && $tableName != 'inverter_log') {
+					$sql .= " AND location_id=" . $locationId;
+				}
+				$result = mysqli_query($conn, $sql);
+				$error = mysqli_error($conn);
+				if($result) {
+				  $out = $result->fetch_assoc();
+				}
+				$out["sql"] = $sql;
+				$out["error"] = $error;
 			} else if ($mode=="getInverterData") {
 
 				if(!$conn) {
