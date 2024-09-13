@@ -104,7 +104,7 @@ if(!$user) {
 
 			//$scaleConfig = json_decode('[{"text":"ultra-fine","value":"ultra-fine"},{"text":"fine","value":"fine"},{"text":"hourly","value":"hour"}, {"text":"daily","value":"day"}]', true);
 			echo "<tr><td>Time Scale:</td><td>";
-			echo genericSelect("scaleDropdown", "scale", "fine", $scaleConfig, "onchange", $handler);
+			echo genericSelect("scaleDropdown", "scale", "day", $scaleConfig, "onchange", $handler);
 			echo "</td></tr>";
 			echo "<tr><td>Date/Time Begin:</td><td id='placeforscaledropdown'></td></tr>";
 			//echo "<script>createTimescalePeriodDropdown(scaleConfig, 31, 'fine', 'change', 'getInverterData()');</script>";

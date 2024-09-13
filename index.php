@@ -111,9 +111,8 @@ if(!$user) {
 				$selectId = "locationDropdown";
 				$handler = "getWeatherData(document.getElementById('" . $selectId . "')[document.getElementById('" . $selectId  . "').selectedIndex].value)";
 				echo "<tr><td>Location:</td><td>" . genericSelect($selectId, "locationId", $locationId, $selectData, "onchange", $handler) . "</td></tr>";
-				$scaleData = json_decode('[{"text":"detailed","value":"fine"},{"text":"hourly","value":"hour"}, {"text":"daily","value":"day"}]', true);
 				echo "<tr><td>Time Scale:</td><td>";
-				echo genericSelect("scaleDropdown", "scale", "fine", $scaleConfig, "onchange", $handler);
+				echo genericSelect("scaleDropdown", "scale", "day", $scaleConfig, "onchange", $handler);
 				echo "</td></tr>";
 				echo "<tr><td>Date/Time Begin:</td><td id='placeforscaledropdown'></td></tr>";
 				

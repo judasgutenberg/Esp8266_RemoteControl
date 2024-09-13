@@ -1451,6 +1451,7 @@ function createTimescalePeriodDropdown(scales, numberOfPeriods, thisPeriod, scal
 			const timeUnitMap = {
 				'hour': 'Hours',
 				'day': 'Date',
+				'month': 'Month',
 				'year': 'FullYear'
 			};
 			for (let i = 0; i < numberOfPeriods; i++) {
