@@ -96,7 +96,7 @@ function timeScales() {
     {"text":"three-hour","value":"three-hour", "period_size": 3, "period_scale": "hour", "initial_offset": 5},
     {"text":"day","value":"day", "period_size": 1, "period_scale": "day", "group_by": "YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded), MINUTE(recorded)"},
     {"text":"week","value":"week", "period_size": 7, "period_scale": "day", "group_by": "YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded)"},
-    {"text":"month","value":"month", "period_size": 1, "period_scale": "month", "group_by": "YEAR(recorded), DAYOFYEAR(recorded), MOD(HOUR(recorded),6)"},
+    {"text":"month","value":"month", "period_size": 1, "period_scale": "month", "group_by": "YEAR(recorded), DAYOFYEAR(recorded), FLOOR(HOUR(recorded)/6)"},
     {"text":"year","value":"year", "period_size": 1, "period_scale": "year", "group_by": "YEAR(recorded), DAYOFYEAR(recorded)" }
   ]', true);
   return $out;

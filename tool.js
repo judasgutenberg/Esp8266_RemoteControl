@@ -734,7 +734,7 @@ function formatSQL(sql) {
 
 
 //the result of a productive back-and-forth with ChatGPT:
-function smoothArray(intArray, windowSize, weightFactor) {
+function xsmoothArray(intArray, windowSize, weightFactor) {
 	// Create a new array to store the smoothed values
 	let smoothedArray = [];
 	
@@ -780,93 +780,68 @@ function smoothArray(intArray, windowSize, weightFactor) {
 	return smoothedArray;
 }
 
+function linearInterpolate(start, end, steps) {
+    let stepArray = [];
+    let increment = (end - start) / steps;
+    for (let i = 0; i <= steps; i++) {
+        stepArray.push(start + increment * i);
+    }
+    return stepArray;
+}
 
 function findInflectionPoints(values, tolerance) {
     let inflectionPoints = [];
-    // Calculate the slope between consecutive values
     let slopes = [];
+    
     for (let i = 1; i < values.length; i++) {
         slopes.push(values[i] - values[i - 1]);
     }
-    // Find inflection points based on the tolerance
-	let oldInflectionPoint = 0;
+    
+    let oldInflectionPoint = 0;
     for (let i = 1; i < slopes.length; i++) {
-		
         let slopeChange = Math.abs(slopes[i] - slopes[i - 1]);
         let maxSlope = Math.max(Math.abs(slopes[i]), Math.abs(slopes[i - 1]));
-        // Normalize slope change by max slope to apply tolerance
+        
         if (maxSlope > 0 && (slopeChange / maxSlope) * 100 > tolerance) {
-			if((i+1) - oldInflectionPoint > 1) {
-            	inflectionPoints.push(i + 1); // i + 1 because slopes array is 1 less in length
-			}
-			oldInflectionPoint = i + 1;
+            if ((i + 1) - oldInflectionPoint > 1) {
+                inflectionPoints.push(i + 1);
+            }
+            oldInflectionPoint = i + 1;
         }
     }
-	inflectionPoints.push(values.length-1);
+    
+    inflectionPoints.push(values.length - 1);
     return inflectionPoints;
 }
 
+function smoothArray(intArray, minimumWindowSize, weightFactor) {
+    let inflectionPoints = findInflectionPoints(intArray, 2);
+    let smoothedArray = [];
+    
+    if (!minimumWindowSize) {
+        minimumWindowSize = 10;
+    }
+    if (!weightFactor) {
+        weightFactor = 1;
+    }
+    
+    let oldInflectionPoint = 0;
 
-
-//the result of a productive back-and-forth with ChatGPT:
-function xsmoothArray(intArray, minimumWindowSize, weightFactor) {
- 
-	let inflectionPoints = findInflectionPoints(intArray, 12);
-	// Create a new array to store the smoothed values
-	let smoothedArray = [];
-	
-	// Precompute the weights
-	let fullWeightSum = 0;
-	let weights = [];
-	if(!minimumWindowSize){
-		minimumWindowSize = 10;
-	}
-	if(!weightFactor){
-		weightFactor = 1;
-	}
-	// Generate weights based on weightFactor
-	
-	let oldInflectionPoint = 0;
-	// Iterate over each element in the array
-	console.log(inflectionPoints);
-	for(let inflectionPoint of inflectionPoints){
-		windowSize = inflectionPoint - oldInflectionPoint;
-		console.log(windowSize);
-		if(windowSize < minimumWindowSize){
-			windowSize = minimumWindowSize;
-		}
-		for (let i = -windowSize; i <= windowSize; i++) { //originally ChatGPT offered a fixed window of only three data points, which was far too small
-			let distance = Math.abs(i);
-			let weight = Math.pow(weightFactor, windowSize - distance); //this kinda defeats the purpose of large windows for weightFactors bigger than one, but it might be useful
-			weights.push(weight);
-			fullWeightSum += weight;
-		}
-		for (let i = oldInflectionPoint; i < inflectionPoint; i++) {
-			let weightedSum = 0;
-			let actualWeightSum = 0;
-		
-			// Calculate the weighted sum of values within the window
-			for (let j = -windowSize; j <= windowSize; j++) {
-				let index = i + j;
-		
-				// Check if index is within bounds
-				if (index >= 0 && index < intArray.length) {
-				let weight = weights[j + windowSize];
-				weightedSum += intArray[index] * weight;
-				actualWeightSum += weight;
-				}
-			}
-		
-			// Calculate the weighted average and round to two decimal places
-			let smoothedValue = (weightedSum / actualWeightSum).toFixed(2);
-			smoothedArray.push(Number(smoothedValue));
-		}
-		oldInflectionPoint = inflectionPoint;
-	}
-  
-	return smoothedArray;
-  }
-
+    for (let inflectionPoint of inflectionPoints) {
+        let windowSize = inflectionPoint - oldInflectionPoint;
+        if (windowSize < minimumWindowSize) {
+            windowSize = minimumWindowSize;
+        }
+        
+        // Smooth between inflection points using linear interpolation
+        let interpolatedValues = linearInterpolate(intArray[oldInflectionPoint], intArray[inflectionPoint], inflectionPoint - oldInflectionPoint);
+        smoothedArray.push(...interpolatedValues);
+        
+        oldInflectionPoint = inflectionPoint;
+    }
+    
+    return smoothedArray;
+}
 
 //uses charts.js library to make all sorts of graphs. also a serves as the launch point for other viewOptions like google maps and calendar
 function displayViewOption(canvasId, records, viewOptionInfo, reportId) {
