@@ -219,7 +219,10 @@ if($_REQUEST) {
 				}
 			} else if ($mode==="getEarliestRecorded") {
 				$tableName = filterStringForSqlEntities(gvfw("table"));
-				$sql = "SELECT MIN(recorded) AS recorded FROM " . $tableName . " WHERE tenant_id=" . $tenant["tenant_id"];
+				$sql = "SELECT MIN(recorded) AS recorded FROM " . $tableName . " WHERE 1=1 ";
+				if($tenant && $tableName != 'weather_data') {
+					$sql .= " AND tenant_id=" . $tenant["tenant_id"];
+				}
 				if($locationId && $tableName != 'inverter_log') {
 					$sql .= " AND location_id=" . $locationId;
 				}
