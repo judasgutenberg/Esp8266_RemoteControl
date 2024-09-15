@@ -75,6 +75,9 @@ In addition to supporting the changing of pin states using a server, this system
 
 index.h has the HTML for a locally-served front-end to take advantage of the local API, though the Local Remote is better for this than relying on the massive computational overhead of a modern web browser. It would also be easy to write a phone app, which would be great for someone who always keeps a phone nearby. But I am not such a person.  
 
+## Graphical Data
+Data from the weather sensors can be viewed at /index.php in your server's web installation.  Data plots from different locations can be selected in a dropdown and the graphs can should different time ranges and be paged back into history.  The same  is also true with solar inverter data (if you log it) at /energy.php.
+
 ## Automation and Conditions
 There is also an inverter-related endpoint in data.php to return live inverter information to the local remote (for now, this only works with SolArk inverters, as that is the kind I have, though they are notoriously hard to get data from).  This inverter data is also available to a conditions-processing system that automatically turns device_features on or off depending on inverter sensor values.  Such conditions go into the table management_rule in the conditions column.   Conditions include tokens that take the form <tablename[location_id].columnName>.  An example token would be <inverter_log[].battery_percentage>.  A condition made with that token would be something like
 
