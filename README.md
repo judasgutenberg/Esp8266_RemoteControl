@@ -93,7 +93,7 @@ Management_rules can be edited in the management_rule editor, which looks like t
 At the bottom is a tool you can use to automatically construct a value token to place in conditions.  Treat these as variables in an expression to be evaluated as true or false.  You can use multiple tokens, parentheses, arithmatic operators, and scalar numbers in such expressions.
 
 ## Reports
-There is a whole reporting system, reachable via the Reports tab. Reports are SQL queries that produce a table of data, a graph, or, in some cases, locations on a map.  They are defined as a form (using JSON), possibly an output configuration, and SQL. Simple reports can just be SQL, though if you need to send parameters to a report, you will need to define a form.  Perhaps forms definitions are best shown by example.
+There is a whole reporting system, reachable via the Reports tab. Reports are SQL queries that produce a table of data, a graph, or, in some cases, locations on a map.  They are defined as a form (using JSON and using the form descri[topm system used throughout the admin website), possibly an output configuration, and SQL. Simple reports can just be SQL, though if you need to send parameters to a report, you will need to define a form.  Perhaps forms definitions are best shown by example.
 
 This JSON defines a form with one parameter
 
