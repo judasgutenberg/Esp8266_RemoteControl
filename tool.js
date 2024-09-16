@@ -1504,6 +1504,7 @@ function createTimescalePeriodDropdown(scales, numberOfPeriods, thisPeriod, scal
 			for (let i = 0; i < numberOfPeriods; i++) {
 				const option = document.createElement('option');
 				let currentDate = new Date(now);
+				//janky ChatGPT code that failed after i==16:
 				//currentDate[`set${timeUnitMap[periodScale]}`](now[`get${timeUnitMap[periodScale]}`]() - ((i + 1 )* periodSize));
 				if(periodScale == 'day'){
 					currentDate.setDate(currentDate.getDate() - (i+1) * periodSize);
@@ -1559,6 +1560,7 @@ function calculateRevisedTimespanPeriod(scales, numberOfPeriods, thisPeriod, sca
 	for (let i = 0; i < numberOfPeriods; i++) {
 		let dateTimeBoundary;
 		let currentDate = new Date(now);
+		//janky ChatGPT code that failed after i==16:
 		//currentDate[`set${timeUnitMap[periodScale]}`](now[`get${timeUnitMap[periodScale]}`]() - ((i + 1 )* periodSize));
 		if(periodScale == 'day'){
 			currentDate.setDate(currentDate.getDate() - (i+1) * periodSize);
