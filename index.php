@@ -225,6 +225,8 @@ window.onload = function() {
   //;}, 5000)
   //; //50000mSeconds update rate
  
+let currentStartDate; //a global that needs to persist through HTTP sessions in the frontend
+
 function getWeatherData(locationId) {
 	//console.log("got data");
 
@@ -233,12 +235,21 @@ function getWeatherData(locationId) {
 	if(document.getElementById('scaleDropdown')){
 		scale = document.getElementById('scaleDropdown')[document.getElementById('scaleDropdown').selectedIndex].value;
 	}	
-	if(document.getElementById('startDateDropdown')){
-		periodAgo = document.getElementById('startDateDropdown')[document.getElementById('startDateDropdown').selectedIndex].value;
+	//make the startDateDropdown switch to the appropriate item on the new scale:
+	let periodAgoDropdown = document.getElementById('startDateDropdown');	
+
+	if(periodAgoDropdown){
+		periodAgo = periodAgoDropdown[periodAgoDropdown.selectedIndex].value;
+		if(currentStartDate == periodAgoDropdown[periodAgoDropdown.selectedIndex].text){
+			thisPeriod = periodAgo;
+		}
+		currentStartDate = periodAgoDropdown[periodAgoDropdown.selectedIndex].text;
 	}	
+	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, 31, periodAgo, scale, currentStartDate);
 	
 	let xhttp = new XMLHttpRequest();
 	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getData&locationId=" + locationId;
+	console.log(endpointUrl);
 	xhttp.onreadystatechange = function() {
 	    if (this.readyState == 4 && this.status == 200) {
 	     //Push the data in array
@@ -283,7 +294,7 @@ function getWeatherData(locationId) {
 
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
   xhttp.send();
-  createTimescalePeriodDropdown(scaleConfig, 31, periodAgo, scale, 'change', 'getWeatherData(' + locationId + ')', 'weather_data', locationId);
+  createTimescalePeriodDropdown(scaleConfig, 31, periodAgo, scale, currentStartDate, 'change', 'getWeatherData(' + locationId + ')', 'weather_data', locationId);
 }
 
 

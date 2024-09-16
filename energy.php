@@ -229,16 +229,27 @@ window.onload = function() {
   //;}, 5000)
   //; //50000mSeconds update rate
  
+let currentStartDate; //a global that needs to persist through HTTP sessions in the frontend
+
 function getInverterData() {
 	//console.log("got data");
 	let scale = "fine";
 	let periodAgo = 0;
 	if(document.getElementById('scaleDropdown')){
 		scale = document.getElementById('scaleDropdown')[document.getElementById('scaleDropdown').selectedIndex].value;
+	}
+	//make the startDateDropdown switch to the appropriate item on the new scale:
+	let periodAgoDropdown = document.getElementById('startDateDropdown');	
+
+
+	if(periodAgoDropdown){
+		periodAgo = periodAgoDropdown[periodAgoDropdown.selectedIndex].value;
+		if(currentStartDate == periodAgoDropdown[periodAgoDropdown.selectedIndex].text){
+			thisPeriod = periodAgo;
+		}
+		currentStartDate = periodAgoDropdown[periodAgoDropdown.selectedIndex].text;
 	}	
-	if(document.getElementById('startDateDropdown')){
-		periodAgo = document.getElementById('startDateDropdown')[document.getElementById('startDateDropdown').selectedIndex].value;
-	}	
+	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, 31, periodAgo, scale, currentStartDate);
 	let xhttp = new XMLHttpRequest();
 	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getInverterData";
 	//console.log(endpointUrl);
@@ -284,7 +295,9 @@ function getInverterData() {
 			} else {
 				console.log("No data was found.");
 			}
-			batteryPercents = smoothArray(batteryPercents, 19, 1); //smooth out the battery percentages, which are integers and too jagged
+			if(scale == "three-hour"  || scale == "day"){
+				batteryPercents = smoothArray(batteryPercents, 19, 1); //smooth out the battery percentages, which are integers and too jagged
+			}
 			//console.log(batteryPercents);
 			glblChart = showGraph();  //Update Graphs
 	    }
@@ -293,7 +306,8 @@ function getInverterData() {
 	  };
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
   xhttp.send();
-  createTimescalePeriodDropdown(scaleConfig, 31, periodAgo, scale, 'change', 'getInverterData()', 'inverter_log', '');
+  createTimescalePeriodDropdown(scaleConfig, 31, periodAgo, scale, currentStartDate, 'change', 'getInverterData()', 'inverter_log', '');
+ 
 }
 
 getInverterData(<?php echo $locationId?>);

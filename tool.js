@@ -1471,7 +1471,7 @@ function centerOfGeoPlot(plot, records) {
 
 }
 
-function createTimescalePeriodDropdown(scales, numberOfPeriods, thisPeriod, scaleName, event, eventAction, tableName, locationId) {
+function createTimescalePeriodDropdown(scales, numberOfPeriods, thisPeriod, scaleName, currentStartDate, event, eventAction, tableName, locationId) {
     const scale = scales.find(s => s.value === scaleName);
 	//let's find how far back data goes
     if (!scale) {
@@ -1506,6 +1506,7 @@ function createTimescalePeriodDropdown(scales, numberOfPeriods, thisPeriod, scal
 				'month': 'Month',
 				'year': 'FullYear'
 			};
+			let setByTimespanSwitch = false;
 			for (let i = 0; i < numberOfPeriods; i++) {
 				const option = document.createElement('option');
 				const currentDate = new Date(now);
@@ -1518,7 +1519,12 @@ function createTimescalePeriodDropdown(scales, numberOfPeriods, thisPeriod, scal
 				}
 				option.text = label;
 				option.value = i;
-				if(thisPeriod == i){
+				if(option.text <= currentStartDate  && !setByTimespanSwitch) {
+					setByTimespanSwitch = true;
+					option.selected = true; 
+				}
+				if(thisPeriod !== false && thisPeriod == i  && !setByTimespanSwitch){
+					console.log("selected:", option.value, option.text);
 					option.selected = true; 
 				}
 				//console.log(minimalDate, label);
@@ -1533,4 +1539,42 @@ function createTimescalePeriodDropdown(scales, numberOfPeriods, thisPeriod, scal
 	let url = "data.php?mode=getEarliestRecorded&table=" + tableName + "&locationId=" + locationId; 
     xmlhttp.open("GET", url, true);
     xmlhttp.send();
+}
+
+function calculateRevisedTimespanPeriod(scales, numberOfPeriods, thisPeriod, scaleName, currentStartDate){
+	const scale = scales.find(s => s.value === scaleName);
+	//let's find how far back data goes
+    if (!scale) {
+        console.error("Scale not found!");
+        return;
+    }
+    const periodSize = scale.period_size;
+	const periodScale = scale.period_scale;
+	let setByTimespanSwitch = false;
+	const timeUnitMap = {
+		'hour': 'Hours',
+		'day': 'Date',
+		'month': 'Month',
+		'year': 'FullYear'
+	};
+	const now = new Date();
+	const currentDate = new Date(now);
+	for (let i = 0; i < numberOfPeriods; i++) {
+
+		currentDate[`set${timeUnitMap[periodScale]}`](now[`get${timeUnitMap[periodScale]}`]() - ((i + 1 )* periodSize));
+		if (periodScale === 'hour') {
+			label = currentDate.toISOString().substring(0, 16).replace('T', ' ');  // YYYY-MM-DD HH:mm format
+		} else {
+			label = currentDate.toISOString().substring(0, 10);  // YYYY-MM-DD format
+		}
+		if(label <= currentStartDate  && !setByTimespanSwitch) {
+			setByTimespanSwitch = true;
+			return i
+		}
+		if(thisPeriod !== false && thisPeriod == i  && !setByTimespanSwitch){
+			console.log("selected:", i , label);
+			return i;
+		}
+	}
+	return currentStartDate - 1;
 }
