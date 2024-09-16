@@ -242,6 +242,8 @@ function getWeatherData(locationId) {
 		periodAgo = periodAgoDropdown[periodAgoDropdown.selectedIndex].value;
 		if(currentStartDate == periodAgoDropdown[periodAgoDropdown.selectedIndex].text){
 			thisPeriod = periodAgo;
+			periodAgo = false;
+			console.log("dates unchanged");
 		}
 		currentStartDate = periodAgoDropdown[periodAgoDropdown.selectedIndex].text;
 	}	

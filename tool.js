@@ -1500,17 +1500,20 @@ function createTimescalePeriodDropdown(scales, numberOfPeriods, thisPeriod, scal
 				});
 			}
 			const now = new Date();
-			const timeUnitMap = {
-				'hour': 'Hours',
-				'day': 'Date',
-				'month': 'Month',
-				'year': 'FullYear'
-			};
 			let setByTimespanSwitch = false;
 			for (let i = 0; i < numberOfPeriods; i++) {
 				const option = document.createElement('option');
-				const currentDate = new Date(now);
-				currentDate[`set${timeUnitMap[periodScale]}`](now[`get${timeUnitMap[periodScale]}`]() - ((i + 1 )* periodSize));
+				let currentDate = new Date(now);
+				//currentDate[`set${timeUnitMap[periodScale]}`](now[`get${timeUnitMap[periodScale]}`]() - ((i + 1 )* periodSize));
+				if(periodScale == 'day'){
+					currentDate.setDate(currentDate.getDate() - (i+1) * periodSize);
+				} else if (periodScale == 'month'){
+					currentDate.setMonth(currentDate.getMonth() - (i+1) * periodSize);
+				} else if (periodScale == 'year'){
+					currentDate.setFullYear(currentDate.getFullYear() - (i+1) * periodSize);
+				} else if (periodScale == 'hour'){
+					currentDate.setHours(currentDate.getHours() - (i+1) * periodSize);
+				}
 				let label;
 				if (periodScale === 'hour') {
 					label = currentDate.toISOString().substring(0, 16).replace('T', ' ');  // YYYY-MM-DD HH:mm format
@@ -1551,12 +1554,6 @@ function calculateRevisedTimespanPeriod(scales, numberOfPeriods, thisPeriod, sca
     const periodSize = scale.period_size;
 	const periodScale = scale.period_scale;
 	let setByTimespanSwitch = false;
-	const timeUnitMap = {
-		'hour': 'Hours',
-		'day': 'Date',
-		'month': 'Month',
-		'year': 'FullYear'
-	};
 	const now = new Date();
 	//const currentDate = new Date(now);
 	for (let i = 0; i < numberOfPeriods; i++) {
@@ -1577,7 +1574,7 @@ function calculateRevisedTimespanPeriod(scales, numberOfPeriods, thisPeriod, sca
 		} else {
 			dateTimeBoundary = currentDate.toISOString().substring(0, 10);  // YYYY-MM-DD format
 		}
-		console.log(periodSize, scaleName, periodScale, timeUnitMap[periodScale], i, dateTimeBoundary, currentStartDate);
+		//console.log(periodSize, scaleName, periodScale, timeUnitMap[periodScale], i, dateTimeBoundary, currentStartDate);
 		if(dateTimeBoundary <= currentStartDate  && !setByTimespanSwitch) {
 			setByTimespanSwitch = true;
 			console.log("movement happened", i, dateTimeBoundary)

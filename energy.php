@@ -246,6 +246,7 @@ function getInverterData() {
 		periodAgo = periodAgoDropdown[periodAgoDropdown.selectedIndex].value;
 		if(currentStartDate == periodAgoDropdown[periodAgoDropdown.selectedIndex].text){
 			thisPeriod = periodAgo;
+			periodAgo = false;
 		}
 		currentStartDate = periodAgoDropdown[periodAgoDropdown.selectedIndex].text;
 	}	
