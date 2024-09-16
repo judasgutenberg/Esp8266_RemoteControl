@@ -1558,23 +1558,35 @@ function calculateRevisedTimespanPeriod(scales, numberOfPeriods, thisPeriod, sca
 		'year': 'FullYear'
 	};
 	const now = new Date();
-	const currentDate = new Date(now);
+	//const currentDate = new Date(now);
 	for (let i = 0; i < numberOfPeriods; i++) {
-
-		currentDate[`set${timeUnitMap[periodScale]}`](now[`get${timeUnitMap[periodScale]}`]() - ((i + 1 )* periodSize));
-		if (periodScale === 'hour') {
-			label = currentDate.toISOString().substring(0, 16).replace('T', ' ');  // YYYY-MM-DD HH:mm format
-		} else {
-			label = currentDate.toISOString().substring(0, 10);  // YYYY-MM-DD format
+		let dateTimeBoundary;
+		let currentDate = new Date(now);
+		//currentDate[`set${timeUnitMap[periodScale]}`](now[`get${timeUnitMap[periodScale]}`]() - ((i + 1 )* periodSize));
+		if(periodScale == 'day'){
+			currentDate.setDate(currentDate.getDate() - (i+1) * periodSize);
+		} else if (periodScale == 'month'){
+			currentDate.setMonth(currentDate.getMonth() - (i+1) * periodSize);
+		} else if (periodScale == 'year'){
+			currentDate.setFullYear(currentDate.getFullYear() - (i+1) * periodSize);
+		} else if (periodScale == 'hour'){
+			currentDate.setHours(currentDate.getHours() - (i+1) * periodSize);
 		}
-		if(label <= currentStartDate  && !setByTimespanSwitch) {
+		if (periodScale == 'hour') {
+			dateTimeBoundary = currentDate.toISOString().substring(0, 16).replace('T', ' ');  // YYYY-MM-DD HH:mm format
+		} else {
+			dateTimeBoundary = currentDate.toISOString().substring(0, 10);  // YYYY-MM-DD format
+		}
+		console.log(periodSize, scaleName, periodScale, timeUnitMap[periodScale], i, dateTimeBoundary, currentStartDate);
+		if(dateTimeBoundary <= currentStartDate  && !setByTimespanSwitch) {
 			setByTimespanSwitch = true;
+			console.log("movement happened", i, dateTimeBoundary)
 			return i
 		}
 		if(thisPeriod !== false && thisPeriod == i  && !setByTimespanSwitch){
-			console.log("selected:", i , label);
+			console.log("movement nope", i, dateTimeBoundary)
 			return i;
 		}
 	}
-	return currentStartDate - 1;
+	return 0;
 }

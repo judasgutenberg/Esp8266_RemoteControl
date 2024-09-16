@@ -245,7 +245,7 @@ function getWeatherData(locationId) {
 		}
 		currentStartDate = periodAgoDropdown[periodAgoDropdown.selectedIndex].text;
 	}	
-	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, 31, periodAgo, scale, currentStartDate);
+	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, 200, periodAgo, scale, currentStartDate);
 	
 	let xhttp = new XMLHttpRequest();
 	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getData&locationId=" + locationId;
