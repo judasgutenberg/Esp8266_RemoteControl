@@ -1499,28 +1499,11 @@ function createTimescalePeriodDropdown(scales, numberOfPeriods, thisPeriod, scal
 					}
 				});
 			}
-			const now = new Date();
+
 			let setByTimespanSwitch = false;
 			for (let i = 0; i < numberOfPeriods; i++) {
 				const option = document.createElement('option');
-				let currentDate = new Date(now);
-				//janky ChatGPT code that failed after i==16:
-				//currentDate[`set${timeUnitMap[periodScale]}`](now[`get${timeUnitMap[periodScale]}`]() - ((i + 1 )* periodSize));
-				if(periodScale == 'day'){
-					currentDate.setDate(currentDate.getDate() - (i+1) * periodSize);
-				} else if (periodScale == 'month'){
-					currentDate.setMonth(currentDate.getMonth() - (i+1) * periodSize);
-				} else if (periodScale == 'year'){
-					currentDate.setFullYear(currentDate.getFullYear() - (i+1) * periodSize);
-				} else if (periodScale == 'hour'){
-					currentDate.setHours(currentDate.getHours() - (i+1) * periodSize);
-				}
-				let label;
-				if (periodScale === 'hour') {
-					label = currentDate.toISOString().substring(0, 16).replace('T', ' ');  // YYYY-MM-DD HH:mm format
-				} else {
-					label = currentDate.toISOString().substring(0, 10);  // YYYY-MM-DD format
-				}
+				let label = pastStepper(periodScale, periodSize, i);
 				option.text = label;
 				option.value = i;
 				if(option.text <= currentStartDate  && !setByTimespanSwitch) {
@@ -1555,27 +1538,10 @@ function calculateRevisedTimespanPeriod(scales, numberOfPeriods, thisPeriod, sca
     const periodSize = scale.period_size;
 	const periodScale = scale.period_scale;
 	let setByTimespanSwitch = false;
-	const now = new Date();
+	
 	//const currentDate = new Date(now);
 	for (let i = 0; i < numberOfPeriods; i++) {
-		let dateTimeBoundary;
-		let currentDate = new Date(now);
-		//janky ChatGPT code that failed after i==16:
-		//currentDate[`set${timeUnitMap[periodScale]}`](now[`get${timeUnitMap[periodScale]}`]() - ((i + 1 )* periodSize));
-		if(periodScale == 'day'){
-			currentDate.setDate(currentDate.getDate() - (i+1) * periodSize);
-		} else if (periodScale == 'month'){
-			currentDate.setMonth(currentDate.getMonth() - (i+1) * periodSize);
-		} else if (periodScale == 'year'){
-			currentDate.setFullYear(currentDate.getFullYear() - (i+1) * periodSize);
-		} else if (periodScale == 'hour'){
-			currentDate.setHours(currentDate.getHours() - (i+1) * periodSize);
-		}
-		if (periodScale == 'hour') {
-			dateTimeBoundary = currentDate.toISOString().substring(0, 16).replace('T', ' ');  // YYYY-MM-DD HH:mm format
-		} else {
-			dateTimeBoundary = currentDate.toISOString().substring(0, 10);  // YYYY-MM-DD format
-		}
+		let dateTimeBoundary = pastStepper(periodScale, periodSize, i);
 		//console.log(periodSize, scaleName, periodScale, timeUnitMap[periodScale], i, dateTimeBoundary, currentStartDate);
 		if(dateTimeBoundary <= currentStartDate  && !setByTimespanSwitch) {
 			setByTimespanSwitch = true;
@@ -1588,4 +1554,27 @@ function calculateRevisedTimespanPeriod(scales, numberOfPeriods, thisPeriod, sca
 		}
 	}
 	return 0;
+}
+
+function pastStepper(periodScale, periodSize, ordinal){
+	const now = new Date();
+	let currentDate = new Date(now);
+	//janky ChatGPT code that failed after ordinal==16:
+	//currentDate[`set${timeUnitMap[periodScale]}`](now[`get${timeUnitMap[periodScale]}`]() - ((ordinal + 1 )* periodSize));
+	if(periodScale == 'day'){
+		currentDate.setDate(currentDate.getDate() - (ordinal+1) * periodSize);
+	} else if (periodScale == 'month'){
+		currentDate.setMonth(currentDate.getMonth() - (ordinal+1) * periodSize);
+	} else if (periodScale == 'year'){
+		currentDate.setFullYear(currentDate.getFullYear() - (ordinal+1) * periodSize);
+	} else if (periodScale == 'hour'){
+		currentDate.setHours(currentDate.getHours() - (ordinal+1) * periodSize);
+	}
+	let label;
+	if (periodScale === 'hour') {
+		label = currentDate.toISOString().substring(0, 16).replace('T', ' ');  // YYYY-MM-DD HH:mm format
+	} else {
+		label = currentDate.toISOString().substring(0, 10);  // YYYY-MM-DD format
+	}
+	return label;
 }
