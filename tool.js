@@ -1471,8 +1471,9 @@ function centerOfGeoPlot(plot, records) {
 
 }
 
-function createTimescalePeriodDropdown(scales, numberOfPeriods, thisPeriod, scaleName, currentStartDate, event, eventAction, tableName, locationId) {
+function createTimescalePeriodDropdown(scales, thisPeriod, scaleName, currentStartDate, event, eventAction, tableName, locationId) {
     const scale = scales.find(s => s.value === scaleName);
+	let numberOfPeriods = 200;
 	//let's find how far back data goes
     if (!scale) {
         console.error("Scale not found!");
@@ -1528,8 +1529,10 @@ function createTimescalePeriodDropdown(scales, numberOfPeriods, thisPeriod, scal
     xmlhttp.send();
 }
 
-function calculateRevisedTimespanPeriod(scales, numberOfPeriods, thisPeriod, scaleName, currentStartDate){
+function calculateRevisedTimespanPeriod(scales, thisPeriod, scaleName, currentStartDate){
+	//does what the preceding function does, but only outputs a number of steps of scaleName to get back to currentStartDate instead of option dropdowns
 	const scale = scales.find(s => s.value === scaleName);
+	let numberOfPeriods = 200;
 	//let's find how far back data goes
     if (!scale) {
         console.error("Scale not found!");
@@ -1557,6 +1560,7 @@ function calculateRevisedTimespanPeriod(scales, numberOfPeriods, thisPeriod, sca
 }
 
 function pastStepper(periodScale, periodSize, ordinal){
+	//steps into the past ordinal * periodSize units of periodScale size, returning a string representation of a datetime
 	const now = new Date();
 	let currentDate = new Date(now);
 	//janky ChatGPT code that failed after ordinal==16:
@@ -1570,11 +1574,11 @@ function pastStepper(periodScale, periodSize, ordinal){
 	} else if (periodScale == 'hour'){
 		currentDate.setHours(currentDate.getHours() - (ordinal+1) * periodSize);
 	}
-	let label;
+	let datetimeString;
 	if (periodScale === 'hour') {
-		label = currentDate.toISOString().substring(0, 16).replace('T', ' ');  // YYYY-MM-DD HH:mm format
+		datetimeString = currentDate.toISOString().substring(0, 16).replace('T', ' ');  // YYYY-MM-DD HH:mm format
 	} else {
-		label = currentDate.toISOString().substring(0, 10);  // YYYY-MM-DD format
+		datetimeString = currentDate.toISOString().substring(0, 10);  // YYYY-MM-DD format
 	}
-	return label;
+	return datetimeString;
 }

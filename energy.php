@@ -250,7 +250,7 @@ function getInverterData() {
 		}
 		currentStartDate = periodAgoDropdown[periodAgoDropdown.selectedIndex].text;
 	}	
-	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, 31, periodAgo, scale, currentStartDate);
+	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, periodAgo, scale, currentStartDate);
 	let xhttp = new XMLHttpRequest();
 	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getInverterData";
 	//console.log(endpointUrl);
@@ -307,7 +307,7 @@ function getInverterData() {
 	  };
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
   xhttp.send();
-  createTimescalePeriodDropdown(scaleConfig, 31, periodAgo, scale, currentStartDate, 'change', 'getInverterData()', 'inverter_log', '');
+  createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getInverterData()', 'inverter_log', '');
  
 }
 
