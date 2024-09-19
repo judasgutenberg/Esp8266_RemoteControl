@@ -102,10 +102,12 @@ This JSON defines a form with one parameter
 
 <code>
   [ {
-	    "label": "Which changer",
-      "name" :"changerX",
-      "type" : "select",
-"values": ["changer1", "changer2", "changer3", "changer4", "changer5", "changer6","changer7"]
+	"label": "Which changer",
+	"name" :"changerX",
+	"type" : "select",
+	"values": [
+		"changer1", "changer2", "changer3", "changer4", "changer5", "changer6","changer7"
+	]
 	}]
 </code>
 the value of which is substituted into the SQL component of the report:
@@ -117,8 +119,8 @@ SELECT  &lt;changerX/&gt;, battery_percentage, solar_power, load_power, battery_
 the "values" parameter in the form JSON can also be a SQL string to generate a list of options from the database.  If so, the SQL needs to return a 'text' column for a proper dropdown list of options to be displayed.  A log of each report that is run is kept, and each log item is accessible via the web UI with enough information to allow it to be re-run with the same set of parameters as the original run.
 
 Here is the JSON for a report that generates a graph:
-<code>
 
+<code>
 {
   "output": {
     "labelColumn": "recorded",
@@ -126,29 +128,28 @@ Here is the JSON for a report that generates a graph:
     "color": "ff0000,00ff00,0000ff",
     "plots": [
       {
-        "column": "battery_percentage",
-        "darkenBy": "changer7",
-        "darkenByDivisor": 100,
-        "color": "green",
-        "label": "battery_percentage",
-        "shape": {
-          "radius": 1
+	"column": "battery_percentage",
+	"darkenBy": "changer7",
+	"darkenByDivisor": 100,
+	"color": "green",
+	"label": "battery_percentage",
+	"shape": {
+	"radius": 1
         }
       },
       {
-        "column": "battery_voltage",
-        "darkenBy": "changer7",
-        "darkenByDivisor": 100,
-        "color": "red",
-        "label": "battery_voltage",
-        "shape": {
-          "radius": 1
+	"column": "battery_voltage",
+	"darkenBy": "changer7",
+	"darkenByDivisor": 100,
+	"color": "red",
+	"label": "battery_voltage",
+	"shape": {
+	"radius": 1
         }
       }
     ]
   }
 }
-
 </code>
 
 Note that for a parameter form to be produced for a report, there must be "form" node in the JSON in addition to the "output" node.
