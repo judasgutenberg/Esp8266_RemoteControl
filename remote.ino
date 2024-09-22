@@ -53,6 +53,8 @@ int pinTotal = 12;
 String pinList[12]; //just a list of pins
 String pinName[12]; //for friendly names
 String ipAddress;
+String ipAddressAffectingChange;
+int changeSourceId = 0;
 String deviceName = "";
 String additionalSensorInfo; //we keep it stored in a delimited string just the way it came from the server and unpack it periodically to get the data necessary to read sensors
 
@@ -296,6 +298,16 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
 
 void handleWeatherData() {
   String transmissionString = "";
+  
+  if(ipAddress.indexOf(' ') > 0) { //i was getting HTML header info mixed in for some reason
+    ipAddress = ipAddress.substring(0, ipAddress.indexOf(' '));
+  }
+  String ipAddressToUse = ipAddress;
+  
+  if(ipAddressAffectingChange != "") {
+     ipAddressToUse = ipAddressAffectingChange;
+     changeSourceId = 1;
+  }
   int deviceFeatureId = 0;
   if(onePinAtATimeMode) {
     pinCursor++;
@@ -303,9 +315,7 @@ void handleWeatherData() {
       pinCursor = 0;
     }
   }
-  if(ipAddress.indexOf(' ') > 0) { //i was getting HTML header info mixed in for some reason
-    ipAddress = ipAddress.substring(0, ipAddress.indexOf(' '));
-  }
+
   if(sensor_id > -1) {
     transmissionString = weatherDataString(sensor_id, sensor_sub_type, sensor_data_pin, sensor_power_pin, sensor_i2c, NULL, 0, deviceName, consolidate_all_sensors_to_one_record);
   }
@@ -320,7 +330,7 @@ void handleWeatherData() {
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
   transmissionString = transmissionString + "|" + joinMapValsOnDelimiter(pinMap, "*", pinTotal); //also send pin as they are known back to the server
   //other server-relevant info as needed, delimited by *
-  transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddress + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson;
+  transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddressToUse + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson + "*" + changeSourceId;
   //Serial.println(transmissionString);
   //had to use a global, died a little inside
   if(glblRemote) {
@@ -416,8 +426,13 @@ void sendRemoteData(String datastring) {
     delay(1); //see if this improved data reception. OMG IT TOTALLY WORKED!!!
     bool receivedData = false;
     bool receivedDataJson = false;
+    if(clientGet.available() && ipAddressAffectingChange != "") { //don't turn these globals off until we have data back from the server
+       ipAddressAffectingChange = "";
+       changeSourceId = 0;
+    }
     while(clientGet.available()){
       receivedData = true;
+
       String retLine = clientGet.readStringUntil('\n');
       retLine.trim();
       //Here the code is designed to be able to handle either JSON or double-delimited data from data.php
@@ -851,6 +866,8 @@ void localSetData() {
       Serial.print( " : ");
     } else if (server.argName(i) == "on") {
       onValue = (int)(server.arg(i) == "1");  
+    } else if (server.argName(i) == "ipaddress") {
+      ipAddressAffectingChange = (String)server.arg(i);  
     }
     Serial.print(onValue);
     Serial.println();
