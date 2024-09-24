@@ -76,7 +76,7 @@ In addition to supporting the changing of pin states using a server, this system
 index.h has the HTML for a locally-served front-end to take advantage of the local API, though the Local Remote is better for this than relying on the massive computational overhead of a modern web browser. It would also be easy to write a phone app, which would be great for someone who always keeps a phone nearby. But I am not such a person.  
 
 ## Graphical Data
-Data from the weather sensors can be viewed at /index.php in your server's web installation.  Data plots from different locations can be selected in a dropdown and the graphs can show different time ranges and you can page back into their history.  The same is also true with solar inverter data (if you have any to log) at /energy.php.
+Data from the weather sensors can be viewed at /index.php in your server's web installation.  Data plots from different locations can be selected in a dropdown and the graphs can show different time ranges and you can page back into their history.  The same is also true with solar inverter data (if you have any to log) at /energy.php. I will probably be adding support for paging data in this way to graph-generating reports as well.
 
 ![alt text](weathergraph.jpg?raw=true)
 
