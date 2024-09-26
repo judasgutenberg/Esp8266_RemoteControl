@@ -96,6 +96,7 @@ Management_rules can be edited in the management_rule editor, which looks like t
 ![alt text](managementrule.jpg?raw=true)
 
 At the bottom is a tool you can use to automatically construct a value token to place in conditions.  Treat these as variables in an expression to be evaluated as true or false.  You can use multiple tokens, parentheses, arithmatic operators, and scalar numbers in such expressions.
+Since manual changes to the status of device_features are usually at odds with automation, whenever a manual change to a device_feature is made, automation is automatically suspended for restore_automation_after hours, starting at the instant of the manual change.
 
 ## Reports
 There is a whole reporting system, reachable via the Reports tab. Reports are SQL queries that produce a table of data, a graph, or, in some cases, locations on a map.  They are defined as a form (using JSON and using the form descrription system used throughout the admin website), possibly an output configuration, and SQL. Simple reports can just be SQL, though if you need to send parameters to a report, you will need to define a form.  Perhaps forms definitions are best shown by example.
