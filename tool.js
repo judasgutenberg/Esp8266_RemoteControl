@@ -782,8 +782,8 @@ function xsmoothArray(intArray, windowSize, weightFactor) {
 
 function linearInterpolate(start, end, steps) {
     let stepArray = [];
-    let increment = (end - start) / steps;
-    for (let i = 0; i <= steps; i++) {
+    let increment = (end - start) / (steps - 1); // Adjust increment to fit exactly
+    for (let i = 0; i < steps; i++) { // Now only generate 'steps' points
         stepArray.push(start + increment * i);
     }
     return stepArray;
@@ -809,8 +809,8 @@ function findInflectionPoints(values, tolerance) {
             oldInflectionPoint = i + 1;
         }
     }
-    
     inflectionPoints.push(values.length - 1);
+
     return inflectionPoints;
 }
 

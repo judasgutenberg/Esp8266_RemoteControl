@@ -121,6 +121,7 @@ let panelValues = [];
 let loadValues = [];
 let batteryValues = [];
 let batteryPercents = [];
+let batteryPercentsUnsmoothed = [];
 let timeStamp = [];
 
 function showGraph(locationId){
@@ -168,7 +169,22 @@ function showGraph(locationId){
 				//cubicInterpolationMode: 'monotone',
 				tension: 0,
 				yAxisID: 'B'
-            },
+            }
+			/*
+			//for debugging:
+			,
+			{
+			label: "Battery Percentage Unsmoothed",
+                fill: false,  //Try with true
+                backgroundColor: 'rgba( 91, 111, 156 , 1)', //Dot marker color
+                borderColor: 'rgba( 183, 1, 156 , 1)', //Graph Line Color
+                data: batteryPercentsUnsmoothed,
+				//steppedLine: steppedLine,
+				//cubicInterpolationMode: 'monotone',
+				tension: 0,
+				yAxisID: 'B'
+            }
+			*/
             ],
         },
         options: {
@@ -253,7 +269,7 @@ function getInverterData() {
 	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, periodAgo, scale, currentStartDate);
 	let xhttp = new XMLHttpRequest();
 	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getInverterData";
-	//console.log(endpointUrl);
+ 
 	xhttp.onreadystatechange = function() {
 	    if (this.readyState == 4 && this.status == 200) {
 	     //Push the data in array
@@ -261,6 +277,7 @@ function getInverterData() {
 			loadValues = [];
 			batteryValues = [];
 			batteryPercents = [];
+			batteryPercentsUnsmoothed = [];
 			timeStamp = [];
 			let time = new Date().toLocaleTimeString();
 			//console.log(this.responseText);
@@ -283,6 +300,7 @@ function getInverterData() {
 						let load = datum["load_power"];
 						let battery = datum["battery_power"];
 						let batteryPercent = datum["battery_percentage"];
+						batteryPercentsUnsmoothed.push(batteryPercent);
 						panelValues.push(panel);
 						loadValues.push(load);
 		
@@ -298,13 +316,18 @@ function getInverterData() {
 			}
 			if(scale == "three-hour"  || scale == "day"){
 				batteryPercents = smoothArray(batteryPercents, 19, 1); //smooth out the battery percentages, which are integers and too jagged
+				console.log("woot");
 			}
+			//alert(batteryPercents.length + " xxx " + batteryPercentsUnsmoothed.length);
 			//console.log(batteryPercents);
 			glblChart = showGraph();  //Update Graphs
+			
 	    }
 		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
 		
-	  };
+	};
+	  
+
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
   xhttp.send();
   createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getInverterData()', 'inverter_log', '');
