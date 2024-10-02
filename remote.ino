@@ -809,6 +809,10 @@ void setup(void){
 }
 //LOOP----------------------------------------------------
 void loop(void){
+  //Serial.println("loop");
+  for(int i=0; i <4; i++) { //doing this four times here is helpful to make web service reasonably responsive. once is not enough
+    server.handleClient();          //Handle client requests
+  }
   timeClient.update();
   long nowTime = millis() + timeOffset;
   int granularityToUse = polling_granularity;
@@ -837,7 +841,7 @@ void loop(void){
     glblRemote = false;
     lastPoll = nowTime;
   }
-  server.handleClient();          //Handle client requests
+  
   //digitalWrite(0, HIGH );
   //delay(100);
   //digitalWrite(0, LOW);
