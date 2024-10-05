@@ -137,7 +137,7 @@ Here is the JSON for a report that generates a graph:
 	"color": "green",
 	"label": "battery_percentage",
 	"shape": {
-	"radius": 1
+		"radius": 1
         }
       },
       {
@@ -147,7 +147,7 @@ Here is the JSON for a report that generates a graph:
 	"color": "red",
 	"label": "battery_voltage",
 	"shape": {
-	"radius": 1
+		"radius": 1
         }
       }
     ]
