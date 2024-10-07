@@ -700,6 +700,9 @@ if($_REQUEST) {
 							
 							//echo $sqlToUpdateDeviceFeature  . "<BR> " . $specificPin  . "<BR>";
 							$sqlIfDataGoingUpstream = " value =" . $pinValuesKnownToDevice[$pinCursor] . ",";
+							if($deviceFeatureId == 3){
+								logSql("going upstream sql:" . $sqlIfDataGoingUpstream . " " . $lines[2]);
+							}
 							//suspect:  i had been doing this:
 							//if($automatedChangeMade) {
 								//$sqlToUpdateDeviceFeature = str_replace("<lastknowndevice/>", "", $sqlToUpdateDeviceFeature); 
@@ -826,13 +829,11 @@ if($_REQUEST) {
 							}
 							$sqlToUpdateDeviceFeature = trim($sqlToUpdateDeviceFeature);
 							//echo "{" . $sqlToUpdateDeviceFeature . "}" . substr($sqlToUpdateDeviceFeature,-1) . "<BR>";
-							if(endsWith($sqlToUpdateDeviceFeature, ",")) {
-								//echo $deviceFeatureId . "!" . $sqlToUpdateDeviceFeature . "*<BR>";
-								$sqlToUpdateDeviceFeature = substr($sqlToUpdateDeviceFeature, 0, -1);
-								//echo $deviceFeatureId . "!" . $sqlToUpdateDeviceFeature . "*<BR>";
-							}
+							$sqlToUpdateDeviceFeature = removeTrailingChar($sqlToUpdateDeviceFeature, ",");
 							$sqlToUpdateDeviceFeature .= " WHERE device_feature_id=" . $deviceFeatureId;
-							logSql("change sql:" . $sqlToUpdateDeviceFeature);
+							if($deviceFeatureId == 3){
+								logSql("change sql:" . $sqlToUpdateDeviceFeature);
+							}
 							if(isset($loggingSql)){
 								logSql("logging sql:" . $loggingSql);
 							}
@@ -842,6 +843,8 @@ if($_REQUEST) {
 									echo "<BR>automated change: " . $automatedChangeMade;
 									echo "<BR>" . $sqlToUpdateDeviceFeature . "<BR>";
 								}
+								$sqlToUpdateDeviceFeature = removeTrailingChar($sqlToUpdateDeviceFeature, ",");
+								$sqlToUpdateDeviceFeature = removeTrailingChar($sqlToUpdateDeviceFeature, ",");
 								$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
 								$error = mysqli_error($conn);
 								if($error != ""){
@@ -1019,6 +1022,14 @@ function getTenantById($tenantId){
 		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
 		return $row;
 	}
+}
+
+function removeTrailingChar($inVal, $char){
+	$inVal = trim($inVal);
+	if(endsWith($inVal, $char)){
+		$inVal = substr($inVal, 0, -1);
+	}
+	return $inVal;
 }
 
 //some helpful sql examples for creating sql users:
