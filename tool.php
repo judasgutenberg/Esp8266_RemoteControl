@@ -25,7 +25,7 @@ $tenantId = gvfa("tenant_id", $user);
  
 $deviceId = gvfa('device_id', $_GET);
 $userId = gvfa("user_id", $user);
-
+$outputFormat = gvfa("output_format", $_GET);
 //used to impersonate another user
 
 $poser = getImpersonator(false);
@@ -174,7 +174,6 @@ if ($user) {
     $foundData = getUtilityInfo($user, $action); 
     if ($foundData) {
       $role = gvfa("role", $foundData);
-      $outputFormat = gvfa("output_format", $foundData);
       $path = gvfa("path", $foundData);
       $friendlyName = gvfa("friendly_name", $foundData);
       if($_POST && (gvfa("action", $foundData) || $outputFormat)) { // ||  (gvfa("action", $foundData) && gvfa("form", $foundData))
@@ -187,7 +186,7 @@ if ($user) {
             $sql = $foundData["sql"];
             $sql =  tokenReplace($sql, $_POST);
             
-
+            $outputFormat = gvfa("output_format", $foundData);
             $reportResult = mysqli_query($conn, $sql);
             $error = mysqli_error($conn);
             $affectedRows = mysqli_affected_rows($conn);
@@ -283,7 +282,7 @@ if ($user) {
   //this is the section for conditionals related to specially-written editors and listers
 	} else if($table == "report") {
     if ($action == "rerun" || $action == "fetch" || beginsWith(strtolower($action), "run")) {
-      $out .= doReport($user, gvfw("report_id"), gvfw("report_log_id"));
+      $out .= doReport($user, gvfw("report_id"), gvfw("report_log_id"), $outputFormat);
     
     } else if ($action == "startcreate" || gvfw("report_id") != "") {
       $out .=  editReport($errors,  $tenantId);
@@ -331,7 +330,7 @@ if ($user) {
     if(gvfw($table . '_id')) {
       $out .= genericEntityForm($tenantId, $table, $errors);
     } else if($table) {
-      $out .= genericEntityList($tenantId, $table);
+      $out .= genericEntityList($tenantId, $table, $outputFormat);
     }
   }
 	$out .= "</div>\n";

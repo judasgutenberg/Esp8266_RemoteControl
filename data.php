@@ -639,7 +639,7 @@ if($_REQUEST) {
 												$conditions = str_replace($originalToken, $lookedUpValue, $conditions);
 
 											} else {
-												logSql("BAD lookup SQL: " . $managmentValueLookupSql);
+												//logSql("BAD lookup SQL: " . $managmentValueLookupSql);
 											}
 											if(!$tokenReplaced){
 												$conditions = str_replace($originalToken, "<fail/>", $conditions);
@@ -701,7 +701,7 @@ if($_REQUEST) {
 							//echo $sqlToUpdateDeviceFeature  . "<BR> " . $specificPin  . "<BR>";
 							$sqlIfDataGoingUpstream = " value =" . $pinValuesKnownToDevice[$pinCursor] . ",";
 							if($deviceFeatureId == 3){
-								logSql("going upstream sql:" . $sqlIfDataGoingUpstream . " " . $lines[2]);
+								//logSql("going upstream sql:" . $sqlIfDataGoingUpstream . " " . $lines[2]);
 							}
 							//suspect:  i had been doing this:
 							//if($automatedChangeMade) {
@@ -788,9 +788,9 @@ if($_REQUEST) {
 										//logSql("update sql: " . $sqlToUpdateDeviceFeature);
 									//}
 									//echo $loggingSql;
-									logSql($sqlToUpdateDeviceFeature);
-									logSql("specific pin: ".$specificPin . " pinCursor:" . $pinCursor  );
-									logSql("querystring: ". $_SERVER['QUERY_STRING']  );
+									//logSql($sqlToUpdateDeviceFeature);
+									//logSql("specific pin: ".$specificPin . " pinCursor:" . $pinCursor  );
+									//logSql("querystring: ". $_SERVER['QUERY_STRING']  );
 									if($automatedChangeMade || $specificPin > -1 && $specificPin == $pinCursor  || $specificPin == -1){ //otherwise we get too much logging if we're in one-pin-at-a-mode time
 										if(intval($oldValue) != intval($newValue) ) { //let's only log ch-ch-ch-changes
 											$loggingResult = mysqli_query($conn, $loggingSql);
@@ -829,13 +829,13 @@ if($_REQUEST) {
 							}
 							$sqlToUpdateDeviceFeature = trim($sqlToUpdateDeviceFeature);
 							//echo "{" . $sqlToUpdateDeviceFeature . "}" . substr($sqlToUpdateDeviceFeature,-1) . "<BR>";
-							$sqlToUpdateDeviceFeature = removeTrailingChar($sqlToUpdateDeviceFeature, ",");
+							$sqlToUpdateDeviceFeature = removeTrailingChar($sqlToUpdateDeviceFeature, ",", 1);
 							$sqlToUpdateDeviceFeature .= " WHERE device_feature_id=" . $deviceFeatureId;
 							if($deviceFeatureId == 3){
-								logSql("change sql:" . $sqlToUpdateDeviceFeature);
+								//logSql("change sql:" . $sqlToUpdateDeviceFeature);
 							}
 							if(isset($loggingSql)){
-								logSql("logging sql:" . $loggingSql);
+								//logSql("logging sql:" . $loggingSql);
 							}
 							//echo $sqlToUpdateDeviceFeature . "<BR>";
 							if($sqlToUpdateDeviceFeature != ""  && $canUpdateDeviceFeature) {
@@ -843,8 +843,8 @@ if($_REQUEST) {
 									echo "<BR>automated change: " . $automatedChangeMade;
 									echo "<BR>" . $sqlToUpdateDeviceFeature . "<BR>";
 								}
-								$sqlToUpdateDeviceFeature = removeTrailingChar($sqlToUpdateDeviceFeature, ",");
-								$sqlToUpdateDeviceFeature = removeTrailingChar($sqlToUpdateDeviceFeature, ",");
+								$sqlToUpdateDeviceFeature = removeTrailingChar($sqlToUpdateDeviceFeature, ",", 2);
+								$sqlToUpdateDeviceFeature = removeTrailingChar($sqlToUpdateDeviceFeature, ",", 3);
 								$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
 								$error = mysqli_error($conn);
 								if($error != ""){
@@ -1024,9 +1024,12 @@ function getTenantById($tenantId){
 	}
 }
 
-function removeTrailingChar($inVal, $char){
+function removeTrailingChar($inVal, $char, $stage = 0){
 	$inVal = trim($inVal);
 	if(endsWith($inVal, $char)){
+		if($stage == 2){
+			logSql("hanging comma: (" . $stage . ") "  . $inVal);
+		}
 		$inVal = substr($inVal, 0, -1);
 	}
 	return $inVal;

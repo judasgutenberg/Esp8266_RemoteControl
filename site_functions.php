@@ -284,7 +284,26 @@ function schemaArrayFromSchema($table, &$pk){
   return $headerData;
 }
 
-function genericEntityList($tenantId, $table) {
+function generateCsvContent(array $dataRows) {
+  // Open a memory stream to store CSV data
+  $output = fopen('php://temp', 'r+');
+  // Get headers from the first row and write to CSV
+  if (!empty($dataRows)) {
+      fputcsv($output, array_keys($dataRows[0]));
+  }
+  // Write each row of data to CSV
+  foreach ($dataRows as $row) {
+      fputcsv($output, $row);
+  }
+  // Rewind the memory stream and fetch the contents
+  rewind($output);
+  $csvContent = stream_get_contents($output);
+  // Close the memory stream
+  fclose($output);
+  return $csvContent;
+}
+
+function genericEntityList($tenantId, $table, $outputFormat = "html") {
   Global $conn;
   $headerData = schemaArrayFromSchema($table, $pk);
   $additionalValueQueryString = "";
@@ -293,7 +312,6 @@ function genericEntityList($tenantId, $table) {
       $additionalValueQueryString .= "&" . $key . "=" . urlencode($value);
     }
   }
-  $out = "<div class='listtools'><div class='basicbutton'><a href='?table=" . $table . "&action=startcreate" . $additionalValueQueryString . "'>Create</a></div> a new " . $table . "<//div>\n";
   $thisDataSql = "SELECT * FROM " . $table;
   if($table != "tenant"  && $table != "user") {
     $thisDataSql .= " WHERE tenant_id=" . intval($tenantId);
@@ -307,12 +325,14 @@ function genericEntityList($tenantId, $table) {
     $thisDataRows = mysqli_fetch_all($thisDataResult, MYSQLI_ASSOC); 
     $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a>";
     $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
-    //if($table == "device") {
-      //$toolsTemplate .= " | <a href='?table=device_feature&device_id=<" . $table . "_id/>'>Device Features</a>";
-
-    //}
-   
-    $out .= genericTable($thisDataRows, $headerData, $toolsTemplate, null, $table, $pk);
+    if($outputFormat == "csv") {
+      $content = generateCsvContent($thisDataRows);
+      download($path, $friendlyName, $content = "");
+      die();
+    } else {
+      $out = "<div class='listtools'><div class='basicbutton'><a href='?table=" . $table . "&action=startcreate" . $additionalValueQueryString . "'>Create</a></div> a new " . $table . "<//div>\n";
+      $out .= genericTable($thisDataRows, $headerData, $toolsTemplate, null, $table, $pk);
+    }
     return $out;
   }
 }
@@ -1100,6 +1120,127 @@ function tabNav($user) {
   return $out;
 }
 
+//a work in progress:
+function genericTableViaJs($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null) { //aka genericList
+  Global $encryptionPassword;
+  if($headerData == NULL  && $rows  && $rows[0]) {
+    $headerData = [];
+    foreach(array_keys($rows[0]) as &$key) {
+      array_push($headerData, array("label"=>$key, "name"=>$key));
+    }
+  }
+  if(!$headerData){
+    $headerData = [];
+  }
+  $out = "";
+
+  if($searchData) {
+    $out .= "<script>\n";
+    $out .= "let rows = " . json_encode($rows) . ";";
+    $out .= "</script>\n";
+    $out .=  "<form>\n";
+    $out .=  "<input type='hidden' id='action' name='action' value='" . $searchData["action"] . "' />\n";
+    $out .=  "<input type='hidden' name='table' value='" . $searchData["table"] . "' />\n";
+    //"extraData" => array("word_list_id"=>$wordListId)
+    if($searchData["extraData"]){
+      foreach($searchData["extraData"] as $key=>$value){
+        $out .=  "<input type='hidden' name='" . htmlspecialchars($key) . "' value='" . htmlspecialchars($value). "' />\n";
+      }
+      
+    }
+    $out .= " Search: <input value='" . htmlspecialchars(gvfw($searchData["searchTerm"])) . "' id='" . $searchData["searchTerm"] . "' name='" . $searchData["searchTerm"] . "' onkeyup=\"" . str_replace("<id/>", "document.getElementById('" . $searchData["searchTerm"] . "').value", $searchData["onkeyup"] ). "\"></form>"; 
+
+  }
+  $out .= "<div class='list' id='list'>\n";
+
+  $out .="<div class='listheader'>\n";
+  $cellNumber = 0;
+ 
+  foreach($headerData as &$headerCell) {
+  	$out.= "<span class='headerlink' onclick='sortTable(event, " . $cellNumber . ")'>" . $headerCell['label'] . "</span>\n";
+    $cellNumber++;
+  }
+  if($toolsTemplate) {
+  
+    $out .= "<span></span>\n";
+  }
+  $out .= "</div>\n";
+  //$out .= "<div class='listbody' id='listbody'>\n";
+  for($rowCount = 0; $rowCount< count($rows); $rowCount++) {
+    $row = $rows[$rowCount]; 
+    $out .= "<div class='listrow'>\n";
+    foreach($headerData as &$headerItem) {
+      //var_dump($headerItem);
+      $name = gvfa("name", $headerItem);
+      $label = gvfa("label", $headerItem);
+      $accentColor = gvfa("accent_color", $headerItem, "#66eeee");
+      $function = gvfa("function", $headerItem);
+      if (array_key_exists("type", $headerItem)){
+        $type = $headerItem["type"];
+      } else {
+        $type = "text";
+      }
+      if (array_key_exists("template", $headerItem)){  //useful for having links outside the toolsTemplate section. we can ignore toolsTemplate in some situations
+        $template = $headerItem["template"];
+      } else {
+        $template = "";
+      }
+      $out .= "<span>";
+      $checkedString = " ";
+      $value = $row[$name];
+      if($function){ //allows us to have columns with values that are calculated from PHP
+      
+        $function =  tokenReplace($function, $row, $tableName) . ";"; 
+        //echo $function . "<P>";
+        try{
+          eval('$value = ' . $function);
+        }
+        catch(Exception  $err){
+          //echo $err;
+
+        }
+      }
+      if (gvfa("liveChangeable", $headerItem)) {
+        if($row[$name] == 1){
+          $checkedString = " checked ";
+          
+        }
+
+        if(($type == "color"  || $type == "text"  || $type == "number" || $type == "string") &&  $primaryKeyName != $name){
+          $hashedEntities =  crypt($name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
+          $out .= "<input style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",  this.value ,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\")' value='" . $value . "'  name='" . $name . "' type='" . $type . "' />\n";
+        } else if(($type == "checkbox" || $type == "bool")  &&  $primaryKeyName != $name) {
+          $hashedEntities =  crypt($name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
+          $out .= "<input style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",this.checked,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\")' name='" . $name . "' type='checkbox' value='1' " . $checkedString . "/>\n";
+        } else {
+          $out .= $row[$name];
+        }
+      } else {
+        if($template != "") {
+          $out .=  "<a href=\"" . tokenReplace($template, $row, $tableName) . "\">" . htmlspecialchars($value) . "</a>";
+        } else {
+          $out .=  htmlspecialchars($value);
+        }
+        
+      }
+      $out .= "</span>\n";
+    }
+    if($toolsTemplate) {
+      
+      $out .= "<span>" . tokenReplace($toolsTemplate,  $row, $tableName) . "</span>\n";
+    }
+    $out .= "</div>\n";
+  }
+  //$out .= "</div>\n";
+  $out .= "</div>\n";
+  if($autoRefreshSql) {
+    $encryptedSql = encryptLongString($autoRefreshSql, $encryptionPassword);
+    $out .= "<script>autoUpdate('" . $encryptedSql . "','" . addslashes(json_encode($headerData)) . "','list');</script>";
+
+  }
+  return $out;
+}
+
  
 
 function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null) { //aka genericList
@@ -1368,15 +1509,20 @@ function userList(){
   return $rows;
 }
 
-function download($path, $friendlyName){
-    $file = file_get_contents($path);
+function download($path, $friendlyName, $content = ""){
     header("Cache-Control: no-cache private");
     header("Content-Description: File Transfer");
     header('Content-disposition: attachment; filename='.$friendlyName);
     header("Content-Type: application/whatevs");
     header("Content-Transfer-Encoding: binary");
-    header('Content-Length: '. strlen($file));
-    echo $file;
+    if($path){
+      header('Content-Length: '. strlen($file));
+      $file = file_get_contents($path);
+      echo $file;
+    } else {
+      header('Content-Length: '. strlen($content));
+      echo $content;
+    }
     exit;
 }
 
@@ -1742,7 +1888,7 @@ function previousReportRuns($user, $reportId) {
   return $out;
 }
 
-function doReport($user, $reportId, $reportLogId = null){
+function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html"){
   Global $conn;
   $tenantId = $user["tenant_id"];
   $historicDataObject = null;
@@ -1861,7 +2007,14 @@ function doReport($user, $reportId, $reportLogId = null){
             $data .= "\n<canvas id=\"" . $canvasId . "\" style='display:block;'></canvas>\n";
             $data .= "\n<div id='visualizationCaption' style='padding:10px'></div>";
           } else {
-            $data .= genericTable($rows, null, null, null);
+
+            if($outputFormat == "csv") {
+              $content = generateCsvContent($rows);
+              download("", str_replace(" ", "_", $reportData["name"]) . ".csv", $content);
+              die();
+            } else {
+              $data .= genericTable($rows, null, null, null);
+            }
           }
         }
         
