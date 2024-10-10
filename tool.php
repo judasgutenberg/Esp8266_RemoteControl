@@ -25,7 +25,7 @@ $tenantId = gvfa("tenant_id", $user);
  
 $deviceId = gvfa('device_id', $_GET);
 $userId = gvfa("user_id", $user);
-$outputFormat = gvfa("output_format", $_GET);
+$outputFormat = gvfw("output_format");
 //used to impersonate another user
 
 $poser = getImpersonator(false);

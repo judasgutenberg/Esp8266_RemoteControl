@@ -325,7 +325,7 @@ function genericEntityList($tenantId, $table, $outputFormat = "html") {
     $thisDataRows = mysqli_fetch_all($thisDataResult, MYSQLI_ASSOC); 
     $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a>";
     $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
-    if($outputFormat == "csv") {
+    if(strtolower($outputFormat) == "csv") {
       $content = generateCsvContent($thisDataRows);
       download($path, $friendlyName, $content = "");
       die();
@@ -1121,7 +1121,7 @@ function tabNav($user) {
 }
 
 //a work in progress:
-function genericTableViaJs($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null) { //aka genericList
+function genericTableViaJs($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools = '') { //aka genericList
   Global $encryptionPassword;
   if($headerData == NULL  && $rows  && $rows[0]) {
     $headerData = [];
@@ -1160,6 +1160,7 @@ function genericTableViaJs($rows, $headerData = NULL, $toolsTemplate = NULL, $se
   	$out.= "<span class='headerlink' onclick='sortTable(event, " . $cellNumber . ")'>" . $headerCell['label'] . "</span>\n";
     $cellNumber++;
   }
+  $out.= "<span class='headertool'>" .  $tableTools . "</span>\n";
   if($toolsTemplate) {
   
     $out .= "<span></span>\n";
@@ -1243,7 +1244,7 @@ function genericTableViaJs($rows, $headerData = NULL, $toolsTemplate = NULL, $se
 
  
 
-function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null) { //aka genericList
+function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools = '') { //aka genericList
   Global $encryptionPassword;
   if($headerData == NULL  && $rows  && $rows[0]) {
     $headerData = [];
@@ -1279,6 +1280,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
   	$out.= "<span class='headerlink' onclick='sortTable(event, " . $cellNumber . ")'>" . $headerCell['label'] . "</span>\n";
     $cellNumber++;
   }
+  $out.= "<span class='headertool'>" .  $tableTools . "</span>\n";
   if($toolsTemplate) {
   
     $out .= "<span></span>\n";
@@ -1912,8 +1914,11 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
       }
     }
   }
+  //$displayDropdownConfig = json_decode('[{"text":"web","value":"web"},{"text":"CSV","value":"CSV"}]');
   $editButton = "<a href='?table=report&report_id=" . $reportId . "' class='basicbutton'>edit</a>";
   $reRunButton = "<a href='?action=fetch&table=report&report_id=" . $reportId . "' class='basicbutton'>run</a>";
+  $displayButtons = "<a class='basicbutton' href='?table=report&report_log_id=" . $reportLogId . "&report_id=" . $reportId . "&action=fetch&output_format=csv'>download CSV</a>";
+  //$displayDropdown = genericSelect("output_format", "output_format", $outputFormat, $displayDropdownConfig);
   $sql = "SELECT * FROM report WHERE report_id=" . intval($reportId) . " AND tenant_id=" . intval($tenantId);
   //die($sql);
   $result = mysqli_query($conn, $sql);
@@ -1960,12 +1965,20 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
         $decodedFormToUse = copyValuesFromSourceToDest($decodedFormToUse, $historicDataObject);
       }
 
+      $decodedFormToUse[] =      [
+        'label' => 'output format',
+        'name' => 'output_format',
+        'value' => $outputFormat,
+        'type' => 'select',
+        'values' => ['web', 'CSV']
+      ];
+
       $out .= genericForm($decodedFormToUse, "Run", "Running Report...", $user);
       $out .= "<div class='listtitle'>Past Runs:</div>";
       $out .= previousReportRuns($user, $reportId);
     } else {
       $ran = true;
-      $out = "<div class='listtitle'>Running Report  '" . $reportData["name"] . "' " . $editButton . " " . $reRunButton  . "</div>";
+      $out = "<div class='listtitle'>Running Report  '" . $reportData["name"] . "' " . $editButton . " " . $reRunButton  . " " . "</div>";
       //gotta merge form values in here:
       $sql =  tokenReplace($sql, $_POST);
       //die($sql);
@@ -2008,12 +2021,15 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
             $data .= "\n<div id='visualizationCaption' style='padding:10px'></div>";
           } else {
 
-            if($outputFormat == "csv") {
+            if(strtolower($outputFormat) == "csv") {
               $content = generateCsvContent($rows);
               download("", str_replace(" ", "_", $reportData["name"]) . ".csv", $content);
               die();
             } else {
-              $data .= genericTable($rows, null, null, null);
+              //$tableTools 
+              //function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools) { //aka genericList
+              
+              $data .= genericTable($rows, null, null, null, "", "", null, "");
             }
           }
         }
