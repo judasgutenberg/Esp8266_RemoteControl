@@ -435,6 +435,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
   Global $conn;
   $textareaIds = [];
 	$out = "";
+  $noWaiting = false;
   $onSubmitManyToManyItems = [];
   $out .= "<script>\n";
   $out .= "let formSpec = " . json_encode($data) . ";";
@@ -454,6 +455,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
 		$value = str_replace("\\\\", "\\", gvfa("value", $datum)); 
     //var_dump($datum);
 		$name = gvfa("name", $datum); 
+ 
 		$type = strtolower(gvfa("type", $datum)); 
     $accentColor = gvfa("accent_color", $datum, "#66eeee");
     //echo $name .  " " . $accentColor . "<BR>";
@@ -670,7 +672,10 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
 	$out .= "</div>\n";
 	$out .= "</form>\n";
   $out .= "\n<script>let onSubmitManyToManyItems=['" . implode("','", $onSubmitManyToManyItems) . "'];</script>\n";
-  $out = "<form name='genericForm' onsubmit='formSubmitTasks();startWaiting(\"" . $waitingMesasage . "\")' method='post' name='genericform' id='genericform' enctype='multipart/form-data'>\n" . $out;
+  
+  $onSubmit = "onsubmit='formSubmitTasks();startWaiting(\"" . $waitingMesasage . "\")'";
+ 
+  $out = "<form name='genericForm' " . $onSubmit . " method='post' name='genericform' id='genericform' enctype='multipart/form-data'>\n" . $out;
   if(count($textareaIds) > 0){
     
     $out .= "<script src=\"./tinymce/tinymce.min.js\" referrerpolicy=\"origin\"></script>\n";
@@ -1525,7 +1530,9 @@ function download($path, $friendlyName, $content = ""){
       header('Content-Length: '. strlen($content));
       echo $content;
     }
+ 
     exit;
+ 
 }
 
 function genericSelect($id, $name, $defaultValue, $data, $event = "", $handler= "") {
@@ -2024,7 +2031,8 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
             if(strtolower($outputFormat) == "csv") {
               $content = generateCsvContent($rows);
               download("", str_replace(" ", "_", $reportData["name"]) . ".csv", $content);
-              die();
+              $url = "?table=report&report_id=" . $reportId . "&report_log_id=" . $reportLogId . "&action=fetch";
+              header("Location: " . $url);
             } else {
               //$tableTools 
               //function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools) { //aka genericList

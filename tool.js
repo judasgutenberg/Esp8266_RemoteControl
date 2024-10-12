@@ -337,11 +337,25 @@ function getSelectedOptions(selectElement) {
 }
 
 function startWaiting(message){
-  var waitingBody = document.getElementById("waitingouter");
-  waitingBody.style.display = 'block';
-  var waitingMessage = document.getElementById("waitingmessage");
-  waitingMessage.innerHTML = message;
+	let showWaiting = true;
+    const forms = document.forms;
+    // Loop through each form
+    for (let form of forms) {
+        // Get the "output_format" select element within the form
+        const outputFormatSelect = form.elements['output_format'];
+        // Check if the select element exists and its value is "csv"
+        if (outputFormatSelect && outputFormatSelect.value.toLowerCase() === 'csv') {
+            showWaiting = false; // Found a match, return true
+        }
+    }
+	if(showWaiting) {
+		var waitingBody = document.getElementById("waitingouter");
+		waitingBody.style.display = 'block';
+		var waitingMessage = document.getElementById("waitingmessage");
+		waitingMessage.innerHTML = message;
+	}
 }
+
 function stopWaiting(){
   var waitingBody = document.getElementById("waitingouter");
   waitingBody.style.display = 'none';
