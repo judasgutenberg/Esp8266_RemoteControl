@@ -1,4 +1,4 @@
-<!doctype html>
+W<!doctype html>
 <?php 
 include("config.php");
 include("site_functions.php");

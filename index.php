@@ -207,7 +207,7 @@ window.onload = function() {
   console.log(new Date().toLocaleTimeString());
   let locationId = document.getElementById("locationDropdown")[document.getElementById("locationDropdown").selectedIndex].value;
   officialWeather(locationId);
-  //showGraph(5,10,4,58);
+  //showGraph(5,10,4,58);W
 };
 
  
