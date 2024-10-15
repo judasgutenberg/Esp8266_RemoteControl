@@ -104,7 +104,7 @@ if(!$user) {
 
 			//$scaleConfig = json_decode('[{"text":"ultra-fine","value":"ultra-fine"},{"text":"fine","value":"fine"},{"text":"hourly","value":"hour"}, {"text":"daily","value":"day"}]', true);
 			echo "<tr><td>Time Scale:</td><td>";
-			echo genericSelect("scaleDropdown", "scale", "day", $scaleConfig, "onchange", $handler);
+			echo genericSelect("scaleDropdown", "scale",  defaultFailDown(gvfw("scale"), "day"), $scaleConfig, "onchange", $handler);
 			echo "</td></tr>";
 			echo "<tr><td>Date/Time Begin:</td><td id='placeforscaledropdown'></td></tr>";
 			//echo "<script>createTimescalePeriodDropdown(scaleConfig, 31, 'fine', 'change', 'getInverterData()');</script>";
@@ -124,7 +124,7 @@ let batteryPercents = [];
 let batteryPercentsUnsmoothed = [];
 let timeStamp = [];
 
-function showGraph(locationId){
+function showGraph(){
 	//console.log(timeStamp);
 	if(glblChart){
 		glblChart.destroy();
@@ -238,20 +238,22 @@ window.onload = function() {
 //Ajax script to get ADC voltage at every 5 Seconds 
 //Read This tutorial https://circuits4you.com/2018/02/04/esp8266-ajax-update-part-of-web-page-without-refreshing/
 
-//getInverterData("<?php echo gvfw("locationId")?>");
-//setInterval(function() {
-  // Call a function repetatively with 5 Second interval
-  //getInverterData(locationId)
-  //;}, 5000)
-  //; //50000mSeconds update rate
- 
+
 let currentStartDate; //a global that needs to persist through HTTP sessions in the frontend
+let justLoaded = true;
 
 function getInverterData() {
+	
+	const queryParams = new URLSearchParams(window.location.search);
+	let scale = queryParams.get('scale');
+	if(!scale){
+		scale = "day";
+	}
+	let periodAgo = queryParams.get('period_ago');
+ 
 	//console.log("got data");
-	let scale = "fine";
-	let periodAgo = 0;
-	if(document.getElementById('scaleDropdown')){
+
+	if(document.getElementById('scaleDropdown') && !justLoaded){
 		scale = document.getElementById('scaleDropdown')[document.getElementById('scaleDropdown').selectedIndex].value;
 	}
 	//make the startDateDropdown switch to the appropriate item on the new scale:
@@ -259,7 +261,11 @@ function getInverterData() {
 
 
 	if(periodAgoDropdown){
-		periodAgo = periodAgoDropdown[periodAgoDropdown.selectedIndex].value;
+		if(!justLoaded){
+			periodAgo = periodAgoDropdown[periodAgoDropdown.selectedIndex].value;
+		} else {
+			periodAgo = 0;
+		}
 		if(currentStartDate == periodAgoDropdown[periodAgoDropdown.selectedIndex].text){
 			thisPeriod = periodAgo;
 			periodAgo = false;
@@ -324,7 +330,7 @@ function getInverterData() {
 			
 	    }
 		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
-		
+		justLoaded = false;
 	};
 	  
 
@@ -333,8 +339,10 @@ function getInverterData() {
   createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getInverterData()', 'inverter_log', '');
  
 }
+ 
+ 
 
-getInverterData(<?php echo $locationId?>);
+getInverterData();
 </script>
 </body>
 

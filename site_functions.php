@@ -2194,6 +2194,18 @@ function findRecordByKey($records, $keyName, $value) {
   return null;
 }
 
+function defaultFailDown($first, $second="", $third=""){
+  if($first){
+    return $first;
+  }
+  if($second){
+    return $second;
+  }
+  if($third){
+    return $third;
+  }
+}
+
 
 
  
