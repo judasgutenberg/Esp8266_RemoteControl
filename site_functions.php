@@ -1948,23 +1948,27 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
     $decodedForm = "";
     $decodedFormToUse = "";
     $output = null;
+    $outputs = [];
     if($form){
       $decodedForm = json_decode($form, true);
       if($decodedForm){
  
         if(array_key_exists("output", $decodedForm)) {
+          
           $output = $decodedForm["output"];
-          if(array_is_list($output)){
-            $outputCount = 1;
-            $outputs = [];
-            foreach($output as $specificOutput){
-              $outputName = gvfa("name", $specificOutput, "graph " . $outputCount);
-              $outputCount++;
-              $outputs[] = $outputName;
+          if(is_array($output)){
+            if(array_is_list($output)){
+              $outputCount = 1;
+              $outputs = [];
+              foreach($output as $specificOutput){
+                $outputName = gvfa("name", $specificOutput, "graph " . $outputCount);
+                $outputCount++;
+                $outputs[] = $outputName;
+              }
+            } else {
+              $outputName = gvfa("name", $output, "graph");
+              $outputs = [$outputName];
             }
-          } else {
-            $outputName = gvfa("name", $output, "graph");
-            $outputs = [$outputName];
           }
           //$decodedFormToUse = "";
           $decodedFormToUse = [];
@@ -2078,18 +2082,20 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
 
 function getOutputIfThereIsOne($outputFormat, $output) {
   $outputCount = 1;
-  if(array_is_list($output)){
-    foreach($output as $specificOutput){
-      $outputName = gvfa("name", $specificOutput, "graph " . $outputCount);
-      $outputCount++;
-      if($outputFormat == $outputName){
-        return $specificOutput;
+  if(is_array($output)){
+    if(array_is_list($output)){
+      foreach($output as $specificOutput){
+        $outputName = gvfa("name", $specificOutput, "graph " . $outputCount);
+        $outputCount++;
+        if($outputFormat == $outputName){
+          return $specificOutput;
+        }
       }
-    }
-  } else {
-    $outputName = gvfa("name", $output, "graph");
-    if($outputFormat == $outputName){
-      return $output;
+    } else {
+      $outputName = gvfa("name", $output, "graph");
+      if($outputFormat == $outputName){
+        return $output;
+      }
     }
   }
   return null;
