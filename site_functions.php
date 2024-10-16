@@ -1929,7 +1929,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
   $sql = "SELECT * FROM report WHERE report_id=" . intval($reportId) . " AND tenant_id=" . intval($tenantId);
   //die($sql);
   $result = mysqli_query($conn, $sql);
-
+  $unfoundName = "unnamed";
   $data = "";
   $out = "";
   $ran = false;
@@ -1961,7 +1961,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
               $outputCount = 1;
               $outputs = [];
               foreach($output as $specificOutput){
-                $outputName = gvfa("name", $specificOutput, "graph " . $outputCount);
+                $outputName = gvfa("name", $specificOutput, $unfoundName . " " . $outputCount);
                 $outputCount++;
                 $outputs[] = $outputName;
               }
@@ -2052,7 +2052,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
             //$tableTools 
             //function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools) { //aka genericList
             //echo "'" . $outputFormat . "'<BR>";
-            $outputIfThereIsOne = getOutputIfThereIsOne($outputFormat, $output);
+            $outputIfThereIsOne = getOutputIfThereIsOne($outputFormat, $output, $unfoundName);
             //var_dump($outputIfThereIsOne);
             if($outputIfThereIsOne == null) {
               $data .= genericTable($rows, null, null, null, "", "", null, "");
@@ -2080,19 +2080,19 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
   return $out;
 }
 
-function getOutputIfThereIsOne($outputFormat, $output) {
+function getOutputIfThereIsOne($outputFormat, $output, $unfoundName = "custom") {
   $outputCount = 1;
   if(is_array($output)){
     if(array_is_list($output)){
       foreach($output as $specificOutput){
-        $outputName = gvfa("name", $specificOutput, "graph " . $outputCount);
+        $outputName = gvfa("name", $specificOutput, $unfoundName . " " . $outputCount);
         $outputCount++;
         if($outputFormat == $outputName){
           return $specificOutput;
         }
       }
     } else {
-      $outputName = gvfa("name", $output, "graph");
+      $outputName = gvfa("name", $output, $unfoundName);
       if($outputFormat == $outputName){
         return $output;
       }
