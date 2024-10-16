@@ -1954,7 +1954,20 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
  
         if(array_key_exists("output", $decodedForm)) {
           $output = $decodedForm["output"];
-          $decodedFormToUse = "";
+          if(array_is_list($output)){
+            $outputCount = 1;
+            $outputs = [];
+            foreach($output as $specificOutput){
+              $outputName = gvfa("name", $specificOutput, "graph " . $outputCount);
+              $outputCount++;
+              $outputs[] = $outputName;
+            }
+          } else {
+            $outputName = gvfa("name", $output, "graph");
+            $outputs = [$outputName];
+          }
+          //$decodedFormToUse = "";
+          $decodedFormToUse = [];
         } else {
           $decodedFormToUse = $decodedForm;
         }
@@ -1963,6 +1976,8 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
         }
         
       }
+    } else {
+      $decodedFormToUse = [];
     }
     if($decodedFormToUse != "" && gvfw("action") == "fetch" || gvfw("action") == "rerun") {
       $out .= "<div class='listtitle'>Prepare to Run Report  '" . $reportData["name"] . "' " . $editButton . "</div>";
@@ -1971,14 +1986,20 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
 
         $decodedFormToUse = copyValuesFromSourceToDest($decodedFormToUse, $historicDataObject);
       }
+ 
+      $outputDropdownValues = ['web', 'CSV'];
+      if($outputs){
+        $outputDropdownValues = array_merge($outputDropdownValues, $outputs);
+      }
 
       $decodedFormToUse[] =      [
         'label' => 'output format',
         'name' => 'output_format',
         'value' => $outputFormat,
         'type' => 'select',
-        'values' => ['web', 'CSV']
+        'values' => $outputDropdownValues
       ];
+
 
       $out .= genericForm($decodedFormToUse, "Run", "Running Report...", $user);
       $out .= "<div class='listtitle'>Past Runs:</div>";
@@ -2018,28 +2039,31 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
         $reportLogResult = mysqli_query($conn, $reportLogSql);
         //var_dump($rows);
         if($rows) {
-          if($output != null) {
-            $output =  tokenReplace($output, $_POST); //there could be tokens in the output config
-            $canvasId = "statsCanvas";
-            $data .= "\n<script src = \"./tinycolor.js\"></script>\n";
-            $data .= "\n<script src = \"https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js\"></script>\n";
-            $data .= "\n<script>let reportData = " . json_encode($rows) . ";\nlet reportOutput = " . json_encode($output) . "\n;document.addEventListener('DOMContentLoaded', async () => {displayReport(" . $reportId . ",'" . $canvasId . "');});\n</script>\n";
-            $data .= "\n<canvas id=\"" . $canvasId . "\" style='display:block;'></canvas>\n";
-            $data .= "\n<div id='visualizationCaption' style='padding:10px'></div>";
+          if(strtolower($outputFormat) == "csv") {
+            $content = generateCsvContent($rows);
+            download("", str_replace(" ", "_", $reportData["name"]) . ".csv", $content);
+            $url = "?table=report&report_id=" . $reportId . "&report_log_id=" . $reportLogId . "&action=fetch";
+            header("Location: " . $url);
           } else {
-
-            if(strtolower($outputFormat) == "csv") {
-              $content = generateCsvContent($rows);
-              download("", str_replace(" ", "_", $reportData["name"]) . ".csv", $content);
-              $url = "?table=report&report_id=" . $reportId . "&report_log_id=" . $reportLogId . "&action=fetch";
-              header("Location: " . $url);
-            } else {
-              //$tableTools 
-              //function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools) { //aka genericList
-              
+            //$tableTools 
+            //function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools) { //aka genericList
+            //echo "'" . $outputFormat . "'<BR>";
+            $outputIfThereIsOne = getOutputIfThereIsOne($outputFormat, $output);
+            //var_dump($outputIfThereIsOne);
+            if($outputIfThereIsOne == null) {
               $data .= genericTable($rows, null, null, null, "", "", null, "");
+            } else {
+              $outputIfThereIsOne =  tokenReplace($outputIfThereIsOne, $_POST); //there could be tokens in the output config
+              $canvasId = "statsCanvas";
+              $data .= "\n<script src = \"./tinycolor.js\"></script>\n";
+              $data .= "\n<script src = \"https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js\"></script>\n";
+              $data .= "\n<script>let reportData = " . json_encode($rows) . ";\nlet reportOutput = " . json_encode($outputIfThereIsOne) . "\n;document.addEventListener('DOMContentLoaded', async () => {displayReport(" . $reportId . ",'" . $canvasId . "');});\n</script>\n";
+              $data .= "\n<canvas id=\"" . $canvasId . "\" style='display:block;'></canvas>\n";
+              $data .= "\n<div id='visualizationCaption' style='padding:10px'></div>";
             }
+            
           }
+          
         }
         
       }
@@ -2050,6 +2074,35 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
   }
   $out .= $data;
   return $out;
+}
+
+function getOutputIfThereIsOne($outputFormat, $output) {
+  $outputCount = 1;
+  if(array_is_list($output)){
+    foreach($output as $specificOutput){
+      $outputName = gvfa("name", $specificOutput, "graph " . $outputCount);
+      $outputCount++;
+      if($outputFormat == $outputName){
+        return $specificOutput;
+      }
+    }
+  } else {
+    $outputName = gvfa("name", $output, "graph");
+    if($outputFormat == $outputName){
+      return $output;
+    }
+  }
+  return null;
+}
+
+if (!function_exists('array_is_list')) {
+  function array_is_list(array $arr)
+  {
+      if ($arr === []) {
+          return true;
+      }
+      return array_keys($arr) === range(0, count($arr) - 1);
+  }
 }
 
 function replaceCharacterWithinQuotes($str, $char, $repl) {
