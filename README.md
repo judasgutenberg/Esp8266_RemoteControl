@@ -121,11 +121,12 @@ SELECT  &lt;changerX/&gt;, battery_percentage, solar_power, load_power, battery_
 
 the "values" parameter in the form JSON can also be a SQL string to generate a list of options from the database.  If so, the SQL needs to return a 'text' column for a proper dropdown list of options to be displayed. Obviously, anyone allowed to write such reports could wreak a lot of havoc with malicious SQL. A log of each report that is run is kept, and each log item is accessible via the web UI with enough information to allow it to be re-run with the same set of parameters as the original run.
 
-Here is the JSON for a report that generates a graph:
+Here is the JSON for a report that can generate a graph ("graph" will appear in a the output format dropdown):
 
 <code>
 {
   "output": {
+    "name": "graph",
     "labelColumn": "recorded",
     "colors": "ff0000,00ff00,0000ff",
     "color": "ff0000,00ff00,0000ff",
