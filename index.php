@@ -131,18 +131,14 @@ let temperatureValues = [];
 let humidityValues = [];
 let pressureValues = [];
 let timeStamp = [];
+let locations = [];
 
 function showGraph(locationId){
 	if(glblChart){
 		glblChart.destroy();
 	}
     let ctx = document.getElementById("Chart").getContext('2d');
- 
-    let Chart2 = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: timeStamp,  //Bottom Labeling
-            datasets: [{
+	let chartDataSet = [{
                 label: "Temperature",
                 fill: false,  //Try with true
                 backgroundColor: 'rgba( 243, 156, 18 , 1)', //Dot marker color
@@ -167,7 +163,29 @@ function showGraph(locationId){
 				yAxisID: 'B'
             },
             
-            ],
+            ];
+	if(locations.length > 0){
+		chartDataSet = [];
+		for(let [key, value] of Object.entries(locations)){
+			chartDataSet.push(
+			{
+            label: "Location #" + key,
+                fill: false,  //Try with true
+                backgroundColor: 'rgba(' + Math.floor(Math.random() * 255) + ',' + Math.floor(Math.random() * 255)+ ',' +  Math.floor(Math.random() * 255) + ',' +  Math.random() + ')', //Dot marker color
+                borderColor: 'rgba(' + Math.floor(Math.random() * 255) + ',' + Math.floor(Math.random() * 255)+ ',' +  Math.floor(Math.random() * 255) + ',' +  Math.random() + ')', //Graph Line Color
+                data: value,
+				yAxisID: 'A'
+            }
+
+			);
+		}
+
+	}
+    let Chart2 = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: timeStamp,  //Bottom Labeling
+            datasets: chartDataSet,
         },
         options: {
  
@@ -225,9 +243,18 @@ function getWeatherData() {
 	//console.log("got data");
 
 	const queryParams = new URLSearchParams(window.location.search);
+	let locationIdArray = [];
 	let scale = queryParams.get('scale');
 	let locationId = queryParams.get('location_id');
 	let periodAgo = queryParams.get('period_ago');
+	let locationIds = queryParams.get('location_ids');
+	let specificColumn = queryParams.get('specific_column');
+	if(locationIds == null) {
+		locationIds = "";
+	}
+	if(specificColumn == null) {
+		specificColumn = "";
+	}
 	if(!scale){
 		scale = "day";
 	}
@@ -259,7 +286,7 @@ function getWeatherData() {
 	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, periodAgo, scale, currentStartDate);
 	
 	let xhttp = new XMLHttpRequest();
-	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getData&locationId=" + locationId;
+	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&locationId=" + locationId + "&specific_column=" + specificColumn + "&location_ids=" + locationIds;
 	console.log(endpointUrl);
 	xhttp.onreadystatechange = function() {
 	    if (this.readyState == 4 && this.status == 200) {
@@ -268,6 +295,12 @@ function getWeatherData() {
 			humidityValues = [];
 			pressureValues = [];
 			timeStamp = [];
+			if(locationIds){
+				locationIdArray = locationIds.split(',');
+				for(let specificLocationId of locationIdArray){
+					locations[specificLocationId] = [];
+				}
+			}
 			let time = new Date().toLocaleTimeString();
 			//console.log(this.responseText);
 			let dataObject = JSON.parse(this.responseText); 
@@ -279,19 +312,29 @@ function getWeatherData() {
 					console.log(dataObject[0]["sql"], dataObject[0]["error"]);
 				} else {
 					for(let datum of dataObject) {
-						//console.log(datum);
-						let time = datum[2];
-						let temperature = datum[3];
-						temperature = temperature * (9/5) + 32;
-						//convert temperature to fahrenheitformula
-						let pressure = datum[4];
-						let humidity = datum[5];
-						temperatureValues.push(temperature);
-						humidityValues.push(humidity);
-						pressureSkewed = pressure;//so we can see some detail in pressure
-						if(pressure > 0) {
-							pressureValues.push(pressure); 
+						let time = datum["recorded"];
+						if(!specificColumn) {
+							let temperature = datum["temperature"];
+							temperature = temperature * (9/5) + 32;
+							//convert temperature to fahrenheitformula
+							let pressure = datum["pressure"];
+							let humidity = datum["humidity"];
+							temperatureValues.push(temperature);
+							humidityValues.push(humidity);
+							pressureSkewed = pressure;//so we can see some detail in pressure
+							if(pressure > 0) {
+								pressureValues.push(pressure); 
+							}
+						} else {
+							locationId = datum["location_id"];
+							let value = datum[specificColumn];
+							if(specificColumn == "temperature"){
+								value = value * (9/5) + 32;
+							}
+							locations[locationId].push(value);
 						}
+ 
+
 						timeStamp.push(time);
 					}
 				}

@@ -1,4 +1,4 @@
-W<!doctype html>
+<!doctype html>
 <?php 
 include("config.php");
 include("site_functions.php");
@@ -296,13 +296,11 @@ function getInverterData() {
 				if(dataObject[0]["sql"]){
 					console.log(dataObject[0]["sql"], dataObject[0]["error"]);
 				} else {
-					for(let datum of dataObject[0]) {
+					for(let datum of dataObject) {
 						//console.log(datum);
 						//console.log("!");
 						let time = datum["recorded"];
 						let panel = datum["solar_power"];
-			
-		
 						let load = datum["load_power"];
 						let battery = datum["battery_power"];
 						let batteryPercent = datum["battery_percentage"];

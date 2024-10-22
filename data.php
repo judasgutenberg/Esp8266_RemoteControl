@@ -44,7 +44,7 @@ $user = autoLogin(); //if we are using this as a backend for the inverter or wea
 if(array_key_exists("mode", $_REQUEST)) {
 	$mode = $_REQUEST["mode"];
 } else {
-	$mode = "getData";
+	$mode = "getWeatherData";
 }
  
 if($_POST) {
@@ -52,7 +52,7 @@ if($_POST) {
 }
 if($_REQUEST) {
 	$periodAgo = 0;
-	$scale = "";
+	$scale = "day";
 	if(array_key_exists("scale", $_REQUEST)) {
 		$scale = $_REQUEST["scale"];
 	} 
@@ -63,10 +63,12 @@ if($_REQUEST) {
 		$storagePassword  = $_REQUEST["storagePassword"];
 	} else if($user) {
 		$storagePassword  = $user['storage_password'];
-		if(!in_array($mode, ["getOfficialWeatherData", "getInverterData", "getData", "getEarliestRecorded"])){ //keeps certain kinds of hacks from working
+		if(!in_array($mode, ["getOfficialWeatherData", "getInverterData", "getWeatherData", "getEarliestRecorded"])){ //keeps certain kinds of hacks from working
 			die(json_encode(["error"=>"your brilliant hack has failed"]));
 		}
 	}
+	
+	$specificColumn = gvfw("specific_column");
 	if($storagePassword){
 		$deviceIds = deriveDeviceIdsFromStoragePassword($storagePassword);
 	}
@@ -86,7 +88,11 @@ if($_REQUEST) {
 		$deviceId = $locationId;
 	}
 	if($locationId == ""){
-		$locationId = 1;
+		$locationId = 1; //need to revisit this for multiuser/multitenant
+	}
+	$locationIds = gvfw("location_ids");
+	if(!$locationIds){
+		$locationIds = $locationId;
 	}
 	$canAccessData = array_search($locationId, $deviceIds) !== false;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
 	if($canAccessData) {		
@@ -258,11 +264,8 @@ if($_REQUEST) {
 					if($sql) {
 						$result = mysqli_query($conn, $sql);
 						$error = mysqli_error($conn);
-						$out = [];
 						if($result && $canAccessData) {
-							while($row = mysqli_fetch_all($result, MYSQLI_ASSOC)) {
-								array_push($out, $row);
-							}
+							$out = mysqli_fetch_all($result, MYSQLI_ASSOC);
 						}
 						if(count($out) <1){
 							array_push($out, ["sql" => $sql, "error"=>$error]);
@@ -271,7 +274,7 @@ if($_REQUEST) {
 				}
 				$method  = "read";	
 
-			} else if ($mode=="getData") {
+			} else if ($mode=="getWeatherData") {
 				if(!$conn) {
 					$out = ["error"=>"bad database connection"];
 				} else {
@@ -282,9 +285,12 @@ if($_REQUEST) {
 					$periodScale = $scaleRecord["period_scale"];
 					$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
 					$groupBy = gvfa("group_by", $scaleRecord, "");
-
-					$sql = "SELECT * FROM " . $database . ".weather_data  
-						WHERE  location_id=" . $locationId . " AND recorded > DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . ") ";
+					if($specificColumn) {
+						$sql = "SELECT " . filterStringForSqlEntities($specificColumn)  . ", location_id, recorded FROM " . $database . ".weather_data WHERE  location_id IN (" . $locationIds . ") ";
+					} else {
+						$sql = "SELECT * FROM " . $database . ".weather_data WHERE  location_id=" . $locationId;
+					}
+					$sql .= " AND recorded > DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . ") ";
 					if($periodAgo  > 0) {
 						$sql .= " AND recorded < DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo) + $initialOffset)) . " " . $periodScale . ") "; 
 					}
@@ -296,11 +302,8 @@ if($_REQUEST) {
 					if($sql) {
 						$result = mysqli_query($conn, $sql);
 						$error = mysqli_error($conn);
-						$out = [];
 						if($result && $canAccessData) {
-							while($row = mysqli_fetch_array($result)) {
-								array_push($out, $row);
-							}
+							$out = mysqli_fetch_all($result, MYSQLI_ASSOC);
 						}
 						if(count($out) < 1){
 							array_push($out, ["sql" => $sql, "error"=>$error]);
