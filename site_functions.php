@@ -94,6 +94,11 @@ function bodyWrap($content, $user, $deviceId, $poser = null) {
   return $out;
 }
 
+function filterCommasAndDigits($input) {
+  // Use a regular expression to keep only commas and digits
+  return preg_replace('/[^,\d]/', '', $input);
+}
+
 function filterStringForSqlEntities($input) {
   // Replace characters that are not letters, numbers, dashes, or underscores with an empty string
   $filtered = preg_replace('/[^a-zA-Z0-9-_]/', '', $input);

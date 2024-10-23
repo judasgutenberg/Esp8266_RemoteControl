@@ -95,6 +95,7 @@ if(!$user) {
 		</div>
 		<div>
 			<div style='display:inline-block;vertical-align:top'>
+				<div class='listtitle'><input type='radio' id='plottype' name='plottype' value='single'>Single-location Plot</div>
 				<table id="dataTable">
 				<?php 
 				//lol, it's easier to specify an object in json and decode it than it is just specify it in PHP
@@ -118,7 +119,9 @@ if(!$user) {
 				?>
 				</table>
 		</div>
-		<div style='display:inline-block' id='officialweather'>
+		<div style='display:inline-block;vertical-align:top' id='multiplot'>
+		</div>
+		<div style='display:inline-block;vertical-align:top' id='officialweather'>
 		</div>
 	</div>
 <!--</div>-->
@@ -132,12 +135,14 @@ let humidityValues = [];
 let pressureValues = [];
 let timeStamp = [];
 let locations = [];
+let devices = [];
 
 function showGraph(locationId){
 	if(glblChart){
 		glblChart.destroy();
 	}
     let ctx = document.getElementById("Chart").getContext('2d');
+	let timeStampLabels = [];
 	let chartDataSet = [{
                 label: "Temperature",
                 fill: false,  //Try with true
@@ -164,27 +169,40 @@ function showGraph(locationId){
             },
             
             ];
+	timeStampLabels = timeStamp;
 	if(locations.length > 0){
+		timeStampLabels = [];
 		chartDataSet = [];
-		for(let [key, value] of Object.entries(locations)){
+		for(let key in locations){
+			let value = locations[key];
+			//console.log("key:", key);
+			//console.log(value["values"]);
 			chartDataSet.push(
-			{
-            label: "Location #" + key,
-                fill: false,  //Try with true
-                backgroundColor: 'rgba(' + Math.floor(Math.random() * 255) + ',' + Math.floor(Math.random() * 255)+ ',' +  Math.floor(Math.random() * 255) + ',' +  Math.random() + ')', //Dot marker color
-                borderColor: 'rgba(' + Math.floor(Math.random() * 255) + ',' + Math.floor(Math.random() * 255)+ ',' +  Math.floor(Math.random() * 255) + ',' +  Math.random() + ')', //Graph Line Color
-                data: value,
-				yAxisID: 'A'
-            }
-
+				{
+				label: findObjectByColumn(devices, "device_id", key)["location_name"],
+					fill: false,  //Try with true
+					backgroundColor: 'rgba(' + Math.floor(Math.random() * 255) + ',' + Math.floor(Math.random() * 255)+ ',' +  Math.floor(Math.random() * 255) + ',' +  Math.random() + ')', //Dot marker color
+					borderColor: 'rgba(' + Math.floor(Math.random() * 255) + ',' + Math.floor(Math.random() * 255)+ ',' +  Math.floor(Math.random() * 255) + ',' +  Math.random() + ')', //Graph Line Color
+					data: value["values"],
+					tension: 0.1,
+					yAxisID: 'A'
+				}
 			);
+			//console.log(value.timeStamps);
+			//if(key == 1) {
+				//timeStampLabels = [];
+				timeStampLabels.push(...value.timeStamps);
+			//}
 		}
+		//console.log(timeStampLabels);
 
 	}
+	timeStampLabels.sort();
+	//console.log(timeStampLabels);
     let Chart2 = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: timeStamp,  //Bottom Labeling
+            labels: timeStampLabels,  //Bottom Labeling
             datasets: chartDataSet,
         },
         options: {
@@ -214,9 +232,12 @@ function showGraph(locationId){
 			 
 	            }
 				]
-            }
+            },
+			spanGaps: true  // Connects the dots, even if there are gaps (null values)
         }
     });
+	console.log(timeStamp.length);
+	console.log(timeStamp);
 	return Chart2;
 }
 
@@ -298,7 +319,7 @@ function getWeatherData() {
 			if(locationIds){
 				locationIdArray = locationIds.split(',');
 				for(let specificLocationId of locationIdArray){
-					locations[specificLocationId] = [];
+					locations[specificLocationId] = {"values": [], "timeStamps": []};
 				}
 			}
 			let time = new Date().toLocaleTimeString();
@@ -311,7 +332,9 @@ function getWeatherData() {
 				if(dataObject[0] && dataObject[0]["sql"]){
 					console.log(dataObject[0]["sql"], dataObject[0]["error"]);
 				} else {
-					for(let datum of dataObject) {
+					devices = dataObject["devices"]; //for proper labels in the graph
+					//console.log(devices);
+					for(let datum of dataObject["records"]) {
 						let time = datum["recorded"];
 						if(!specificColumn) {
 							let temperature = datum["temperature"];
@@ -325,22 +348,31 @@ function getWeatherData() {
 							if(pressure > 0) {
 								pressureValues.push(pressure); 
 							}
+							timeStamp.push(time);
 						} else {
 							locationId = datum["location_id"];
 							let value = datum[specificColumn];
 							if(specificColumn == "temperature"){
 								value = value * (9/5) + 32;
 							}
-							locations[locationId].push(value);
+							locations[locationId]["values"].push(value);
+							for(let specificLocationId of locationIdArray){
+								if(specificLocationId != locationId){
+									locations[specificLocationId]["values"].push(null);
+								}
+							}
+
+							locations[locationId]["timeStamps"].push(time);
 						}
  
 
-						timeStamp.push(time);
+						
 					}
 				}
 			}
 			glblChart = showGraph(locationId);  //Update Graphs
 			officialWeather(locationId);
+			showMultiplotOptions();
 	    }
 		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
 		
@@ -349,7 +381,26 @@ function getWeatherData() {
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
   xhttp.send();
   createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getWeatherData()', 'weather_data', locationId);
+  
   justLoaded = false;
+}
+
+function showMultiplotOptions(){
+	weatherColumns = ["temperature", "pressure", "humidity"];
+	let out = "<div class='listtitle'><input type='radio' id='plottype' name='plottype' value='multi'>Multi-location Plot</div>"
+	out += "<div>Weather Column: <select id='specificColumn'>";
+	for(let column of weatherColumns){
+		out += "<option>" + column + "</option>";
+	}
+	out += "</select></div>";
+	out += "<div>";
+	for(let device of devices){
+		out += "<div><input name='specificDevice' type='checkbox' value='" + device["device_id"] + "'/> ";
+		out += device["location_name"];
+		out += "</div>";
+	}
+	out += "</div>";
+	document.getElementById("multiplot").innerHTML = out;
 }
 
 

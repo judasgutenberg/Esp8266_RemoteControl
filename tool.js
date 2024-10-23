@@ -374,6 +374,10 @@ function findObjectByName(array, nameValue) {
     return array.find(obj => obj.name === nameValue);
 }
 
+function findObjectByColumn(array, column, columnValue) {
+    return array.find(obj => obj[column] === columnValue);
+}
+
 function stripXMLTags(input) {
 	return input.replace(/<[^>]*>/g, '');
 }

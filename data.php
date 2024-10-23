@@ -251,7 +251,7 @@ if($_REQUEST) {
 					$periodScale = $scaleRecord["period_scale"];
 					$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
 					$groupBy = gvfa("group_by", $scaleRecord, "");
-					$sql = "SELECT * FROM " . $database . ".inverter_log  
+					$sql = "SELECT * FROM inverter_log  
 						WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . ") ";
 					if($periodAgo  > 0) {
 						$sql .= " AND recorded < DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo) + $initialOffset)) . " " . $periodScale . ") "; 
@@ -286,9 +286,10 @@ if($_REQUEST) {
 					$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
 					$groupBy = gvfa("group_by", $scaleRecord, "");
 					if($specificColumn) {
-						$sql = "SELECT " . filterStringForSqlEntities($specificColumn)  . ", location_id, recorded FROM " . $database . ".weather_data WHERE  location_id IN (" . $locationIds . ") ";
+						//to revisit:  need to figure out a way to keep users without a location_id from seeing someone else's devices
+						$sql = "SELECT " . filterStringForSqlEntities($specificColumn)  . ", location_id, recorded FROM weather_data WHERE  location_id IN (" . filterCommasAndDigits($locationIds) . ") ";
 					} else {
-						$sql = "SELECT * FROM " . $database . ".weather_data WHERE  location_id=" . $locationId;
+						$sql = "SELECT * FROM weather_data WHERE  location_id=" . $locationId;
 					}
 					$sql .= " AND recorded > DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . ") ";
 					if($periodAgo  > 0) {
@@ -303,7 +304,16 @@ if($_REQUEST) {
 						$result = mysqli_query($conn, $sql);
 						$error = mysqli_error($conn);
 						if($result && $canAccessData) {
-							$out = mysqli_fetch_all($result, MYSQLI_ASSOC);
+							$out["records"] = mysqli_fetch_all($result, MYSQLI_ASSOC);
+						}
+						if($specificColumn) { //we need info about the locations if we are plotting data from multiple ones
+							$sql = "SELECT * FROM device WHERE tenant_id = " . $user["tenant_id"];
+							//die($sql);
+							$result = mysqli_query($conn, $sql);
+							$error = mysqli_error($conn);
+							if($result && $canAccessData) {
+								$out["devices"] = mysqli_fetch_all($result, MYSQLI_ASSOC);
+							}
 						}
 						if(count($out) < 1){
 							array_push($out, ["sql" => $sql, "error"=>$error]);
