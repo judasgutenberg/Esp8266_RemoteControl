@@ -47,6 +47,16 @@ if(!$user) {
 	die();
 }
  
+function multiDevicePicker($tenantId) {
+	$devices = getDevices($tenantId);
+	$out = "";
+	foreach($devices as $device){
+		$out .= "<div><input onchange='getWeatherData()' name='specificDevice' type='checkbox' value='" . $device["device_id"] . "'/> ";
+		$out .= $device["location_name"];
+		$out .= "</div>";
+	}
+	return $out;
+}
 ?>
 <html>
 
@@ -94,7 +104,20 @@ if(!$user) {
 			<canvas id="Chart" width="400" height="700"></canvas>
 		</div>
 		<div>
-			<div style='display:inline-block;vertical-align:top'>
+		<div style='display:inline-block;vertical-align:top'>
+			<?php
+				$selectId = "locationDropdown";
+				$handler = "getWeatherData()";
+				echo "\n<table>\n";
+				echo "<tr><td>Time Scale:</td><td>";
+				echo genericSelect("scaleDropdown", "scale", defaultFailDown(gvfw("scale"), "day"), $scaleConfig, "onchange", $handler);
+				echo "</td></tr>";
+				echo "<tr><td>Date/Time Begin:</td><td id='placeforscaledropdown'></td></tr>";
+				echo "\n</table>\n";
+				?>
+				</div>
+
+				<div style='display:inline-block;vertical-align:top'>
 				<div class='listtitle'><input type='radio' id='plottype' name='plottype' value='single'>Single-location Plot</div>
 				<table id="dataTable">
 				<?php 
@@ -109,17 +132,20 @@ if(!$user) {
 				//$selectData = json_decode('[{"text":"Outside Cabin","value":1},{"text":"Cabin Downstairs","value":2},{"text":"Cabin Watchdog","value":3}]');
 				//var_dump($selectData);
 				//echo  json_last_error_msg();
-				$selectId = "locationDropdown";
-				$handler = "getWeatherData()";
+				
 				echo "<tr><td>Location:</td><td>" . genericSelect($selectId, "locationId", defaultFailDown(gvfw("location_id"), $locationId), $selectData, "onchange", $handler) . "</td></tr>";
-				echo "<tr><td>Time Scale:</td><td>";
-				echo genericSelect("scaleDropdown", "scale", defaultFailDown(gvfw("scale"), "day"), $scaleConfig, "onchange", $handler);
-				echo "</td></tr>";
-				echo "<tr><td>Date/Time Begin:</td><td id='placeforscaledropdown'></td></tr>";
 				?>
 				</table>
 		</div>
 		<div style='display:inline-block;vertical-align:top' id='multiplot'>
+		<?php
+			echo "<div class='listtitle'><input type='radio' id='plottype' name='plottype' value='multi'>Multi-location Plot</div>";
+			echo "<div>Weather Column: ";
+			$weatherColumns = [["value"=>"temperature", "text"=>"temperature"], ["value"=>"pressure", "text"=>"pressure"], ["value"=>"humidity", "text"=>"humidity"]];
+			echo "</div>";
+			echo genericSelect("specific_column", "specific_column", defaultFailDown(gvfw("specific_column"), "temperature"), $weatherColumns, "onchange", $handler);
+			echo multiDevicePicker($user["tenant_id"]);
+		?>
 		</div>
 		<div style='display:inline-block;vertical-align:top' id='officialweather'>
 		</div>
@@ -173,9 +199,10 @@ function showGraph(locationId){
 	if(locations.length > 0){
 		timeStampLabels = [];
 		chartDataSet = [];
+		console.log(locations);
 		for(let key in locations){
 			let value = locations[key];
-			//console.log("key:", key);
+			console.log("key:", key);
 			//console.log(value["values"]);
 			chartDataSet.push(
 				{
@@ -288,6 +315,41 @@ function getWeatherData() {
 	if(document.getElementById('scaleDropdown')  && !justLoaded){
 		scale = document.getElementById('scaleDropdown')[document.getElementById('scaleDropdown').selectedIndex].value;
 	}	
+	
+	if(!justLoaded){
+		specificColumn = document.getElementById('specific_column')[document.getElementById('specific_column').selectedIndex].value;
+	} else {
+		let specificColumnSelect = document.getElementById('specific_column');
+		if(specificColumnSelect) {
+			let index = 0;
+			for(let option of specificColumnSelect.options) {
+				if (option == specificColumn){
+					specificColumnSelect.selectedIndex = index;
+				}
+				index++;
+			}
+		}
+	}
+
+	let specificDevices = document.getElementsByName('specificDevice');
+	if(!justLoaded){
+		locationIds = "";
+		for(let device of specificDevices){
+			if(device.checked){
+				locationIds += device.value + ",";
+			}
+		}
+		locationIds = locationIds.slice(0, -1);
+		console.log("suspicious2", locationIds);
+	} else {
+		let locationIdArray = locationIds.split(",");
+		for(let device of specificDevices){
+			if(locationIdArray.includes(device.value)){
+				device.checked = true;
+			}
+		}
+	}
+
 	//make the startDateDropdown switch to the appropriate item on the new scale:
 	let periodAgoDropdown = document.getElementById('startDateDropdown');	
 
@@ -319,6 +381,7 @@ function getWeatherData() {
 			if(locationIds){
 				locationIdArray = locationIds.split(',');
 				for(let specificLocationId of locationIdArray){
+					console.log("suspicious", specificLocationId);
 					locations[specificLocationId] = {"values": [], "timeStamps": []};
 				}
 			}
@@ -372,7 +435,7 @@ function getWeatherData() {
 			}
 			glblChart = showGraph(locationId);  //Update Graphs
 			officialWeather(locationId);
-			showMultiplotOptions();
+ 
 	    }
 		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
 		
@@ -384,25 +447,6 @@ function getWeatherData() {
   
   justLoaded = false;
 }
-
-function showMultiplotOptions(){
-	weatherColumns = ["temperature", "pressure", "humidity"];
-	let out = "<div class='listtitle'><input type='radio' id='plottype' name='plottype' value='multi'>Multi-location Plot</div>"
-	out += "<div>Weather Column: <select id='specificColumn'>";
-	for(let column of weatherColumns){
-		out += "<option>" + column + "</option>";
-	}
-	out += "</select></div>";
-	out += "<div>";
-	for(let device of devices){
-		out += "<div><input name='specificDevice' type='checkbox' value='" + device["device_id"] + "'/> ";
-		out += device["location_name"];
-		out += "</div>";
-	}
-	out += "</div>";
-	document.getElementById("multiplot").innerHTML = out;
-}
-
 
 function timeConverter(UNIX_timestamp){
   var a = new Date(UNIX_timestamp * 1000);

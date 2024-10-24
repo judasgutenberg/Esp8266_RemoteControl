@@ -306,15 +306,15 @@ if($_REQUEST) {
 						if($result && $canAccessData) {
 							$out["records"] = mysqli_fetch_all($result, MYSQLI_ASSOC);
 						}
-						if($specificColumn) { //we need info about the locations if we are plotting data from multiple ones
-							$sql = "SELECT * FROM device WHERE tenant_id = " . $user["tenant_id"];
-							//die($sql);
-							$result = mysqli_query($conn, $sql);
-							$error = mysqli_error($conn);
-							if($result && $canAccessData) {
-								$out["devices"] = mysqli_fetch_all($result, MYSQLI_ASSOC);
-							}
+						 //we need info about the locations if we are plotting data from multiple ones
+						$sql = "SELECT * FROM device WHERE tenant_id = " . $user["tenant_id"];
+						//die($sql);
+						$result = mysqli_query($conn, $sql);
+						$error = mysqli_error($conn);
+						if($result && $canAccessData) {
+							$out["devices"] = mysqli_fetch_all($result, MYSQLI_ASSOC);
 						}
+ 
 						if(count($out) < 1){
 							array_push($out, ["sql" => $sql, "error"=>$error]);
 						}
