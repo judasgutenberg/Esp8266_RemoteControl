@@ -118,7 +118,7 @@ function multiDevicePicker($tenantId) {
 				</div>
 
 				<div style='display:inline-block;vertical-align:top'>
-				<div class='listtitle'><input type='radio' id='plottype' name='plottype' value='single'>Single-location Plot</div>
+				<div class='listtitle'><input type='radio' id='plottype' name='plottype' checked onchange="<?php echo $handler;?>" value='single'>Single-location Plot</div>
 				<table id="dataTable">
 				<?php 
 				//lol, it's easier to specify an object in json and decode it than it is just specify it in PHP
@@ -126,7 +126,7 @@ function multiDevicePicker($tenantId) {
 				$thisDataSql = "SELECT location_name as text, device_id as value FROM device WHERE location_name <> '' AND location_name IS NOT NULL AND tenant_id=" . intval($user["tenant_id"]) . " ORDER BY location_name ASC;";
 				$result = mysqli_query($conn, $thisDataSql);
 				if($result) {
-				$selectData = mysqli_fetch_all($result, MYSQLI_ASSOC); 
+					$selectData = mysqli_fetch_all($result, MYSQLI_ASSOC); 
 				}
 
 				//$selectData = json_decode('[{"text":"Outside Cabin","value":1},{"text":"Cabin Downstairs","value":2},{"text":"Cabin Watchdog","value":3}]');
@@ -139,7 +139,7 @@ function multiDevicePicker($tenantId) {
 		</div>
 		<div style='display:inline-block;vertical-align:top' id='multiplot'>
 		<?php
-			echo "<div class='listtitle'><input type='radio' id='plottype' name='plottype' value='multi'>Multi-location Plot</div>";
+			echo "<div class='listtitle'><input type='radio' id='plottype' name='plottype' onchange='" . $handler . "' value='multi'>Multi-location Plot</div>";
 			echo "<div>Weather Column: ";
 			$weatherColumns = [["value"=>"temperature", "text"=>"temperature"], ["value"=>"pressure", "text"=>"pressure"], ["value"=>"humidity", "text"=>"humidity"]];
 			echo "</div>";
@@ -196,13 +196,14 @@ function showGraph(locationId){
             
             ];
 	timeStampLabels = timeStamp;
+	let graphSubtitle = findObjectByColumn(devices, "device_id", locationId)["location_name"] + " data";
 	if(locations.length > 0){
 		timeStampLabels = [];
 		chartDataSet = [];
-		console.log(locations);
+		//console.log("what gets graphed", locations);
 		for(let key in locations){
 			let value = locations[key];
-			console.log("key:", key);
+			//console.log("key:", key);
 			//console.log(value["values"]);
 			chartDataSet.push(
 				{
@@ -222,6 +223,7 @@ function showGraph(locationId){
 			//}
 		}
 		//console.log(timeStampLabels);
+		graphSubtitle = document.getElementById("specific_column")[document.getElementById("specific_column").selectedIndex].value + " data";
 
 	}
 	timeStampLabels.sort();
@@ -237,7 +239,7 @@ function showGraph(locationId){
             hover: {mode: null},
             title: {
                     display: true,
-                    text: "Probe data"
+                    text: graphSubtitle
                 },
             maintainAspectRatio: false,
             elements: {
@@ -263,8 +265,8 @@ function showGraph(locationId){
 			spanGaps: true  // Connects the dots, even if there are gaps (null values)
         }
     });
-	console.log(timeStamp.length);
-	console.log(timeStamp);
+	//console.log(timeStamp.length);
+	//console.log(timeStamp);
 	return Chart2;
 }
 
@@ -296,7 +298,14 @@ function getWeatherData() {
 	let locationId = queryParams.get('location_id');
 	let periodAgo = queryParams.get('period_ago');
 	let locationIds = queryParams.get('location_ids');
+	let plotType = "single";
 	let specificColumn = queryParams.get('specific_column');
+	for(let radio of document.getElementsByName("plottype")){
+		if(radio.checked){
+			plotType = radio.value;
+		}
+	}
+	console.log(plotType);
 	if(locationIds == null) {
 		locationIds = "";
 	}
@@ -306,8 +315,9 @@ function getWeatherData() {
 	if(!scale){
 		scale = "day";
 	}
+	let locationIdDropdown = document.getElementById('locationDropdown');
 	if(!locationId){
-		locationId  = document.getElementById('locationDropdown')[document.getElementById('locationDropdown').selectedIndex].value
+		locationId  =locationIdDropdown[locationIdDropdown.selectedIndex].value
 	}
 	if(!locationId){
 		locationId = <?php echo $locationId ?>;
@@ -316,10 +326,12 @@ function getWeatherData() {
 		scale = document.getElementById('scaleDropdown')[document.getElementById('scaleDropdown').selectedIndex].value;
 	}	
 	
+
+	let specificColumnSelect = document.getElementById('specific_column');
 	if(!justLoaded){
 		specificColumn = document.getElementById('specific_column')[document.getElementById('specific_column').selectedIndex].value;
 	} else {
-		let specificColumnSelect = document.getElementById('specific_column');
+		
 		if(specificColumnSelect) {
 			let index = 0;
 			for(let option of specificColumnSelect.options) {
@@ -340,7 +352,6 @@ function getWeatherData() {
 			}
 		}
 		locationIds = locationIds.slice(0, -1);
-		console.log("suspicious2", locationIds);
 	} else {
 		let locationIdArray = locationIds.split(",");
 		for(let device of specificDevices){
@@ -369,7 +380,21 @@ function getWeatherData() {
 	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, periodAgo, scale, currentStartDate);
 	
 	let xhttp = new XMLHttpRequest();
-	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&locationId=" + locationId + "&specific_column=" + specificColumn + "&location_ids=" + locationIds;
+	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&locationId=" + locationId;
+	if(plotType == 'multi'){
+		endpointUrl += "&specific_column=" + specificColumn + "&location_ids=" + locationIds;
+		locationIdDropdown.disabled = true;
+		specificColumnSelect.disabled = false;
+		for(let specificDevice of specificDevices) {
+			specificDevice.disabled = false;
+		}
+	} else {
+		locationIdDropdown.disabled = false;
+		specificColumnSelect.disabled = true;
+		for(let specificDevice of specificDevices) {
+			specificDevice.disabled = true;
+		}
+	}
 	console.log(endpointUrl);
 	xhttp.onreadystatechange = function() {
 	    if (this.readyState == 4 && this.status == 200) {
@@ -378,10 +403,10 @@ function getWeatherData() {
 			humidityValues = [];
 			pressureValues = [];
 			timeStamp = [];
-			if(locationIds){
+			locations = [];
+			if(plotType == "multi"){
 				locationIdArray = locationIds.split(',');
 				for(let specificLocationId of locationIdArray){
-					console.log("suspicious", specificLocationId);
 					locations[specificLocationId] = {"values": [], "timeStamps": []};
 				}
 			}
@@ -390,7 +415,7 @@ function getWeatherData() {
 			let dataObject = JSON.parse(this.responseText); 
 			//let tbody = document.getElementById("tableBody");
 			//tbody.innerHTML = '';
-			//console.log(dataObject);
+			console.log(dataObject);
 			if(dataObject) {
 				if(dataObject[0] && dataObject[0]["sql"]){
 					console.log(dataObject[0]["sql"], dataObject[0]["error"]);
@@ -399,7 +424,23 @@ function getWeatherData() {
 					//console.log(devices);
 					for(let datum of dataObject["records"]) {
 						let time = datum["recorded"];
-						if(!specificColumn) {
+						if(plotType == "multi") {
+;							locationId = datum["location_id"];
+							let value = datum[specificColumn];
+							if(specificColumn == "temperature"){
+								value = value * (9/5) + 32;
+							}
+							if(locations[locationId]) {
+								locations[locationId]["values"].push(value);
+
+								for(let specificLocationId of locationIdArray){
+									if(specificLocationId != locationId){
+										locations[specificLocationId]["values"].push(null);
+									}
+								}
+								locations[locationId]["timeStamps"].push(time);
+							}
+						} else {
 							let temperature = datum["temperature"];
 							temperature = temperature * (9/5) + 32;
 							//convert temperature to fahrenheitformula
@@ -411,21 +452,9 @@ function getWeatherData() {
 							if(pressure > 0) {
 								pressureValues.push(pressure); 
 							}
-							timeStamp.push(time);
-						} else {
-							locationId = datum["location_id"];
-							let value = datum[specificColumn];
-							if(specificColumn == "temperature"){
-								value = value * (9/5) + 32;
-							}
-							locations[locationId]["values"].push(value);
-							for(let specificLocationId of locationIdArray){
-								if(specificLocationId != locationId){
-									locations[specificLocationId]["values"].push(null);
-								}
-							}
+							timeStamp.push(time)
 
-							locations[locationId]["timeStamps"].push(time);
+
 						}
  
 
