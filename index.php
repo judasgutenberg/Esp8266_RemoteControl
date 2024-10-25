@@ -164,6 +164,7 @@ let locations = [];
 let devices = [];
 
 function showGraph(locationId){
+	let colorSeries = ["#990000", "#990099", "#999900", "#009999", "#3300ff", "#ff0033", "#ff3300", "33ff00", "#0033ff"]
 	if(glblChart){
 		glblChart.destroy();
 	}
@@ -201,6 +202,7 @@ function showGraph(locationId){
 		timeStampLabels = [];
 		chartDataSet = [];
 		//console.log("what gets graphed", locations);
+		let colorCursor = 0;
 		for(let key in locations){
 			let value = locations[key];
 			//console.log("key:", key);
@@ -209,8 +211,8 @@ function showGraph(locationId){
 				{
 				label: findObjectByColumn(devices, "device_id", key)["location_name"],
 					fill: false,  //Try with true
-					backgroundColor: 'rgba(' + Math.floor(Math.random() * 255) + ',' + Math.floor(Math.random() * 255)+ ',' +  Math.floor(Math.random() * 255) + ',' +  Math.random() + ')', //Dot marker color
-					borderColor: 'rgba(' + Math.floor(Math.random() * 255) + ',' + Math.floor(Math.random() * 255)+ ',' +  Math.floor(Math.random() * 255) + ',' +  Math.random() + ')', //Graph Line Color
+					backgroundColor: colorSeries[colorCursor], //Dot marker color
+					borderColor: colorSeries[colorCursor], //Graph Line Color
 					data: value["values"],
 					tension: 0.1,
 					yAxisID: 'A'
@@ -221,6 +223,7 @@ function showGraph(locationId){
 				//timeStampLabels = [];
 				timeStampLabels.push(...value.timeStamps);
 			//}
+			colorCursor++;
 		}
 		//console.log(timeStampLabels);
 		graphSubtitle = document.getElementById("specific_column")[document.getElementById("specific_column").selectedIndex].value + " data";
