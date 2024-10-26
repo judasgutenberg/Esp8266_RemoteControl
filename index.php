@@ -51,9 +51,11 @@ function multiDevicePicker($tenantId) {
 	$devices = getDevices($tenantId);
 	$out = "";
 	foreach($devices as $device){
-		$out .= "<div><input onchange='getWeatherData()' name='specificDevice' type='checkbox' value='" . $device["device_id"] . "'/> ";
-		$out .= $device["location_name"];
-		$out .= "</div>";
+		if($device["location_name"]){
+			$out .= "<div><input onchange='getWeatherData()' name='specificDevice' type='checkbox' value='" . $device["device_id"] . "'/> ";
+			$out .= $device["location_name"];
+			$out .= "</div>";
+		}
 	}
 	return $out;
 }
