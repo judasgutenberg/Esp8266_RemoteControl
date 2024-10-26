@@ -307,7 +307,7 @@ if($_REQUEST) {
 							$out["records"] = mysqli_fetch_all($result, MYSQLI_ASSOC);
 						}
 						 //we need info about the locations if we are plotting data from multiple ones
-						$sql = "SELECT * FROM device WHERE tenant_id = " . $user["tenant_id"];
+						$sql = "SELECT * FROM device WHERE  tenant_id = " . $user["tenant_id"];
 						//die($sql);
 						$result = mysqli_query($conn, $sql);
 						$error = mysqli_error($conn);

@@ -65,7 +65,7 @@ function plotTypePicker($type, $handler){
 	if(gvfw("plot_type") == $type || gvfw("plot_type")=="" && $type == "single"){
 		$checked = "checked";
 	}
-	$out = "<div class='listtitle'><input type='radio' id='plottype' " . $checked . " name='plottype' onchange='" . $handler . "' value='" . $type . "'>" . ucfirst($type) . "-location Plot</div>";
+	$out = "<div class='listtitle' style='opacity:1'><input type='radio' id='plottype' " . $checked . " name='plottype' onchange='" . $handler . "' value='" . $type . "'>" . ucfirst($type) . "-location Plot</div>";
 	return $out;
 }
 ?>
@@ -115,7 +115,7 @@ function plotTypePicker($type, $handler){
 			<canvas id="Chart" width="400" height="700"></canvas>
 		</div>
 		<div>
-		<div style='display:inline-block;vertical-align:top' id='singleplotdiv'>
+		<div style='display:inline-block;vertical-align:top'>
 			<?php
 				$selectId = "locationDropdown";
 				$handler = "getWeatherData()";
@@ -128,35 +128,40 @@ function plotTypePicker($type, $handler){
 				?>
 				</div>
 
-				<div style='display:inline-block;vertical-align:top'>
-				<?php echo plotTypePicker("single", $handler); ?>
-				<table id="dataTable">
-				<?php 
-				//lol, it's easier to specify an object in json and decode it than it is just specify it in PHP
+				<div style='display:inline-block;vertical-align:top' >
+					<?php echo plotTypePicker("single", $handler); ?>
+					<div  id='singleplotdiv'>
+					<table id="dataTable">
+					<?php 
+					//lol, it's easier to specify an object in json and decode it than it is just specify it in PHP
 
-				$thisDataSql = "SELECT location_name as text, device_id as value FROM device WHERE location_name <> '' AND location_name IS NOT NULL AND tenant_id=" . intval($user["tenant_id"]) . " ORDER BY location_name ASC;";
-				$result = mysqli_query($conn, $thisDataSql);
-				if($result) {
-					$selectData = mysqli_fetch_all($result, MYSQLI_ASSOC); 
-				}
+					$thisDataSql = "SELECT location_name as text, device_id as value FROM device WHERE location_name <> '' AND location_name IS NOT NULL AND tenant_id=" . intval($user["tenant_id"]) . " ORDER BY location_name ASC;";
+					$result = mysqli_query($conn, $thisDataSql);
+					if($result) {
+						$selectData = mysqli_fetch_all($result, MYSQLI_ASSOC); 
+					}
 
-				//$selectData = json_decode('[{"text":"Outside Cabin","value":1},{"text":"Cabin Downstairs","value":2},{"text":"Cabin Watchdog","value":3}]');
-				//var_dump($selectData);
-				//echo  json_last_error_msg();
-				
-				echo "<tr><td>Location:</td><td>" . genericSelect($selectId, "locationId", defaultFailDown(gvfw("location_id"), $locationId), $selectData, "onchange", $handler) . "</td></tr>";
-				?>
-				</table>
+					//$selectData = json_decode('[{"text":"Outside Cabin","value":1},{"text":"Cabin Downstairs","value":2},{"text":"Cabin Watchdog","value":3}]');
+					//var_dump($selectData);
+					//echo  json_last_error_msg();
+					
+					echo "<tr><td>Location:</td><td>" . genericSelect($selectId, "locationId", defaultFailDown(gvfw("location_id"), $locationId), $selectData, "onchange", $handler) . "</td></tr>";
+					?>
+					</table>
+				</div>
 		</div>
-		<div style='display:inline-block;vertical-align:top' id='multiplotdiv'>
+		<div style='display:inline-block;vertical-align:top'>
 		<?php
 			echo plotTypePicker("multi", $handler);
+			echo "<div  id='multiplotdiv'>";
 			echo "<div>Weather Column: ";
 			$weatherColumns = [["value"=>"temperature", "text"=>"temperature"], ["value"=>"pressure", "text"=>"pressure"], ["value"=>"humidity", "text"=>"humidity"]];
 			echo "</div>";
 			echo genericSelect("specific_column", "specific_column", defaultFailDown(gvfw("specific_column"), "temperature"), $weatherColumns, "onchange", $handler);
 			echo multiDevicePicker($user["tenant_id"]);
+			echo "</div>";
 		?>
+
 		</div>
 		<div style='display:inline-block;vertical-align:top' id='officialweather'>
 		</div>
@@ -400,6 +405,8 @@ function getWeatherData() {
 	let xhttp = new XMLHttpRequest();
 	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&locationId=" + locationId;
 	if(plotType == 'multi'){
+		document.getElementById("singleplotdiv").style.opacity ='0.5';
+		document.getElementById("multiplotdiv").style.opacity ='1';
 		endpointUrl += "&specific_column=" + specificColumn + "&location_ids=" + locationIds;
 		locationIdDropdown.disabled = true;
 		specificColumnSelect.disabled = false;
@@ -407,6 +414,8 @@ function getWeatherData() {
 			specificDevice.disabled = false;
 		}
 	} else {
+		document.getElementById("singleplotdiv").style.opacity ='1';
+		document.getElementById("multiplotdiv").style.opacity ='.5';;
 		locationIdDropdown.disabled = false;
 		specificColumnSelect.disabled = true;
 		for(let specificDevice of specificDevices) {

@@ -1538,7 +1538,9 @@ function createTimescalePeriodDropdown(scales, thisPeriod, scaleName, currentSta
 					dropdown.appendChild(option); 
 				}
 			}
-			document.getElementById('placeforscaledropdown').replaceChildren(dropdown);
+			//document.getElementById('placeforscaledropdown').replaceChildren(dropdown); //breaks on older Chromebooks
+			document.getElementById('placeforscaledropdown').innerHTML = '';
+			document.getElementById('placeforscaledropdown').appendChild(dropdown);
 		}
 	}
 
