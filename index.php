@@ -57,6 +57,15 @@ function multiDevicePicker($tenantId) {
 	}
 	return $out;
 }
+
+function plotTypePicker($type, $handler){
+	$checked = "";
+	if(gvfw("plot_type") == $type || gvfw("plot_type")=="" && $type == "single"){
+		$checked = "checked";
+	}
+	$out = "<div class='listtitle'><input type='radio' id='plottype' " . $checked . " name='plottype' onchange='" . $handler . "' value='" . $type . "'>" . ucfirst($type) . "-location Plot</div>";
+	return $out;
+}
 ?>
 <html>
 
@@ -104,7 +113,7 @@ function multiDevicePicker($tenantId) {
 			<canvas id="Chart" width="400" height="700"></canvas>
 		</div>
 		<div>
-		<div style='display:inline-block;vertical-align:top'>
+		<div style='display:inline-block;vertical-align:top' id='singleplotdiv'>
 			<?php
 				$selectId = "locationDropdown";
 				$handler = "getWeatherData()";
@@ -118,7 +127,7 @@ function multiDevicePicker($tenantId) {
 				</div>
 
 				<div style='display:inline-block;vertical-align:top'>
-				<div class='listtitle'><input type='radio' id='plottype' name='plottype' checked onchange="<?php echo $handler;?>" value='single'>Single-location Plot</div>
+				<?php echo plotTypePicker("single", $handler); ?>
 				<table id="dataTable">
 				<?php 
 				//lol, it's easier to specify an object in json and decode it than it is just specify it in PHP
@@ -137,9 +146,9 @@ function multiDevicePicker($tenantId) {
 				?>
 				</table>
 		</div>
-		<div style='display:inline-block;vertical-align:top' id='multiplot'>
+		<div style='display:inline-block;vertical-align:top' id='multiplotdiv'>
 		<?php
-			echo "<div class='listtitle'><input type='radio' id='plottype' name='plottype' onchange='" . $handler . "' value='multi'>Multi-location Plot</div>";
+			echo plotTypePicker("multi", $handler);
 			echo "<div>Weather Column: ";
 			$weatherColumns = [["value"=>"temperature", "text"=>"temperature"], ["value"=>"pressure", "text"=>"pressure"], ["value"=>"humidity", "text"=>"humidity"]];
 			echo "</div>";
@@ -163,8 +172,8 @@ let timeStamp = [];
 let locations = [];
 let devices = [];
 
-function showGraph(locationId){
-	let colorSeries = ["#990000", "#990099", "#999900", "#009999", "#3300ff", "#ff0033", "#ff3300", "33ff00", "#0033ff"]
+function showGraph(locationId, plotType){
+	let colorSeries = ["#990000", "#990099", "#999900", "#009999", "#3300ff", "#ff0033", "#ff3300", "33ff00", "#0033ff", "#6600cc", "#ff0066", "#cc6600", "66cc00", "#0066cc"];
 	if(glblChart){
 		glblChart.destroy();
 	}
@@ -198,7 +207,7 @@ function showGraph(locationId){
             ];
 	timeStampLabels = timeStamp;
 	let graphSubtitle = findObjectByColumn(devices, "device_id", locationId)["location_name"] + " data";
-	if(locations.length > 0){
+	if(plotType == "multi"){
 		timeStampLabels = [];
 		chartDataSet = [];
 		//console.log("what gets graphed", locations);
@@ -294,7 +303,7 @@ let justLoaded = true;
 
 function getWeatherData() {
 	//console.log("got data");
-
+ 
 	const queryParams = new URLSearchParams(window.location.search);
 	let locationIdArray = [];
 	let scale = queryParams.get('scale');
@@ -308,10 +317,8 @@ function getWeatherData() {
 			plotType = radio.value;
 		}
 	}
-	console.log(plotType);
-	if(locationIds == null) {
-		locationIds = "";
-	}
+ 
+ 
 	if(specificColumn == null) {
 		specificColumn = "";
 	}
@@ -324,6 +331,12 @@ function getWeatherData() {
 	}
 	if(!locationId){
 		locationId = <?php echo $locationId ?>;
+	}
+	if(locationIds == null || !locationIds) {
+		locationIds = "";//locationId; //nope!
+		//if(!justLoaded){
+			//locationIds = locationId;
+		//}
 	}
 	if(document.getElementById('scaleDropdown')  && !justLoaded){
 		scale = document.getElementById('scaleDropdown')[document.getElementById('scaleDropdown').selectedIndex].value;
@@ -358,7 +371,7 @@ function getWeatherData() {
 	} else {
 		let locationIdArray = locationIds.split(",");
 		for(let device of specificDevices){
-			if(locationIdArray.includes(device.value)){
+			if(locationIdArray.includes(device.value)){ // || plotType != 'multi' && device.value == locationId
 				device.checked = true;
 			}
 		}
@@ -409,10 +422,13 @@ function getWeatherData() {
 			locations = [];
 			if(plotType == "multi"){
 				locationIdArray = locationIds.split(',');
-				for(let specificLocationId of locationIdArray){
-					locations[specificLocationId] = {"values": [], "timeStamps": []};
-				}
+			} else {
+				//locationIdArray = [locationId]; //meh, maybe not
 			}
+			for(let specificLocationId of locationIdArray){
+				locations[specificLocationId] = {"values": [], "timeStamps": []};
+			}
+			
 			let time = new Date().toLocaleTimeString();
 			//console.log(this.responseText);
 			let dataObject = JSON.parse(this.responseText); 
@@ -465,7 +481,7 @@ function getWeatherData() {
 					}
 				}
 			}
-			glblChart = showGraph(locationId);  //Update Graphs
+			glblChart = showGraph(locationId, plotType);  //Update Graphs
 			officialWeather(locationId);
  
 	    }
