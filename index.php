@@ -271,13 +271,7 @@ function showGraph(locationId, plotType){
 						type: 'linear',
 						position: 'left' 
 	 
-					}, 
-					{
-						id: 'B',
-						type: 'linear',
-						position: 'right'
-
-	            	}
+					}
 				]
             }
 		//console.log(timeStampLabels);
