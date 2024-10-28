@@ -375,6 +375,9 @@ function findObjectByName(array, nameValue) {
 }
 
 function findObjectByColumn(array, column, columnValue) {
+	if(!array){
+		return;
+	}
     return array.find(obj => obj[column] === columnValue);
 }
 

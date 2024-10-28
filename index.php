@@ -212,6 +212,21 @@ function showGraph(locationId, plotType){
             },
             
             ];
+	let scales = {
+			  yAxes: [
+			  	{
+			        id: 'A',
+			        type: 'linear',
+			        position: 'left'
+			      }, 
+				  {
+			        id: 'B',
+			        type: 'linear',
+			        position: 'right'
+			 
+	            }
+				]
+            }
 	timeStampLabels = timeStamp;
 	let graphSubtitle = findObjectByColumn(devices, "device_id", locationId)["location_name"] + " data";
 	if(plotType == "multi"){
@@ -219,21 +234,29 @@ function showGraph(locationId, plotType){
 		chartDataSet = [];
 		//console.log("what gets graphed", locations);
 		let colorCursor = 0;
+		let thisAxis = 'A';
 		for(let key in locations){
 			let value = locations[key];
 			//console.log("key:", key);
 			//console.log(value["values"]);
-			chartDataSet.push(
-				{
-				label: findObjectByColumn(devices, "device_id", key)["location_name"],
+			let foundDevice = findObjectByColumn(devices, "device_id", key);
+			let label;
+			if(foundDevice){
+				label = foundDevice["location_name"];
+			}
+			if(label){
+				chartDataSet.push(
+					{
+					label: label,
 					fill: false,  //Try with true
 					backgroundColor: colorSeries[colorCursor], //Dot marker color
 					borderColor: colorSeries[colorCursor], //Graph Line Color
 					data: value["values"],
 					tension: 0.1,
-					yAxisID: 'A'
-				}
-			);
+					yAxisID: thisAxis
+					}
+				);
+			}
 			//console.log(value.timeStamps);
 			//if(key == 1) {
 				//timeStampLabels = [];
@@ -241,6 +264,22 @@ function showGraph(locationId, plotType){
 			//}
 			colorCursor++;
 		}
+		scales =  {
+			  yAxes: [
+					{
+						id: 'A',
+						type: 'linear',
+						position: 'left' 
+	 
+					}, 
+					{
+						id: 'B',
+						type: 'linear',
+						position: 'right'
+
+	            	}
+				]
+            }
 		//console.log(timeStampLabels);
 		graphSubtitle = document.getElementById("specific_column")[document.getElementById("specific_column").selectedIndex].value + " data";
 
@@ -266,21 +305,7 @@ function showGraph(locationId, plotType){
                     tension: 0.5 //Smoothening (Curved) of data lines
                 }
             },
-            scales: {
-			  yAxes: [
-			  	{
-			        id: 'A',
-			        type: 'linear',
-			        position: 'left'
-			      }, 
-				  {
-			        id: 'B',
-			        type: 'linear',
-			        position: 'right'
-			 
-	            }
-				]
-            },
+            scales: scales,
 			spanGaps: true  // Connects the dots, even if there are gaps (null values)
         }
     });
