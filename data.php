@@ -254,38 +254,30 @@ if($_REQUEST) {
 					$periodScale = $scaleRecord["period_scale"];
 					$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
 					$groupBy = gvfa("group_by", $scaleRecord, "");
-					$sql = "SELECT * FROM inverter_log  
-						WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . ") ";
-					if($periodAgo  > 0) {
-						if ($absoluteTimespanCusps == 1) {
-							// Calculate starting point at the "cusp" of each period scale
-							switch ($periodScale) {
-								case 'hour':
-									$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-%m-%d %H:00:00')";
-									break;
-								case 'day':
-									$startOfPeriod = "DATE(NOW())";  // Midnight of the current day
-									break;
-								case 'month':
-									$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-%m-01 00:00:00')";  // Start of the current month
-									break;
-								case 'year':
-									$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-01-01 00:00:00')";  // Start of the current year
-									break;
-								default:
-									$startOfPeriod = "NOW()";  // Fallback to present if no match
-							}
-						
-							// Adjust SQL to break at cusps rather than present
-							$sql .= " AND recorded > DATE_ADD($startOfPeriod, INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " $periodScale) ";
-							if ($periodAgo > 0) {
-								$sql .= " AND recorded < DATE_ADD($startOfPeriod, INTERVAL -" . intval(($periodSize * $periodAgo + $initialOffset)) . " $periodScale) ";
-							}
-						} else {
-	
-							$sql .= " AND recorded > DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . ") ";
+					$startOfPeriod = "NOW()"; 
+					if ($absoluteTimespanCusps == 1) {
+						// Calculate starting point at the "cusp" of each period scale
+						switch ($periodScale) {
+							case 'hour':
+								$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-%m-%d %H:00:00')";
+								break;
+							case 'day':
+								$startOfPeriod = "DATE(NOW())";  // Midnight of the current day
+								break;
+							case 'month':
+								$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-%m-01 00:00:00')";  // Start of the current month
+								break;
+							case 'year':
+								$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-01-01 00:00:00')";  // Start of the current year
+								break;
+							default:
+								$startOfPeriod = "NOW()";  // Fallback to present if no match
 						}
-
+					} 
+					$sql = "SELECT * FROM inverter_log  
+						WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . ") ";
+					if($periodAgo  > 0) {
+						$sql .= " AND recorded < DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo) + $initialOffset)) . " " . $periodScale . ") ";
 					}
 					if($groupBy){
 						$sql .= " GROUP BY " . $groupBy . " ";
@@ -302,6 +294,7 @@ if($_REQUEST) {
 							array_push($out, ["sql" => $sql, "error"=>$error]);
 						}
 					}
+					//die($periodAgo . " " . $sql);
 				}
 				$method  = "read";	
 
