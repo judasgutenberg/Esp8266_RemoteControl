@@ -107,6 +107,7 @@ if(!$user) {
 			echo genericSelect("scaleDropdown", "scale",  defaultFailDown(gvfw("scale"), "day"), $scaleConfig, "onchange", $handler);
 			echo "</td></tr>";
 			echo "<tr><td>Date/Time Begin:</td><td id='placeforscaledropdown'></td></tr>";
+			echo "<tr><td>Use Absolute Timespan Cusps</td><td><input type='checkbox' value='absolute_timespan_cusps' id='atc_id' onchange='" . $handler . "'/></td></tr>";
 			//echo "<script>createTimescalePeriodDropdown(scaleConfig, 31, 'fine', 'change', 'getInverterData()');</script>";
 			?>
 			</table>
@@ -243,9 +244,23 @@ let currentStartDate; //a global that needs to persist through HTTP sessions in 
 let justLoaded = true;
 
 function getInverterData() {
-	
 	const queryParams = new URLSearchParams(window.location.search);
 	let scale = queryParams.get('scale');
+	let absoluteTimespanCusps = queryParams.get('absolute_timespan_cusps');
+	let atcCheckbox = document.getElementById("atc_id");
+	console.log(absoluteTimespanCusps);
+
+	if(atcCheckbox.checked) {
+		absoluteTimespanCusps = 1;
+	}
+
+	if(justLoaded){
+		if(absoluteTimespanCusps == 1){
+			console.log("doing it");
+			atcCheckbox.checked = true;
+		}
+	}
+
 	if(!scale){
 		scale = "day";
 	}
@@ -274,8 +289,8 @@ function getInverterData() {
 	}	
 	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, periodAgo, scale, currentStartDate);
 	let xhttp = new XMLHttpRequest();
-	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getInverterData";
- 
+	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getInverterData&absolute_timespan_cusps=" + absoluteTimespanCusps;
+	console.log(endpointUrl);
 	xhttp.onreadystatechange = function() {
 	    if (this.readyState == 4 && this.status == 200) {
 	     //Push the data in array

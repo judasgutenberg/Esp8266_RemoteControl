@@ -124,6 +124,8 @@ function plotTypePicker($type, $handler){
 				echo genericSelect("scaleDropdown", "scale", defaultFailDown(gvfw("scale"), "day"), $scaleConfig, "onchange", $handler);
 				echo "</td></tr>";
 				echo "<tr><td>Date/Time Begin:</td><td id='placeforscaledropdown'></td></tr>";
+				//absolute_timespan_cusps
+				echo "<tr><td>Use Absolute Timespan Cusps</td><td><input type='checkbox' value='absolute_timespan_cusps' id='atc_id' onchange='" . $handler . "'/></td></tr>";
 				echo "\n</table>\n";
 				?>
 				</div>
@@ -338,13 +340,23 @@ function getWeatherData() {
 	let locationIds = queryParams.get('location_ids');
 	let plotType = "single";
 	let specificColumn = queryParams.get('specific_column');
+	let absoluteTimespanCusps = queryParams.get('absolute_timespan_cusps');
+	let atcCheckbox = document.getElementById("atc_id");
 	for(let radio of document.getElementsByName("plottype")){
 		if(radio.checked){
 			plotType = radio.value;
 		}
 	}
+	if(atcCheckbox.checked) {
+		absoluteTimespanCusps = 1;
+	}
+	if(justLoaded){
+		if(absoluteTimespanCusps == 1){
+			atcCheckbox.checked = true;
+		}
+	}
  
- 
+
 	if(specificColumn == null) {
 		specificColumn = "";
 	}
@@ -422,7 +434,7 @@ function getWeatherData() {
 	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, periodAgo, scale, currentStartDate);
 	
 	let xhttp = new XMLHttpRequest();
-	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&locationId=" + locationId;
+	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&locationId=" + locationId + "&absolute_timespan_cusps=" + absoluteTimespanCusps;
 	if(plotType == 'multi'){
 		document.getElementById("singleplotdiv").style.opacity ='0.5';
 		document.getElementById("multiplotdiv").style.opacity ='1';
