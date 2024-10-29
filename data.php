@@ -255,7 +255,12 @@ if($_REQUEST) {
 					$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
 					$groupBy = gvfa("group_by", $scaleRecord, "");
 					$startOfPeriod = "NOW()"; 
+					$historyOffset = 1;
 					if ($absoluteTimespanCusps == 1) {
+						if($periodAgo  == 0){
+							$historyOffset = 0;
+						}
+						
 						// Calculate starting point at the "cusp" of each period scale
 						switch ($periodScale) {
 							case 'hour':
@@ -275,7 +280,7 @@ if($_REQUEST) {
 						}
 					} 
 					$sql = "SELECT * FROM inverter_log  
-						WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . ") ";
+						WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + $historyOffset) + $initialOffset)) . " " . $periodScale . ") ";
 					if($periodAgo  > 0) {
 						$sql .= " AND recorded < DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo) + $initialOffset)) . " " . $periodScale . ") ";
 					}
