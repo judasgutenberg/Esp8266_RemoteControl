@@ -256,7 +256,6 @@ function getInverterData() {
 
 	if(justLoaded){
 		if(absoluteTimespanCusps == 1){
-			console.log("doing it");
 			atcCheckbox.checked = true;
 		}
 	}

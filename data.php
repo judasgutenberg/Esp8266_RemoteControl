@@ -257,7 +257,7 @@ if($_REQUEST) {
 					$sql = "SELECT * FROM inverter_log  
 						WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . ") ";
 					if($periodAgo  > 0) {
-						if ($absoluteTimespanCusps) {
+						if ($absoluteTimespanCusps == 1) {
 							// Calculate starting point at the "cusp" of each period scale
 							switch ($periodScale) {
 								case 'hour':
@@ -323,7 +323,7 @@ if($_REQUEST) {
 						$sql = "SELECT * FROM weather_data WHERE  location_id=" . $locationId;
 					}
 
-					if ($absoluteTimespanCusps) {
+					if ($absoluteTimespanCusps == 1) {
 						// Calculate starting point at the "cusp" of each period scale
 						switch ($periodScale) {
 							case 'hour':
