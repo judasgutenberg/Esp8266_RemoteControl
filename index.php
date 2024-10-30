@@ -127,6 +127,7 @@ function plotTypePicker($type, $handler){
 				//absolute_timespan_cusps
 				echo "<tr><td>Use Absolute Timespan Cusps</td><td><input type='checkbox' value='absolute_timespan_cusps' id='atc_id' onchange='" . $handler . "'/></td></tr>";
 				echo "\n</table>\n";
+				echo "<br/><button onclick='getWeatherData(1);return false'>show data from a year before</button>";
 				?>
 				</div>
 
@@ -181,9 +182,9 @@ let timeStamp = [];
 let locations = [];
 let devices = [];
 
-function showGraph(locationId, plotType){
+function showGraph(locationId, plotType, yearsAgo){
 	let colorSeries = ["#990000", "#990099", "#999900", "#009999", "#3300ff", "#ff0033", "#ff3300", "33ff00", "#0033ff", "#6600cc", "#ff0066", "#cc6600", "66cc00", "#0066cc"];
-	if(glblChart){
+	if(glblChart && yearsAgo == 0){
 		glblChart.destroy();
 	}
     let ctx = document.getElementById("Chart").getContext('2d');
@@ -329,7 +330,7 @@ window.onload = function() {
 let currentStartDate; //a global that needs to persist through HTTP sessions in the frontend
 let justLoaded = true;
 
-function getWeatherData() {
+function getWeatherData(yearsAgo) {
 	//console.log("got data");
  
 	const queryParams = new URLSearchParams(window.location.search);
@@ -342,6 +343,9 @@ function getWeatherData() {
 	let specificColumn = queryParams.get('specific_column');
 	let absoluteTimespanCusps = queryParams.get('absolute_timespan_cusps');
 	let atcCheckbox = document.getElementById("atc_id");
+	if(!yearsAgo){
+		yearsAgo = 0;
+	}
 	for(let radio of document.getElementsByName("plottype")){
 		if(radio.checked){
 			plotType = radio.value;
@@ -434,7 +438,7 @@ function getWeatherData() {
 	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, periodAgo, scale, currentStartDate);
 	
 	let xhttp = new XMLHttpRequest();
-	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&locationId=" + locationId + "&absolute_timespan_cusps=" + absoluteTimespanCusps;
+	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&locationId=" + locationId + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&years_ago=" + yearsAgo;
 	if(plotType == 'multi'){
 		document.getElementById("singleplotdiv").style.opacity ='0.5';
 		document.getElementById("multiplotdiv").style.opacity ='1';
@@ -523,7 +527,9 @@ function getWeatherData() {
 					}
 				}
 			}
-			glblChart = showGraph(locationId, plotType);  //Update Graphs
+
+			glblChart = showGraph(locationId, plotType, yearsAgo);  //Update Graphs
+
 			officialWeather(locationId);
  
 	    }
@@ -537,6 +543,8 @@ function getWeatherData() {
   
   justLoaded = false;
 }
+
+
 
 function timeConverter(UNIX_timestamp){
   var a = new Date(UNIX_timestamp * 1000);

@@ -56,6 +56,10 @@ if($_REQUEST) {
 	//absolute_timespan_cusps
 	$absoluteTimespanCusps = false;
 	$absoluteTimespanCusps = gvfw("absolute_timespan_cusps");
+	$yearsAgo = 0;
+	if(array_key_exists("years_ago", $_REQUEST)) {
+		$yearsAgo = intval($_REQUEST["years_ago"]);
+	} 
 	if(array_key_exists("scale", $_REQUEST)) {
 		$scale = $_REQUEST["scale"];
 	} 
@@ -316,9 +320,9 @@ if($_REQUEST) {
 					$groupBy = gvfa("group_by", $scaleRecord, "");
 					if($specificColumn) {
 						//to revisit:  need to figure out a way to keep users without a location_id from seeing someone else's devices
-						$sql = "SELECT " . filterStringForSqlEntities($specificColumn)  . ", location_id, recorded FROM weather_data WHERE  location_id IN (" . filterCommasAndDigits($locationIds) . ") ";
+						$sql = "SELECT " . filterStringForSqlEntities($specificColumn)  . ", location_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM weather_data WHERE  location_id IN (" . filterCommasAndDigits($locationIds) . ") ";
 					} else {
-						$sql = "SELECT * FROM weather_data WHERE  location_id=" . $locationId;
+						$sql = "SELECT temperature, pressure, humidity, location_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM weather_data WHERE  location_id=" . $locationId;
 					}
 
 					if ($absoluteTimespanCusps == 1) {
@@ -341,22 +345,22 @@ if($_REQUEST) {
 						}
 					
 						// Adjust SQL to break at cusps rather than present
-						$sql .= " AND recorded > DATE_ADD($startOfPeriod, INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " $periodScale) ";
+						$sql .= " AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
 						if ($periodAgo > 0) {
-							$sql .= " AND recorded < DATE_ADD($startOfPeriod, INTERVAL -" . intval(($periodSize * $periodAgo + $initialOffset)) . " $periodScale) ";
+							$sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
 						}
 					} else {
 
-						$sql .= " AND recorded > DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . ") ";
+						$sql .= " AND recorded > DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . intval($periodSize * ($periodAgo + 1) + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
 					}
 					if($periodAgo  > 0) {
-						$sql .= " AND recorded < DATE_ADD(NOW(), INTERVAL -" . intval(($periodSize * ($periodAgo) + $initialOffset)) . " " . $periodScale . ") "; 
+						$sql .= " AND recorded < DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
 					}
 					if($groupBy){
 						$sql .= " GROUP BY " . $groupBy . " ";
 					}
 					$sql .= " ORDER BY weather_data_id ASC";
-					
+					//die($sql);
 					if($sql) {
 						$result = mysqli_query($conn, $sql);
 						$error = mysqli_error($conn);
