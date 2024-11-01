@@ -175,46 +175,77 @@ function plotTypePicker($type, $handler){
 <script>
 let glblChart = null;
 //For graphs info, visit: https://www.chartjs.org
-let temperatureValues = [];
-let humidityValues = [];
-let pressureValues = [];
+let graphDataObject = {}
+let columnsWeCareAbout = ["temperature", "pressure", "humidity"];
+let yearsIntoThePastWeCareAbout = [0,1,2,3];
 let timeStamp = [];
 let locations = [];
 let devices = [];
 
-function showGraph(locationId, plotType, yearsAgo){
+for (let year of yearsIntoThePastWeCareAbout) { 
+	for (let column of columnsWeCareAbout) {
+		if (!graphDataObject[year]) {
+			graphDataObject[year] = {};
+		}
+		if (!graphDataObject[year][column]) {
+			graphDataObject[year][column] = [];
+		}
+	}
+}
+
+function addPastYearToGraph(yearsAgo){
+	let columnCount = 0;
+	let colorSeries = ["#666666","#777777", "#888888", "#999999", "#aaaaaa", "#bbbbbb", "#cccccc"];
+	for (let column of columnsWeCareAbout){
+		let yAxisId = "A";
+			if(column == "pressure"){
+				yAxisId = "B";
+			}
+		glblChart.data.datasets.push(
+				{
+					label: column,
+					fill: false,  //Try with true
+					backgroundColor: colorSeries[columnCount],
+					borderColor: colorSeries[columnCount],
+					data: graphDataObject[yearsAgo][column],
+					yAxisID: yAxisId
+				}
+		);
+		columnCount++;
+	}
+	glblChart.update();
+}
+
+function showGraph(locationId, plotType){
 	let colorSeries = ["#990000", "#990099", "#999900", "#009999", "#3300ff", "#ff0033", "#ff3300", "33ff00", "#0033ff", "#6600cc", "#ff0066", "#cc6600", "66cc00", "#0066cc"];
-	if(glblChart && yearsAgo == 0){
+	if(glblChart){
 		glblChart.destroy();
 	}
     let ctx = document.getElementById("Chart").getContext('2d');
 	let timeStampLabels = [];
-	let chartDataSet = [{
-                label: "Temperature",
-                fill: false,  //Try with true
-                backgroundColor: 'rgba( 243, 156, 18 , 1)', //Dot marker color
-                borderColor: 'rgba( 243, 156, 18 , 1)', //Graph Line Color
-                data: temperatureValues,
-				yAxisID: 'A'
-            },
-            {
-                label: "Humidity",
-                fill: false,  //Try with true
-                backgroundColor: 'rgba( 156, 243, 18 , 1)', //Dot marker color
-                borderColor: 'rgba( 156, 243, 18 , 1)', //Graph Line Color
-                data: humidityValues,
-				yAxisID: 'A'
-            },
-            {
-            label: "Pressure",
-                fill: false,  //Try with true
-                backgroundColor: 'rgba( 18, 243, 156 , 1)', //Dot marker color
-                borderColor: 'rgba( 1, 243, 156 , 1)', //Graph Line Color
-                data: pressureValues,
-				yAxisID: 'B'
-            },
-            
-            ];
+
+	//graphDataObject[yearsAgo][column]
+	let chartDataSet = [];
+	let columnCount = 0;
+	if(plotType == "single"){
+		for (let column of columnsWeCareAbout){
+			let yAxisId = "A";
+			if(column == "pressure"){
+				yAxisId = "B";
+			}
+			chartDataSet.push(
+				{
+					label: column,
+					fill: false,  //Try with true
+					backgroundColor: colorSeries[columnCount],
+					borderColor: colorSeries[columnCount],
+					data: graphDataObject[0][column],
+					yAxisID: yAxisId
+				}
+			);
+			columnCount++;
+		}
+	}
 	let scales = {
 			  yAxes: [
 			  	{
@@ -461,9 +492,6 @@ function getWeatherData(yearsAgo) {
 	xhttp.onreadystatechange = function() {
 	    if (this.readyState == 4 && this.status == 200) {
 	     //Push the data in array
-			temperatureValues = [];
-			humidityValues = [];
-			pressureValues = [];
 			timeStamp = [];
 			locations = [];
 			if(plotType == "multi"){
@@ -479,8 +507,10 @@ function getWeatherData(yearsAgo) {
 			//console.log(this.responseText);
 			let dataObject = JSON.parse(this.responseText); 
 			//let tbody = document.getElementById("tableBody");
-			//tbody.innerHTML = '';
-			console.log(dataObject);
+			//tbody.innerHTML = ''
+			if(yearsAgo > 0){  
+				console.log(dataObject);
+			}
 			if(dataObject) {
 				if(dataObject[0] && dataObject[0]["sql"]){
 					console.log(dataObject[0]["sql"], dataObject[0]["error"]);
@@ -506,17 +536,25 @@ function getWeatherData(yearsAgo) {
 								locations[locationId]["timeStamps"].push(time);
 							}
 						} else {
-							let temperature = datum["temperature"];
-							temperature = temperature * (9/5) + 32;
+							//let temperature = datum["temperature"];
+							//temperature = temperature * (9/5) + 32;
 							//convert temperature to fahrenheitformula
-							let pressure = datum["pressure"];
-							let humidity = datum["humidity"];
-							temperatureValues.push(temperature);
-							humidityValues.push(humidity);
-							pressureSkewed = pressure;//so we can see some detail in pressure
-							if(pressure > 0) {
-								pressureValues.push(pressure); 
+							//let pressure = datum["pressure"];
+							//let humidity = datum["humidity"];
+							//graphDataObject[year][column]
+							for (let column of columnsWeCareAbout){
+								let value = datum[column];
+								if(column == "temperature"){
+									value = value * (9/5) + 32;
+								}
+								graphDataObject[yearsAgo][column].push(value);
 							}
+							//temperatureValues.push(temperature);
+							//humidityValues.push(humidity);
+							//pressureSkewed = pressure;//so we can see some detail in pressure
+							//if(pressure > 0) {
+								//pressureValues.push(pressure); 
+							//}
 							timeStamp.push(time)
 
 
@@ -527,8 +565,11 @@ function getWeatherData(yearsAgo) {
 					}
 				}
 			}
-
-			glblChart = showGraph(locationId, plotType, yearsAgo);  //Update Graphs
+			if(yearsAgo == 0){
+				glblChart = showGraph(locationId, plotType, yearsAgo);  //Update Graphs
+			} else {
+				addPastYearToGraph(yearsAgo);
+			}
 
 			officialWeather(locationId);
  
