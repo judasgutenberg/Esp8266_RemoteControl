@@ -195,7 +195,7 @@ for (let year of yearsIntoThePastWeCareAbout) {
 
 function addPastYearToGraph(yearsAgo){
 	let columnCount = 0;
-	let colorSeries = ["#666666","#777777", "#888888", "#999999", "#aaaaaa", "#bbbbbb", "#cccccc"];
+	let colorSeries = ["#ffcccc","#ccffcc", "#ccccff", "#999999", "#aaaaaa", "#bbbbbb", "#cccccc"];
 	for (let column of columnsWeCareAbout){
 		let yAxisId = "A";
 			if(column == "pressure"){
@@ -203,7 +203,7 @@ function addPastYearToGraph(yearsAgo){
 			}
 		glblChart.data.datasets.push(
 				{
-					label: column,
+					label: column + " " +parseInt(parseInt(new Date().getFullYear()) - yearsAgo),
 					fill: false,  //Try with true
 					backgroundColor: colorSeries[columnCount],
 					borderColor: colorSeries[columnCount],
@@ -217,7 +217,7 @@ function addPastYearToGraph(yearsAgo){
 }
 
 function showGraph(locationId, plotType){
-	let colorSeries = ["#990000", "#990099", "#999900", "#009999", "#3300ff", "#ff0033", "#ff3300", "33ff00", "#0033ff", "#6600cc", "#ff0066", "#cc6600", "66cc00", "#0066cc"];
+	let colorSeries = ["#ff0000", "#00ff00", "#0000ff", "#009999", "#3300ff", "#ff0033", "#ff3300", "33ff00", "#0033ff", "#6600cc", "#ff0066", "#cc6600", "66cc00", "#0066cc"];
 	if(glblChart){
 		glblChart.destroy();
 	}
