@@ -181,14 +181,18 @@ let yearsIntoThePastWeCareAbout = [0,1,2,3];
 let timeStamp = [];
 let locations = [];
 let devices = [];
+resetGraphData();
 
-for (let year of yearsIntoThePastWeCareAbout) { 
-	for (let column of columnsWeCareAbout) {
-		if (!graphDataObject[year]) {
-			graphDataObject[year] = {};
-		}
-		if (!graphDataObject[year][column]) {
-			graphDataObject[year][column] = [];
+function resetGraphData(){
+	graphDataObject = {};
+	for (let year of yearsIntoThePastWeCareAbout) { 
+		for (let column of columnsWeCareAbout) {
+			if (!graphDataObject[year]) {
+				graphDataObject[year] = {};
+			}
+			if (!graphDataObject[year][column]) {
+				graphDataObject[year][column] = [];
+			}
 		}
 	}
 }
@@ -363,7 +367,9 @@ let justLoaded = true;
 
 function getWeatherData(yearsAgo) {
 	//console.log("got data");
- 
+	if(!yearsAgo){
+		resetGraphData();
+	}
 	const queryParams = new URLSearchParams(window.location.search);
 	let locationIdArray = [];
 	let scale = queryParams.get('scale');
@@ -508,9 +514,9 @@ function getWeatherData(yearsAgo) {
 			let dataObject = JSON.parse(this.responseText); 
 			//let tbody = document.getElementById("tableBody");
 			//tbody.innerHTML = ''
-			if(yearsAgo > 0){  
+			//if(yearsAgo > 0){  
 				console.log(dataObject);
-			}
+			//}
 			if(dataObject) {
 				if(dataObject[0] && dataObject[0]["sql"]){
 					console.log(dataObject[0]["sql"], dataObject[0]["error"]);
