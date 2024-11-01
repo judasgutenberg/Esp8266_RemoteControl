@@ -367,9 +367,7 @@ let justLoaded = true;
 
 function getWeatherData(yearsAgo) {
 	//console.log("got data");
-	if(!yearsAgo){
-		resetGraphData();
-	}
+
 	const queryParams = new URLSearchParams(window.location.search);
 	let locationIdArray = [];
 	let scale = queryParams.get('scale');
@@ -474,6 +472,20 @@ function getWeatherData(yearsAgo) {
 	}	
 	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, periodAgo, scale, currentStartDate);
 	
+
+	if(!yearsAgo){
+		resetGraphData();
+	} else {
+		//keeping us from overlaying multiple yearsAgo data on the graph
+		if(plotType == "multi") {
+
+		} else {
+			if(graphDataObject[yearsAgo][columnsWeCareAbout[0]].length>0){
+				return;
+			}
+		}
+	}
+	
 	let xhttp = new XMLHttpRequest();
 	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&locationId=" + locationId + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&years_ago=" + yearsAgo;
 	if(plotType == 'multi'){
@@ -542,11 +554,6 @@ function getWeatherData(yearsAgo) {
 								locations[locationId]["timeStamps"].push(time);
 							}
 						} else {
-							//let temperature = datum["temperature"];
-							//temperature = temperature * (9/5) + 32;
-							//convert temperature to fahrenheitformula
-							//let pressure = datum["pressure"];
-							//let humidity = datum["humidity"];
 							//graphDataObject[year][column]
 							for (let column of columnsWeCareAbout){
 								let value = datum[column];
@@ -555,12 +562,6 @@ function getWeatherData(yearsAgo) {
 								}
 								graphDataObject[yearsAgo][column].push(value);
 							}
-							//temperatureValues.push(temperature);
-							//humidityValues.push(humidity);
-							//pressureSkewed = pressure;//so we can see some detail in pressure
-							//if(pressure > 0) {
-								//pressureValues.push(pressure); 
-							//}
 							timeStamp.push(time)
 
 
