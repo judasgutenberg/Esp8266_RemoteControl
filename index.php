@@ -176,23 +176,26 @@ function plotTypePicker($type, $handler){
 let glblChart = null;
 //For graphs info, visit: https://www.chartjs.org
 let graphDataObject = {}
+let multiGraphDataObject = [];
+let pastYearsViewed = [];
 let columnsWeCareAbout = ["temperature", "pressure", "humidity"];
 let yearsIntoThePastWeCareAbout = [0,1,2,3];
 let timeStamp = [];
-let locations = {};
-let devices = [];
+let devices = {};
+
 resetGraphData();
 
 function resetGraphData(locationIdArray){
-	locations = {};
+	multiGraphDataObject = {};
 	graphDataObject = {};
+	pastYearsViewed = [];
 	for (let year of yearsIntoThePastWeCareAbout) { 
 		if(locationIdArray){
-			if (!locations[year]) {
-				locations[year] = {};
+			if (!multiGraphDataObject[year]) {
+				multiGraphDataObject[year] = {};
 			}
 			for(let specificLocationId of locationIdArray){
-				locations[year][specificLocationId] = {"values": [], "timeStamps": []};
+				multiGraphDataObject[year][specificLocationId] = {"values": [], "timeStamps": []};
 			}
 		}
 		for (let column of columnsWeCareAbout) {
@@ -208,52 +211,55 @@ function resetGraphData(locationIdArray){
 }
 
 function addPastYearToGraph(locationIdArray, yearsAgo, plotType){
-	let columnCount = 0;
-	let colorSeries = ["#ffcccc","#ccffcc", "#ccccff", "#999999", "#aaaaaa", "#bbbbbb", "#cccccc"];
-	if(plotType == "multi"){
-		for(let locationId of locationIdArray){
-			let yAxisId = "A";
-			let foundDevice = findObjectByColumn(devices, "device_id", locationId);
-			let label;
-			if(foundDevice){
-				label = foundDevice["location_name"];
-			}
-			glblChart.data.datasets.push(
-					{
-						label: label + " " + parseInt(parseInt(new Date().getFullYear()) - yearsAgo),
-						fill: false,  //Try with true
-						backgroundColor: colorSeries[columnCount],
-						borderColor: colorSeries[columnCount],
-						data: locations[yearsAgo][locationId].values,
-						yAxisID: yAxisId,
-						tension: 0.1
-					}
-			);	
-			columnCount++;	
-			//console.log(locations[yearsAgo][locationId]);
-		}
-
-	} else {
-		columnCount = 0;
-		for (let column of columnsWeCareAbout){
-			let yAxisId = "A";
-				if(column == "pressure"){
-					yAxisId = "B";
+	if(pastYearsViewed.indexOf(yearsAgo) < 0){
+		pastYearsViewed.push(yearsAgo);
+		let columnCount = 0;
+		let colorSeries = ["#ffcccc","#ccffcc", "#ccccff", "#999999", "#aaaaaa", "#bbbbbb", "#cccccc"];
+		if(plotType == "multi"){
+			for(let locationId of locationIdArray){
+				let yAxisId = "A";
+				let foundDevice = findObjectByColumn(devices, "device_id", locationId);
+				let label;
+				if(foundDevice){
+					label = foundDevice["location_name"];
 				}
-			glblChart.data.datasets.push(
-					{
-						label: column + " " + parseInt(parseInt(new Date().getFullYear()) - yearsAgo),
-						fill: false,  //Try with true
-						backgroundColor: colorSeries[columnCount],
-						borderColor: colorSeries[columnCount],
-						data: graphDataObject[yearsAgo][column],
-						yAxisID: yAxisId
+				glblChart.data.datasets.push(
+						{
+							label: label + " " + parseInt(parseInt(new Date().getFullYear()) - yearsAgo),
+							fill: false,  //Try with true
+							backgroundColor: colorSeries[columnCount],
+							borderColor: colorSeries[columnCount],
+							data: multiGraphDataObject[yearsAgo][locationId].values,
+							yAxisID: yAxisId,
+							tension: 0.1
+						}
+				);	
+				columnCount++;	
+				//console.log(multiGraphDataObject[yearsAgo][locationId]);
+			}
+
+		} else {
+			columnCount = 0;
+			for (let column of columnsWeCareAbout){
+				let yAxisId = "A";
+					if(column == "pressure"){
+						yAxisId = "B";
 					}
-			);
-			columnCount++;
+				glblChart.data.datasets.push(
+						{
+							label: column + " " + parseInt(parseInt(new Date().getFullYear()) - yearsAgo),
+							fill: false,  //Try with true
+							backgroundColor: colorSeries[columnCount],
+							borderColor: colorSeries[columnCount],
+							data: graphDataObject[yearsAgo][column],
+							yAxisID: yAxisId
+						}
+				);
+				columnCount++;
+			}
 		}
+		glblChart.update();
 	}
-	glblChart.update();
 }
 
 function showGraph(locationId, plotType){
@@ -307,11 +313,11 @@ function showGraph(locationId, plotType){
 	if(plotType == "multi"){
 		timeStampLabels = [];
 		chartDataSet = [];
-		//console.log("what gets graphed", locations);
+		//console.log("what gets graphed", multiGraphDataObject);
 		let colorCursor = 0;
 		let thisAxis = 'A';
-		for(let key in locations[0]){
-			let value = locations[0][key];
+		for(let key in multiGraphDataObject[0]){
+			let value = multiGraphDataObject[0][key];
 			//console.log("key:", key);
 			//console.log(value["values"]);
 			let foundDevice = findObjectByColumn(devices, "device_id", key);
@@ -516,9 +522,11 @@ function getWeatherData(yearsAgo) {
 		console.log(locationIdArray);
 		resetGraphData(locationIdArray);
 	} else {
+		/*
 		//keeping us from overlaying multiple yearsAgo data on the graph
+		//but it didn't even work
 		if(plotType == "multi") {
-			if(locations[yearsAgo][locationIdArray[0]]["values"].length>0){
+			if(multiGraphDataObject[yearsAgo][locationIdArray[0]]["values"].length>0){
 				return;
 			}
 		} else {
@@ -526,6 +534,7 @@ function getWeatherData(yearsAgo) {
 				return;
 			}
 		}
+		*/
 	}
 
 	let xhttp = new XMLHttpRequest();
@@ -555,7 +564,7 @@ function getWeatherData(yearsAgo) {
 			timeStamp = [];
 
 			//for(let specificLocationId of locationIdArray){
-			//	locations[yearsAgo][specificLocationId] = {"values": [], "timeStamps": []};
+			//	multiGraphDataObject[yearsAgo][specificLocationId] = {"values": [], "timeStamps": []};
 			//}
 			
 			let time = new Date().toLocaleTimeString();
@@ -566,7 +575,7 @@ function getWeatherData(yearsAgo) {
 			//if(yearsAgo > 0){  
 				console.log(dataObject);
 			//}
-			if(dataObject  || locations) {
+			if(dataObject) {
 				if(dataObject[0] && dataObject[0]["sql"]){
 					console.log(dataObject[0]["sql"], dataObject[0]["error"]);
 				} else {
@@ -580,15 +589,15 @@ function getWeatherData(yearsAgo) {
 							if(specificColumn == "temperature"){
 								value = value * (9/5) + 32;
 							}
-							if(locations[yearsAgo][locationId]) {
-								locations[yearsAgo][locationId]["values"].push(value);
+							if(multiGraphDataObject[yearsAgo][locationId]) {
+								multiGraphDataObject[yearsAgo][locationId]["values"].push(value);
 
 								for(let specificLocationId of locationIdArray){
 									if(specificLocationId != locationId){
-										locations[yearsAgo][specificLocationId]["values"].push(null);
+										multiGraphDataObject[yearsAgo][specificLocationId]["values"].push(null);
 									}
 								}
-								locations[yearsAgo][locationId]["timeStamps"].push(time);
+								multiGraphDataObject[yearsAgo][locationId]["timeStamps"].push(time);
 							}
 						} else {
 							//graphDataObject[year][column]
@@ -610,7 +619,7 @@ function getWeatherData(yearsAgo) {
 				}
 			}
 			if(yearsAgo == 0){
-				//console.log(locations);
+				//console.log(multiGraphDataObject);
 				glblChart = showGraph(locationId, plotType);  //Update Graphs
 			} else {
 				addPastYearToGraph(locationIdArray, yearsAgo, plotType);
