@@ -518,9 +518,9 @@ function getWeatherData(yearsAgo) {
 	} else {
 		//keeping us from overlaying multiple yearsAgo data on the graph
 		if(plotType == "multi") {
-			//if(graphDataObject[yearsAgo][locationIdArray[0]].length>0){
-				//return;
-			//}
+			if(locations[yearsAgo][locationIdArray[0]]["values"].length>0){
+				return;
+			}
 		} else {
 			if(graphDataObject[yearsAgo][columnsWeCareAbout[0]].length>0){
 				return;
