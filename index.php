@@ -179,17 +179,27 @@ let graphDataObject = {}
 let columnsWeCareAbout = ["temperature", "pressure", "humidity"];
 let yearsIntoThePastWeCareAbout = [0,1,2,3];
 let timeStamp = [];
-let locations = [];
+let locations = {};
 let devices = [];
 resetGraphData();
 
-function resetGraphData(){
+function resetGraphData(locationIdArray){
+	locations = {};
 	graphDataObject = {};
 	for (let year of yearsIntoThePastWeCareAbout) { 
+		if(locationIdArray){
+			if (!locations[year]) {
+				locations[year] = {};
+			}
+			for(let specificLocationId of locationIdArray){
+				locations[year][specificLocationId] = {"values": [], "timeStamps": []};
+			}
+		}
 		for (let column of columnsWeCareAbout) {
 			if (!graphDataObject[year]) {
 				graphDataObject[year] = {};
 			}
+
 			if (!graphDataObject[year][column]) {
 				graphDataObject[year][column] = [];
 			}
@@ -197,25 +207,51 @@ function resetGraphData(){
 	}
 }
 
-function addPastYearToGraph(yearsAgo){
+function addPastYearToGraph(locationIdArray, yearsAgo, plotType){
 	let columnCount = 0;
 	let colorSeries = ["#ffcccc","#ccffcc", "#ccccff", "#999999", "#aaaaaa", "#bbbbbb", "#cccccc"];
-	for (let column of columnsWeCareAbout){
-		let yAxisId = "A";
-			if(column == "pressure"){
-				yAxisId = "B";
+	if(plotType == "multi"){
+		for(let locationId of locationIdArray){
+			let yAxisId = "A";
+			let foundDevice = findObjectByColumn(devices, "device_id", locationId);
+			let label;
+			if(foundDevice){
+				label = foundDevice["location_name"];
 			}
-		glblChart.data.datasets.push(
-				{
-					label: column + " " +parseInt(parseInt(new Date().getFullYear()) - yearsAgo),
-					fill: false,  //Try with true
-					backgroundColor: colorSeries[columnCount],
-					borderColor: colorSeries[columnCount],
-					data: graphDataObject[yearsAgo][column],
-					yAxisID: yAxisId
+			glblChart.data.datasets.push(
+					{
+						label: label + " " + parseInt(parseInt(new Date().getFullYear()) - yearsAgo),
+						fill: false,  //Try with true
+						backgroundColor: colorSeries[columnCount],
+						borderColor: colorSeries[columnCount],
+						data: locations[yearsAgo][locationId].values,
+						yAxisID: yAxisId,
+						tension: 0.1
+					}
+			);	
+			columnCount++;	
+			//console.log(locations[yearsAgo][locationId]);
+		}
+
+	} else {
+		columnCount = 0;
+		for (let column of columnsWeCareAbout){
+			let yAxisId = "A";
+				if(column == "pressure"){
+					yAxisId = "B";
 				}
-		);
-		columnCount++;
+			glblChart.data.datasets.push(
+					{
+						label: column + " " + parseInt(parseInt(new Date().getFullYear()) - yearsAgo),
+						fill: false,  //Try with true
+						backgroundColor: colorSeries[columnCount],
+						borderColor: colorSeries[columnCount],
+						data: graphDataObject[yearsAgo][column],
+						yAxisID: yAxisId
+					}
+			);
+			columnCount++;
+		}
 	}
 	glblChart.update();
 }
@@ -237,6 +273,7 @@ function showGraph(locationId, plotType){
 			if(column == "pressure"){
 				yAxisId = "B";
 			}
+			//console.log(graphDataObject[0][column]);
 			chartDataSet.push(
 				{
 					label: column,
@@ -273,8 +310,8 @@ function showGraph(locationId, plotType){
 		//console.log("what gets graphed", locations);
 		let colorCursor = 0;
 		let thisAxis = 'A';
-		for(let key in locations){
-			let value = locations[key];
+		for(let key in locations[0]){
+			let value = locations[0][key];
 			//console.log("key:", key);
 			//console.log(value["values"]);
 			let foundDevice = findObjectByColumn(devices, "device_id", key);
@@ -318,7 +355,7 @@ function showGraph(locationId, plotType){
 	}
 	timeStampLabels.sort();
 	//console.log(timeStampLabels);
-    let Chart2 = new Chart(ctx, {
+    let weatherChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: timeStampLabels,  //Bottom Labeling
@@ -343,7 +380,7 @@ function showGraph(locationId, plotType){
     });
 	//console.log(timeStamp.length);
 	//console.log(timeStamp);
-	return Chart2;
+	return weatherChart;
 }
 
 //On Page load show graphs
@@ -404,7 +441,7 @@ function getWeatherData(yearsAgo) {
 	}
 	let locationIdDropdown = document.getElementById('locationDropdown');
 	if(!locationId){
-		locationId  =locationIdDropdown[locationIdDropdown.selectedIndex].value
+		locationId  = locationIdDropdown[locationIdDropdown.selectedIndex].value
 	}
 	if(!locationId){
 		locationId = <?php echo $locationId ?>;
@@ -446,13 +483,14 @@ function getWeatherData(yearsAgo) {
 		}
 		locationIds = locationIds.slice(0, -1);
 	} else {
-		let locationIdArray = locationIds.split(",");
+		locationIdArray = locationIds.split(",");
 		for(let device of specificDevices){
 			if(locationIdArray.includes(device.value)){ // || plotType != 'multi' && device.value == locationId
 				device.checked = true;
 			}
 		}
 	}
+	locationIdArray = locationIds.split(",");
 
 	//make the startDateDropdown switch to the appropriate item on the new scale:
 	let periodAgoDropdown = document.getElementById('startDateDropdown');	
@@ -473,19 +511,23 @@ function getWeatherData(yearsAgo) {
 	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, periodAgo, scale, currentStartDate);
 	
 
+
 	if(!yearsAgo){
-		resetGraphData();
+		console.log(locationIdArray);
+		resetGraphData(locationIdArray);
 	} else {
 		//keeping us from overlaying multiple yearsAgo data on the graph
 		if(plotType == "multi") {
-
+			//if(graphDataObject[yearsAgo][locationIdArray[0]].length>0){
+				//return;
+			//}
 		} else {
 			if(graphDataObject[yearsAgo][columnsWeCareAbout[0]].length>0){
 				return;
 			}
 		}
 	}
-	
+
 	let xhttp = new XMLHttpRequest();
 	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&locationId=" + locationId + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&years_ago=" + yearsAgo;
 	if(plotType == 'multi'){
@@ -511,15 +553,10 @@ function getWeatherData(yearsAgo) {
 	    if (this.readyState == 4 && this.status == 200) {
 	     //Push the data in array
 			timeStamp = [];
-			locations = [];
-			if(plotType == "multi"){
-				locationIdArray = locationIds.split(',');
-			} else {
-				//locationIdArray = [locationId]; //meh, maybe not
-			}
-			for(let specificLocationId of locationIdArray){
-				locations[specificLocationId] = {"values": [], "timeStamps": []};
-			}
+
+			//for(let specificLocationId of locationIdArray){
+			//	locations[yearsAgo][specificLocationId] = {"values": [], "timeStamps": []};
+			//}
 			
 			let time = new Date().toLocaleTimeString();
 			//console.log(this.responseText);
@@ -529,7 +566,7 @@ function getWeatherData(yearsAgo) {
 			//if(yearsAgo > 0){  
 				console.log(dataObject);
 			//}
-			if(dataObject) {
+			if(dataObject  || locations) {
 				if(dataObject[0] && dataObject[0]["sql"]){
 					console.log(dataObject[0]["sql"], dataObject[0]["error"]);
 				} else {
@@ -543,15 +580,15 @@ function getWeatherData(yearsAgo) {
 							if(specificColumn == "temperature"){
 								value = value * (9/5) + 32;
 							}
-							if(locations[locationId]) {
-								locations[locationId]["values"].push(value);
+							if(locations[yearsAgo][locationId]) {
+								locations[yearsAgo][locationId]["values"].push(value);
 
 								for(let specificLocationId of locationIdArray){
 									if(specificLocationId != locationId){
-										locations[specificLocationId]["values"].push(null);
+										locations[yearsAgo][specificLocationId]["values"].push(null);
 									}
 								}
-								locations[locationId]["timeStamps"].push(time);
+								locations[yearsAgo][locationId]["timeStamps"].push(time);
 							}
 						} else {
 							//graphDataObject[year][column]
@@ -573,9 +610,10 @@ function getWeatherData(yearsAgo) {
 				}
 			}
 			if(yearsAgo == 0){
-				glblChart = showGraph(locationId, plotType, yearsAgo);  //Update Graphs
+				//console.log(locations);
+				glblChart = showGraph(locationId, plotType);  //Update Graphs
 			} else {
-				addPastYearToGraph(yearsAgo);
+				addPastYearToGraph(locationIdArray, yearsAgo, plotType);
 			}
 
 			officialWeather(locationId);
