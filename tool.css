@@ -6,8 +6,8 @@ body
 	background:#EEEEEE;
 	margin:0px;
 	padding:5px;
-	width:100%;
-	height:100%;
+	width:98%;
+	height:98%;
 	position:absolute;
 	top:0px;
 	left:0px;
@@ -230,6 +230,11 @@ body
 	max-width: 600px;
 	z-index: 500;
 	display: none;
+}
+
+.utilitylist{
+	line-height: 24px;
+	font-size: 13px;
 }
 
 .issuelist{
@@ -492,11 +497,11 @@ body
 	margin-left:0px;
 	margin-top:-11px;
 	padding-top:0px;
-	width:1625px;
+	width:100%;
 }
 
 .innercontent {
-  width:1600px;
+  width:100%;
   border-width: 1px 1px 1px 1px;
   border-color: #000000;
   border-style: solid;

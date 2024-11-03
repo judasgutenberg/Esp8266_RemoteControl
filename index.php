@@ -111,8 +111,8 @@ function plotTypePicker($type, $handler){
   ?>
 
 		<div style="text-align:center;"><b>Weather Information Log</b></div>
-		<div class="chart-container" position: relative; height:350px; width:100%">
-			<canvas id="Chart" width="400" height="700"></canvas>
+		<div class="chart-container" style="width: 100%; height: 70vh;">
+			<canvas id="Chart"></canvas>
 		</div>
 		<div>
 		<div style='display:inline-block;vertical-align:top'>
@@ -368,7 +368,7 @@ function showGraph(locationId, plotType){
             datasets: chartDataSet,
         },
         options: {
- 
+			responsive: true,
             hover: {mode: null},
             title: {
                     display: true,
@@ -384,8 +384,6 @@ function showGraph(locationId, plotType){
 			spanGaps: true  // Connects the dots, even if there are gaps (null values)
         }
     });
-	//console.log(timeStamp.length);
-	//console.log(timeStamp);
 	return weatherChart;
 }
 
@@ -396,21 +394,12 @@ window.onload = function() {
   officialWeather(locationId);
   //showGraph(5,10,4,58);W
 };
-
- 
-
- 
-
-//Ajax script to get ADC voltage at every 5 Seconds 
-//Read This tutorial https://circuits4you.com/2018/02/04/esp8266-ajax-update-part-of-web-page-without-refreshing/
-
  
 let currentStartDate; //a global that needs to persist through HTTP sessions in the frontend
 let justLoaded = true;
 
 function getWeatherData(yearsAgo) {
 	//console.log("got data");
-
 	const queryParams = new URLSearchParams(window.location.search);
 	let locationIdArray = [];
 	let scale = queryParams.get('scale');
@@ -461,7 +450,6 @@ function getWeatherData(yearsAgo) {
 	if(document.getElementById('scaleDropdown')  && !justLoaded){
 		scale = document.getElementById('scaleDropdown')[document.getElementById('scaleDropdown').selectedIndex].value;
 	}	
-	
 
 	let specificColumnSelect = document.getElementById('specific_column');
 	if(!justLoaded){

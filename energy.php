@@ -11,7 +11,6 @@ if(array_key_exists( "locationId", $_REQUEST)) {
 	$locationId = $_REQUEST["locationId"];
 } else {
 	$locationId = 1;
-
 }
 $poser = null;
 $poserString = "";
@@ -88,8 +87,8 @@ if(!$user) {
   ?>
 
     <div style="text-align:center;"><b>Inverter Information Log</b></div>
-		<div class="chart-container" position: relative; height:350px; width:100%">
-			<canvas id="Chart" width="400" height="700"></canvas>
+		<div class="chart-container" style="width: 100%; height: 70vh;">
+			<canvas id="Chart"></canvas>
 		</div>
 		<div>
 			<table id="dataTable">
@@ -214,12 +213,7 @@ function showGraph(yearsAgo){
 //On Page load show graphs
 window.onload = function() {
 	console.log(new Date().toLocaleTimeString());
-	//showGraph(5,10,4,58);
-	//createTimescalePeriodDropdown(scaleConfig, 31, 0, 'fine', 'change', 'getInverterData()');
 };
-
-//Ajax script to get ADC voltage at every 5 Seconds 
-//Read This tutorial https://circuits4you.com/2018/02/04/esp8266-ajax-update-part-of-web-page-without-refreshing/
 
 let currentStartDate; //a global that needs to persist through HTTP sessions in the frontend
 let justLoaded = true;
