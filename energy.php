@@ -310,27 +310,8 @@ function getInverterData(yearsAgo) {
 						//console.log(datum);
 						//console.log("!");
 						let time = datum["recorded"];
-						/*
-						let panel = datum["solar_power"];
-						let load = datum["load_power"];
-						let battery = datum["battery_power"];
-						let batteryPercent = datum["battery_percentage"];
-						batteryPercentsUnsmoothed.push(batteryPercent);
-						panelValues.push(panel);
-						loadValues.push(load);
-		
-						batteryValues.push(battery);
-		
-						batteryPercents.push(parseInt(batteryPercent));
-		
-						timeStamp.push(time);
-						*/
-
 						for (let column of columnsWeCareAbout){
 								let value = datum[column];
-								if(column == "battery_percentage"){
-									value = value * (9/5) + 32;
-								}
 								graphDataObject[yearsAgo][column].push(value);
 							}
 							timeStamp.push(time);
