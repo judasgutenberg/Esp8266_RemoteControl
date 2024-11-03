@@ -470,7 +470,7 @@ body
 
 .logo {
 	display: inline-block;
-	font-size:35px;
+	font-size:20px;
 	font-family:courier;
 	font-weight: bold;
 	letter-spacing: .8rem;
@@ -584,7 +584,7 @@ div.unfoldingtool>div:first-child {
 .list
 {
   display: table;
-  width:80%;
+  width:100%;
   border: solid 1px #999999;
   border-radius: 4px;
   background: #eeffff;
