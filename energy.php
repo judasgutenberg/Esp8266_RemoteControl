@@ -7,7 +7,6 @@ include("device_functions.php");
 //ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
 
- 
 if(array_key_exists( "locationId", $_REQUEST)) {
 	$locationId = $_REQUEST["locationId"];
 } else {
@@ -145,7 +144,6 @@ function resetGraphData(){
 	}
 }
 
-
 function showGraph(yearsAgo){
 	let colorSeries = ["#ff0000", "#00ff00", "#0000ff", "#009999", "#3300ff", "#ff0033", "#ff3300", "33ff00", "#0033ff", "#6600cc", "#ff0066", "#cc6600", "66cc00", "#0066cc"];
 	//console.log(timeStamp);
@@ -220,15 +218,11 @@ function showGraph(yearsAgo){
 	return Chart2;
 }
 
-
-
-
 //On Page load show graphs
 window.onload = function() {
 	console.log(new Date().toLocaleTimeString());
 	//showGraph(5,10,4,58);
 	//createTimescalePeriodDropdown(scaleConfig, 31, 0, 'fine', 'change', 'getInverterData()');
-
 };
 
 //Ajax script to get ADC voltage at every 5 Seconds 
@@ -289,11 +283,6 @@ function getInverterData(yearsAgo) {
 	xhttp.onreadystatechange = function() {
 	    if (this.readyState == 4 && this.status == 200) {
 	     //Push the data in array
-			panelValues = [];
-			loadValues = [];
-			batteryValues = [];
-			batteryPercents = [];
-			batteryPercentsUnsmoothed = [];
 			timeStamp = [];
 			let time = new Date().toLocaleTimeString();
 			let dataObject = JSON.parse(this.responseText); 
