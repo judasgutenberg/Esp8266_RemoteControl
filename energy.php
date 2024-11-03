@@ -160,7 +160,7 @@ function showGraph(yearsAgo){
 	let chartDataSet = [];
 	for (let column of columnsWeCareAbout){
 		let yAxisId = "A";
-		if(column == "batter_percentage"){
+		if(column == "battery_percentage"){
 			yAxisId = "B";
 		}
 		//console.log(graphDataObject[0][column]);
@@ -312,7 +312,7 @@ function getInverterData(yearsAgo) {
 						let time = datum["recorded"];
 						for (let column of columnsWeCareAbout){
 								let value = datum[column];
-								graphDataObject[yearsAgo][column].push(value);
+								graphDataObject[yearsAgo][column].push(parseInt(value)); //parseInt is important because smoothArray was thinking the values might be strings
 							}
 							timeStamp.push(time);
 						}
@@ -323,7 +323,9 @@ function getInverterData(yearsAgo) {
 			}
 			if(scale == "three-hour"  || scale == "day"){
 				//batteryPercents = smoothArray(batteryPercents, 19, 1); //smooth out the battery percentages, which are integers and too jagged
-				graphDataObject[yearsAgo]["battery_percentage"] = smoothArray(graphDataObject[yearsAgo]["battery_percentage"], 19, 1);
+				let batteryPercents =  graphDataObject[yearsAgo]["battery_percentage"];
+				console.log(batteryPercents, smoothArray(batteryPercents, 19, 1));
+				graphDataObject[yearsAgo]["battery_percentage"] = smoothArray(batteryPercents, 19, 1);
 			}
 			//alert(batteryPercents.length + " xxx " + batteryPercentsUnsmoothed.length);
 			//console.log(batteryPercents);
@@ -337,7 +339,7 @@ function getInverterData(yearsAgo) {
 
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
   xhttp.send();
-  createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getInverterData(0)', 'inverter_log', '');
+  createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getInverterData(yearsAgo)', 'inverter_log', '');
  
 }
  
