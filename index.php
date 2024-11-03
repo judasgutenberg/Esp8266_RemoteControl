@@ -427,7 +427,6 @@ function getWeatherData(yearsAgo) {
 		}
 	}
  
-
 	if(specificColumn == null) {
 		specificColumn = "";
 	}
@@ -503,9 +502,6 @@ function getWeatherData(yearsAgo) {
 		currentStartDate = periodAgoDropdown[periodAgoDropdown.selectedIndex].text;
 	}	
 	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, periodAgo, scale, currentStartDate);
-	
-
-
 	if(!yearsAgo){
 		console.log(locationIdArray);
 		resetGraphData(locationIdArray);
@@ -524,7 +520,6 @@ function getWeatherData(yearsAgo) {
 		}
 		*/
 	}
-
 	let xhttp = new XMLHttpRequest();
 	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&locationId=" + locationId + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&years_ago=" + yearsAgo;
 	if(plotType == 'multi'){
@@ -608,13 +603,11 @@ function getWeatherData(yearsAgo) {
 				addPastYearToGraph(locationIdArray, yearsAgo, plotType);
 			}
 			officialWeather(locationId);
-
 	    }
 		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
-		
 	  };
 
-  xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
+  xhttp.open("GET", endpointUrl, true); 
   xhttp.send();
   createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getWeatherData()', 'weather_data', locationId);
   

@@ -391,8 +391,9 @@ if(document.getElementById('file')) {
     startWaiting();
   };
 }
+
 window.addEventListener('resize', function() {
-  window.location.reload();
+  //window.location.reload(); //meh let's not
 });
 
 function genericListActionBackend(name, value, tableName, primaryKeyName, primaryKeyValue, hashedEntities){ //this is a security nightmare;  need to improve!!

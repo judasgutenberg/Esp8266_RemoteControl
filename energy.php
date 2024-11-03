@@ -294,7 +294,7 @@ function getInverterData(yearsAgo) {
 	};
 	  
 
-  xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
+  xhttp.open("GET", endpointUrl, true);  
   xhttp.send();
   createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getInverterData(yearsAgo)', 'inverter_log', '');
 }
