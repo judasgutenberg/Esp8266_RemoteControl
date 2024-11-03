@@ -50,7 +50,6 @@ if(!$user) {
  
 ?>
 <html>
-
 <head>
   <title>Inverter Information</title>
   <!--For offline ESP graphs see this tutorial https://circuits4you.com/2018/03/10/esp8266-jquery-and-ajax-web-server/ -->
@@ -117,7 +116,7 @@ if(!$user) {
 <script>
 let glblChart = null;
 let graphDataObject = {};
-let columnsWeCareAbout = ["solar_power","load_power","battery_power","battery_percentage"];
+let columnsWeCareAbout = ["solar_power","load_power","battery_power","battery_percentage"]; //these are the inverter columns to be graphed from inverter_log. if you have more, you can include them
 let yearsIntoThePastWeCareAbout = [0,1,2,3];
 //For graphs info, visit: https://www.chartjs.org
 let panelValues = [];
@@ -158,7 +157,7 @@ function showGraph(yearsAgo){
 	let chartDataSet = [];
 	for (let column of columnsWeCareAbout){
 		let yAxisId = "A";
-		if(column == "battery_percentage"){
+		if(column == "battery_percentage"){ //if you have a percentage instead of a kilowatt value, this is the scale you want
 			yAxisId = "B";
 		}
 		//console.log(graphDataObject[0][column]);
@@ -282,7 +281,6 @@ function getInverterData(yearsAgo) {
 	console.log(endpointUrl);
 	xhttp.onreadystatechange = function() {
 	    if (this.readyState == 4 && this.status == 200) {
-	     //Push the data in array
 			timeStamp = [];
 			let time = new Date().toLocaleTimeString();
 			let dataObject = JSON.parse(this.responseText); 
@@ -299,7 +297,6 @@ function getInverterData(yearsAgo) {
 							timeStamp.push(time);
 						}
 					}
-				
 			} else {
 				console.log("No data was found.");
 			}
@@ -308,7 +305,6 @@ function getInverterData(yearsAgo) {
 				graphDataObject[yearsAgo]["battery_percentage"] = smoothArray(batteryPercents, 19, 1);
 			}
 			glblChart = showGraph();  //Update Graphs
-			
 	    }
 		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
 		justLoaded = false;
