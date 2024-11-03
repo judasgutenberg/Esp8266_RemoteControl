@@ -158,7 +158,7 @@ function plotTypePicker($type, $handler){
 			echo plotTypePicker("multi", $handler);
 			echo "<div  id='multiplotdiv'>";
 			echo "<div>Weather Column: ";
-			$weatherColumns = [["value"=>"temperature", "text"=>"temperature"], ["value"=>"pressure", "text"=>"pressure"], ["value"=>"humidity", "text"=>"humidity"]];
+			$weatherColumns = ["temperature", "pressure", "humidity"];
 			echo "</div>";
 			echo genericSelect("specific_column", "specific_column", defaultFailDown(gvfw("specific_column"), "temperature"), $weatherColumns, "onchange", $handler);
 			echo multiDevicePicker($user["tenant_id"]);
@@ -178,10 +178,10 @@ let glblChart = null;
 let graphDataObject = {}
 let multiGraphDataObject = [];
 let pastYearsViewed = [];
-let columnsWeCareAbout = ["temperature", "pressure", "humidity"];
+let columnsWeCareAbout = <?php echo json_encode($weatherColumns)?>;
 let yearsIntoThePastWeCareAbout = [0,1,2,3];
 let timeStamp = [];
-let devices = {};
+let devices = [];
 
 resetGraphData();
 
@@ -609,12 +609,7 @@ function getWeatherData(yearsAgo) {
 								graphDataObject[yearsAgo][column].push(value);
 							}
 							timeStamp.push(time)
-
-
-						}
- 
-
-						
+						}	
 					}
 				}
 			}
@@ -624,9 +619,8 @@ function getWeatherData(yearsAgo) {
 			} else {
 				addPastYearToGraph(locationIdArray, yearsAgo, plotType);
 			}
-
 			officialWeather(locationId);
- 
+
 	    }
 		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
 		

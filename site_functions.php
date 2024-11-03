@@ -1547,6 +1547,10 @@ function genericSelect($id, $name, $defaultValue, $data, $event = "", $handler= 
 	foreach($data as $datum) {
 		$value = gvfa("value", $datum);
 		$text = gvfa("text", $datum);
+    if($value == ""  && $text == ""){ //if it's just a list of items, then each is both $value and $text
+      $value = $datum;
+      $text = $datum;
+    }
     if(!$text) { //if the array is just a list of scalar values:
       $value = $datum;
       $text = $datum;

@@ -100,7 +100,7 @@ if(!$user) {
 			//$selectData = json_decode('[{"text":"Outside Cabin","value":1},{"text":"Cabin Downstairs","value":2},{"text":"Cabin Watchdog","value":3}]');
 			//var_dump($selectData);
 			//echo  json_last_error_msg();
-			$handler = "getInverterData()";
+			$handler = "getInverterData(0)";
 
 			//$scaleConfig = json_decode('[{"text":"ultra-fine","value":"ultra-fine"},{"text":"fine","value":"fine"},{"text":"hourly","value":"hour"}, {"text":"daily","value":"day"}]', true);
 			echo "<tr><td>Time Scale:</td><td>";
@@ -117,6 +117,9 @@ if(!$user) {
 </div>
 <script>
 let glblChart = null;
+let graphDataObject = {};
+let columnsWeCareAbout = ["solar_power","load_power","battery_power","battery_percentage"];
+let yearsIntoThePastWeCareAbout = [0,1,2,3];
 //For graphs info, visit: https://www.chartjs.org
 let panelValues = [];
 let loadValues = [];
@@ -125,68 +128,60 @@ let batteryPercents = [];
 let batteryPercentsUnsmoothed = [];
 let timeStamp = [];
 
-function showGraph(){
+resetGraphData();
+
+function resetGraphData(){
+	graphDataObject = {};
+	pastYearsViewed = [];
+	for (let year of yearsIntoThePastWeCareAbout) { 
+		for (let column of columnsWeCareAbout) {
+			if (!graphDataObject[year]) {
+				graphDataObject[year] = {};
+			}
+			if (!graphDataObject[year][column]) {
+				graphDataObject[year][column] = [];
+			}
+		}
+	}
+}
+
+
+function showGraph(yearsAgo){
+	let colorSeries = ["#ff0000", "#00ff00", "#0000ff", "#009999", "#3300ff", "#ff0033", "#ff3300", "33ff00", "#0033ff", "#6600cc", "#ff0066", "#cc6600", "66cc00", "#0066cc"];
 	//console.log(timeStamp);
 	if(glblChart){
 		glblChart.destroy();
 	}
+	if(!yearsAgo){
+		yearsAgo = 0;
+	}
     let ctx = document.getElementById("Chart").getContext('2d');
- 
+	let columnCount = 0;
+	let chartDataSet = [];
+	for (let column of columnsWeCareAbout){
+		let yAxisId = "A";
+		if(column == "batter_percentage"){
+			yAxisId = "B";
+		}
+		//console.log(graphDataObject[0][column]);
+		chartDataSet.push(
+			{
+				label: column,
+				fill: false,  //Try with true
+				backgroundColor: colorSeries[columnCount],
+				borderColor: colorSeries[columnCount],
+				data: graphDataObject[0][column],
+				yAxisID: yAxisId
+			}
+		);
+		columnCount++;
+	}
+
     let Chart2 = new Chart(ctx, {
         type: 'line',
         data: {
             labels: timeStamp,  //Bottom Labeling
-            datasets: [{
-                label: "Panel Power",
-                fill: false,  //Try with true
-                backgroundColor: 'rgba( 243, 156, 18 , 1)', //Dot marker color
-                borderColor: 'rgba( 243, 156, 18 , 1)', //Graph Line Color
-                data: panelValues,
-				yAxisID: 'A'
-            },
-            {
-                label: "Load Power",
-                fill: false,  //Try with true
-                backgroundColor: 'rgba( 156, 243, 18 , 1)', //Dot marker color
-                borderColor: 'rgba( 156, 243, 18 , 1)', //Graph Line Color
-                data: loadValues,
-				yAxisID: 'A'
-            },
-            {
-            label: "Battery Power",
-                fill: false,  //Try with true
-                backgroundColor: 'rgba( 18, 243, 156 , 1)', //Dot marker color
-                borderColor: 'rgba( 1, 243, 156 , 1)', //Graph Line Color
-                data: batteryValues,
-				yAxisID: 'A'
-            },
-            {
-            label: "Battery Percentage",
-                fill: false,  //Try with true
-                backgroundColor: 'rgba( 111, 111, 156 , 1)', //Dot marker color
-                borderColor: 'rgba( 243, 1, 156 , 1)', //Graph Line Color
-                data: batteryPercents,
-				//steppedLine: steppedLine,
-				//cubicInterpolationMode: 'monotone',
-				tension: 0,
-				yAxisID: 'B'
-            }
-			/*
-			//for debugging:
-			,
-			{
-			label: "Battery Percentage Unsmoothed",
-                fill: false,  //Try with true
-                backgroundColor: 'rgba( 91, 111, 156 , 1)', //Dot marker color
-                borderColor: 'rgba( 183, 1, 156 , 1)', //Graph Line Color
-                data: batteryPercentsUnsmoothed,
-				//steppedLine: steppedLine,
-				//cubicInterpolationMode: 'monotone',
-				tension: 0,
-				yAxisID: 'B'
-            }
-			*/
-            ],
+            datasets: chartDataSet
         },
         options: {
 			
@@ -243,7 +238,7 @@ window.onload = function() {
 let currentStartDate; //a global that needs to persist through HTTP sessions in the frontend
 let justLoaded = true;
 
-function getInverterData() {
+function getInverterData(yearsAgo) {
 	const queryParams = new URLSearchParams(window.location.search);
 	let scale = queryParams.get('scale');
 	let absoluteTimespanCusps = queryParams.get('absolute_timespan_cusps');
@@ -287,6 +282,7 @@ function getInverterData() {
 		currentStartDate = periodAgoDropdown[periodAgoDropdown.selectedIndex].text;
 	}	
 	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, periodAgo, scale, currentStartDate);
+	resetGraphData();
 	let xhttp = new XMLHttpRequest();
 	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getInverterData&absolute_timespan_cusps=" + absoluteTimespanCusps;
 	console.log(endpointUrl);
@@ -314,6 +310,7 @@ function getInverterData() {
 						//console.log(datum);
 						//console.log("!");
 						let time = datum["recorded"];
+						/*
 						let panel = datum["solar_power"];
 						let load = datum["load_power"];
 						let battery = datum["battery_power"];
@@ -327,14 +324,25 @@ function getInverterData() {
 						batteryPercents.push(parseInt(batteryPercent));
 		
 						timeStamp.push(time);
+						*/
+
+						for (let column of columnsWeCareAbout){
+								let value = datum[column];
+								if(column == "battery_percentage"){
+									value = value * (9/5) + 32;
+								}
+								graphDataObject[yearsAgo][column].push(value);
+							}
+							timeStamp.push(time);
+						}
 					}
-				}
+				
 			} else {
 				console.log("No data was found.");
 			}
 			if(scale == "three-hour"  || scale == "day"){
-				batteryPercents = smoothArray(batteryPercents, 19, 1); //smooth out the battery percentages, which are integers and too jagged
-				console.log("woot");
+				//batteryPercents = smoothArray(batteryPercents, 19, 1); //smooth out the battery percentages, which are integers and too jagged
+				graphDataObject[yearsAgo]["battery_percentage"] = smoothArray(graphDataObject[yearsAgo]["battery_percentage"], 19, 1);
 			}
 			//alert(batteryPercents.length + " xxx " + batteryPercentsUnsmoothed.length);
 			//console.log(batteryPercents);
@@ -348,13 +356,13 @@ function getInverterData() {
 
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
   xhttp.send();
-  createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getInverterData()', 'inverter_log', '');
+  createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getInverterData(0)', 'inverter_log', '');
  
 }
  
  
 
-getInverterData();
+getInverterData(0);
 </script>
 </body>
 
