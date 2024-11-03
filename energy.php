@@ -296,19 +296,12 @@ function getInverterData(yearsAgo) {
 			batteryPercentsUnsmoothed = [];
 			timeStamp = [];
 			let time = new Date().toLocaleTimeString();
-			//console.log(this.responseText);
-		
 			let dataObject = JSON.parse(this.responseText); 
-			//let tbody = document.getElementById("tableBody");
-			//tbody.innerHTML = '';
-			//console.log(dataObject[0]);
 			if(dataObject && dataObject[0]) {
 				if(dataObject[0]["sql"]){
 					console.log(dataObject[0]["sql"], dataObject[0]["error"]);
 				} else {
 					for(let datum of dataObject) {
-						//console.log(datum);
-						//console.log("!");
 						let time = datum["recorded"];
 						for (let column of columnsWeCareAbout){
 								let value = datum[column];
@@ -322,13 +315,9 @@ function getInverterData(yearsAgo) {
 				console.log("No data was found.");
 			}
 			if(scale == "three-hour"  || scale == "day"){
-				//batteryPercents = smoothArray(batteryPercents, 19, 1); //smooth out the battery percentages, which are integers and too jagged
 				let batteryPercents =  graphDataObject[yearsAgo]["battery_percentage"];
-				console.log(batteryPercents, smoothArray(batteryPercents, 19, 1));
 				graphDataObject[yearsAgo]["battery_percentage"] = smoothArray(batteryPercents, 19, 1);
 			}
-			//alert(batteryPercents.length + " xxx " + batteryPercentsUnsmoothed.length);
-			//console.log(batteryPercents);
 			glblChart = showGraph();  //Update Graphs
 			
 	    }
@@ -340,11 +329,8 @@ function getInverterData(yearsAgo) {
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
   xhttp.send();
   createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getInverterData(yearsAgo)', 'inverter_log', '');
- 
 }
  
- 
-
 getInverterData(0);
 </script>
 </body>
