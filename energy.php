@@ -119,11 +119,6 @@ let graphDataObject = {};
 let columnsWeCareAbout = ["solar_power","load_power","battery_power","battery_percentage"]; //these are the inverter columns to be graphed from inverter_log. if you have more, you can include them
 let yearsIntoThePastWeCareAbout = [0,1,2,3];
 //For graphs info, visit: https://www.chartjs.org
-let panelValues = [];
-let loadValues = [];
-let batteryValues = [];
-let batteryPercents = [];
-let batteryPercentsUnsmoothed = [];
 let timeStamp = [];
 
 resetGraphData();
@@ -174,14 +169,13 @@ function showGraph(yearsAgo){
 		columnCount++;
 	}
 
-    let Chart2 = new Chart(ctx, {
+    let energyChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: timeStamp,  //Bottom Labeling
             datasets: chartDataSet
         },
         options: {
-			
             hover: {mode: null},
             title: {
                     display: true,
@@ -214,7 +208,7 @@ function showGraph(yearsAgo){
             }
         }
     });
-	return Chart2;
+	return energyChart;
 }
 
 //On Page load show graphs
@@ -227,7 +221,6 @@ window.onload = function() {
 //Ajax script to get ADC voltage at every 5 Seconds 
 //Read This tutorial https://circuits4you.com/2018/02/04/esp8266-ajax-update-part-of-web-page-without-refreshing/
 
-
 let currentStartDate; //a global that needs to persist through HTTP sessions in the frontend
 let justLoaded = true;
 
@@ -236,18 +229,14 @@ function getInverterData(yearsAgo) {
 	let scale = queryParams.get('scale');
 	let absoluteTimespanCusps = queryParams.get('absolute_timespan_cusps');
 	let atcCheckbox = document.getElementById("atc_id");
-	console.log(absoluteTimespanCusps);
-
 	if(atcCheckbox.checked) {
 		absoluteTimespanCusps = 1;
 	}
-
 	if(justLoaded){
 		if(absoluteTimespanCusps == 1){
 			atcCheckbox.checked = true;
 		}
 	}
-
 	if(!scale){
 		scale = "day";
 	}
