@@ -7,17 +7,23 @@ include("device_functions.php");
 //ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
  
-if(array_key_exists( "locationId", $_REQUEST)) {
-	$locationId = $_REQUEST["locationId"];
-} else {
-	$locationId = 1;
 
-}
+
 $poser = null;
 $poserString = "";
 $out = "";
 $conn = mysqli_connect($servername, $username, $password, $database);
 $user = autoLogin();
+if($user){
+	$devices = getDevices($user["tenant_id"]);
+	if(array_key_exists( "locationId", $_REQUEST)) {
+		$locationId = $_REQUEST["locationId"];
+	} else {
+		if($devices  && $devices[0]){
+			$locationId = $devices[0]["device_id"]; //picking the first device now, but this could be in the tenant config
+		}
+	}
+}
 $tenantSelector = "";
 $scaleConfig =  timeScales();
 
@@ -32,6 +38,7 @@ if ($action == "login") {
 	logOut();
 	header("Location: ?action=login");
 	die();
+	
 }
 if(!$user) {
 	if(gvfa("password", $_POST) != "" && $tenantSelector == "") {
@@ -42,13 +49,14 @@ if(!$user) {
 	} else {
 		$content .= $tenantSelector;
 	}
- 
+
+
 	echo bodyWrap($content, $user, "", null);
 	die();
 }
  
-function multiDevicePicker($tenantId) {
-	$devices = getDevices($tenantId);
+function multiDevicePicker($tenantId, $devices) {
+	
 	$out = "";
 	foreach($devices as $device){
 		if($device["location_name"]){
@@ -161,7 +169,7 @@ function plotTypePicker($type, $handler){
 			$weatherColumns = ["temperature", "pressure", "humidity"];
 			echo "</div>";
 			echo genericSelect("specific_column", "specific_column", defaultFailDown(gvfw("specific_column"), "temperature"), $weatherColumns, "onchange", $handler);
-			echo multiDevicePicker($user["tenant_id"]);
+			echo multiDevicePicker($user["tenant_id"], $devices);
 			echo "</div>";
 		?>
 
@@ -461,7 +469,6 @@ function getWeatherData(yearsAgo) {
 	}
 	if(!locationId){
 		locationId = <?php echo $locationId ?>;
-		
 	}
 	url.searchParams.set("location_id", locationId);
 	if(locationIds == null || !locationIds) {
@@ -474,7 +481,6 @@ function getWeatherData(yearsAgo) {
 		scale = document.getElementById('scaleDropdown')[document.getElementById('scaleDropdown').selectedIndex].value;
 	}	
 	url.searchParams.set("scale", scale);
-
 
 	let specificColumnSelect = document.getElementById('specific_column');
 	if(!justLoaded){
@@ -650,8 +656,6 @@ function getWeatherData(yearsAgo) {
   justLoaded = false;
 }
 
-
-
 function timeConverter(UNIX_timestamp){
   var a = new Date(UNIX_timestamp * 1000);
   var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -707,7 +711,6 @@ function officialWeather(locationId) {
 	  };
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
   xhttp.send();
-
 }
 
 getWeatherData();
