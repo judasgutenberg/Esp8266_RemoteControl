@@ -223,6 +223,7 @@ function getInverterData(yearsAgo) {
 	let scale = queryParams.get('scale');
 	let absoluteTimespanCusps = queryParams.get('absolute_timespan_cusps');
 	let atcCheckbox = document.getElementById("atc_id");
+	let url = new URL(window.location.href);
 	if(atcCheckbox.checked) {
 		absoluteTimespanCusps = 1;
 	}
@@ -231,6 +232,7 @@ function getInverterData(yearsAgo) {
 			atcCheckbox.checked = true;
 		}
 	}
+	url.searchParams.set("absolute_timespan_cusps", absoluteTimespanCusps);
 	if(!scale){
 		scale = "day";
 	}
@@ -241,6 +243,7 @@ function getInverterData(yearsAgo) {
 	if(document.getElementById('scaleDropdown') && !justLoaded){
 		scale = document.getElementById('scaleDropdown')[document.getElementById('scaleDropdown').selectedIndex].value;
 	}
+	url.searchParams.set("scale", scale);
 	//make the startDateDropdown switch to the appropriate item on the new scale:
 	let periodAgoDropdown = document.getElementById('startDateDropdown');	
 
@@ -258,7 +261,9 @@ function getInverterData(yearsAgo) {
 		currentStartDate = periodAgoDropdown[periodAgoDropdown.selectedIndex].text;
 	}	
 	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, periodAgo, scale, currentStartDate);
+	url.searchParams.set("period_ago", periodAgo);
 	resetGraphData();
+	history.pushState({}, "", url);
 	let xhttp = new XMLHttpRequest();
 	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getInverterData&absolute_timespan_cusps=" + absoluteTimespanCusps;
 	console.log(endpointUrl);

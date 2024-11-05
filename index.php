@@ -7,8 +7,6 @@ include("device_functions.php");
 //ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
  
-
-
 $poser = null;
 $poserString = "";
 $out = "";
@@ -445,7 +443,7 @@ function getWeatherData(yearsAgo) {
 			plotType = radio.value;
 		}
 	}
-
+	url.searchParams.set("absolute_timespan_cusps", absoluteTimespanCusps);
 	url.searchParams.set("plot_type", plotType);
 
 	if(atcCheckbox.checked) {
@@ -499,7 +497,6 @@ function getWeatherData(yearsAgo) {
 	}
 	url.searchParams.set("specific_column", specificColumn);
 	
-	
 	let specificDevices = document.getElementsByName('specificDevice');
 	if(!justLoaded){
 		locationIds = "";
@@ -540,21 +537,8 @@ function getWeatherData(yearsAgo) {
 	if(!yearsAgo){
 		console.log(locationIdArray);
 		resetGraphData(locationIdArray);
-	} else {
-		/*
-		//keeping us from overlaying multiple yearsAgo data on the graph
-		//but it didn't even work
-		if(plotType == "multi") {
-			if(multiGraphDataObject[yearsAgo][locationIdArray[0]]["values"].length>0){
-				return;
-			}
-		} else {
-			if(graphDataObject[yearsAgo][columnsWeCareAbout[0]].length>0){
-				return;
-			}
-		}
-		*/
-	}
+	} 
+	//update the URL without changing actual location
 	history.pushState({}, "", url);
 	let xhttp = new XMLHttpRequest();
 	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&locationId=" + locationId + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&years_ago=" + yearsAgo;
@@ -648,7 +632,6 @@ function getWeatherData(yearsAgo) {
 	    }
 		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
 	  };
-
   xhttp.open("GET", endpointUrl, true); 
   xhttp.send();
   createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getWeatherData()', 'weather_data', locationId);
@@ -716,7 +699,4 @@ function officialWeather(locationId) {
 getWeatherData();
 </script>
 </body>
-
 </html>
-
- 
