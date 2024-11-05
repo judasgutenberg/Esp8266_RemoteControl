@@ -316,7 +316,11 @@ function showGraph(locationId, plotType){
 				]
             }
 	timeStampLabels = timeStamp;
-	let graphSubtitle = findObjectByColumn(devices, "device_id", locationId)["location_name"] + " data";
+	let graphSubtitle = "Weather Data";
+	console.log(devices);
+	if(devices && devices.length>0){
+ 		graphSubtitle =   findObjectByColumn(devices, "device_id", locationId + '')["location_name"] + " data";
+	}
 	if(plotType == "multi"){
 		timeStampLabels = [];
 		chartDataSet = [];
