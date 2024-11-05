@@ -385,12 +385,13 @@ body
 {
 	display: block;
 	vertical-align: text-bottom;
-	margin-top:3px;
-	margin-right: 3px;
-	padding:1px;
+	margin-top: -1px;
+	margin-right: -1px;
+	padding-right:3px;
+	padding-top: 0;
   	font-size:9px;
 	font-weight:bold;
-	text-align:left;
+	text-align:right;
 	background-color:#d0d0d0;
 	border-width: 1px 1px 1px 1px;
 	border-color: #666666;

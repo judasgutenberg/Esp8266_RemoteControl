@@ -211,6 +211,8 @@ function resetGraphData(locationIdArray){
 }
 
 function addPastYearToGraph(locationIdArray, yearsAgo, plotType){
+	yearsAgo = parseInt(yearsAgo);
+	console.log(pastYearsViewed);
 	if(pastYearsViewed.indexOf(yearsAgo) < 0){
 		pastYearsViewed.push(yearsAgo);
 		let columnCount = 0;
@@ -240,24 +242,29 @@ function addPastYearToGraph(locationIdArray, yearsAgo, plotType){
 
 		} else {
 			columnCount = 0;
-			for (let column of columnsWeCareAbout){
-				let yAxisId = "A";
-					if(column == "pressure"){
-						yAxisId = "B";
-					}
-				glblChart.data.datasets.push(
-						{
-							label: column + " " + parseInt(parseInt(new Date().getFullYear()) - yearsAgo),
-							fill: false,  //Try with true
-							backgroundColor: colorSeries[columnCount],
-							borderColor: colorSeries[columnCount],
-							data: graphDataObject[yearsAgo][column],
-							yAxisID: yAxisId
+			//console.log(graphDataObject);
+			if(graphDataObject[yearsAgo]){
+				for (let column of columnsWeCareAbout){
+					console.log(graphDataObject);
+					let yAxisId = "A";
+						if(column == "pressure"){
+							yAxisId = "B";
 						}
-				);
-				columnCount++;
+					glblChart.data.datasets.push(
+							{
+								label: column + " " + parseInt(parseInt(new Date().getFullYear()) - yearsAgo),
+								fill: false,  //Try with true
+								backgroundColor: colorSeries[columnCount],
+								borderColor: colorSeries[columnCount],
+								data: graphDataObject[yearsAgo][column],
+								yAxisID: yAxisId
+							}
+					);
+					columnCount++;
+				}
 			}
 		}
+		console.log(glblChart.data.datasets);
 		glblChart.update();
 	}
 }
@@ -400,6 +407,7 @@ let justLoaded = true;
 
 function getWeatherData(yearsAgo) {
 	//console.log("got data");
+	console.log(yearsAgo);
 	const queryParams = new URLSearchParams(window.location.search);
 	let locationIdArray = [];
 	let scale = queryParams.get('scale');
@@ -410,14 +418,24 @@ function getWeatherData(yearsAgo) {
 	let specificColumn = queryParams.get('specific_column');
 	let absoluteTimespanCusps = queryParams.get('absolute_timespan_cusps');
 	let atcCheckbox = document.getElementById("atc_id");
+	let yearsAgoToShow = queryParams.get('years_ago');
+
+	let url = new URL(window.location.href);
+
 	if(!yearsAgo){
 		yearsAgo = 0;
+	}
+	if(yearsAgoToShow){
+		url.searchParams.set("years_ago", yearsAgoToShow);
 	}
 	for(let radio of document.getElementsByName("plottype")){
 		if(radio.checked){
 			plotType = radio.value;
 		}
 	}
+
+	url.searchParams.set("plot_type", plotType);
+
 	if(atcCheckbox.checked) {
 		absoluteTimespanCusps = 1;
 	}
@@ -434,12 +452,14 @@ function getWeatherData(yearsAgo) {
 		scale = "day";
 	}
 	let locationIdDropdown = document.getElementById('locationDropdown');
-	if(!locationId){
+	if(!justLoaded){
 		locationId  = locationIdDropdown[locationIdDropdown.selectedIndex].value
 	}
 	if(!locationId){
 		locationId = <?php echo $locationId ?>;
+		
 	}
+	url.searchParams.set("location_id", locationId);
 	if(locationIds == null || !locationIds) {
 		locationIds = "";//locationId; //nope!
 		//if(!justLoaded){
@@ -449,6 +469,8 @@ function getWeatherData(yearsAgo) {
 	if(document.getElementById('scaleDropdown')  && !justLoaded){
 		scale = document.getElementById('scaleDropdown')[document.getElementById('scaleDropdown').selectedIndex].value;
 	}	
+	url.searchParams.set("scale", scale);
+
 
 	let specificColumnSelect = document.getElementById('specific_column');
 	if(!justLoaded){
@@ -465,7 +487,9 @@ function getWeatherData(yearsAgo) {
 			}
 		}
 	}
-
+	url.searchParams.set("specific_column", specificColumn);
+	
+	
 	let specificDevices = document.getElementsByName('specificDevice');
 	if(!justLoaded){
 		locationIds = "";
@@ -484,7 +508,7 @@ function getWeatherData(yearsAgo) {
 		}
 	}
 	locationIdArray = locationIds.split(",");
-
+	url.searchParams.set("location_ids", locationIds);
 	//make the startDateDropdown switch to the appropriate item on the new scale:
 	let periodAgoDropdown = document.getElementById('startDateDropdown');	
 
@@ -502,6 +526,7 @@ function getWeatherData(yearsAgo) {
 		currentStartDate = periodAgoDropdown[periodAgoDropdown.selectedIndex].text;
 	}	
 	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, periodAgo, scale, currentStartDate);
+	url.searchParams.set("period_ago", periodAgo);
 	if(!yearsAgo){
 		console.log(locationIdArray);
 		resetGraphData(locationIdArray);
@@ -520,6 +545,7 @@ function getWeatherData(yearsAgo) {
 		}
 		*/
 	}
+	history.pushState({}, "", url);
 	let xhttp = new XMLHttpRequest();
 	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&locationId=" + locationId + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&years_ago=" + yearsAgo;
 	if(plotType == 'multi'){
@@ -603,6 +629,12 @@ function getWeatherData(yearsAgo) {
 				addPastYearToGraph(locationIdArray, yearsAgo, plotType);
 			}
 			officialWeather(locationId);
+			if(yearsAgoToShow){
+				console.log(locationIdArray, yearsAgoToShow, plotType);
+				if(pastYearsViewed.indexOf(parseInt(yearsAgoToShow)) < 0){
+					getWeatherData(yearsAgoToShow);
+				}
+			}
 	    }
 		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
 	  };

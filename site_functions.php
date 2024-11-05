@@ -71,7 +71,7 @@ function bodyWrap($content, $user, $deviceId, $poser = null) {
       $poserString = " posing as <span class='poserindication'>" . $poser["email"] . "</span> (<a href='?action=disimpersonate'>unpose</a>)";
 
     }
-    $out .= "<div class='loggedin' style='text-align: right;'>You are logged in as <b>" . $user["email"] . "</b>" .  $poserString . "  on " . $user["name"] . " <div class='basicbutton' style='text-align: right;'><a href=\"?action=logout\">logout</a></div></div>\n";
+    $out .= "<div class='loggedin'>You are logged in as <b>" . $user["email"] . "</b>" .  $poserString . "  on " . $user["name"] . " <div class='basicbutton'><a href=\"?action=logout\">logout</a></div></div>\n";
 	}
 	else
 	{
