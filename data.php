@@ -355,6 +355,8 @@ if($_REQUEST) {
 					}
 					if($periodAgo  > 0) {
 						$sql .= " AND recorded < DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
+					} else if ($yearsAgo > 0){
+						$sql .= " AND recorded < DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
 					}
 					if($groupBy){
 						$sql .= " GROUP BY " . $groupBy . " ";
@@ -366,6 +368,7 @@ if($_REQUEST) {
 						$error = mysqli_error($conn);
 						if($result && $canAccessData) {
 							$out["records"] = mysqli_fetch_all($result, MYSQLI_ASSOC);
+							$out["sql"] = $sql;
 						}
 						 //we need info about the locations if we are plotting data from multiple ones
 						$sql = "SELECT * FROM device WHERE  tenant_id = " . $user["tenant_id"];
@@ -374,6 +377,7 @@ if($_REQUEST) {
 						$error = mysqli_error($conn);
 						if($result && $canAccessData) {
 							$out["devices"] = mysqli_fetch_all($result, MYSQLI_ASSOC);
+							
 						}
  
 						if(count($out) < 1){

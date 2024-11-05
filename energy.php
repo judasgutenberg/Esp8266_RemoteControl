@@ -46,6 +46,8 @@ if(!$user) {
 	echo bodyWrap($content, $user, "", null);
 	die();
 }
+
+ 
  
 ?>
 <html>
@@ -247,7 +249,6 @@ function getInverterData(yearsAgo) {
 	//make the startDateDropdown switch to the appropriate item on the new scale:
 	let periodAgoDropdown = document.getElementById('startDateDropdown');	
 
-
 	if(periodAgoDropdown){
 		if(!justLoaded){
 			periodAgo = periodAgoDropdown[periodAgoDropdown.selectedIndex].value;
@@ -301,7 +302,7 @@ function getInverterData(yearsAgo) {
 
   xhttp.open("GET", endpointUrl, true);  
   xhttp.send();
-  createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getInverterData(yearsAgo)', 'inverter_log', '');
+  createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getInverterData(0)', 'inverter_log', '');
 }
  
 getInverterData(0);
@@ -309,17 +310,6 @@ getInverterData(0);
 </body>
 
 </html>
-<?php
-function recentOrdinalDateArray($numberOfDays) {
-    $dateArray = [];
-    for ($i = 0; $i <= $numberOfDays; $i++) {
-        $date = date('Y/m/d', strtotime("-$i days"));
-        $dateArray[] = [
-            'text' => $date,
-            'value' => $i
-        ];
-    }
-    return $dateArray;
-}
+ 
 
  

@@ -634,7 +634,7 @@ function getWeatherData(yearsAgo) {
 	  };
   xhttp.open("GET", endpointUrl, true); 
   xhttp.send();
-  createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getWeatherData()', 'weather_data', locationId);
+  createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getWeatherData(0)', 'weather_data', locationId);
   
   justLoaded = false;
 }
