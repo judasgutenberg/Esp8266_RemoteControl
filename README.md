@@ -65,7 +65,7 @@ Here is the user interface, which allows you to turn items on and off in the lis
 
 ![alt text](esp8266-remote.jpg?raw=true)
 ## Remote Control
-This system tracks whether or not data makes it to the ESP8266 that it is sent to via the last_known_device_value and last_known_device_modified columns.  This is important when a remote control action needs to be verified as having happened. Otherwise you end up looking for a change of temperature or power consumption at your off-grid cabin for such confirmation.  I use a string hash table as a very simple database to store this information on the microcontroller, which might be overkill. But the ESP8266 has enough storage and memory to be a little wasteful of resources. Also, every change of state for a device_feature is logged in the device_feature_log table.
+This system tracks whether or not data makes it to the ESP8266 that it is sent to via the last_known_device_value and last_known_device_modified columns.  This is important when a remote control action needs to be verified as having happened. Otherwise you end up looking for a change of temperature or power consumption at your off-grid cabin for such confirmation, and that can take a fair amount of time.  I use a string hash table as a very simple database to store this information on the microcontroller, which might be overkill. But the ESP8266 has enough storage and memory to be a little wasteful of resources. Also, every change of state for a device_feature is logged in the device_feature_log table.
 
 ![alt text](reallifecircuit.jpg?raw=true)
 
