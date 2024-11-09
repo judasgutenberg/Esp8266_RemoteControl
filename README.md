@@ -33,7 +33,7 @@ Some of the files (remote.ino, config.h, config.c, and index.h) are designed to 
 <li>LM75, a temperature sensor: (https://github.com/jeremycole/Temperature_LM75_Derived)
 <li>Adafruut BMP280, a temperature/air-pressure sensor: (https://github.com/adafruit/Adafruit_BMP280_Library/blob/master/Adafruit_BMP280.h)
 </ul>
-This system also requires a few external libraries:
+This system also requires a number of external libraries:
 <ul>
 <li>https://github.com/bblanchon/ArduinoJson
 <li>https://github.com/arduino-libraries/NTPClient
