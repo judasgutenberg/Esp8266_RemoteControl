@@ -615,6 +615,32 @@ function getWeatherData(yearsAgo) {
 						}	
 					}
 				}
+				//crudely make the old data have the same number of items as the new data
+				if(yearsAgo > 0) {
+					if(plotType == "multi") {
+						for(let specificLocationId of locationIdArray){
+							let yearDifferenceDelta = multiGraphDataObject[yearsAgo][locationId]["values"].length - multiGraphDataObject[0][locationId]["values"].length;
+							if(yearDifferenceDelta > 0){
+								multiGraphDataObject[yearsAgo][locationId]["values"].splice(-yearDifferenceDelta); //remove extra items.  crude, but close enough
+							}
+							if(yearDifferenceDelta < 0){
+								let lastItem = multiGraphDataObject[yearsAgo][locationId]["values"][multiGraphDataObject[yearsAgo][locationId]["values"].length - 1];
+								multiGraphDataObject[yearsAgo][locationId]["values"].push(...Array(-yearDifferenceDelta).fill(lastItem));
+							}
+						}
+					} else{
+						for (let column of columnsWeCareAbout){
+							let yearDifferenceDelta = graphDataObject[yearsAgo][column].length - graphDataObject[0][column].length;
+							if(yearDifferenceDelta > 0){
+								graphDataObject[yearsAgo][column].splice(-yearDifferenceDelta); //remove extra items.  crude, but close enough
+							}
+							if(yearDifferenceDelta < 0){
+								let lastItem = graphDataObject[yearsAgo][column][graphDataObject[yearsAgo][column].length - 1];
+								graphDataObject[yearsAgo][column].push(...Array(-yearDifferenceDelta).fill(lastItem));
+							}
+						}
+					}
+				}
 			}
 			if(yearsAgo == 0){
 				//console.log(multiGraphDataObject);
