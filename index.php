@@ -618,29 +618,16 @@ function getWeatherData(yearsAgo) {
 				//crudely make the old data have the same number of items as the new data
 				if(yearsAgo > 0) {
 					if(plotType == "multi") {
-						for(let specificLocationId of locationIdArray){
-							let yearDifferenceDelta = multiGraphDataObject[yearsAgo][locationId]["values"].length - multiGraphDataObject[0][locationId]["values"].length;
-							if(yearDifferenceDelta > 0){
-								multiGraphDataObject[yearsAgo][locationId]["values"].splice(-yearDifferenceDelta); //remove extra items.  crude, but close enough
-							}
-							if(yearDifferenceDelta < 0){
-								let lastItem = multiGraphDataObject[yearsAgo][locationId]["values"][multiGraphDataObject[yearsAgo][locationId]["values"].length - 1];
-								multiGraphDataObject[yearsAgo][locationId]["values"].push(...Array(-yearDifferenceDelta).fill(lastItem));
-							}
-						}
+						multiGraphDataObject = fillOutArray(multiGraphDataObject, yearsAgo, locationIdArray, "values");
+						console.log(multiGraphDataObject);
 					} else{
-						for (let column of columnsWeCareAbout){
-							let yearDifferenceDelta = graphDataObject[yearsAgo][column].length - graphDataObject[0][column].length;
-							if(yearDifferenceDelta > 0){
-								graphDataObject[yearsAgo][column].splice(-yearDifferenceDelta); //remove extra items.  crude, but close enough
-							}
-							if(yearDifferenceDelta < 0){
-								let lastItem = graphDataObject[yearsAgo][column][graphDataObject[yearsAgo][column].length - 1];
-								graphDataObject[yearsAgo][column].push(...Array(-yearDifferenceDelta).fill(lastItem));
-							}
-						}
+						graphDataObject = fillOutArray(graphDataObject, yearsAgo, columnsWeCareAbout, null);
+						
 					}
 				}
+
+
+
 			}
 			if(yearsAgo == 0){
 				//console.log(multiGraphDataObject);
@@ -663,6 +650,52 @@ function getWeatherData(yearsAgo) {
   createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getWeatherData(0)', 'weather_data', locationId);
   
   justLoaded = false;
+}
+
+function fillOutArray(rootArrayToFillOut, yearsAgo, arrayOfSpecialItem, possibleKey){
+	for (let item of arrayOfSpecialItem){
+		let arrayWeCareAbout = rootArrayToFillOut[yearsAgo][item];
+		let zerothArrayWeCareAbout = rootArrayToFillOut[0][item];
+		
+		if(possibleKey){
+			arrayWeCareAbout = rootArrayToFillOut[yearsAgo][item][possibleKey];
+			zerothArrayWeCareAbout = rootArrayToFillOut[0][item][possibleKey];
+		} 
+		let yearDifferenceDelta = arrayWeCareAbout.length - zerothArrayWeCareAbout.length;
+		if(yearDifferenceDelta > 0){
+			//arrayWeCareAbout.splice(-yearDifferenceDelta); //remove extra items.  crude, but close enough
+		}
+		//better than just repeating the last data point to fill out the graph or throwing away items at the end
+		arrayWeCareAbout = expandArray(arrayWeCareAbout, -yearDifferenceDelta);
+		console.log("year ago length after:" + arrayWeCareAbout.length);
+		if(possibleKey){
+			rootArrayToFillOut[yearsAgo][item][possibleKey] = arrayWeCareAbout;
+		} else {
+			rootArrayToFillOut[yearsAgo][item] = arrayWeCareAbout;
+		}
+	}
+	return rootArrayToFillOut;
+}
+
+function expandArray(arr, n) {
+    const originalLength = arr.length;
+    const result = [...arr]; // Start with a copy of the original array
+    // Calculate where to place duplicates by spacing out n items evenly
+	if(n > 0){
+		for (let i = 0; i < n; i++) {
+			// Position to insert a duplicate item
+			const insertIndex = Math.floor((i + 1) * (result.length - 1) / (n + 1));
+			result.splice(insertIndex, 0, result[insertIndex]); // Duplicate adjacent item
+		}
+	} else {
+        // Removing items evenly
+        const itemsToRemove = Math.min(-n, result.length); // Limit removals to array length
+        for (let i = 0; i < itemsToRemove; i++) {
+            const removeIndex = Math.floor((i + 1) * (result.length - 1) / (itemsToRemove + 1));
+            result.splice(removeIndex, 1); // Remove item at calculated index
+        }
+	}
+    return result;
 }
 
 function timeConverter(UNIX_timestamp){
