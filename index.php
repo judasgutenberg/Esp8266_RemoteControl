@@ -677,40 +677,6 @@ function fillOutArray(rootArrayToFillOut, yearsAgo, arrayOfSpecialItem, possible
 	return rootArrayToFillOut;
 }
 
-function expandArray(arr, n) {
-    const originalLength = arr.length;
-    const result = [...arr]; // Start with a copy of the original array
-    // Calculate where to place duplicates by spacing out n items evenly
-	if(n > 0){
-		for (let i = 0; i < n; i++) {
-			// Position to insert a duplicate item
-			const insertIndex = Math.floor((i + 1) * (result.length - 1) / (n + 1));
-			result.splice(insertIndex, 0, result[insertIndex]); // Duplicate adjacent item
-		}
-	} else {
-        // Removing items evenly
-        const itemsToRemove = Math.min(-n, result.length); // Limit removals to array length
-        for (let i = 0; i < itemsToRemove; i++) {
-            const removeIndex = Math.floor((i + 1) * (result.length - 1) / (itemsToRemove + 1));
-            result.splice(removeIndex, 1); // Remove item at calculated index
-        }
-	}
-    return result;
-}
-
-function timeConverter(UNIX_timestamp){
-  var a = new Date(UNIX_timestamp * 1000);
-  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var year = a.getFullYear();
-  var month = months[a.getMonth()];
-  var date = a.getDate();
-  var hour = a.getHours();
-  var min = a.getMinutes();
-  var sec = a.getSeconds();
-  var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
-  return time;
-}
-
 function ctof(inVal){
 	return inVal * (9/5) + 32;
 }
