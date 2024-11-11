@@ -1534,7 +1534,7 @@ function createTimescalePeriodDropdown(scales, thisPeriod, scaleName, currentSta
 					option.selected = true; 
 				}
 				if(thisPeriod !== false && thisPeriod == i  && !setByTimespanSwitch){
-					console.log("selected:", option.value, option.text);
+					//console.log("selected:", option.value, option.text);
 					option.selected = true; 
 				}
 				//console.log(minimalDate, label);
@@ -1572,11 +1572,11 @@ function calculateRevisedTimespanPeriod(scales, thisPeriod, scaleName, currentSt
 		//console.log(periodSize, scaleName, periodScale, timeUnitMap[periodScale], i, dateTimeBoundary, currentStartDate);
 		if(dateTimeBoundary <= currentStartDate  && !setByTimespanSwitch) {
 			setByTimespanSwitch = true;
-			console.log("movement happened", i, dateTimeBoundary)
+			//console.log("movement happened", i, dateTimeBoundary)
 			return i
 		}
 		if(thisPeriod !== false && thisPeriod == i  && !setByTimespanSwitch){
-			console.log("movement nope", i, dateTimeBoundary)
+			//console.log("movement nope", i, dateTimeBoundary)
 			return i;
 		}
 	}

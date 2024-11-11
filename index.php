@@ -248,7 +248,7 @@ function addPastYearToGraph(locationIdArray, yearsAgo, plotType){
 		//console.log(graphDataObject);
 		if(graphDataObject[yearsAgo]){
 			for (let column of columnsWeCareAbout){
-				console.log(graphDataObject);
+				//console.log(graphDataObject);
 				let yAxisId = "A";
 					if(column == "pressure"){
 						yAxisId = "B";
@@ -267,7 +267,7 @@ function addPastYearToGraph(locationIdArray, yearsAgo, plotType){
 			}
 		}
 	}
-	console.log(glblChart.data.datasets);
+	//console.log(glblChart.data.datasets);
 	glblChart.update();
 }
 
@@ -319,7 +319,7 @@ function showGraph(locationId, plotType){
             }
 	timeStampLabels = timeStamp;
 	let graphSubtitle = "Weather Data";
-	console.log(devices);
+	//console.log(devices);
 	if(devices && devices.length>0){
  		graphSubtitle =   findObjectByColumn(devices, "device_id", locationId + '')["location_name"] + " data";
 	}
@@ -402,7 +402,7 @@ function showGraph(locationId, plotType){
 
 //On Page load show graphs
 window.onload = function() {
-  console.log(new Date().toLocaleTimeString());
+  //console.log(new Date().toLocaleTimeString());
   let locationId = document.getElementById("locationDropdown")[document.getElementById("locationDropdown").selectedIndex].value;
   officialWeather(locationId);
   //showGraph(5,10,4,58);W
@@ -528,14 +528,14 @@ function getWeatherData(yearsAgo) {
 		if(currentStartDate == periodAgoDropdown[periodAgoDropdown.selectedIndex].text){
 			thisPeriod = periodAgo;
 			periodAgo = false;
-			console.log("dates unchanged");
+			//console.log("dates unchanged");
 		}
 		currentStartDate = periodAgoDropdown[periodAgoDropdown.selectedIndex].text;
 	}	
 	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, periodAgo, scale, currentStartDate);
 	url.searchParams.set("period_ago", periodAgo);
 	if(!yearsAgo){
-		console.log(locationIdArray);
+		//console.log(locationIdArray);
 		resetGraphData(locationIdArray);
 	} 
 	//update the URL without changing actual location
@@ -560,7 +560,7 @@ function getWeatherData(yearsAgo) {
 			specificDevice.disabled = true;
 		}
 	}
-	console.log(endpointUrl);
+	//console.log(endpointUrl);
 	xhttp.onreadystatechange = function() {
 	    if (this.readyState == 4 && this.status == 200) {
 	     //Push the data in array
@@ -576,11 +576,11 @@ function getWeatherData(yearsAgo) {
 			//let tbody = document.getElementById("tableBody");
 			//tbody.innerHTML = ''
 			//if(yearsAgo > 0){  
-				console.log(dataObject);
+				//console.log(dataObject);
 			//}
 			if(dataObject) {
 				if(dataObject[0] && dataObject[0]["sql"]){
-					console.log(dataObject[0]["sql"], dataObject[0]["error"]);
+					//console.log(dataObject[0]["sql"], dataObject[0]["error"]);
 				} else {
 					devices = dataObject["devices"]; //for proper labels in the graph
 					//console.log(devices);
@@ -619,7 +619,7 @@ function getWeatherData(yearsAgo) {
 				if(yearsAgo > 0) {
 					if(plotType == "multi") {
 						multiGraphDataObject = fillOutArray(multiGraphDataObject, yearsAgo, locationIdArray, "values");
-						console.log(multiGraphDataObject);
+						//console.log(multiGraphDataObject);
 					} else{
 						graphDataObject = fillOutArray(graphDataObject, yearsAgo, columnsWeCareAbout, null);
 						
@@ -637,7 +637,7 @@ function getWeatherData(yearsAgo) {
 			}
 			officialWeather(locationId);
 			if(yearsAgoToShow){
-				console.log(locationIdArray, yearsAgoToShow, plotType);
+				//console.log(locationIdArray, yearsAgoToShow, plotType);
 				if(pastYearsViewed.indexOf(parseInt(yearsAgoToShow)) < 0){
 					getWeatherData(yearsAgoToShow);
 				}
@@ -667,7 +667,7 @@ function fillOutArray(rootArrayToFillOut, yearsAgo, arrayOfSpecialItem, possible
 		}
 		//better than just repeating the last data point to fill out the graph or throwing away items at the end
 		arrayWeCareAbout = expandArray(arrayWeCareAbout, -yearDifferenceDelta);
-		console.log("year ago length after:" + arrayWeCareAbout.length);
+		//console.log("year ago length after:" + arrayWeCareAbout.length);
 		if(possibleKey){
 			rootArrayToFillOut[yearsAgo][item][possibleKey] = arrayWeCareAbout;
 		} else {
