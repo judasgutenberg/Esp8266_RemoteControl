@@ -1019,7 +1019,7 @@ function topmostNav() {
       'label' => 'Device Control',
       'url' => "tool.php"
     ]);
-  $out = "<div class='nav'>";
+  $out = "\n<div class='nav'>\n";
   $currentMode = gvfa('table', $_REQUEST);
   $deviceId = gvfa('device_id', $_REQUEST);
   foreach($tabData as &$tab) {
@@ -1037,7 +1037,7 @@ function topmostNav() {
     if($lpad) {
       $out .= "<span style='padding-right:" . $lpad . "px;width:10px;height:12px'></span>\n";
     }
-    $out .= "<a href='./" . $url . "'><div class='" . $class . "'>" . $label . "</div></a>";
+    $out .= "\n<a href='./" . $url . "'><div class='" . $class . "'>" . $label . "</div></a>\n";
     if($rpad) {
       $out .= "<span style='padding-right:" . $rpad . "px;width:10px;height:12px'></span>\n";
     }
@@ -1124,7 +1124,7 @@ function tabNav($user) {
       $url .= "&device_id=" . $deviceId;
     }
     
-    $out .= "<a href='" . $url . "'><div class='" . $class . "'>" . $label . "</div></a>";
+    $out .= "\n<a href='" . $url . "'><div class='" . $class . "'>" . $label . "</div></a>\n";
   }
   $out .= "</div>\n";
   return $out;

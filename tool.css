@@ -428,12 +428,11 @@ body
 
 .nav {
 	margin: 2px 0.0em 0 0;
- 
 	text-align:left;
 	border-radius: 6px;
-	width: 600px;
 	padding-top: 10px;
 	padding-left:8px;
+	margin: 0px;
 	display: inline-block;
 }
 
@@ -450,7 +449,7 @@ body
   white-space:nowrap; 
   height: 12px;
   padding: 3px;
-  margin: 2px;
+  margin: 0px;
 }
 
 .navtabthere {
@@ -463,10 +462,10 @@ body
   FONT-SIZE: 14px;
   border-radius: 4px 4px 0 0;
   vertical-align:top;
-  white-space:nowrap; 
+  white-space:pre; 
   height: 12px;
   padding: 3px;
-  margin: 2px;
+  margin: 0px;
 }
 
 .logo {
