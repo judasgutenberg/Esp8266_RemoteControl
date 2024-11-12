@@ -1528,8 +1528,8 @@ function download($path, $friendlyName, $content = ""){
     header("Content-Type: application/whatevs");
     header("Content-Transfer-Encoding: binary");
     if($path){
-      header('Content-Length: '. strlen($file));
       $file = file_get_contents($path);
+      header('Content-Length: '. strlen($file));
       echo $file;
     } else {
       header('Content-Length: '. strlen($content));
@@ -1567,7 +1567,6 @@ function genericSelect($id, $name, $defaultValue, $data, $event = "", $handler= 
 	return $out;
 }
  
-
 function timeDifferenceInMinutes($datetimeOld, $datetimeNew) {
   $dateOld = new DateTime($datetimeOld);
   $dateNew= new DateTime($datetimeNew);
@@ -1575,8 +1574,6 @@ function timeDifferenceInMinutes($datetimeOld, $datetimeNew) {
   $minutes = ($interval->days * 24 * 60) + ($interval->h * 60) + $interval->i;
   return $minutes;
 }
-
-
 
 function stringToAscii($input) {
   $asciiCodes = [];
@@ -1712,9 +1709,6 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
           }
         } else if($column == "expired"  && $value == ""){
         } else if($type == "time" && $value == "") {
- 
-
-
         } else if ($column != "created" && !beginsWith($column, "_")  && array_key_exists($column, $primaryKey) == false) {
           //echo $column .  " " . $value . "<BR>";
           if($type == "datetime" && $value=="" && $column != "created" && $column != "modified") {
@@ -2074,11 +2068,8 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
               $data .= "\n<canvas id=\"" . $canvasId . "\" style='display:block;'></canvas>\n";
               $data .= "\n<div id='visualizationCaption' style='padding:10px'></div>";
             }
-            
           }
-          
         }
-        
       }
     }
   }
@@ -2273,7 +2264,3 @@ function defaultFailDown($first, $second="", $third=""){
     return $third;
   }
 }
-
-
-
- 

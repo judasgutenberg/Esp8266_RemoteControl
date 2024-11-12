@@ -504,6 +504,13 @@ function editTenant($error, $user){
       'name' => 'open_weather_api_key',
       'type' => 'text',
       'value' => gvfa("open_weather_api_key", $source)
+    ],
+    [
+	    'label' => 'Preferences',
+      'name' => 'preferences',
+      'type' => 'json',
+      'value' => gvfa("preferences", $source),
+      'template'=>" {  \"location_id\": \"\"  } "
     ]
     
 

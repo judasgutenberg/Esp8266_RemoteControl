@@ -169,24 +169,28 @@ if ($user) {
     $out .= currentSensorData($user);
   } else if ($table == "utilities") {
     $action = gvfa('action', $_GET); //$_POST will have this as "run"
-    //die("SAASDAS");
+    
     $data = json_decode(gvfw("_data")); //don't actually need this
     $foundData = getUtilityInfo($user, $action); 
     if ($foundData) {
       $role = gvfa("role", $foundData);
       $path = gvfa("path", $foundData);
       $friendlyName = gvfa("friendly_name", $foundData);
+      $outputFormat = gvfa("output_format", $foundData);
+  
       if($_POST && (gvfa("action", $foundData) || $outputFormat)) { // ||  (gvfa("action", $foundData) && gvfa("form", $foundData))
         $out .= "<div class='issuesheader'>" .  gvfa("label", $foundData)  . "</div>";
         //dealing with a utility that has a form
         $role = gvfa("role", $foundData);
+        
         if (canUserDoThing($user, $role) && ($action || $outputFormat)) { //don't actually need to do this here any more
+          
           if (array_key_exists("sql", $foundData)) { //allows the guts of a report to work as a utility
 
             $sql = $foundData["sql"];
             $sql =  tokenReplace($sql, $_POST);
             
-            $outputFormat = gvfa("output_format", $foundData);
+            
             $reportResult = mysqli_query($conn, $sql);
             $error = mysqli_error($conn);
             $affectedRows = mysqli_affected_rows($conn);
@@ -200,6 +204,7 @@ if ($user) {
               $out .= genericTable($rows, null, null, null);
             }
           } else if(array_key_exists("action", $foundData) || $outputFormat) {
+            
               $redirect = true;
               $codeToRun = "";
               if($foundData["action"]) {
@@ -212,6 +217,8 @@ if ($user) {
                   eval('$result  =' . $codeToRun . ";");
                 }
                 if($outputFormat == "download") {
+                  //die($path . "*" . $friendlyName);
+                  //die(file_exists($path) . "&");
                   download($path, $friendlyName);
                   die();
                 } else {
