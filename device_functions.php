@@ -648,7 +648,7 @@ function editDeviceFeature($error,  $user) {
     [
 	    'label' => 'temporary automation suspension time (in hours)',
       'name' => 'restore_automation_after',
-      'type' => 'int',
+      'type' => 'number',
 	    'value' => gvfa("restore_automation_after", $source), 
       'error' => gvfa('restore_automation_after', $error)
 	  ],
