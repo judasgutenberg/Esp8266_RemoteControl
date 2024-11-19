@@ -2264,3 +2264,11 @@ function defaultFailDown($first, $second="", $third=""){
     return $third;
   }
 }
+
+ function checkPhpFunctionCallIsBogus($str){
+  $str = trim($str);
+  $str = str_replace([" ", "\t", "\n", "\r", "\0", "\x0B"], "", $str);
+  $pattern = '/\(\s*,|,\s*\)/';
+  return preg_match($pattern, $str) === 1;
+
+ }

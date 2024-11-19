@@ -1413,7 +1413,7 @@ function utilities($user, $viewMode = "list") {
   Global $backupLocation;
   $utilitiesData = array(
     [
-      'label' => 'Rececent Visitor Log',
+      'label' => 'Recent Visitor Log',
       'url' => '?table=utilities&action=recentvisitorlogs',
       'description' => "Beats having to use putty.",
       'action' => 'visitorLog(<device_id/>, <number/>)',

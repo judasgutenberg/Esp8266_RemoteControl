@@ -210,26 +210,32 @@ if ($user) {
               if($foundData["action"]) {
                 $codeToRun = tokenReplace($foundData["action"], $_GET);
                 $codeToRun = tokenReplace($codeToRun, $_POST) . ";";
+
               }
+              if(strpos($codeToRun, ">") !== false || checkPhpFunctionCallIsBogus($codeToRun)){
+                $errors["generic"] = "You must enter all the necessary data in the utility form.";
+                $out .= "Error: " . $errors["generic"]  . "\n";
+              } else {
+                try {
+                  if($codeToRun) {
  
-              try {
-                if($codeToRun) {
-                  eval('$result  =' . $codeToRun . ";");
+                    eval('$result  =' . $codeToRun . ";");
+                  }
+                  if($outputFormat == "download") {
+                    //die($path . "*" . $friendlyName);
+                    //die(file_exists($path) . "&");
+                    download($path, $friendlyName);
+                    die();
+                  } else {
+                    $out .= "<pre>" . $result . "</pre>";
+                  }
+                  
                 }
-                if($outputFormat == "download") {
-                  //die($path . "*" . $friendlyName);
-                  //die(file_exists($path) . "&");
-                  download($path, $friendlyName);
-                  die();
-                } else {
-                  $out .= "<pre>" . $result . "</pre>";
+                catch(ParseError $error) { //this shit does not work. does try/catch ever work in PHP?
+                  //var_dump($error);
+                  $errors["generic"] = "Data is missing for this utility.";
+                  $redirect = false;
                 }
-                
-              }
-              catch(ParseError $error) { //this shit does not work. does try/catch ever work in PHP?
-                //var_dump($error);
-                $errors["generic"] = "Data is missing for this utility.";
-                $redirect = false;
               }
               if($redirect){
                 //header('Location: '.$_SERVER['PHP_SELF'] . "?mode=" . $mode);
