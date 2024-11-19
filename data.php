@@ -436,7 +436,8 @@ if($_REQUEST) {
 					}
 					$donSaveBecauseNoData = true;
 					for($datumCounter = 0; $datumCounter < 12; $datumCounter++){
-						if($arrWeatherData[$datumCounter] != "NULL" && $arrWeatherData[$datumCounter] != ""){
+						$testValue = $arrWeatherData[$datumCounter];
+						if(strtolower($testValue) != "null" && $testValue != "" && strtolower($testValue) != "nan"){
 							$donSaveBecauseNoData = false;
 						}
 					}
