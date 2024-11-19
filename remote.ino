@@ -1,11 +1,11 @@
 /*
- * ESP8266 Remote Control. Also sends weather data from multiple kinds of sensors (configured in config.c) 
+ * ESP8266 Remote Control. Also sends weather data from three different kinds of sensors (configured in config.c) 
  * originally built on the basis of something I found on https://circuits4you.com
- * reorganized and extended by Gus Mueller, April 24 2022 - June 22 2024
+ * reorganized and extended by Gus Mueller, April 24 2022 - April 6 2024
  * Also resets a Moxee Cellular hotspot if there are network problems
  * since those do not include watchdog behaviors
  */
- 
+
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
@@ -47,14 +47,11 @@ byte justDeviceJson = 1;
 long connectionFailureTime = 0;
 long lastDataLogTime = 0;
 long localChangeTime = 0;
-long lastPoll = 0;
 int timeSkewAmount = 0; //i had it as much as 20000 for 20 seconds, but serves no purpose that I can tell
 int pinTotal = 12;
 String pinList[12]; //just a list of pins
 String pinName[12]; //for friendly names
 String ipAddress;
-String ipAddressAffectingChange;
-int changeSourceId = 0;
 String deviceName = "";
 String additionalSensorInfo; //we keep it stored in a delimited string just the way it came from the server and unpack it periodically to get the data necessary to read sensors
 
@@ -88,7 +85,7 @@ void handleRoot() {
  server.send(200, "text/html", s); //Send web page
 }
 
-//returns a "*"-delimited string containing weather data, starting with temperature and ending with deviceFeatureId,    a url-encoded sensorName, and consolidateAllSensorsToOneRecord
+//returns a "*"-delimited string containing weather data, starting with temperature and ending with deviceFeatureId, if present, and url-encoded sensorName
 //we might send multiple-such strings (separated by "!") to the backend for multiple sensors on an ESP8266
 //i've made this to handle all the weather sensors i have so i can mix and match, though of course there are many others
 String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName,  int consolidateAllSensorsToOneRecord) {
@@ -298,16 +295,6 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
 
 void handleWeatherData() {
   String transmissionString = "";
-  
-  if(ipAddress.indexOf(' ') > 0) { //i was getting HTML header info mixed in for some reason
-    ipAddress = ipAddress.substring(0, ipAddress.indexOf(' '));
-  }
-  String ipAddressToUse = ipAddress;
-  
-  if(ipAddressAffectingChange != "") {
-     ipAddressToUse = ipAddressAffectingChange;
-     changeSourceId = 1;
-  }
   int deviceFeatureId = 0;
   if(onePinAtATimeMode) {
     pinCursor++;
@@ -315,7 +302,9 @@ void handleWeatherData() {
       pinCursor = 0;
     }
   }
-
+  if(ipAddress.indexOf(' ') > 0) { //i was getting HTML header info mixed in for some reason
+    ipAddress = ipAddress.substring(0, ipAddress.indexOf(' '));
+  }
   if(sensor_id > -1) {
     transmissionString = weatherDataString(sensor_id, sensor_sub_type, sensor_data_pin, sensor_power_pin, sensor_i2c, NULL, 0, deviceName, consolidate_all_sensors_to_one_record);
   }
@@ -330,7 +319,7 @@ void handleWeatherData() {
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
   transmissionString = transmissionString + "|" + joinMapValsOnDelimiter(pinMap, "*", pinTotal); //also send pin as they are known back to the server
   //other server-relevant info as needed, delimited by *
-  transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddressToUse + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson + "*" + changeSourceId;
+  transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddress + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson;
   //Serial.println(transmissionString);
   //had to use a global, died a little inside
   if(glblRemote) {
@@ -341,7 +330,8 @@ void handleWeatherData() {
 }
 
 void wiFiConnect() {
-  WiFi.begin(wifi_ssid, wifi_password);     //Connect to your WiFi router
+  WiFi.persistent(false); //hopefully keeps my flash from being corrupted, see: https://rayshobby.net/wordpress/esp8266-reboot-cycled-caused-by-flash-memory-corruption-fixed/
+  WiFi.begin(wifi_ssid, wifi_password);     
   Serial.println();
   // Wait for connection
   int wiFiSeconds = 0;
@@ -426,13 +416,8 @@ void sendRemoteData(String datastring) {
     delay(1); //see if this improved data reception. OMG IT TOTALLY WORKED!!!
     bool receivedData = false;
     bool receivedDataJson = false;
-    if(clientGet.available() && ipAddressAffectingChange != "") { //don't turn these globals off until we have data back from the server
-       ipAddressAffectingChange = "";
-       changeSourceId = 0;
-    }
     while(clientGet.available()){
       receivedData = true;
-
       String retLine = clientGet.readStringUntil('\n');
       retLine.trim();
       //Here the code is designed to be able to handle either JSON or double-delimited data from data.php
@@ -809,10 +794,6 @@ void setup(void){
 }
 //LOOP----------------------------------------------------
 void loop(void){
-  //Serial.println("loop");
-  for(int i=0; i <4; i++) { //doing this four times here is helpful to make web service reasonably responsive. once is not enough
-    server.handleClient();          //Handle client requests
-  }
   timeClient.update();
   long nowTime = millis() + timeOffset;
   int granularityToUse = polling_granularity;
@@ -826,10 +807,8 @@ void loop(void){
     Serial.println();
     rebootEsp();
   }
-  //Serial.print(granularityToUse);
-  //Serial.print(" ");
-  //Serial.println(connectionFailureTime);
-  if((nowTime - lastPoll)/1000 > granularityToUse || connectionFailureTime>0 && connectionFailureTime + connection_failure_retry_seconds * 1000 > millis()) {  //send data to backend server every <polling_granularity> seconds or so
+ 
+  if(nowTime - ((nowTime/(1000 * granularityToUse) )*(1000 * granularityToUse)) == 0 || connectionFailureTime>0 && connectionFailureTime + connection_failure_retry_seconds * 1000 > millis()) {  //send data to backend server every <polling_granularity> seconds or so
     //Serial.print("Connection failure time: ");
     //Serial.println(connectionFailureTime);
     //Serial.print("  Connection failure calculation: ");
@@ -839,9 +818,8 @@ void loop(void){
     glblRemote = true;
     handleWeatherData();
     glblRemote = false;
-    lastPoll = nowTime;
   }
-  
+  server.handleClient();          //Handle client requests
   //digitalWrite(0, HIGH );
   //delay(100);
   //digitalWrite(0, LOW);
@@ -870,8 +848,6 @@ void localSetData() {
       Serial.print( " : ");
     } else if (server.argName(i) == "on") {
       onValue = (int)(server.arg(i) == "1");  
-    } else if (server.argName(i) == "ipaddress") {
-      ipAddressAffectingChange = (String)server.arg(i);  
     }
     Serial.print(onValue);
     Serial.println();
