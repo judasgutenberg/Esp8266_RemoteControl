@@ -130,6 +130,10 @@ function devices($tenantId) {
       'label' => 'ip address',
       'name' => 'ip_address' 
     ],
+    [
+      'label' => 'last poll',
+      'name' => 'last_poll' 
+    ],
     );
     $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
     $toolsTemplate .= " | <a href='?table=device_feature&device_id=<" . $table . "_id/>'>Device Features</a>";

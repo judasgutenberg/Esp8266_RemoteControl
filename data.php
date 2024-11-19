@@ -266,22 +266,7 @@ if($_REQUEST) {
 						}
 						
 						// Calculate starting point at the "cusp" of each period scale
-						switch ($periodScale) {
-							case 'hour':
-								$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-%m-%d %H:00:00')";
-								break;
-							case 'day':
-								$startOfPeriod = "DATE(NOW())";  // Midnight of the current day
-								break;
-							case 'month':
-								$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-%m-01 00:00:00')";  // Start of the current month
-								break;
-							case 'year':
-								$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-01-01 00:00:00')";  // Start of the current year
-								break;
-							default:
-								$startOfPeriod = "NOW()";  // Fallback to present if no match
-						}
+						$startOfPeriod = sqlForStartOfPeriodScale($periodScale);
 					} 
 					$sql = "SELECT * FROM inverter_log  
 						WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + $historyOffset) + $initialOffset)) . " " . $periodScale . ") ";
@@ -327,23 +312,7 @@ if($_REQUEST) {
 
 					if ($absoluteTimespanCusps == 1) {
 						// Calculate starting point at the "cusp" of each period scale
-						switch ($periodScale) {
-							case 'hour':
-								$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-%m-%d %H:00:00')";
-								break;
-							case 'day':
-								$startOfPeriod = "DATE(NOW())";  // Midnight of the current day
-								break;
-							case 'month':
-								$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-%m-01 00:00:00')";  // Start of the current month
-								break;
-							case 'year':
-								$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-01-01 00:00:00')";  // Start of the current year
-								break;
-							default:
-								$startOfPeriod = "NOW()";  // Fallback to present if no match
-						}
-					
+						$startOfPeriod = sqlForStartOfPeriodScale($periodScale);
 						// Adjust SQL to break at cusps rather than present
 						$sql .= " AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
 						if ($periodAgo > 0) {
@@ -465,7 +434,16 @@ if($_REQUEST) {
 						
 
 					}
-					if($temperature != "NULL" || $pressure != "NULL" || $humidity != "NULL" || $gasMetric != "NULL") { //if sensors are all null, do not attempt to store!
+					$donSaveBecauseNoData = true;
+					for($datumCounter = 0; $datumCounter < 12; $datumCounter++){
+						if($arrWeatherData[$datumCounter] != "NULL" && $arrWeatherData[$datumCounter] != ""){
+							$donSaveBecauseNoData = false;
+						}
+					}
+					if(!$donSaveBecauseNoData) { //if sensors are all null, do not attempt to store!
+						//echo $weatherSql; ) { //if sensors are all null, do not attempt to store!
+						//echo $weatherSql;) { //if sensors are all null, do not attempt to store!
+						//echo $weatherSql;) { //if sensors are all null, do not attempt to store!
 						//echo $weatherSql;
 						if(intval($consolidateAllSensorsToOneRecord) != 1 || $weatherRecordCounter == count($multipleSensorArray) - 1) {
 							$result = mysqli_query($conn, $weatherSql);
@@ -544,7 +522,7 @@ if($_REQUEST) {
 								if(strpos($ipAddress, " ") > 0){ //was getting crap from some esp8266s here
 									$ipAddress = explode(" ", $ipAddress)[0];
 								}
-								$deviceSql = "UPDATE device SET ip_address='" . $ipAddress . "' ";
+								$deviceSql = "UPDATE device SET ip_address='" . $ipAddress . "', last_poll='" . $formatedDateTime  . "' ";
 								if($sensorId){
 									$deviceSql .= ", sensor_id=" . intval($sensorId);
 								}
@@ -1111,6 +1089,26 @@ function removeTrailingChar($inVal, $char, $stage = 0){
 		$inVal = substr($inVal, 0, -1);
 	}
 	return $inVal;
+}
+
+function sqlForStartOfPeriodScale($periodScale) {
+	switch ($periodScale) {
+		case 'hour':
+			$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-%m-%d %H:00:00')";
+			break;
+		case 'day':
+			$startOfPeriod = "DATE(NOW())";  // Midnight of the current day
+			break;
+		case 'month':
+			$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-%m-01 00:00:00')";  // Start of the current month
+			break;
+		case 'year':
+			$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-01-01 00:00:00')";  // Start of the current year
+			break;
+		default:
+			$startOfPeriod = "NOW()";  // Fallback to present if no match
+	}
+	return $startOfPeriod;
 }
 
 //some helpful sql examples for creating sql users:
