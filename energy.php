@@ -226,13 +226,16 @@ function getInverterData(yearsAgo) {
 	let absoluteTimespanCusps = queryParams.get('absolute_timespan_cusps');
 	let atcCheckbox = document.getElementById("atc_id");
 	let url = new URL(window.location.href);
-	if(atcCheckbox.checked) {
-		absoluteTimespanCusps = 1;
-	}
+
 	if(justLoaded){
 		if(absoluteTimespanCusps == 1){
 			atcCheckbox.checked = true;
 		}
+	}
+	if(atcCheckbox.checked) {
+		absoluteTimespanCusps = 1;
+	} else {
+		absoluteTimespanCusps = 0;
 	}
 	url.searchParams.set("absolute_timespan_cusps", absoluteTimespanCusps);
 	if(!scale){

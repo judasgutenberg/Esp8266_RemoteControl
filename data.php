@@ -260,16 +260,23 @@ if($_REQUEST) {
 					$groupBy = gvfa("group_by", $scaleRecord, "");
 					$startOfPeriod = "NOW()"; 
 					$historyOffset = 1;
-					if ($absoluteTimespanCusps == 1) {
-						if($periodAgo  == 0){
-							$historyOffset = 0;
-						}
+ 
+					$sql = "SELECT * FROM inverter_log  
+						WHERE tenant_id = " . $tenant["tenant_id"] . " ";
 						
+					if ($absoluteTimespanCusps == 1) {
 						// Calculate starting point at the "cusp" of each period scale
 						$startOfPeriod = sqlForStartOfPeriodScale($periodScale);
-					} 
-					$sql = "SELECT * FROM inverter_log  
-						WHERE tenant_id = " . $tenant["tenant_id"] . " AND  recorded > DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + $historyOffset) + $initialOffset)) . " " . $periodScale . ") ";
+						// Adjust SQL to break at cusps rather than present
+						$sql .= " AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
+						if ($periodAgo > 0) {
+							$sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
+						}
+					} else {
+
+						$sql .= " AND recorded > DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . intval($periodSize * ($periodAgo + 1) + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
+					}
+					//AND  recorded > DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + $historyOffset) + $initialOffset)) . " " . $periodScale . ") ";
 					if($periodAgo  > 0) {
 						$sql .= " AND recorded < DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo) + $initialOffset)) . " " . $periodScale . ") ";
 					}
