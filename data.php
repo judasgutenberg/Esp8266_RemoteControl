@@ -450,17 +450,15 @@ if($_REQUEST) {
 						mysqli_real_escape_string($conn, $reserved4) . "," .  
 						mysqli_real_escape_string($conn, $sensorId) .
 						")";
-						
-
 					}
-					$donSaveBecauseNoData = true;
+					$doNotSaveBecauseNoData = true;
 					for($datumCounter = 0; $datumCounter < 12; $datumCounter++){
 						$testValue = $arrWeatherData[$datumCounter];
 						if(strtolower($testValue) != "null" && $testValue != "" && strtolower($testValue) != "nan"){
-							$donSaveBecauseNoData = false;
+							$doNotSaveBecauseNoData = false;
 						}
 					}
-					if(!$donSaveBecauseNoData) { //if sensors are all null, do not attempt to store!
+					if(!$doNotSaveBecauseNoData) { //if sensors are all null, do not attempt to store!
 						//echo $weatherSql; ) { //if sensors are all null, do not attempt to store!
 						//echo $weatherSql;) { //if sensors are all null, do not attempt to store!
 						//echo $weatherSql;) { //if sensors are all null, do not attempt to store!
@@ -1089,7 +1087,6 @@ function nullifyOrNumber($number){
 function deDelimitify($inString){
 	return str_replace("!", "", str_replace("|", "", str_replace("*", "", $inString)));
 }
-
 
 function getTenantById($tenantId){
 	Global $conn;
