@@ -470,6 +470,7 @@ if($_REQUEST) {
 							$error = mysqli_error($conn);
 							if($error != ""){
 								$badSql = $weatherSql;
+								logSql("bad weather data save sql:" .  $weatherSql);
 							}
 						}
 					}
@@ -1048,7 +1049,7 @@ function logSql($sql){
 
 function mergeWeatherDatum($consolidateAllSensorsToOneRecord, $existingValue, $sourceArray, $itemNumber) {
 	if(intval($consolidateAllSensorsToOneRecord) == 1) {
-		if($existingValue == "NULL"  || $existingValue == "") {
+		if(strtolower($existingValue) == "null"  || $existingValue == "" || strtolower($existingValue) == "nan") {
 			if(count($sourceArray) > $itemNumber) {
 				$out = $sourceArray[$itemNumber];
 			} else {
