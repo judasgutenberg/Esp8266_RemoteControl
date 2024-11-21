@@ -881,7 +881,35 @@ function editDevice($error,  $tenantId) {
       'width' => 200,
 	    'value' => gvfa("sensor_id", $source), 
       'error' => gvfa('sensor_id', $error)
-	  ] 
+	  ],
+    [
+	    'label' => 'reserved 1 name',
+      'name' => 'reserved1_name',
+      'width' => 400,
+	    'value' => gvfa("reserved1_name", $source), 
+      'error' => gvfa('reserved1_name', $error)
+	  ],
+    [
+	    'label' => 'reserved 2 name',
+      'name' => 'reserved2_name',
+      'width' => 400,
+	    'value' => gvfa("reserved2_name", $source), 
+      'error' => gvfa('reserved2_name', $error)
+	  ],
+    [
+	    'label' => 'reserved 3 name',
+      'name' => 'reserved3_name',
+      'width' => 400,
+	    'value' => gvfa("reserved3_name", $source), 
+      'error' => gvfa('reserved3_name', $error)
+	  ],
+    [
+	    'label' => 'reserved 4 name',
+      'name' => 'reserved4_name',
+      'width' => 400,
+	    'value' => gvfa("reserved4_name", $source), 
+      'error' => gvfa('reserved4_name', $error)
+	  ],
     );
   $form = genericForm($formData, $submitLabel);
   return $form;
