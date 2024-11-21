@@ -390,6 +390,7 @@ if($_REQUEST) {
 				$reserved4 = "NULL";
 				$consolidateAllSensorsToOneRecord = 0; //if this is set to one by the first weather record, all weather data is stored in a single weather_data record
 				$weatherRecordCounter = 0;
+				$doNotSaveBecauseNoData = true;
 				foreach($multipleSensorArray  as $sensorDataString) { //if there is a ! in the weatherInfoString, 
 					$arrWeatherData = explode("*", $sensorDataString);
 					if(count($arrWeatherData) > 1) { //it's possible the $weatherInfoString began with a !, meaning the first weather record is technically empty
@@ -451,13 +452,17 @@ if($_REQUEST) {
 						mysqli_real_escape_string($conn, $sensorId) .
 						")";
 					}
-					$doNotSaveBecauseNoData = true;
+					
 					for($datumCounter = 0; $datumCounter < 12; $datumCounter++){
 						$testValue = $arrWeatherData[$datumCounter];
 						if(strtolower($testValue) != "null" && $testValue != "" && strtolower($testValue) != "nan"){
 							$doNotSaveBecauseNoData = false;
+							//echo $datumCounter . ": " . $testValue . ", should now be false<BR>";
+						} else {
+							//echo $datumCounter . ": " . $testValue . "<BR>";
 						}
 					}
+					//echo $doNotSaveBecauseNoData . "<BR>";
 					if(!$doNotSaveBecauseNoData) { //if sensors are all null, do not attempt to store!
 						//echo $weatherSql; ) { //if sensors are all null, do not attempt to store!
 						//echo $weatherSql;) { //if sensors are all null, do not attempt to store!
@@ -471,6 +476,8 @@ if($_REQUEST) {
 								logSql("bad weather data save sql:" .  $weatherSql);
 							}
 						}
+					} else {
+						logSql("no save sql:" .  $weatherSql);
 					}
 					$weatherRecordCounter++;
 				}
