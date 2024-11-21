@@ -402,9 +402,9 @@ if($_REQUEST) {
 						$windIncrement = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windIncrement, $arrWeatherData, 6);
 						$precipitation = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $precipitation, $arrWeatherData, 7);
 						$reserved1 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved1, $arrWeatherData, 8);
-						$reserved2 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved1, $arrWeatherData, 9);
-						$reserved3 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved1, $arrWeatherData, 10);
-						$reserved4 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved1, $arrWeatherData, 11);
+						$reserved2 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved2, $arrWeatherData, 9);
+						$reserved3 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved3, $arrWeatherData, 10);
+						$reserved4 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved4, $arrWeatherData, 11);
 						$sensorId = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $sensorId, $arrWeatherData, 12);
 						if($consolidateAllSensorsToOneRecord){
 							$deviceFeatureId = "NULL";
@@ -424,7 +424,15 @@ if($_REQUEST) {
 						$consolidateAllSensorsToOneRecord = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $consolidateAllSensorsToOneRecord, $arrWeatherData, 15);
 
 						//die("x" . $consolidateAllSensorsToOneRecord);
-						$weatherSql = "INSERT INTO weather_data(location_id, device_feature_id, recorded, temperature, pressure, humidity, gas_metric, wind_direction,  wind_speed, wind_increment, precipitation, sensor_id) VALUES (" . 
+						$weatherSql = "INSERT INTO 
+						weather_data(location_id, device_feature_id, recorded, 
+							temperature, pressure, humidity, 
+							gas_metric, 
+							wind_direction,  wind_speed, wind_increment, 
+							precipitation, 
+							reserved1, reserved2, reserved3, reserved4,
+							sensor_id) 
+						VALUES (" . 
 						mysqli_real_escape_string($conn, $locationId) . "," .
 						mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
 						mysqli_real_escape_string($conn, $formatedDateTime)  . "'," . 
@@ -436,6 +444,10 @@ if($_REQUEST) {
 						mysqli_real_escape_string($conn, $windSpeed) . "," .  
 						mysqli_real_escape_string($conn, $windIncrement) . "," .
 						mysqli_real_escape_string($conn, $precipitation) . "," .  
+						mysqli_real_escape_string($conn, $reserved1) . "," .  
+						mysqli_real_escape_string($conn, $reserved2) . "," .  
+						mysqli_real_escape_string($conn, $reserved3) . "," .  
+						mysqli_real_escape_string($conn, $reserved4) . "," .  
 						mysqli_real_escape_string($conn, $sensorId) .
 						")";
 						
