@@ -384,7 +384,7 @@ if($_REQUEST) {
 				$windSpeed = "NULL";
 				$windIncrement = "NULL";
 				$sensorId = "NULL";
-				$reserved1 = "NULL";
+				$reserved1 = "NULL"; //we have four places for esoteric sensor data.  what they represent can be set in device.reservedX_name
 				$reserved2 = "NULL";
 				$reserved3 = "NULL";
 				$reserved4 = "NULL";
