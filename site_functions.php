@@ -479,6 +479,8 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
     if(gvfa("height", $datum)){
       $height = gvfa("height", $datum);
     }
+    $noSyntaxHighlighting = false;
+    $noSyntaxHighlighting =gvfa("no_syntax_highlighting", $datum); 
     $values =gvfa("values", $datum); 
 		$error = gvfa("error", $datum); 
 		if($label == "") {
@@ -643,7 +645,9 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         if($height){
           $textAreaId = "id-" . $name;
           $idString = "id='" . $textAreaId  . "'";
-          array_push($textareaIds, $textAreaId);
+          if(!$noSyntaxHighlighting) {
+            array_push($textareaIds, $textAreaId);
+          }
           $codeLanguage = gvfa("code_language", $datum, "html");
           $out .= "<textarea " . $validationString . " " .  $idString . " style='width:" . $width . "px;height:" . $height . "px;accent-color:" . $accentColor . "' name='" . $name . "'  />" .  $value  . "</textarea>\n";
         } else {

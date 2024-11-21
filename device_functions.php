@@ -980,6 +980,7 @@ function editManagementRule($error,  $tenantId) {
     [
 	    'label' => 'conditions',
       'name' => 'conditions',
+      'no_syntax_highlighting' => true,
       'width' => 400,
       'height'=> 200,
 	    'value' => gvfa("conditions", $source), 

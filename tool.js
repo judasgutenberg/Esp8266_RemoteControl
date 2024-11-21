@@ -515,6 +515,21 @@ function managementConditionsAddTag() {
 
     // Append the text to the existing content
     textarea.value += tag;
+	/*
+	let textareaCM = document.getElementById("id-" + formItemName);
+	console.log(textareaCM);
+	const allCodeMirrorInstances = document.querySelectorAll('.CodeMirror');
+	console.log(allCodeMirrorInstances);
+	for(let cmi of allCodeMirrorInstances){
+		const cmInstance = cmi.CodeMirror || CodeMirror.fromTextArea(cmi.previousSibling);
+		console.log(cmInstance);
+		cmInstance.save();
+	}
+	console.log(allCodeMirrorInstances);
+	if(textareaCM && textareaCM.CodeMirror) {
+		textareaCM.CodeMirror.save();
+	}
+	*/
   } else {
       console.warn(`Textarea with name "${formItemName}" not found.`);
   }
