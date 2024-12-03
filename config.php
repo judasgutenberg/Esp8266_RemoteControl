@@ -5,7 +5,7 @@ $username = "remote";
 $database = "remote";
 $password = "your_awesome_password";
 
-
+$timezone = "America/New_York";
 $encryptionPassword = "your secret just for you";
 $cookiename = "email";
 $poserCookieName = "poser_id";
