@@ -1275,11 +1275,43 @@ function currentSensorData($tenant){
   $sql = "SELECT * FROM inverter_log WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE tenant_id=" . $tenant["tenant_id"] . ") LIMIT 0,1";
   $result = mysqli_query($conn, $sql);
   $out .= "<div class='listheader'>Inverter </div>";
+  $energyInfo = array(
+    [
+	    'label' => 'solar power',
+      'name' => 'solar_power'
+	  ],
+    [
+      'label' => 'load power',
+      'name' => 'load_power' 
+    ],
+    [
+      'label' => 'grid power',
+      'name' => 'grid_power' 
+    ],
+    [
+      'label' => 'battery percentage',
+      'name' => 'battery_percentage' 
+    ],
+    [
+      'label' => 'battery power',
+      'name' => 'battery_power' 
+    ],
+    [
+      'label' => 'battery voltage',
+      'name' => 'battery_voltage' 
+    ],
+    [
+      'label' => 'recorded',
+      'name' => 'recorded',
+       'function' => 'timeAgo("<recorded/>")'
+    ],
+
+  );
   if($result) {
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     //var_dump($rows);
     if($rows) {
-      $out.= genericTable($rows);
+      $out.= genericTable($rows, $energyInfo);
     }
   }
   $sql = "SELECT
@@ -1305,11 +1337,42 @@ function currentSensorData($tenant){
     WHERE d.tenant_id = " . $tenant["tenant_id"];
   $result = mysqli_query($conn, $sql);
   $out .= "<div class='listheader'>Weather </div>";
+
+  $weatherInfo = array(
+    [
+	    'label' => 'location',
+      'name' => 'location_name'
+	  ],
+    [
+      'label' => 'temperature',
+      'name' => 'temperature' 
+    ],
+    [
+      'label' => 'pressure',
+      'name' => 'pressure' 
+    ],
+    [
+      'label' => 'humidity',
+      'name' => 'humidity' 
+    ],
+    [
+      'label' => 'gas metric',
+      'name' => 'gas_metric' 
+    ],
+    [
+      'label' => 'recorded',
+      'name' => 'recorded',
+       'function' => 'timeAgo("<recorded/>")'
+    ],
+    );
+
+
+
   if($result) {
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     //var_dump($rows);
     if($rows) {
-      $out.= genericTable($rows);
+      $out.= genericTable($rows, $weatherInfo);
     }
   }
   return $out;
