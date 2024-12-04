@@ -1272,7 +1272,7 @@ function getMostRecentInverterRecord($tenant){
 function currentSensorData($tenant){
   Global $conn;
   $out = "";
-  $sql = "SELECT * FROM inverter_log WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE tenant_id=" . $tenant["tenant_id"] . ") LIMIT 0,1";
+  $sql = "SELECT * FROM inverter_log WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE tenant_id=" . $tenant["tenant_id"] . ") ";
   $result = mysqli_query($conn, $sql);
   $out .= "<div class='listheader'>Inverter </div>";
   $energyInfo = array(
