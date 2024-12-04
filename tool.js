@@ -183,6 +183,31 @@ function showDataInPanelTool(data){
   }
 }
 
+function tokenReplace(template, data, strDelimiterBegin = "<", strDelimiterEnd = "/>") {
+	for (const key in data) {
+		const value = data[key];
+
+		if (!Array.isArray(value)) {
+		// Replace single values
+		template = template.replace(
+			new RegExp(`${strDelimiterBegin}${key}${strDelimiterEnd}`, "g"),
+			value
+		);
+		} else {
+		// Handle list values
+		if (value.length > 0 && typeof value[0] !== "object") {
+			const values = value.join(",");
+			template = template.replace(
+			new RegExp(`${strDelimiterBegin}${key}${strDelimiterEnd}`, "g"),
+			values
+			);
+		}
+		}
+	}
+	return template;
+}
+
+//update the genericTable data
 function autoUpdate(encryptedSql, headerData, tableId){
   var decodedHeaderData = JSON.parse(headerData);
   var xmlhttp = new XMLHttpRequest();
@@ -205,6 +230,13 @@ function autoUpdate(encryptedSql, headerData, tableId){
             //console.log(column);
             let key = column["name"];
             let newcolumnData = dataRecord[key];
+			if("function" in column) {
+				//console.log(column["function"], dataRecord);
+				//make sure you have a Javascript version of the PHP functions you do this with!:
+				let stringToEval = tokenReplace(column["function"], dataRecord);
+				//console.log(stringToEval);
+				newcolumnData = eval(stringToEval);
+			}
             //console.log(key, newcolumnData);
             if(spans[cellCounter].innerHTML.indexOf("<input") == -1) {
               spans[cellCounter].textContent = newcolumnData;
@@ -694,7 +726,6 @@ function colorFix(strIn) {
 				}
 			}
 			return strIn;
-
 		}
 	}
 
@@ -763,12 +794,8 @@ function formatSQL(sql) {
 		formatted += ' ' + originalWord;
 	  }
 	}
-	
 	return formatted;
 }
-
-
-
 
 //the result of a productive back-and-forth with ChatGPT:
 function xsmoothArray(intArray, windowSize, weightFactor) {
@@ -1621,6 +1648,41 @@ function pastStepper(periodScale, periodSize, ordinal){
 	}
 	return datetimeString;
 }
+
+function timeAgo(sqlDateTime, compareTo = null) {
+	// Define the timezone globally or set a default
+	const timezone = window.timezone || "UTC";
+  
+	// Parse the dates into `Date` objects in the specified timezone
+	const past = new Date(new Date(sqlDateTime).toLocaleString("en-US", { timeZone: timezone }));
+	const now = compareTo 
+	  ? new Date(new Date(compareTo).toLocaleString("en-US", { timeZone: timezone })) 
+	  : new Date(new Date().toLocaleString("en-US", { timeZone: timezone }));
+  
+	// Calculate the difference in seconds
+	let diffInSeconds = Math.floor((now - past) / 1000);
+	diffInSeconds = Math.max(0, diffInSeconds);
+  
+	// Calculate units of time
+	const seconds = diffInSeconds % 60;
+	const minutes = Math.floor(diffInSeconds / 60) % 60;
+	const hours = Math.floor(diffInSeconds / 3600) % 24;
+	const days = Math.floor(diffInSeconds / 86400);
+	if(isNaN(seconds)){
+		return "";
+	}
+	// Return the appropriate message
+	if (days > 0) {
+	  return days === 1 ? "1 day ago" : `${days} days ago`;
+	}
+	if (hours > 0) {
+	  return hours === 1 ? "1 hour ago" : `${hours} hours ago`;
+	}
+	if (minutes > 0) {
+	  return minutes === 1 ? "1 minute ago" : `${minutes} minutes ago`;
+	}
+	return seconds === 1 ? "1 second ago" : `${seconds} seconds ago`;
+  }
 
 function expandArray(arr, n) {
     const originalLength = arr.length;

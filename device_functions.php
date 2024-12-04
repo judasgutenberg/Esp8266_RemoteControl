@@ -70,12 +70,13 @@ function deviceFeatures($tenantId, $deviceId) {
     ],
     [
       'label' => 'last known device value',
-      'name' => 'last_known_device_value' 
+      'name' => 'last_known_device_value'
     ],
     [
       'label' => 'last known device modified',
       'name' => 'last_known_device_modified',
-      "type" => "datetime"
+      "type" => "datetime",
+      "function" => 'timeAgo("<last_known_device_modified/>")'
     ],
     );
     $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a>  | ";
@@ -132,7 +133,8 @@ function devices($tenantId) {
     ],
     [
       'label' => 'last poll',
-      'name' => 'last_poll' 
+      'name' => 'last_poll',
+       'function' => 'timeAgo("<last_poll/>")'
     ],
     );
     $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
@@ -140,7 +142,6 @@ function devices($tenantId) {
     $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
     if($result) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
-      
       if($rows) {
         $out .= genericTable($rows, $headerData, $toolsTemplate, null,  $table, $table . "_id", $sql);
       }

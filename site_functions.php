@@ -39,13 +39,13 @@ function getUtilityInfo($user, $key){
   $resultArray = array_filter($data, function ($subData) use ($searchValue) {
       return $subData["key"] == $searchValue;
   });
-  //var_dump($resultArray);SSSS
   $foundData = reset($resultArray);
  
   return $foundData;
 }
 
 function bodyWrap($content, $user, $deviceId, $poser = null) {
+  global $timezone;
   $out = "<!doctype html>";
   $out .= "<html>\n";
   $out .= "<head>\n";
@@ -53,6 +53,7 @@ function bodyWrap($content, $user, $deviceId, $poser = null) {
 
   $siteName = "Remote Controller";
   $version = filemtime("./index.php");
+  $out .= "<script>window.timezone ='" .  $timezone . "'</script>\n";
   $out .= "<script src='tablesort.js?version=" . urlencode($version) . "'></script>\n";
   $out .= "<script src='tool.js?version=" . urlencode($version) . "'></script>\n";
   $out .= "<link rel='stylesheet' href='tool.css?version=" . urlencode($version) . "'>\n";
@@ -1328,13 +1329,16 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
         $function =  tokenReplace($function, $row, $tableName) . ";"; 
         //echo $function . "<P>";
         try{
-          eval('$value = ' . $function);
+          eval('$value = ' . $function . ";");
         }
         catch(Exception  $err){
           //echo $err;
 
         }
+        //echo $value . "<P>";
       }
+
+      //echo $value . "=<P>";
       if (gvfa("liveChangeable", $headerItem)) {
         if($row[$name] == 1){
           $checkedString = " checked ";
@@ -2084,6 +2088,37 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
   return $out;
 }
 
+function timeAgo($sqlDateTime, $compareTo = null) {
+  global $timezone;
+  // Set the timezone
+  $timezone = $timezone ?? 'UTC';
+  $timezoneObject = new DateTimeZone($timezone);
+
+  // Convert input dates to DateTime objects with the specified timezone
+  $past = new DateTime($sqlDateTime, $timezoneObject);
+  $compareTo = $compareTo ? new DateTime($compareTo, $timezoneObject) : new DateTime('now', $timezoneObject);
+
+  // Calculate the time difference in seconds
+  $diffInSeconds = max(0, $compareTo->getTimestamp() - $past->getTimestamp());
+  
+  $seconds = $diffInSeconds % 60;
+  $minutes = floor($diffInSeconds / 60) % 60;
+  $hours = floor($diffInSeconds / 3600) % 24;
+  $days = floor($diffInSeconds / 86400);
+
+  if ($days > 0) {
+      return $days === 1 ? '1 day ago' : "$days days ago";
+  }
+  if ($hours > 0) {
+      return $hours === 1 ? '1 hour ago' : "$hours hours ago";
+  }
+  if ($minutes > 0) {
+      return $minutes === 1 ? '1 minute ago' : "$minutes minutes ago";
+  }
+  return $seconds === 1 ? '1 second ago' : "$seconds seconds ago";
+}
+
+
 function getOutputIfThereIsOne($outputFormat, $output, $unfoundName = "custom") {
   $outputCount = 1;
   if(is_array($output)){
@@ -2133,6 +2168,7 @@ function replaceCharacterWithinQuotes($str, $char, $repl) {
   }
   return str_replace($placeholder, $repl, $str) ;
 }
+
 function getJsonErrorMessage($errorCode) {
   switch ($errorCode) {
       case JSON_ERROR_NONE:
@@ -2269,10 +2305,9 @@ function defaultFailDown($first, $second="", $third=""){
   }
 }
 
- function checkPhpFunctionCallIsBogus($str){
+function checkPhpFunctionCallIsBogus($str){
   $str = trim($str);
   $str = str_replace([" ", "\t", "\n", "\r", "\0", "\x0B"], "", $str);
   $pattern = '/\(\s*,|,\s*\)/';
   return preg_match($pattern, $str) === 1;
-
- }
+}

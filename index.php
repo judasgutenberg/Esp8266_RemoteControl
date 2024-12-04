@@ -83,6 +83,7 @@ function plotTypePicker($type, $handler){
   <script src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>  
   <script>
   	let scaleConfig = JSON.parse('<?php echo json_encode(timeScales()); ?>');
+	window.timezone ='<?php echo $timezone ?>';
   </script>
   <script src='tool.js'></script>
   <link rel='stylesheet' href='tool.css?version=1711570359'>
@@ -116,7 +117,7 @@ function plotTypePicker($type, $handler){
 	echo $out; 
   ?>
 
-		<div style="text-align:center;"><b>Weather Information Log</b></div>
+		<div style="text-align:center;"><b><span id='greatestTime'></span></b></div>
 		<div class="chart-container" style="width: 100%; height: 70vh;">
 			<canvas id="Chart"></canvas>
 		</div>
@@ -423,6 +424,7 @@ function getWeatherData(yearsAgo) {
 	let absoluteTimespanCusps = queryParams.get('absolute_timespan_cusps');
 	let atcCheckbox = document.getElementById("atc_id");
 	let yearsAgoToShow = queryParams.get('years_ago');
+	let greatestTime = "2000-01-01 00:00:00";
 
 	let url = new URL(window.location.href);
 
@@ -601,6 +603,9 @@ function getWeatherData(yearsAgo) {
 									}
 								}
 								multiGraphDataObject[yearsAgo][locationId]["timeStamps"].push(time);
+								if(time> greatestTime) {
+									greatestTime = time;
+								}
 							}
 						} else {
 							//graphDataObject[year][column]
@@ -612,6 +617,9 @@ function getWeatherData(yearsAgo) {
 								graphDataObject[yearsAgo][column].push(value);
 							}
 							timeStamp.push(time)
+							if(time> greatestTime) {
+								greatestTime = time;
+							}
 						}	
 					}
 				}
@@ -629,9 +637,11 @@ function getWeatherData(yearsAgo) {
 
 
 			}
+			
 			if(yearsAgo == 0){
-				//console.log(multiGraphDataObject);
+				console.log(multiGraphDataObject);
 				glblChart = showGraph(locationId, plotType);  //Update Graphs
+				document.getElementById('greatestTime').innerHTML = " Latest Data: " + timeAgo(greatestTime);
 			} else {
 				addPastYearToGraph(locationIdArray, yearsAgo, plotType);
 			}

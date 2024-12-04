@@ -56,7 +56,8 @@ if(!$user) {
   <!--For offline ESP graphs see this tutorial https://circuits4you.com/2018/03/10/esp8266-jquery-and-ajax-web-server/ -->
   <script src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>  
   <script>
-  let scaleConfig = JSON.parse('<?php echo json_encode(timeScales()); ?>');
+	let scaleConfig = JSON.parse('<?php echo json_encode(timeScales()); ?>');
+	window.timezone ='<?php echo $timezone ?>';
   </script>
   <link rel='stylesheet' href='tool.css?version=1711570359'>
   <script src='tool.js'></script>
@@ -88,7 +89,7 @@ if(!$user) {
 		echo $out; 
   ?>
 
-    <div style="text-align:center;"><b>Inverter Information Log</b></div>
+    <div style="text-align:center;"><b><span id='greatestTime'></span></b></div>
 		<div class="chart-container" style="width: 100%; height: 70vh;">
 			<canvas id="Chart"></canvas>
 		</div>
@@ -226,6 +227,7 @@ function getInverterData(yearsAgo) {
 	let absoluteTimespanCusps = queryParams.get('absolute_timespan_cusps');
 	let atcCheckbox = document.getElementById("atc_id");
 	let url = new URL(window.location.href);
+	let greatestTime = "2000-01-01 00:00:00";
 
 	if(justLoaded){
 		if(absoluteTimespanCusps == 1){
@@ -287,6 +289,9 @@ function getInverterData(yearsAgo) {
 								graphDataObject[yearsAgo][column].push(parseInt(value)); //parseInt is important because smoothArray was thinking the values might be strings
 							}
 							timeStamp.push(time);
+							if(time> greatestTime) {
+								greatestTime = time;
+							}
 						}
 					}
 			} else {
@@ -297,6 +302,7 @@ function getInverterData(yearsAgo) {
 				graphDataObject[yearsAgo]["battery_percentage"] = smoothArray(batteryPercents, 19, 1);
 			}
 			glblChart = showGraph();  //Update Graphs
+			document.getElementById('greatestTime').innerHTML = " Latest Data: " + timeAgo(greatestTime);
 	    }
 		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
 		justLoaded = false;
