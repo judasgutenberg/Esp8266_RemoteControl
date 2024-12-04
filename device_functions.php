@@ -1304,17 +1304,18 @@ function currentSensorData($tenant){
       'label' => 'recorded',
       'name' => 'recorded',
        'function' => 'timeAgo("<recorded/>")'
-    ],
-
+    ]
   );
   if($result) {
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     //var_dump($rows);
     if($rows) {
-      $out.= genericTable($rows, $energyInfo);
+      $out.= genericTable($rows, $energyInfo, NULL, NULL, "inverter_log", "inverter_log_id", $sql);
     }
   }
   $sql = "SELECT
+    weather_data_id,
+    d.last_poll,
       d.location_name,
       wd.temperature * 9 / 5 + 32 AS temperature,
       wd.pressure,
@@ -1364,6 +1365,11 @@ function currentSensorData($tenant){
       'name' => 'recorded',
        'function' => 'timeAgo("<recorded/>")'
     ],
+    [
+      'label' => 'last poll',
+      'name' => 'last_poll',
+       'function' => 'timeAgo("<last_poll/>")'
+    ],
     );
 
 
@@ -1372,7 +1378,7 @@ function currentSensorData($tenant){
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     //var_dump($rows);
     if($rows) {
-      $out.= genericTable($rows, $weatherInfo);
+      $out.= genericTable($rows, $weatherInfo, NULL, NULL, "weather_data", "weather_data_id", $sql);
     }
   }
   return $out;

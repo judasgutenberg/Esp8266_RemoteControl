@@ -1166,7 +1166,8 @@ function genericTableViaJs($rows, $headerData = NULL, $toolsTemplate = NULL, $se
     $out .= " Search: <input value='" . htmlspecialchars(gvfw($searchData["searchTerm"])) . "' id='" . $searchData["searchTerm"] . "' name='" . $searchData["searchTerm"] . "' onkeyup=\"" . str_replace("<id/>", "document.getElementById('" . $searchData["searchTerm"] . "').value", $searchData["onkeyup"] ). "\"></form>"; 
 
   }
-  $out .= "<div class='list' id='list'>\n";
+  $tableId = "list-" . $tableName;
+  $out .= "<div class='list' id='" . $tableId . "'>\n";
 
   $out .="<div class='listheader'>\n";
   $cellNumber = 0;
@@ -1251,7 +1252,7 @@ function genericTableViaJs($rows, $headerData = NULL, $toolsTemplate = NULL, $se
   $out .= "</div>\n";
   if($autoRefreshSql) {
     $encryptedSql = encryptLongString($autoRefreshSql, $encryptionPassword);
-    $out .= "<script>autoUpdate('" . $encryptedSql . "','" . addslashes(json_encode($headerData)) . "','list');</script>";
+    $out .= "<script>autoUpdate('" . $encryptedSql . "','" . addslashes(json_encode($headerData)) . "','" . $tableId . "');</script>";
 
   }
   return $out;
@@ -1270,6 +1271,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
   if(!$headerData){
     $headerData = [];
   }
+  $tableId = "list-" . $tableName;
   $out = "";
 
   if($searchData) {
@@ -1286,7 +1288,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
     $out .= " Search: <input value='" . htmlspecialchars(gvfw($searchData["searchTerm"])) . "' id='" . $searchData["searchTerm"] . "' name='" . $searchData["searchTerm"] . "' onkeyup=\"" . str_replace("<id/>", "document.getElementById('" . $searchData["searchTerm"] . "').value", $searchData["onkeyup"] ). "\"></form>"; 
 
   }
-  $out .= "<div class='list' id='list'>\n";
+  $out .= "\n<div class='list' id='" . $tableId . "'>\n";
 
   $out .="<div class='listheader'>\n";
   $cellNumber = 0;
@@ -1374,7 +1376,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
   $out .= "</div>\n";
   if($autoRefreshSql) {
     $encryptedSql = encryptLongString($autoRefreshSql, $encryptionPassword);
-    $out .= "<script>autoUpdate('" . $encryptedSql . "','" . addslashes(json_encode($headerData)) . "','list');</script>";
+    $out .= "<script>autoUpdate('" . $encryptedSql . "','" . addslashes(json_encode($headerData)) . "','" . $tableId . "');</script>";
 
   }
   return $out;

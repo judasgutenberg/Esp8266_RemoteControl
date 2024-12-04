@@ -216,8 +216,14 @@ function autoUpdate(encryptedSql, headerData, tableId){
     if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
       //console.log(xmlhttp.responseText);
       var data = JSON.parse(xmlhttp.responseText);
-      let tableRows = document.getElementsByClassName("listrow");
-      
+	  let tableRows;
+	  if(tableId){
+		tableRows = document.getElementById(tableId).getElementsByClassName("listrow");
+	  } else {
+		tableRows = document.getElementsByClassName("listrow");
+	  }
+
+
       rowCounter = 0;
       for (const row of tableRows) {
         var htmlRow = tableRows[rowCounter];
@@ -229,18 +235,22 @@ function autoUpdate(encryptedSql, headerData, tableId){
           for (const column of decodedHeaderData){
             //console.log(column);
             let key = column["name"];
-            let newcolumnData = dataRecord[key];
-			if("function" in column) {
-				//console.log(column["function"], dataRecord);
-				//make sure you have a Javascript version of the PHP functions you do this with!:
-				let stringToEval = tokenReplace(column["function"], dataRecord);
-				//console.log(stringToEval);
-				newcolumnData = eval(stringToEval);
+			let newcolumnData;
+			if(dataRecord) {
+            	newcolumnData = dataRecord[key];
+				if("function" in column) {
+					//console.log(column["function"], dataRecord);
+					//make sure you have a Javascript version of the PHP functions you do this with!:
+					const stringToEval = tokenReplace(column["function"], dataRecord);
+					//console.log(stringToEval);
+					newcolumnData = eval(stringToEval);
+				}
+			
+				//console.log(key, newcolumnData);
+				if(spans[cellCounter].innerHTML.indexOf("<input") == -1) {
+					spans[cellCounter].textContent = newcolumnData;
+				}
 			}
-            //console.log(key, newcolumnData);
-            if(spans[cellCounter].innerHTML.indexOf("<input") == -1) {
-              spans[cellCounter].textContent = newcolumnData;
-            }
             cellCounter++;
           }
         }
