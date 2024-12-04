@@ -19,7 +19,7 @@ $mode = "";
 $error = "";
 $badSql = "";
 $out = [];
-$date = new DateTime("now", new DateTimeZone($timezone));//set this in config.php
+$date = new DateTime("now", new DateTimeZone($timezone));//set the $timezone global in config.php
 $pastDate = $date;
 $aFewMinutesPastDate = $date;
 $formatedDateTime =  $date->format('Y-m-d H:i:s');
@@ -108,14 +108,11 @@ if($_REQUEST) {
 		if(!$conn) {
 			$out = ["error"=>"bad database connection"];
 		} else {
-			
 			if(array_key_exists("data", $_REQUEST)) {
 				$data = $_REQUEST["data"];
 				$lines = explode("|",$data);
 				if ($mode=="saveLocallyGatheredSolarData") { //used by the special inverter monitoring MCU to sed fine-grain data promptly
-					
 					if($canAccessData) {
-						
 						///weather/data.php?storagePassword=xxxxxx&locationId=16&mode=saveLocallyGatheredSolarData&data=0*61*3336*3965*425*420*0*0*6359|||***192.168.1.200 
 						$multipleSensorArray = explode("!", $lines[0]);
 						//the first item will be energy data;  all subsequent items will be weather
@@ -159,16 +156,6 @@ if($_REQUEST) {
 					$weatherInfoString = $lines[0];
 					
 					$arrWeatherData = explode("*", $weatherInfoString);
-					/*
-					$temperature = $arrWeatherData[0];
-					$pressure = $arrWeatherData[1];
-					$humidity = $arrWeatherData[2];
-					$gasMetric = "NULL";
-					
-					if(count($arrWeatherData)>3) {
-						$gasMetric = $arrWeatherData[3];
-					}
-					*/
 					if(count($arrWeatherData)>4) { //if we actually want to populate the sensor column in device we need to get sensorId now, though now devices can have multiple sensors
 						$sensorId = $arrWeatherData[4];
 					}
@@ -178,9 +165,6 @@ if($_REQUEST) {
 				$lines = [];
 				$arrWeatherData = [0,0,0,0,0,0,0,0,0,0,0,0];
 			}
-			//var_dump($deviceIds);
-			//var_dump($multipleSensorArray);
-			//echo $mode .  "*" . count($multipleSensorArray);
 			if($mode=="kill") {
 				$method  = "kill";
 			} else if (beginsWith($mode, "getDevices")) {
@@ -197,7 +181,6 @@ if($_REQUEST) {
 					$out["devices"] = $rows;
 				}
 			} else if ($mode=="getEnergyInfo"){ //this gets critical SolArk data for possible use automating certain things
-				
 				$energyInfo = getCurrentSolarData($tenant);
 				$out["energy_info"] = [];
 				if($energyInfo){
@@ -260,10 +243,8 @@ if($_REQUEST) {
 					$groupBy = gvfa("group_by", $scaleRecord, "");
 					$startOfPeriod = "NOW()"; 
 					$historyOffset = 1;
- 
 					$sql = "SELECT * FROM inverter_log  
 						WHERE tenant_id = " . $tenant["tenant_id"] . " ";
-						
 					if ($absoluteTimespanCusps == 1) {
 						// Calculate starting point at the "cusp" of each period scale
 						$startOfPeriod = sqlForStartOfPeriodScale($periodScale);
@@ -273,7 +254,6 @@ if($_REQUEST) {
 							$sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
 						}
 					} else {
-
 						$sql .= " AND recorded > DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . intval($periodSize * ($periodAgo + 1) + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
 					}
 					//AND  recorded > DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + $historyOffset) + $initialOffset)) . " " . $periodScale . ") ";
@@ -316,7 +296,6 @@ if($_REQUEST) {
 					} else {
 						$sql = "SELECT temperature, pressure, humidity, location_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM weather_data WHERE  location_id=" . $locationId;
 					}
-
 					if ($absoluteTimespanCusps == 1) {
 						// Calculate starting point at the "cusp" of each period scale
 						$startOfPeriod = sqlForStartOfPeriodScale($periodScale);
@@ -353,9 +332,7 @@ if($_REQUEST) {
 						$error = mysqli_error($conn);
 						if($result && $canAccessData) {
 							$out["devices"] = mysqli_fetch_all($result, MYSQLI_ASSOC);
-							
 						}
- 
 						if(count($out) < 1){
 							array_push($out, ["sql" => $sql, "error"=>$error]);
 						}
@@ -415,7 +392,6 @@ if($_REQUEST) {
 							} else {
 								$deviceFeatureId = "NULL";
 							}
-
 						}
 						if($deviceFeatureId == ""){
 							$deviceFeatureId = "NULL";
@@ -464,9 +440,6 @@ if($_REQUEST) {
 					}
 					//echo $doNotSaveBecauseNoData . "<BR>";
 					if(!$doNotSaveBecauseNoData) { //if sensors are all null, do not attempt to store!
-						//echo $weatherSql; ) { //if sensors are all null, do not attempt to store!
-						//echo $weatherSql;) { //if sensors are all null, do not attempt to store!
-						//echo $weatherSql;) { //if sensors are all null, do not attempt to store!
 						//echo $weatherSql;
 						if(intval($consolidateAllSensorsToOneRecord) != 1 || $weatherRecordCounter == count($multipleSensorArray) - 1) {
 							$result = mysqli_query($conn, $weatherSql);
@@ -483,7 +456,6 @@ if($_REQUEST) {
 				}
 				$method  = "saveWeatherData";
 				$out =  addNodeIfPresent(addNodeIfPresent(Array("message" => "done", "method"=>$method), "error", $error), "sql", $badSql);
-			
 			}
 			if($mode == "getInitialDeviceInfo" ) { //return a double-delimited string of additional sensors, etc. this one begins with a "*" so we can identify it in the ESP8266. it will be the first data requested by the remote control
 				$outString = "*" . deDelimitify($deviceName); 
@@ -536,7 +508,6 @@ if($_REQUEST) {
 						if(count($extraInfo)>1){
 							$lastCommandId = $extraInfo[0];
 							$specificPin = $extraInfo[1]; //don't do this if $nonJsonPinData
-					
 						}
 						//var_dump($extraInfo);
 						if(count($extraInfo)>2){
@@ -552,12 +523,10 @@ if($_REQUEST) {
 								if($sensorId){
 									$deviceSql .= ", sensor_id=" . intval($sensorId);
 								}
-								
 								$deviceSql .= " WHERE device_id=" . intval($deviceId);
 								$deviceResult = mysqli_query($conn, $deviceSql);
 								//echo $deviceSql;
 							}
-							
 						} 
 
 						if(count($extraInfo)>4) {
@@ -569,9 +538,7 @@ if($_REQUEST) {
 								$specificPin = -1; //this should always be -1 if justGetDeviceInfo is 1
 							}
 						}
-						
 					}
-				
 				}
 
 				//var_dump($pinValuesKnownToDevice);
@@ -672,7 +639,6 @@ if($_REQUEST) {
 										//now we have all our tags! we need to look up their respective data and substitute in!
 										$tokenContents = $matches[0];
 										
-										
 										foreach ($tokenContents as $originalToken) {
 											$tokenReplaced = false;
 											$lookedUpValue = NULL;
@@ -712,7 +678,6 @@ if($_REQUEST) {
 													}
 													//echo $originalToken . " :" .  $lookedUpValue . "\n";
 												}
-												
 											}
 											if($lookedUpValue != NULL) {
 												$managementCache[$tokenContent] = $lookedUpValue;
