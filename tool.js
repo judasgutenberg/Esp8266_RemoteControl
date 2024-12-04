@@ -238,14 +238,16 @@ function autoUpdate(encryptedSql, headerData, tableId){
 			let newcolumnData;
 			if(dataRecord) {
             	newcolumnData = dataRecord[key];
+				let originalValue = newcolumnData;
 				if("function" in column) {
 					//console.log(column["function"], dataRecord);
 					//make sure you have a Javascript version of the PHP functions you do this with!:
 					const stringToEval = tokenReplace(column["function"], dataRecord);
 					//console.log(stringToEval);
 					newcolumnData = eval(stringToEval);
+					spans[cellCounter].setAttribute("value", originalValue);//for help with sorting
+					//spans[cellCounter].value = originalValue; 
 				}
-			
 				//console.log(key, newcolumnData);
 				if(spans[cellCounter].innerHTML.indexOf("<input") == -1) {
 					spans[cellCounter].textContent = newcolumnData;

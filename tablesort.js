@@ -45,8 +45,18 @@ function sortTable(event, column) {
         if (a.children[column] && b.children[column]) {
             let originalAValue = a.children[column].innerHTML.trim();
             let originalBValue = b.children[column].innerHTML.trim();
+            if(a.children[column].hasAttribute("value")) { //if the span has a value, then use that, since otherwise we would have to parse out the value and know what units it was in.
+                
+                originalAValue = a.children[column].getAttribute("value");
+                originalBValue = b.children[column].getAttribute("value");
+
+            }
             let aValue = a.children[column].textContent.trim().replace(/<[^>]+>/ig, "");
             let bValue = b.children[column].textContent.trim().replace(/<[^>]+>/ig, "");
+            if(a.children[column].hasAttribute("value")) {
+                aValue = a.children[column].getAttribute("value");
+                bValue = b.children[column].getAttribute("value");
+            }
             if (originalAValue.toUpperCase().indexOf("<INPUT") == 0 && originalBValue.toUpperCase().indexOf("<INPUT") == 0) {
                 aValue = getValueFromString(originalAValue);
                 bValue = getValueFromString(originalBValue);

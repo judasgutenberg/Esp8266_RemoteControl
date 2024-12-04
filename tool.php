@@ -162,6 +162,8 @@ if ($user) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
       echo json_encode($rows);
       die();
+    } else {
+      die($sql);
     }
     die();
   }
