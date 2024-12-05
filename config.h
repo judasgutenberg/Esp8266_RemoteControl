@@ -28,5 +28,5 @@ extern const int sensor_power_pin;
 // #define dhType DHT11 // DHT 11
 // #define dhType DHT22 // DHT 22, AM2302, AM2321
 extern const int sensor_sub_type;
-
+extern const int ir_pin; 
 extern const char pins_to_start_low[];
