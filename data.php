@@ -1135,6 +1135,7 @@ function getLatestCommandData($deviceId, $tenantId){
 			$value = null;
 			$commandId = $row["command_id"];
 			$valueColumn = $row["value_column"];
+			//my framework kinda depends on single-column pks having the name of the table with "_id" tacked on the end. if you're doing something different, you might have to store the name of your pk
 			$sql = "SELECT * FROM " . $table . " WHERE tenant_id=" . $tenantId . " AND " . $table . "_id=" . $pk;
 			//echo $sql;
 			$subResult = mysqli_query($conn, $sql);
@@ -1144,7 +1145,7 @@ function getLatestCommandData($deviceId, $tenantId){
 					$value = $subRow[$valueColumn];
 					$value = str_replace(" ", ",", $value); //kinda a hack -- should have it better end-to-end
 				}
-				return array("command_id"=> $commandId , "command"=> $name, "value"=>$value);
+				return array("command_id"=> $commandId , "command" => $name, "value" => $value);
 			}
 		}
 	}
