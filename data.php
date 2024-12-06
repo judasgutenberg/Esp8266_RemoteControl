@@ -115,7 +115,10 @@ if($_REQUEST) {
 				$data = $_REQUEST["data"];
 				$lines = explode("|",$data);
 			if($mode=="saveIrData") { //data was captured from an irRecorder, so store it in the database!
-				$irData = str_replace("*", ",", $lines[0]);
+				$irData = str_replace("*", ",", $lines[0]); //probably unnecessary now
+				if(endsWith($irData, ",")){ //remove trailing commas from the sequence if it is there
+					$irData = substr($irData, 0, -1); 
+				}
 				$irSql = "INSERT INTO 
 				ir_pulse_sequence(ir_target_type_id, name, sequence, tenant_id, created) 
 				VALUES (0, 'new', '" . $irData . "'," . $tenant["tenant_id"] . ",'" . $formatedDateTime . "')";
