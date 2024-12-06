@@ -801,7 +801,7 @@ void runCommandsFromNonJson(char * nonJsonLine){
 void sendIr(String rawDataStr) {
   irsend.begin();
   //Example input string
-  //String rawDataStr = "500,1500,500,1500,1000";
+  //rawDataStr = "500,1500,500,1500,1000";
   size_t rawDataLength = 0;
 
   // Count commas to determine array length
