@@ -127,7 +127,7 @@ if($_REQUEST) {
 					logSql("bad infrared data save sql:" .  $irSql);
 					$out["error"] = $error;
 				}
-			} else if ($mode=="saveLocallyGatheredSolarData") { //used by the special inverter monitoring MCU to sed fine-grain data promptly
+			} else if ($mode=="saveLocallyGatheredSolarData") { //used by the special inverter monitoring MCU to send fine-grain data promptly
 					if($canAccessData) {
 						///weather/data.php?storagePassword=xxxxxx&locationId=16&mode=saveLocallyGatheredSolarData&data=0*61*3336*3965*425*420*0*0*6359|||***192.168.1.200 
 						$multipleSensorArray = explode("!", $lines[0]);
@@ -246,7 +246,6 @@ if($_REQUEST) {
 				$out["sql"] = $sql;
 				$out["error"] = $error;
 			} else if ($mode=="getInverterData") {
-
 				if(!$conn) {
 					$out = ["error"=>"bad database connection"];
 				} else {
