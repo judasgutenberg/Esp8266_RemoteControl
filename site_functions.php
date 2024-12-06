@@ -327,6 +327,7 @@ function genericEntityList($tenantId, $table, $outputFormat = "html") {
     $thisDataSql .= " AND device_id=" . intval($deviceId);
   }
   $thisDataResult = mysqli_query($conn, $thisDataSql);
+  $out = "<div class='listtools'><div class='basicbutton'><a href='?table=" . $table . "&action=startcreate" . $additionalValueQueryString . "'>Create</a></div> a new " . $table . "<//div>\n";
   if($thisDataResult) {
     $thisDataRows = mysqli_fetch_all($thisDataResult, MYSQLI_ASSOC); 
     $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a>";
@@ -336,11 +337,10 @@ function genericEntityList($tenantId, $table, $outputFormat = "html") {
       download($path, $friendlyName, $content = "");
       die();
     } else {
-      $out = "<div class='listtools'><div class='basicbutton'><a href='?table=" . $table . "&action=startcreate" . $additionalValueQueryString . "'>Create</a></div> a new " . $table . "<//div>\n";
       $out .= genericTable($thisDataRows, $headerData, $toolsTemplate, null, $table, $pk);
     }
-    return $out;
   }
+  return $out;
 }
 
 function genericEntityForm($tenantId, $table, $errors){
@@ -358,10 +358,8 @@ function genericEntityForm($tenantId, $table, $errors){
     if($thisDataRows && count($thisDataRows) > 0) {
       $data = updateDataWithRows($data, $thisDataRows[0]);
     }
-    
-
-    return genericForm($data, "Save " . $table, "Saving...");
   }
+  return genericForm($data, "Save " . $table, "Saving...");
 }
 
  
@@ -1093,6 +1091,18 @@ function tabNav($user) {
     $tabData[] =   [
       'label' => 'Utilities',
       'table' => 'utilities' 
+    ];
+    $tabData[] =   [
+      'label' => 'IR Sequences',
+      'table' => 'ir_pulse_sequence' 
+    ];
+    $tabData[] =   [
+      'label' => 'Command',
+      'table' => 'command' 
+    ];
+    $tabData[] =   [
+      'label' => 'Command Type',
+      'table' => 'command_type' 
     ];
     $tabData[] =   [
       'label' => 'Tenants',

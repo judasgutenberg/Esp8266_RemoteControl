@@ -38,6 +38,7 @@ $nonJsonPinData = 0;
 $justGetDeviceInfo = 0;
 $storagePassword = "";
 $multipleSensorArray = [];
+$latestCommandData = null;
 
 $user = autoLogin(); //if we are using this as a backend for the inverter or weather page, we don't need to pass the storagePassword at all.  this will only work once the user has logged in and selected a single tenant
 
@@ -108,10 +109,25 @@ if($_REQUEST) {
 		if(!$conn) {
 			$out = ["error"=>"bad database connection"];
 		} else {
+			$latestCommandData = getLatestCommandData($locationId, $tenant["tenant_id"]);
+	 
 			if(array_key_exists("data", $_REQUEST)) {
 				$data = $_REQUEST["data"];
 				$lines = explode("|",$data);
-				if ($mode=="saveLocallyGatheredSolarData") { //used by the special inverter monitoring MCU to sed fine-grain data promptly
+			if($mode=="saveIrData") { //data was captured from an irRecorder, so store it in the database!
+				$irData = str_replace("*", ",", $lines[0]);
+				$irSql = "INSERT INTO 
+				ir_pulse_sequence(ir_target_type_id, name, sequence, tenant_id, created) 
+				VALUES (0, 'new', '" . $irData . "'," . $tenant["tenant_id"] . ",'" . $formatedDateTime . "')";
+				$result = mysqli_query($conn, $irSql);
+				//echo $irSql;
+				$error = mysqli_error($conn);
+				if($error != ""){
+					$badSql = $irSql;
+					logSql("bad infrared data save sql:" .  $irSql);
+					$out["error"] = $error;
+				}
+			} else if ($mode=="saveLocallyGatheredSolarData") { //used by the special inverter monitoring MCU to sed fine-grain data promptly
 					if($canAccessData) {
 						///weather/data.php?storagePassword=xxxxxx&locationId=16&mode=saveLocallyGatheredSolarData&data=0*61*3336*3965*425*420*0*0*6359|||***192.168.1.200 
 						$multipleSensorArray = explode("!", $lines[0]);
@@ -119,26 +135,26 @@ if($_REQUEST) {
 						$energyInfoString = array_shift($multipleSensorArray);
 						//var_dump($energyInfoString );
 						$arrEnergyData = explode("*", $energyInfoString);
-						$inverterSnapshotTime = $arrEnergyData[0];
-						$gridPower = $arrEnergyData[1];
-						$batteryPercent = $arrEnergyData[2];
-						$batteryPower  = $arrEnergyData[3];
-						$loadPower = $arrEnergyData[4];
-						$solarString1 = $arrEnergyData[5];
-						$solarString2 = $arrEnergyData[6];
-						$batteryVoltage = intval($arrEnergyData[7])/100;
-						$mysteryValue3 =  $arrEnergyData[8];
-						$mysteryValue1 = $arrEnergyData[9];
-						$mysteryValue2 = $arrEnergyData[10];
-						$changer1 = $arrEnergyData[11];
-						$changer2 = $arrEnergyData[12];
-						$changer3 = $arrEnergyData[13];
-						$changer4 = $arrEnergyData[14];
-						$changer5 = $arrEnergyData[15];
-						$changer6 = $arrEnergyData[16];
-						$changer7 = $arrEnergyData[17];
+							$inverterSnapshotTime = $arrEnergyData[0];
+							$gridPower = $arrEnergyData[1];
+							$batteryPercent = $arrEnergyData[2];
+							$batteryPower  = $arrEnergyData[3];
+							$loadPower = $arrEnergyData[4];
+							$solarString1 = $arrEnergyData[5];
+							$solarString2 = $arrEnergyData[6];
+							$batteryVoltage = intval($arrEnergyData[7])/100;
+							$mysteryValue3 =  $arrEnergyData[8];
+							$mysteryValue1 = $arrEnergyData[9];
+							$mysteryValue2 = $arrEnergyData[10];
+							$changer1 = $arrEnergyData[11];
+							$changer2 = $arrEnergyData[12];
+							$changer3 = $arrEnergyData[13];
+							$changer4 = $arrEnergyData[14];
+							$changer5 = $arrEnergyData[15];
+							$changer6 = $arrEnergyData[16];
+							$changer7 = $arrEnergyData[17];
 						$energyInfo = saveSolarData($tenant, $gridPower, $batteryPercent,  
-						$batteryPower, $loadPower, $solarString1, $solarString2, 
+							$batteryPower, $loadPower, $solarString1, $solarString2, 
 							$batteryVoltage, 
 							$mysteryValue3,
 							$mysteryValue1,
@@ -241,20 +257,20 @@ if($_REQUEST) {
 					$periodScale = $scaleRecord["period_scale"];
 					$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
 					$groupBy = gvfa("group_by", $scaleRecord, "");
-					$startOfPeriod = "NOW()"; 
+					$startOfPeriod = "'" . $formatedDateTime . "'"; 
 					$historyOffset = 1;
 					$sql = "SELECT * FROM inverter_log  
 						WHERE tenant_id = " . $tenant["tenant_id"] . " ";
 					if ($absoluteTimespanCusps == 1) {
 						// Calculate starting point at the "cusp" of each period scale
-						$startOfPeriod = sqlForStartOfPeriodScale($periodScale);
+						$startOfPeriod = sqlForStartOfPeriodScale($periodScale, $formatedDateTime);
 						// Adjust SQL to break at cusps rather than present
 						$sql .= " AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
 						if ($periodAgo > 0) {
 							$sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
 						}
 					} else {
-						$sql .= " AND recorded > DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . intval($periodSize * ($periodAgo + 1) + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
+						$sql .= " AND recorded > DATE_ADD(DATE_ADD('" . $formatedDateTime . "', INTERVAL -" . intval($periodSize * ($periodAgo + 1) + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
 					}
 					//AND  recorded > DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + $historyOffset) + $initialOffset)) . " " . $periodScale . ") ";
 					if($periodAgo  > 0) {
@@ -298,7 +314,7 @@ if($_REQUEST) {
 					}
 					if ($absoluteTimespanCusps == 1) {
 						// Calculate starting point at the "cusp" of each period scale
-						$startOfPeriod = sqlForStartOfPeriodScale($periodScale);
+						$startOfPeriod = sqlForStartOfPeriodScale($periodScale, $formatedDateTime);
 						// Adjust SQL to break at cusps rather than present
 						$sql .= " AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
 						if ($periodAgo > 0) {
@@ -306,12 +322,12 @@ if($_REQUEST) {
 						}
 					} else {
 
-						$sql .= " AND recorded > DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . intval($periodSize * ($periodAgo + 1) + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
+						$sql .= " AND recorded > DATE_ADD(DATE_ADD('" . $formatedDateTime . "', INTERVAL -" . intval($periodSize * ($periodAgo + 1) + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
 					}
 					if($periodAgo  > 0) {
-						$sql .= " AND recorded < DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
+						$sql .= " AND recorded < DATE_ADD(DATE_ADD('" . $formatedDateTime . "', INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
 					} else if ($yearsAgo > 0){
-						$sql .= " AND recorded < DATE_ADD(DATE_ADD(NOW(), INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
+						$sql .= " AND recorded < DATE_ADD(DATE_ADD('" . $formatedDateTime . "', INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
 					}
 					if($groupBy){
 						$sql .= " GROUP BY " . $groupBy . " ";
@@ -457,6 +473,7 @@ if($_REQUEST) {
 				$method  = "saveWeatherData";
 				$out =  addNodeIfPresent(addNodeIfPresent(Array("message" => "done", "method"=>$method), "error", $error), "sql", $badSql);
 			}
+	 
 			if($mode == "getInitialDeviceInfo" ) { //return a double-delimited string of additional sensors, etc. this one begins with a "*" so we can identify it in the ESP8266. it will be the first data requested by the remote control
 				$outString = "*" . deDelimitify($deviceName); 
 				$sensorSql = "SELECT  f.name, pin_number, power_pin, sensor_type, sensor_sub_type, via_i2c_address, device_feature_id 
@@ -507,6 +524,7 @@ if($_REQUEST) {
 						$extraInfo = explode("*", $lines[3]);
 						if(count($extraInfo)>1){
 							$lastCommandId = $extraInfo[0];
+							markCommandDone($lastCommandId, $tenant["tenant_id"]);
 							$specificPin = $extraInfo[1]; //don't do this if $nonJsonPinData
 						}
 						//var_dump($extraInfo);
@@ -540,7 +558,10 @@ if($_REQUEST) {
 						}
 					}
 				}
-
+				if($latestCommandData) {
+					$out = "!" . $latestCommandData["command_id"] . "|" . $latestCommandData["command"] . "|" . $latestCommandData["value"];
+					die($out);
+				} 
 				//var_dump($pinValuesKnownToDevice);
 				$managementCache = []; //save us some database lookups
 				//SELECT pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=11 ORDER BY i2c, pin_number;
@@ -1081,24 +1102,59 @@ function removeTrailingChar($inVal, $char, $stage = 0){
 	return $inVal;
 }
 
-function sqlForStartOfPeriodScale($periodScale) {
+function sqlForStartOfPeriodScale($periodScale, $now) {
 	switch ($periodScale) {
 		case 'hour':
-			$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-%m-%d %H:00:00')";
+			$startOfPeriod = "DATE_FORMAT('" . $now . "', '%Y-%m-%d %H:00:00')";
 			break;
 		case 'day':
-			$startOfPeriod = "DATE(NOW())";  // Midnight of the current day
+			$startOfPeriod = "DATE('" . $now . "')";  // Midnight of the current day
 			break;
 		case 'month':
-			$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-%m-01 00:00:00')";  // Start of the current month
+			$startOfPeriod = "DATE_FORMAT('" . $now . "', '%Y-%m-01 00:00:00')";  // Start of the current month
 			break;
 		case 'year':
-			$startOfPeriod = "DATE_FORMAT(NOW(), '%Y-01-01 00:00:00')";  // Start of the current year
+			$startOfPeriod = "DATE_FORMAT('" . $now . "', '%Y-01-01 00:00:00')";  // Start of the current year
 			break;
 		default:
-			$startOfPeriod = "NOW()";  // Fallback to present if no match
+			$startOfPeriod = "'" . $now . "'";  // Fallback to present if no match
 	}
 	return $startOfPeriod;
+}
+
+
+function getLatestCommandData($deviceId, $tenantId){
+	Global $conn;
+	$sql = "SELECT * FROM command c JOIN command_type t ON c.command_type_id=t.command_type_id AND c.tenant_id=t.tenant_id WHERE device_id=" . intval($deviceId) . " AND c.tenant_id=" . $tenantId . " AND done=0 ORDER BY command_id ASC LIMIT 0,1";
+	$result = mysqli_query($conn, $sql);
+	if($result) {
+		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
+		if($row){
+			$table = $row["associated_table"];
+			$pk = $row["command_value"];
+			$name = $row["name"];
+			$value = null;
+			$commandId = $row["command_id"];
+			$valueColumn = $row["value_column"];
+			$sql = "SELECT * FROM " . $table . " WHERE tenant_id=" . $tenantId . " AND " . $table . "_id=" . $pk;
+			//echo $sql;
+			$subResult = mysqli_query($conn, $sql);
+			if($subResult) {
+				$subRow = mysqli_fetch_array($subResult, MYSQLI_ASSOC);
+				if($subRow && array_key_exists($valueColumn, $subRow)){
+					$value = $subRow[$valueColumn];
+					$value = str_replace(" ", ",", $value); //kinda a hack -- should have it better end-to-end
+				}
+				return array("command_id"=> $commandId , "command"=> $name, "value"=>$value);
+			}
+		}
+	}
+}
+
+function markCommandDone($commandId, $tenantId){ 
+	Global $conn;
+	$sql = "UPDATE command SET done = 1 WHERE command_id=" . intval($commandId) . " AND tenant_id=" . $tenantId;
+	$result = mysqli_query($conn, $sql);
 }
 
 //some helpful sql examples for creating sql users:
