@@ -958,7 +958,7 @@ function editManagementRule($error,  $tenantId) {
 	    'label' => 'change to',
       'name' => 'result_value',
       'width' => 100,
-      'type' => 'number',
+      'type' => 'int',
 	    'value' => gvfa("result_value", $source), 
       'error' => gvfa('result_value', $error)
 	  ],
@@ -987,6 +987,12 @@ function editManagementRule($error,  $tenantId) {
 	    'value' => gvfa("conditions", $source), 
       'error' => gvfa('conditions', $error)
 	  ],
+    [
+	    'label' => 'created',
+      'name' => 'created',
+      'type' => 'datetime',
+      'value' => gvfa("created", $source)
+    ],
     );
   $form = genericForm($formData, $submitLabel);
   $form .= managementRuleTools();

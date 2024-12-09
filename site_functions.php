@@ -1670,7 +1670,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
         $skip = true;
       } else if(($type == "bool"  || $type == "checkbox") && !$value){
         $sanitized = '0';
-      } else if ((beginsWith($type, "number")  ||  $type == "int") && !$value) {
+      } else if ((beginsWith($type, "number")  ||  $type == "int") && $value === "") {
         $sanitized = 'NULL';
       } else {
         $sanitized = "'" . mysqli_real_escape_string($conn, $value) . "'";
@@ -1735,7 +1735,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
             $sanitized = "NULL";
           } else if(($type == "bool"  || $type == "checkbox") && !$value){
             $sanitized = '0';
-          } else if (beginsWith($type, "number") && !$value) {
+          } else if ((beginsWith($type, "number") || beginsWith($type, "int")) &&  $value === "") {
             $sanitized = 'NULL';
           } else {
             //echo $column .  "*" . $value . "<BR>";
