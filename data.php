@@ -1133,19 +1133,23 @@ function getLatestCommandData($deviceId, $tenantId){
 			$table = $row["associated_table"];
 			$pk = $row["command_value"];
 			$name = $row["name"];
-			$value = null;
+			$value = $row["command_value"];
 			$commandId = $row["command_id"];
 			$valueColumn = $row["value_column"];
 			//my framework kinda depends on single-column pks having the name of the table with "_id" tacked on the end. if you're doing something different, you might have to store the name of your pk
-			$sql = "SELECT * FROM " . $table . " WHERE tenant_id=" . $tenantId . " AND " . $table . "_id=" . $pk;
-			//echo $sql;
-			$subResult = mysqli_query($conn, $sql);
-			if($subResult) {
-				$subRow = mysqli_fetch_array($subResult, MYSQLI_ASSOC);
-				if($subRow && array_key_exists($valueColumn, $subRow)){
-					$value = $subRow[$valueColumn];
-					$value = str_replace(" ", ",", $value); //kinda a hack -- should have it better end-to-end
+			if($valueColumn && $table) {
+				$sql = "SELECT * FROM " . $table . " WHERE tenant_id=" . $tenantId . " AND " . $table . "_id=" . $pk;
+				//echo $sql;
+				$subResult = mysqli_query($conn, $sql);
+				if($subResult) {
+					$subRow = mysqli_fetch_array($subResult, MYSQLI_ASSOC);
+					if($subRow && array_key_exists($valueColumn, $subRow)){
+						$value = $subRow[$valueColumn];
+						$value = str_replace(" ", ",", $value); //kinda a hack -- should have it better end-to-end
+					}
+					return array("command_id"=> $commandId , "command" => $name, "value" => $value);
 				}
+			} else {
 				return array("command_id"=> $commandId , "command" => $name, "value" => $value);
 			}
 		}
