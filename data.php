@@ -381,6 +381,7 @@ if($_REQUEST) {
 				$reserved2 = "NULL";
 				$reserved3 = "NULL";
 				$reserved4 = "NULL";
+				$twelveVoltBatteryVoltage = NULL;
 				$consolidateAllSensorsToOneRecord = 0; //if this is set to one by the first weather record, all weather data is stored in a single weather_data record
 				$weatherRecordCounter = 0;
 				$doNotSaveBecauseNoData = true;
@@ -400,6 +401,7 @@ if($_REQUEST) {
 						$reserved3 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved3, $arrWeatherData, 10);
 						$reserved4 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved4, $arrWeatherData, 11);
 						$sensorId = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $sensorId, $arrWeatherData, 12);
+						$twelveVoltBatteryVoltage = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $twelveVoltBatteryVoltage, $arrWeatherData, 16);
 						if($consolidateAllSensorsToOneRecord){
 							$deviceFeatureId = "NULL";
 						} else {
@@ -424,7 +426,7 @@ if($_REQUEST) {
 							wind_direction,  wind_speed, wind_increment, 
 							precipitation, 
 							reserved1, reserved2, reserved3, reserved4,
-							sensor_id) 
+							sensor_id, twelve_voltage) 
 						VALUES (" . 
 						mysqli_real_escape_string($conn, $locationId) . "," .
 						mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
@@ -441,7 +443,8 @@ if($_REQUEST) {
 						mysqli_real_escape_string($conn, $reserved2) . "," .  
 						mysqli_real_escape_string($conn, $reserved3) . "," .  
 						mysqli_real_escape_string($conn, $reserved4) . "," .  
-						mysqli_real_escape_string($conn, $sensorId) .
+						mysqli_real_escape_string($conn, $sensorId) . "," .
+						mysqli_real_escape_string($conn, $twelveVoltBatteryVoltage) . 
 						")";
 					}
 					
