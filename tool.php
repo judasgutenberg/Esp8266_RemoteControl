@@ -19,6 +19,9 @@ include("device_functions.php");
 $conn = mysqli_connect($servername, $username, $password, $database);
 
 $table = strtolower(filterStringForSqlEntities(gvfw('table', "device"))); //make sure this table name doesn't contain injected SQL
+if($table == "etc"){
+  $table = "device_type_feature";
+}
 $action = strtolower(gvfw('action', "list"));
 $user = autoLogin();
 $tenantId = gvfa("tenant_id", $user);

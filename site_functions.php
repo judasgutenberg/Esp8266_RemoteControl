@@ -1051,33 +1051,17 @@ function topmostNav() {
 }
 
 function tabNav($user) {
+  $etcTables = array("device_type", "feature_type", "device_type_feature", "management_rule", "ir_pulse_sequence","command","command_type","tenant", "user");
 	$tabData = array(
  
   [
     'label' => 'Devices',
     'table' => 'device' 
-  ] ,
-  [
-    'label' => 'Device Types',
-    'table' => 'device_type' 
-  ] ,
-  [
-    'label' => 'Feature Types',
-    'table' => 'feature_type' 
-  ] ,
-  [
-    'label' => 'Device Feature Types',
-    'table' => 'device_type_feature' 
-  ] ,
+  ],
   [
     'label' => 'Device Features',
     'table' => 'device_feature' 
-  ] 
-  ,
-  [
-    'label' => 'Management Rules',
-    'table' => 'management_rule' 
-  ], 
+  ],
   [
     'label' => 'Sensor Data',
     'table' => 'sensors' 
@@ -1086,36 +1070,19 @@ function tabNav($user) {
     'label' => 'Reports',
     'table' => 'report' 
   ]
+  
 	);
   if($user && ($user["role"] == "super" || $user["role"] == "admin")){
     $tabData[] =   [
       'label' => 'Utilities',
       'table' => 'utilities' 
     ];
-    $tabData[] =   [
-      'label' => 'IR Sequences',
-      'table' => 'ir_pulse_sequence' 
-    ];
-    $tabData[] =   [
-      'label' => 'Command',
-      'table' => 'command' 
-    ];
-    $tabData[] =   [
-      'label' => 'Command Type',
-      'table' => 'command_type' 
-    ];
-    $tabData[] =   [
-      'label' => 'Tenants',
-      'table' => 'tenant' 
-    ];
   }
-  if($user && $user["role"] == "super") {
-    $tabData[] =   [
-      'label' => 'Users',
-      'table' => 'user' 
+  $tabData[] =
+    [
+      'label' => 'Etc',
+      'table' => 'etc' 
     ];
-
-  }
 	$out = "<div class='nav'>";
   $currentMode = gvfa('table', $_REQUEST);
   $deviceId = gvfa('device_id', $_REQUEST);
@@ -1124,17 +1091,16 @@ function tabNav($user) {
 
     if($currentMode == "") {
       $currentMode  = "device";
+    } else if ($currentMode == "etc"){
+      //$currentMode  = "device_type_feature";
     }
     $label = gvfa("label", $tab);
     $table = gvfa("table", $tab); 
     $class = "navtab";
-    if($currentMode == $table) {
+    if($currentMode == $table || array_search($currentMode, $etcTables) !== false && $table == "etc") {
       $class = "navtabthere";
     }
     $url = "?table=" . $table;
-    if($table!= "word_list"){
-      //$url .= "&word_list_id=" . $wordListId ; //too messy
-    }
     if($table!= "device"){
       $url .= "&device_id=" . $deviceId;
     }
@@ -1142,7 +1108,89 @@ function tabNav($user) {
     $out .= "\n<a href='" . $url . "'><div class='" . $class . "'>" . $label . "</div></a>\n";
   }
   $out .= "</div>\n";
+  
+  if($currentMode == "etc" || array_search($currentMode, $etcTables) !== false) {
+    $out .="<br/>";
+    $out .= etcTabNav($user);
+  }
   return $out;
+}
+
+
+function etcTabNav($user) {
+  $tabData = array(
+ 
+    [
+      'label' => 'Device Types',
+      'table' => 'device_type' 
+    ] ,
+    [
+      'label' => 'Feature Types',
+      'table' => 'feature_type' 
+    ] ,
+    [
+      'label' => 'Device Feature Types',
+      'table' => 'device_type_feature' 
+    ] 
+    ,
+    [
+      'label' => 'Management Rules',
+      'table' => 'management_rule' 
+    ]
+    );
+    if($user && ($user["role"] == "super" || $user["role"] == "admin")){
+      $tabData[] =   [
+        'label' => 'IR Sequences',
+        'table' => 'ir_pulse_sequence' 
+      ];
+      $tabData[] =   [
+        'label' => 'Command',
+        'table' => 'command' 
+      ];
+      $tabData[] =   [
+        'label' => 'Command Type',
+        'table' => 'command_type' 
+      ];
+      $tabData[] =   [
+        'label' => 'Tenants',
+        'table' => 'tenant' 
+      ];
+    }
+    if($user && $user["role"] == "super") {
+      $tabData[] =   [
+        'label' => 'Users',
+        'table' => 'user' 
+      ];
+  
+    }
+    $out = "<div class='nav'>";
+    $currentMode = gvfa('table', $_REQUEST);
+    $deviceId = gvfa('device_id', $_REQUEST);
+   
+    foreach($tabData as &$tab) {
+  
+      if($currentMode == "") {
+        $currentMode  = "device";
+      }
+      $label = gvfa("label", $tab);
+      $table = gvfa("table", $tab); 
+      $class = "navtab";
+      if($currentMode == $table || $table=="device_type_feature" && $currentMode == "etc") {
+        $class = "navtabthere";
+      }
+      $url = "?table=" . $table;
+      if($table!= "word_list"){
+        //$url .= "&word_list_id=" . $wordListId ; //too messy
+      }
+      if($table!= "device"){
+        $url .= "&device_id=" . $deviceId;
+      }
+      
+      $out .= "\n<a href='" . $url . "'><div class='" . $class . "'>" . $label . "</div></a>\n";
+    }
+    $out .= "</div>\n";
+    return $out;
+
 }
 
 //a work in progress:
