@@ -526,10 +526,11 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         $out .= "<select name='" . $name . "' />";
         if(is_string($values)) {
           $out .= "<option value='0'>none</option>";
+          //var_dump($user);
           if($user) {
             $values = tokenReplace($values, $user); //I'd has something embarrassingly hardcoded here until I had $user available
           }
-          
+ 
           $result = mysqli_query($conn, $values); //REALLY NEED TO SANITIZE $values since it contains RAW SQL!!!
           
    
@@ -2003,6 +2004,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
   $unfoundName = "unnamed";
   $data = "";
   $out = "";
+  $errors = [];
   $ran = false;
   $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
 
@@ -2022,8 +2024,10 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
     $outputs = [];
     if($form){
       $decodedForm = json_decode($form, true);
-      if($decodedForm){
- 
+      if(!$decodedForm && $form!=""){
+        $errors[] ="There was malformed JSON in the Form.</div>";
+
+      } else if ($decodedForm){
         if(array_key_exists("output", $decodedForm)) {
           
           $output = $decodedForm["output"];
@@ -2054,7 +2058,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
     } else {
       $decodedFormToUse = [];
     }
-    if($decodedFormToUse != "" && gvfw("action") == "fetch" || gvfw("action") == "rerun") {
+    if(count($errors) == 0 && $decodedFormToUse != "" && gvfw("action") == "fetch" || gvfw("action") == "rerun") {
       $out .= "<div class='listtitle'>Prepare to Run Report  '" . $reportData["name"] . "' " . $editButton . "</div>";
  
       if($historicDataObject  && $decodedFormToUse){
@@ -2079,6 +2083,12 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
       $out .= genericForm($decodedFormToUse, "Run", "Running Report...", $user);
       $out .= "<div class='listtitle'>Past Runs:</div>";
       $out .= previousReportRuns($user, $reportId);
+    } else if (count($errors) > 0) {
+      $out .= "<div class='genericformerror'>";
+      foreach($errors as $error){
+        $out .= $error . "<br/>";
+      }
+      $out .= "</div>";
     } else {
       $ran = true;
       $out = "<div class='listtitle'>Running Report  '" . $reportData["name"] . "' " . $editButton . " " . $reRunButton  . " " . "</div>";
