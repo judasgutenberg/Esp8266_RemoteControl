@@ -445,18 +445,20 @@ function getWeatherData(yearsAgo) {
 			plotType = radio.value;
 		}
 	}
-	url.searchParams.set("absolute_timespan_cusps", absoluteTimespanCusps);
+	
 	url.searchParams.set("plot_type", plotType);
 
 	if(atcCheckbox.checked) {
 		absoluteTimespanCusps = 1;
+	} else {
+		absoluteTimespanCusps = 0;
 	}
 	if(justLoaded){
 		if(absoluteTimespanCusps == 1){
 			atcCheckbox.checked = true;
 		}
 	}
- 
+	url.searchParams.set("absolute_timespan_cusps", absoluteTimespanCusps);
 	if(specificColumn == null) {
 		specificColumn = "";
 	}
