@@ -280,7 +280,7 @@ function schemaArrayFromSchema($table, &$pk){
       if($fieldName != "tenant_id") {
         $record = ["label" => $fieldName, "name" => $fieldName, "type" => $type ];
         if($type == "bool" || $type == "number" ){
-          $record["liveChangeable"] = true;
+          $record["changeable"] = true;
         }
         $headerData[] = $record;
       }
@@ -1275,7 +1275,7 @@ function genericTableViaJs($rows, $headerData = NULL, $toolsTemplate = NULL, $se
 
         }
       }
-      if (gvfa("liveChangeable", $headerItem)) {
+      if (gvfa("changeable", $headerItem)) {
         if($row[$name] == 1){
           $checkedString = " checked ";
           
@@ -1399,7 +1399,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
       }
 
       //echo $value . "=<P>";
-      if (gvfa("liveChangeable", $headerItem)) {
+      if (gvfa("changeable", $headerItem)) {
         if($row[$name] == 1){
           $checkedString = " checked ";
           

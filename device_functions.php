@@ -29,7 +29,7 @@ function deviceFeatures($tenantId, $deviceId) {
     [
       'label' => 'enabled',
       'name' => 'enabled',
-      'liveChangeable' => true,
+      'changeable' => true,
       'name' => 'enabled',
       'accent_color' => "red",
       'type' => 'bool'
@@ -49,14 +49,14 @@ function deviceFeatures($tenantId, $deviceId) {
     [
       'label' => 'auto-manage',
       'name' => 'allow_automatic_management',
-      'liveChangeable' => true,
+      'changeable' => true,
       'accent_color' => "red",
       'type' => 'bool'
     ],
     [
       'label' => 'power on',
       'name' => 'value',
-      'liveChangeable' => true,
+      'changeable' => true,
       'accent_color' => "blue",
       'type' => 'bool'
     ],
@@ -785,13 +785,24 @@ function commands($tenantId, $deviceId){
 	    'label' => 'device',
       'name' => 'device'
 	  ] ,
+    [
+	    'label' => 'done',
+      'name' => 'done',
+      'type' => 'bool',
+      'changeable' => true
+	  ] ,
+    [
+      'label' => 'performed',
+      'name' => 'performed',
+       'function' => 'timeAgo("<performed/>")'
+    ],
 		[
 	    'label' => 'created',
       'name' => 'created'
 	  ] 
     );
  
-  $sql = "SELECT c.name AS command, d.name AS device, t.command_id, t.created FROM " . $table . " t 
+  $sql = "SELECT c.name AS command, d.name AS device, t.command_id, t.done, t.created, performed FROM " . $table . " t 
   LEFT JOIN command_type c ON t.command_type_id = c.command_type_id  AND t.tenant_id = c.tenant_id 
   LEFT JOIN device d ON t.device_id = d.device_id  AND t.tenant_id = d.tenant_id
   WHERE t.tenant_id =" . intval($tenantId) . " ORDER BY t.created DESC";
@@ -803,7 +814,7 @@ function commands($tenantId, $deviceId){
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     //var_dump($rows);
     if($rows) {
-      $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id");
+      $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id", $sql);
     }
     
   }

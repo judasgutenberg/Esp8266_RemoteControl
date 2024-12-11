@@ -1160,8 +1160,10 @@ function getLatestCommandData($deviceId, $tenantId){
 }
 
 function markCommandDone($commandId, $tenantId){ 
-	Global $conn;
-	$sql = "UPDATE command SET done = 1 WHERE command_id=" . intval($commandId) . " AND tenant_id=" . $tenantId;
+	Global $conn, $timezone;
+	$date = new DateTime("now", new DateTimeZone($timezone));//set the $timezone global in config.php
+	$formatedDateTime =  $date->format('Y-m-d H:i:s');
+	$sql = "UPDATE command SET done = 1, performed = '" . $formatedDateTime . "' WHERE done=0 AND command_id=" . intval($commandId) . " AND tenant_id=" . $tenantId;
 	$result = mysqli_query($conn, $sql);
 }
 
