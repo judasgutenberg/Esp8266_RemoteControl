@@ -701,15 +701,16 @@ function editDeviceFeature($error,  $user) {
 }
 
 
-function editCommand($error,  $user) {
+
+function editCommandType($error,  $user) {
   Global $conn;
   $tenantId = $user["tenant_id"];
-  $table = "command";
+  $table = "command_type";
   $pk = gvfw($table . "_id");
   
-  $submitLabel = "save command";
+  $submitLabel = "save command type";
   if($pk  == "") {
-    $submitLabel = "create command";
+    $submitLabel = "create command type";
     $source = $_POST;
   } else {
     $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
@@ -735,12 +736,129 @@ function editCommand($error,  $user) {
 	    'value' => gvfa("created", $source)
 	  ],
     [
+	    'label' => 'Name',
+      'name' => "name",
+      'type' => 'string',
+	    'value' => gvfa("name", $source), 
+      'error' => gvfa("name", $error),
+	  ],
+    [
+	    'label' => 'Associated Table',
+      'name' => "associated_table",
+      'type' => 'select',
+	    'value' => gvfa("associated_table", $source), 
+      'error' => gvfa("associated_table", $error),
+      'change-function' => "getColumnsForTable('associated_table', 'value_column', 'name_column')",
+      'values' => schemaTables()
+	  ],
+  
+    [
+	    'label' => 'Value Column',
+      'name' => "value_column",
+      'type' => 'select',
+	    'value' => gvfa("value_column", $source), 
+      'error' => gvfa("value_column", $error),
+      'values' => getColumns(gvfa("associated_table", $source))
+	  ],
+    [
+	    'label' => 'Name Column',
+      'name' => "name_column",
+      'type' => 'select',
+	    'value' => gvfa("name_column", $source), 
+      'error' => gvfa("name_column", $error),
+      'values' => getColumns(gvfa("associated_table", $source))
+	  ],
+    );
+  $form = genericForm($formData, $submitLabel);
+  return $form;
+}
+
+function commandTypes($tenantId, $deviceId){
+  Global $conn;
+  $table = "command_type";
+  $out = "<div class='listheader'>Command Types</div>";
+  $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a command</div>\n";
+  $headerData = array(
+    [
+	    'label' => 'id',
+      'name' => $table . "_id"
+	  ],
+		[
+	    'label' => 'name',
+      'name' => 'name'
+	  ],
+		[
+	    'label' => 'associated table',
+      'name' => 'associated_table'
+	  ],
+    [
+	    'label' => 'value column',
+      'name' => 'value_column'
+	  ],
+    [
+	    'label' => 'created',
+      'name' => 'created'
+	  ] ,
+    );
+    $sql = "SELECT * from command_type WHERE tenant_id =" . intval($tenantId) . " ORDER BY name DESC";
+    $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
+    $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
+    $result = mysqli_query($conn, $sql);
+   
+    if($result) {
+      $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+      //var_dump($rows);
+      if($rows) {
+        $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id", $sql);
+      }
+      
+    }
+    return $out;
+}
+
+
+function editCommand($error,  $user) {
+  Global $conn;
+  $tenantId = $user["tenant_id"];
+  $table = "command";
+  $pk = gvfw($table . "_id");
+  
+  $submitLabel = "save command";
+  if($pk  == "") {
+    $submitLabel = "create command";
+    $source = $_POST;
+  } else {
+    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
+    $result = mysqli_query($conn, $sql);
+    if($result) {
+      $source = mysqli_fetch_array($result);
+    }
+  }
+  if(!$pk){
+    $pk = "NULL";
+  }
+  $script = "getValuesFromCommandTypeTable('command_type_id', 'command_value')";
+  $formData = array(
+    [
+	    'label' => 'id',
+      'name' => $table . "_id",
+      'type' => 'read_only',
+	    'value' => gvfa($table . "_id", $source)
+	  ],
+    [
+	    'label' => 'created',
+      'name' => "created",
+      'type' => 'read_only',
+	    'value' => gvfa("created", $source)
+	  ],
+    [
 	    'label' => 'Command Type',
       'name' => "command_type_id",
       'type' => 'select',
 	    'value' => gvfa("command_type_id", $source), 
       'error' => gvfa("command_type_id", $error),
       'values' => "SELECT command_type_id, name as 'text' FROM command_type WHERE tenant_id='" . $tenantId  . "' ORDER BY name ASC",
+      'change-function' => $script,
 	  ],
  
   
@@ -753,7 +871,13 @@ function editCommand($error,  $user) {
       'error' => gvfa('device_id', $error),
       'values' => "SELECT device_id, name as 'text' FROM device WHERE tenant_id='" . $tenantId  . "' ORDER BY name ASC",
 	  ],
-
+    [
+	    'label' => 'Command Value',
+      'name' => "command_value",
+      'type' => 'string',
+	    'value' => gvfa("command_value", $source), 
+      'error' => gvfa("command_value", $error),
+	  ],
     [
 	    'label' => 'done',
       'accent_color' => "red",
@@ -763,7 +887,7 @@ function editCommand($error,  $user) {
       'error' => gvfa('done', $error)
 	  ],
     );
-  $form = genericForm($formData, $submitLabel);
+  $form = genericForm($formData, $submitLabel, "Saving command...", null, $script);
   return $form;
 }
 
@@ -786,6 +910,10 @@ function commands($tenantId, $deviceId){
       'name' => 'device'
 	  ] ,
     [
+	    'label' => 'command value',
+      'name' => 'command_value'
+	  ] ,
+    [
 	    'label' => 'done',
       'name' => 'done',
       'type' => 'bool',
@@ -802,7 +930,7 @@ function commands($tenantId, $deviceId){
 	  ] 
     );
  
-  $sql = "SELECT c.name AS command, d.name AS device, t.command_id, t.done, t.created, performed FROM " . $table . " t 
+  $sql = "SELECT c.name AS command, d.name AS device, t.command_id, t.done, t.created, performed, command_value, associated_table, value_column FROM " . $table . " t 
   LEFT JOIN command_type c ON t.command_type_id = c.command_type_id  AND t.tenant_id = c.tenant_id 
   LEFT JOIN device d ON t.device_id = d.device_id  AND t.tenant_id = d.tenant_id
   WHERE t.tenant_id =" . intval($tenantId) . " ORDER BY t.created DESC";

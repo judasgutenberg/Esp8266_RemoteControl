@@ -99,6 +99,10 @@ if ($user) {
   } else if($action == "getcolumns") {
     $out = getColumns($table);
     die(json_encode($out));
+  } else if($action == "getrecordsfromassociatedtable") {
+    $commandTypeId = gvfw('command_type_id');
+    $out = getAssociatedRecords($commandTypeId, $user["tenant_id"]);
+    die(json_encode($out));  
   } else if($action == "genericformsave") { //this should be pretty secure now that i am hashing all the descriptive information to make sure it isn't tampered with
     //mostly works for numbers, colors, and checkboxes
 
@@ -120,7 +124,7 @@ if ($user) {
     //a little safer only because it allows a user to screw up records connected to their tenantId but mabe revisit!!!
     $userClause = "";
     if(in_array($table, tablesThatRequireUser())){
-      $userClause = ", user_id=" . intval($user["user_id"]);
+      $userClause = ", user_id=" . $user["user_id"];
     }
     if(in_array($table, tablesThatRequireModified())){
       $userClause = ", modified='" . $formatedDateTime . "'";
@@ -330,6 +334,12 @@ if ($user) {
       $out .=  editCommand($errors,  $user);
     } else {
       $out .= commands($tenantId, $deviceId);
+    }
+  } else if($table == "command_type") {
+    if ($action == "startcreate" || gvfw("command_type_id") != "") {
+      $out .=  editCommandType($errors,  $user);
+    } else {
+      $out .= commandTypes($tenantId, $deviceId);
     }
 	} else if($table == "user") {
     if ($action == "startcreate" || gvfw("user_id") != "") {

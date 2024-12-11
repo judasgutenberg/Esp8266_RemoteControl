@@ -473,13 +473,169 @@ function genericSelect(id, name, defaultValue, data, event = "", handler = "") {
   return out;
 }
 
+function getValuesFromCommandTypeTable(sourceCommandTypeIdName, destColumnInputName) {
+	let sourceSelect = document.querySelector(`select[name="${sourceCommandTypeIdName}"]`);
+	let commandTypeId = sourceSelect ? sourceSelect.value : null;
+	if (!commandTypeId) {
+        console.error("Source commandTypeId not found or no value selected.");
+        return;
+    }
+	let destInput = document.querySelector(`input[name="${destColumnInputName}"], select[name="${destColumnInputName}"]`);
+    if (!destInput) {
+        console.error("Destination element not found.");
+        return;
+    }
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.onreadystatechange = function () {
+        if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+            let columns = JSON.parse(xmlhttp.responseText);
+			// Remember the currently selected option
+			let currentlySelectedValue = destInput.value;
+            if(!columns) {
+				//we need to convert that select into an input
+				if (destInput.tagName.toLowerCase() === "select") {
+					// Create a new input element
+					let newInput = document.createElement("input");
+				
+					// Copy attributes from the original select to the new input
+					newInput.name = destInput.name;
+					newInput.id = destInput.id; // Optional, if the original has an ID
+					newInput.className = destInput.className; // Copy classes
+				
+					// Optionally, copy any custom attributes if needed
+					Array.from(destInput.attributes).forEach(attr => {
+						if (!['name', 'id', 'class'].includes(attr.name)) {
+							newInput.setAttribute(attr.name, attr.value);
+						}
+					});
+				
+					// Replace the select element with the new input
+					destInput.parentNode.replaceChild(newInput, destInput);
+				
+					// Update destInput to reference the new input element
+					destInput = newInput;
+				}
+			} else {
+				if (destInput.tagName === 'INPUT') {
+					// Create a new select element
+					let newSelect = document.createElement('select');
+				
+					// Optionally copy attributes from the input to the select
+					Array.from(destInput.attributes).forEach(attr => {
+						newSelect.setAttribute(attr.name, attr.value);
+					});
+				
+					// Replace the input with the select in the DOM
+					destInput.parentNode.replaceChild(newSelect, destInput);
+				
+					// Update the reference to point to the new select
+					destInput = newSelect;
+				}
+				// Clear existing options
+				destInput.innerHTML = "";
+				// Populate the select with new options
+				let foundSelected = false;
+				columns.forEach(column => {
+					let option = document.createElement("option");
+					option.value = column.id;
+					option.textContent = column.name;
+					destInput.appendChild(option);
+					// Preserve selection if the value exists in the new options
+					if (column === currentlySelectedValue) {
+						option.selected = true;
+						foundSelected = true;
+					}
+				});
+
+				// Ensure no selection if the current value isn't valid
+				if (!foundSelected) {
+					destSelect.value = ""; // Clear selection
+				}
+			}
+        }
+    };
+
+    let url = "?action=getrecordsfromassociatedtable&command_type_id=" + commandTypeId;
+    xmlhttp.open("GET", url, true);
+    xmlhttp.send();
+
+
+}
+
+function getColumnsForTable(sourceTableSelectName, destColumnSelectName, dest2ColumnSelectName) {
+    // Get the source select element and retrieve its value
+    let sourceSelect = document.querySelector(`select[name="${sourceTableSelectName}"]`);
+    let tableName = sourceSelect ? sourceSelect.value : null;
+    if (!tableName) {
+        console.error("Source table select element not found or no value selected.");
+        return;
+    }
+    // Get the destination select element
+    let destSelect = document.querySelector(`select[name="${destColumnSelectName}"]`);
+    if (!destSelect) {
+        console.error("Destination column select element not found.");
+        return;
+    }
+	let dest2Select;
+	if(dest2ColumnSelectName){
+		dest2Select = document.querySelector(`select[name="${dest2ColumnSelectName}"]`);
+	}
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.onreadystatechange = function () {
+        if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+            let columns = JSON.parse(xmlhttp.responseText);
+            
+            // Remember the currently selected option
+            let currentlySelectedValue = destSelect.value;
+			let currently2SelectedValue = dest2Select.value;
+            // Clear existing options
+            destSelect.innerHTML = "";
+			dest2Select.innerHTML = "";
+            // Populate the select with new options
+            let foundSelected = false;
+			let found2Selected = false;
+            columns.forEach(column => {
+                let option = document.createElement("option");
+				let option2 = document.createElement("option");
+                option.value = column;
+                option.textContent = column;
+				option2.value = column;
+                option2.textContent = column;
+                destSelect.appendChild(option);
+				dest2Select.appendChild(option2);
+                // Preserve selection if the value exists in the new options
+                if (column === currentlySelectedValue) {
+                    option.selected = true;
+                    foundSelected = true;
+                }
+				if (column === currently2SelectedValue) {
+                    option2.selected = true;
+                    found2Selected = true;
+                }
+            });
+
+            // Ensure no selection if the current value isn't valid
+            if (!foundSelected) {
+                destSelect.value = ""; // Clear selection
+            }
+			if (!found2Selected) {
+                dest2Select.value = ""; // Clear selection
+            }
+        }
+    };
+
+    let url = "?action=getcolumns&table=" + encodeURIComponent(tableName);
+    xmlhttp.open("GET", url, true);
+    xmlhttp.send();
+}
+
 let managementToolTableName = "";
 let managementToolColumnName = "";
 let managementToolTableHasLocationIdColumn = false;
 
 function managementRuleTableChange() {
   managementToolTableName = document.getElementById("tableNameForManagementRule")[document.getElementById("tableNameForManagementRule").selectedIndex].value;
-  var xmlhttp = new XMLHttpRequest();
+  let xmlhttp = new XMLHttpRequest();
   let mrColumn =  document.getElementById("mr_column");
   xmlhttp.onreadystatechange = function() {
     if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
@@ -497,13 +653,12 @@ function managementRuleTableChange() {
 
 function managementRuleColumnChange() {
   managementToolColumnName = document.getElementById("columnNameForManagementRule")[document.getElementById("columnNameForManagementRule").selectedIndex].value;
-  var xmlhttp = new XMLHttpRequest();
+  let xmlhttp = new XMLHttpRequest();
   let mrLocation =  document.getElementById("mr_location");
   if(!managementToolTableHasLocationIdColumn){
     tag = "<"  + managementToolTableName + "[]." + managementToolColumnName + "/>";
     managementRuleDisplayTag(tag);
   } else {
-    var xmlhttp = new XMLHttpRequest();
     xmlhttp.onreadystatechange = function() {
       if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
         console.log(xmlhttp.responseText);

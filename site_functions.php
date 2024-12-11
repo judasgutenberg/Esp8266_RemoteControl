@@ -435,7 +435,7 @@ function updateDataWithRows($data, $thisDataRows) {
   return $data;
 }
 
-function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user = null) { //$data also includes any errors
+function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user = null, $onload = "") { //$data also includes any errors
   Global $conn;
   $textareaIds = [];
 	$out = "";
@@ -459,7 +459,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
 		$value = str_replace("\\\\", "\\", gvfa("value", $datum)); 
     //var_dump($datum);
 		$name = gvfa("name", $datum); 
- 
+    $changeFunction = gvfa("change-function", $datum); 
 		$type = strtolower(gvfa("type", $datum)); 
     $accentColor = gvfa("accent_color", $datum, "#66eeee");
     //echo $name .  " " . $accentColor . "<BR>";
@@ -523,7 +523,11 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         }
       } else if($type == 'select') {
         //echo $values;
-        $out .= "<select name='" . $name . "' />";
+        $onChangePart = "";
+        if($changeFunction) {
+          $onChangePart = " onchange=\"" . $changeFunction . "\" ";
+        }
+        $out .= "<select " . $onChangePart. " name='" . $name . "' />";
         if(is_string($values)) {
           $out .= "<option value='0'>none</option>";
           //var_dump($user);
@@ -583,7 +587,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         if($height == ""){
           $height = 5;
         }
-        $out .= "<select  style='accent-color:" .  $accentColor . "'  multiple='multiple' name='" . $name . "[]' id='dest_" . $name . "' size='" . intval($height) . "'/>";
+        $out .= "<select style='accent-color:" .  $accentColor . "'  multiple='multiple' name='" . $name . "[]' id='dest_" . $name . "' size='" . intval($height) . "'/>";
         if($rows) {
           foreach($rows as $row){
             $selected = "";
@@ -806,6 +810,9 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
               */
         //$out.= "\n}, 8000)\n";
     $out .= "\n</script>\n";
+  }
+  if($onload){
+    $out .= "\n<script>" . $onload . "</script>\n";
   }
 	return $out;
 }
@@ -1929,6 +1936,36 @@ function getColumns($tableName) {
     //var_dump($rows);
     $columnNames = array_column($rows, 'Field');
     return $columnNames;
+  }
+}
+
+
+function getAssociatedRecords($commandTypeId, $tenantId){
+  Global $conn;
+  //first figure out if we have an associated table: 
+  $sql = "SELECT associated_table, value_column, name_column FROM command_type WHERE command_type_id=" . intval($commandTypeId) . " AND tenant_id=" . intval($tenantId);
+  //echo $sql;
+  $result = mysqli_query($conn, $sql);
+  if($result) {
+    $row = $result->fetch_assoc();
+    if($row){
+      $table = $row["associated_table"];
+			$valueColumn = $row["value_column"];
+      $nameColumn = $row["name_column"];
+      if(!$nameColumn){
+        $nameColumn = "name";
+      }
+			//my framework kinda depends on single-column pks having the name of the table with "_id" tacked on the end. if you're doing something different, you might have to store the name of your pk
+			if($valueColumn && $table) {
+				$sql = "SELECT ". $nameColumn . ", " . $table . "_id AS id," . $valueColumn . " FROM " . $table . " WHERE tenant_id=" . $tenantId . " ORDER BY name";
+				//echo $sql;
+				$subResult = mysqli_query($conn, $sql);
+				if($subResult) {
+					$rows = mysqli_fetch_all($subResult, MYSQLI_ASSOC);
+          return $rows;
+        }
+      }
+    }
   }
 }
 
