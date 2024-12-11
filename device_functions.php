@@ -700,6 +700,116 @@ function editDeviceFeature($error,  $user) {
   return $form;
 }
 
+
+function editCommand($error,  $user) {
+  Global $conn;
+  $tenantId = $user["tenant_id"];
+  $table = "command";
+  $pk = gvfw($table . "_id");
+  
+  $submitLabel = "save command";
+  if($pk  == "") {
+    $submitLabel = "create command";
+    $source = $_POST;
+  } else {
+    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
+    $result = mysqli_query($conn, $sql);
+    if($result) {
+      $source = mysqli_fetch_array($result);
+    }
+  }
+  if(!$pk){
+    $pk = "NULL";
+  }
+  $formData = array(
+    [
+	    'label' => 'id',
+      'name' => $table . "_id",
+      'type' => 'read_only',
+	    'value' => gvfa($table . "_id", $source)
+	  ],
+    [
+	    'label' => 'created',
+      'name' => "created",
+      'type' => 'read_only',
+	    'value' => gvfa("created", $source)
+	  ],
+    [
+	    'label' => 'Command Type',
+      'name' => "command_type_id",
+      'type' => 'select',
+	    'value' => gvfa("command_type_id", $source), 
+      'error' => gvfa("command_type_id", $error),
+      'values' => "SELECT command_type_id, name as 'text' FROM command_type WHERE tenant_id='" . $tenantId  . "' ORDER BY name ASC",
+	  ],
+ 
+  
+    [
+	    'label' => 'Device',
+      'accent_color' => "red",
+      'name' => 'device_id',
+      'type' => 'select',
+	    'value' => gvfa("device_id", $source), 
+      'error' => gvfa('device_id', $error),
+      'values' => "SELECT device_id, name as 'text' FROM device WHERE tenant_id='" . $tenantId  . "' ORDER BY name ASC",
+	  ],
+
+    [
+	    'label' => 'done',
+      'accent_color' => "red",
+      'name' => 'done',
+      'type' => 'bool',
+	    'value' => gvfa("done", $source), 
+      'error' => gvfa('done', $error)
+	  ],
+    );
+  $form = genericForm($formData, $submitLabel);
+  return $form;
+}
+
+function commands($tenantId, $deviceId){
+  Global $conn;
+  $table = "command";
+  $out = "<div class='listheader'>Commands</div>";
+  $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a command</div>\n";
+  $headerData = array(
+    [
+	    'label' => 'id',
+      'name' => $table . "_id"
+	  ],
+		[
+	    'label' => 'command type',
+      'name' => 'command'
+	  ] ,
+    [
+	    'label' => 'device',
+      'name' => 'device'
+	  ] ,
+		[
+	    'label' => 'created',
+      'name' => 'created'
+	  ] 
+    );
+ 
+  $sql = "SELECT c.name AS command, d.name AS device, t.command_id, t.created FROM " . $table . " t 
+  LEFT JOIN command_type c ON t.command_type_id = c.command_type_id  AND t.tenant_id = c.tenant_id 
+  LEFT JOIN device d ON t.device_id = d.device_id  AND t.tenant_id = d.tenant_id
+  WHERE t.tenant_id =" . intval($tenantId) . " ORDER BY t.created DESC";
+  $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
+  $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
+  $result = mysqli_query($conn, $sql);
+ 
+  if($result) {
+    $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    //var_dump($rows);
+    if($rows) {
+      $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id");
+    }
+    
+  }
+  return $out;
+}
+
 function editReport($error,  $tenantId) {
   Global $conn;
   $table = "report";

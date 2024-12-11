@@ -325,6 +325,12 @@ if ($user) {
     } else {
       $out .= managementRules($tenantId, $deviceId);
     }
+	} else if($table == "command") {
+    if ($action == "startcreate" || gvfw("command_id") != "") {
+      $out .=  editCommand($errors,  $user);
+    } else {
+      $out .= commands($tenantId, $deviceId);
+    }
 	} else if($table == "user") {
     if ($action == "startcreate" || gvfw("user_id") != "") {
       $out .=  editUser($errors);
