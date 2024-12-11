@@ -887,7 +887,7 @@ function editCommand($error,  $user) {
       'error' => gvfa('done', $error)
 	  ],
     );
-  $form = genericForm($formData, $submitLabel, "Saving command...", null, $script);
+  $form = genericForm($formData, $submitLabel, "Saving command...", $user, $script);
   return $form;
 }
 

@@ -516,7 +516,7 @@ function getValuesFromCommandTypeTable(sourceCommandTypeIdName, destColumnInputN
 					destInput = newInput;
 				}
 			} else {
-				if (destInput.tagName === 'INPUT') {
+				if (destInput.tagName.toLowerCase() === 'input') {
 					// Create a new select element
 					let newSelect = document.createElement('select');
 				
@@ -541,7 +541,7 @@ function getValuesFromCommandTypeTable(sourceCommandTypeIdName, destColumnInputN
 					option.textContent = column.name;
 					destInput.appendChild(option);
 					// Preserve selection if the value exists in the new options
-					if (column === currentlySelectedValue) {
+					if (column.id === currentlySelectedValue) {
 						option.selected = true;
 						foundSelected = true;
 					}
