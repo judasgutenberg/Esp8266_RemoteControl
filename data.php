@@ -120,7 +120,10 @@ if($_REQUEST) {
 				$ipAddress = "192.168.1.X";
 				$mustSaveLastKnownDeviceValueAsValue = 0;
 				$method = "getDeviceData";
-				$measuredVoltage = null;
+				$measuredVoltage = "NULL";
+				$longitude = "NULL";
+				$latitude = "NULL";
+				$elevation = "NULL";
 				$pinValuesKnownToDevice = [];
 				$specificPin = -1;
 				$saveDeviceInfo = false;
@@ -146,7 +149,7 @@ if($_REQUEST) {
 					}
 					if(count($lines) > 3) {
 						$extraInfo = explode("*", $lines[3]);
-						//extraInfo: lastCommandId|pinCursor|localSource|ipAddressToUse|requestNonJsonPinInfo|justDeviceJson|changeSourceId|measuredVoltage
+						//extraInfo: lastCommandId|pinCursor|localSource|ipAddressToUse|requestNonJsonPinInfo|justDeviceJson|changeSourceId|measuredVoltage|latitude|longitude|elevation
 						if(count($extraInfo)>1){
 							$lastCommandId = $extraInfo[0];
 							markCommandDone($lastCommandId, $tenant["tenant_id"]);
@@ -174,7 +177,15 @@ if($_REQUEST) {
 						if(count($extraInfo)>7) {
 							$measuredVoltage = $extraInfo[7];
 						}
-
+						if(count($extraInfo)>8) {
+							$latitude = $extraInfo[8];
+						}
+						if(count($extraInfo)>9) {
+							$longitude = $extraInfo[9];
+						}
+						if(count($extraInfo)>10) {
+							$elevation = $extraInfo[10];
+						}
 					}
 				}
 				////////
@@ -292,12 +303,12 @@ if($_REQUEST) {
 				$getDeviceResult = mysqli_query($conn, $sql);
 				if($getDeviceResult) {
 					$deviceRow = mysqli_fetch_array($getDeviceResult);
-					$latitude = $deviceRow["latitude"];
-					$longitude = $deviceRow["longitude"];
+					$latitudeForApi = $deviceRow["latitude"];
+					$longitudeForApi = $deviceRow["longitude"];
 					$apiKey = $tenant["open_weather_api_key"];
 				}
-				if($latitude  && $longitude && $apiKey) {
-					$out["official_weather"] = getWeatherDataByCoordinates($latitude, $longitude, $apiKey);
+				if($latitudeForApi  && $longitudeForApi && $apiKey) {
+					$out["official_weather"] = getWeatherDataByCoordinates($latitudeForApi, $longitudeForApi, $apiKey);
 				}
 			} else if ($mode==="getEarliestRecorded") {
 				$tableName = filterStringForSqlEntities(gvfw("table"));
@@ -495,7 +506,7 @@ if($_REQUEST) {
 							wind_direction,  wind_speed, wind_increment, 
 							precipitation, 
 							reserved1, reserved2, reserved3, reserved4,
-							sensor_id, twelve_voltage) 
+							sensor_id, twelve_voltage, voltage, latitude, longitude) 
 						VALUES (" . 
 						mysqli_real_escape_string($conn, $locationId) . "," .
 						mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
@@ -513,7 +524,11 @@ if($_REQUEST) {
 						mysqli_real_escape_string($conn, $reserved3) . "," .  
 						mysqli_real_escape_string($conn, $reserved4) . "," .  
 						mysqli_real_escape_string($conn, $sensorId) . "," .
-						mysqli_real_escape_string($conn, $twelveVoltBatteryVoltage) . 
+						mysqli_real_escape_string($conn, $twelveVoltBatteryVoltage) . "," .
+						mysqli_real_escape_string($conn, $measuredVoltage)  . "," .
+						mysqli_real_escape_string($conn, $latitude)  . "," .
+						mysqli_real_escape_string($conn, $longitude) . "," .
+						mysqli_real_escape_string($conn, $elevation) .
 						")";
 					}
 					
