@@ -114,6 +114,74 @@ if($_REQUEST) {
 			if(array_key_exists("data", $_REQUEST)) {
 				$data = $_REQUEST["data"];
 				$lines = explode("|",$data);
+				//maybe move the parsing of all data up here so we have it if we need it
+				///////
+				
+				$ipAddress = "192.168.1.X";
+				$mustSaveLastKnownDeviceValueAsValue = 0;
+				$method = "getDeviceData";
+				$measuredVoltage = null;
+				$pinValuesKnownToDevice = [];
+				$specificPin = -1;
+				$saveDeviceInfo = false;
+
+				if(count($lines)>1) {
+					$recentReboots = explode("*", $lines[1]);
+					foreach($recentReboots as $rebootOccasion) {
+						if(intval($rebootOccasion) > 0 && $canAccessData) {
+						$dt = new DateTime();
+						$dt->setTimestamp($rebootOccasion);
+						$rebootOccasionSql = $dt->format('Y-m-d H:i:s');
+						$rebootLogSql = "INSERT INTO reboot_log(device_id, recorded) SELECT " . intval($deviceId) . ",'" .$rebootOccasionSql . "' 
+							FROM DUAL WHERE NOT EXISTS (SELECT * FROM reboot_log WHERE location_id=" . intval($deviceId) . " AND recorded='" . $rebootOccasionSql . "' LIMIT 1)";
+						
+						$result = mysqli_query($conn, $rebootLogSql);
+						}
+					}
+					if(count($lines) > 2) {
+						$pinValuesKnownToDevice = explode("*", $lines[2]);
+						//var_dump($pinValuesKnownToDevice);
+						//echo "<P>" . $pinValuesKnownToDevice[3];
+						//echo "<P>" .count($pinValuesKnownToDevice);
+					}
+					if(count($lines) > 3) {
+						$extraInfo = explode("*", $lines[3]);
+						//extraInfo: lastCommandId|pinCursor|localSource|ipAddressToUse|requestNonJsonPinInfo|justDeviceJson|changeSourceId|measuredVoltage
+						if(count($extraInfo)>1){
+							$lastCommandId = $extraInfo[0];
+							markCommandDone($lastCommandId, $tenant["tenant_id"]);
+							$specificPin = $extraInfo[1]; //don't do this if $nonJsonPinData
+						}
+						//var_dump($extraInfo);
+						if(count($extraInfo)>2){
+							$mustSaveLastKnownDeviceValueAsValue = $extraInfo[2];
+						}
+						if(count($extraInfo)>3){
+							$ipAddress = $extraInfo[3];
+							$saveDeviceInfo = true;
+						} 
+
+						if(count($extraInfo)>4) {
+							$nonJsonPinData = $extraInfo[4];
+						}
+						if(count($extraInfo)>5) {
+							$justGetDeviceInfo = $extraInfo[5];
+							if($justGetDeviceInfo == '1'){
+								$specificPin = -1; //this should always be -1 if justGetDeviceInfo is 1
+							}
+						}
+						//changeSourceId, $extraInfo[6], not used here
+						if(count($extraInfo)>7) {
+							$measuredVoltage = $extraInfo[7];
+						}
+
+					}
+				}
+				////////
+
+
+
+
 			if($mode=="saveIrData") { //data was captured from an irRecorder, so store it in the database!
 				$irData = str_replace("*", ",", $lines[0]); //probably unnecessary now
 				$irData = removeTrailingChar($irData, ","); //remove trailing commas from the sequence if it is there
@@ -217,6 +285,7 @@ if($_REQUEST) {
 				if($getDeviceResult) {
 					$deviceRow = mysqli_fetch_array($getDeviceResult);
 					$deviceName = deDelimitify($deviceRow["name"]);
+					$out["device"] = deDelimitify($deviceName);
 				}
 			} else if ($mode=="getOfficialWeatherData") {
 				$sql = "SELECT latitude, longitude  FROM device  WHERE device_id =" . intval($deviceId);
@@ -233,7 +302,7 @@ if($_REQUEST) {
 			} else if ($mode==="getEarliestRecorded") {
 				$tableName = filterStringForSqlEntities(gvfw("table"));
 				$sql = "SELECT MIN(recorded) AS recorded FROM " . $tableName . " WHERE 1=1 ";
-				if($tenant && $tableName != 'weather_data') {
+				if($tenant && $tableName != 'device_log') {
 					$sql .= " AND tenant_id=" . $tenant["tenant_id"];
 				}
 				if($locationId && $tableName != 'inverter_log') {
@@ -308,9 +377,9 @@ if($_REQUEST) {
 					$groupBy = gvfa("group_by", $scaleRecord, "");
 					if($specificColumn) {
 						//to revisit:  need to figure out a way to keep users without a location_id from seeing someone else's devices
-						$sql = "SELECT " . filterStringForSqlEntities($specificColumn)  . ", location_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM weather_data WHERE  location_id IN (" . filterCommasAndDigits($locationIds) . ") ";
+						$sql = "SELECT " . filterStringForSqlEntities($specificColumn)  . ", location_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE  location_id IN (" . filterCommasAndDigits($locationIds) . ") ";
 					} else {
-						$sql = "SELECT temperature, pressure, humidity, location_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM weather_data WHERE  location_id=" . $locationId;
+						$sql = "SELECT temperature, pressure, humidity, location_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE  location_id=" . $locationId;
 					}
 					if ($absoluteTimespanCusps == 1) {
 						// Calculate starting point at the "cusp" of each period scale
@@ -332,7 +401,7 @@ if($_REQUEST) {
 					if($groupBy){
 						$sql .= " GROUP BY " . $groupBy . " ";
 					}
-					$sql .= " ORDER BY weather_data_id ASC";
+					$sql .= " ORDER BY device_log_id ASC";
 					//die($sql);
 					if($sql) {
 						$result = mysqli_query($conn, $sql);
@@ -363,7 +432,7 @@ if($_REQUEST) {
 				//test url;:
 				//http://randomsprocket.com/weather/data.php?storagePassword=vvvvvvv&locationId=3&mode=saveData&data=10736712.76*12713103.20*1075869.28*NULL|0*0*1710464489*1710464504*1710464519*1710464534*1710464549*1710464563*1710464579*1710464593*
 				
-				//select * from weathertron.weather_data where location_id=3 order by recorded desc limit 0,10;
+				//select * from weathertron.device_log where location_id=3 order by recorded desc limit 0,10;
 				if(count($multipleSensorArray) == 0) {
 					$multipleSensorArray = explode("!", $weatherInfoString);
 				}
@@ -382,7 +451,7 @@ if($_REQUEST) {
 				$reserved3 = "NULL";
 				$reserved4 = "NULL";
 				$twelveVoltBatteryVoltage = NULL;
-				$consolidateAllSensorsToOneRecord = 0; //if this is set to one by the first weather record, all weather data is stored in a single weather_data record
+				$consolidateAllSensorsToOneRecord = 0; //if this is set to one by the first weather record, all weather data is stored in a single device_log record
 				$weatherRecordCounter = 0;
 				$doNotSaveBecauseNoData = true;
 				foreach($multipleSensorArray  as $sensorDataString) { //if there is a ! in the weatherInfoString, 
@@ -420,7 +489,7 @@ if($_REQUEST) {
 
 						//die("x" . $consolidateAllSensorsToOneRecord);
 						$weatherSql = "INSERT INTO 
-						weather_data(location_id, device_feature_id, recorded, 
+						device_log(location_id, device_feature_id, recorded, 
 							temperature, pressure, humidity, 
 							gas_metric, 
 							wind_direction,  wind_speed, wind_increment, 
@@ -497,69 +566,20 @@ if($_REQUEST) {
 				}
 				die($outString);
 			} else if($mode == "getDeviceData" || $mode == "saveData" || $mode=="saveLocallyGatheredSolarData") {
-				$out["device"] = deDelimitify($deviceName);
-				$ipAddress = "192.168.1.X";
-				$mustSaveLastKnownDeviceValueAsValue = 0;
-				$method = "getDeviceData";
-				$pinValuesKnownToDevice = [];
-				$specificPin = -1;
-
-				if(count($lines)>1) {
-					$recentReboots = explode("*", $lines[1]);
-					foreach($recentReboots as $rebootOccasion) {
-						if(intval($rebootOccasion) > 0 && $canAccessData) {
-						$dt = new DateTime();
-						$dt->setTimestamp($rebootOccasion);
-						$rebootOccasionSql = $dt->format('Y-m-d H:i:s');
-						$rebootLogSql = "INSERT INTO reboot_log(device_id, recorded) SELECT " . intval($deviceId) . ",'" .$rebootOccasionSql . "' 
-							FROM DUAL WHERE NOT EXISTS (SELECT * FROM reboot_log WHERE location_id=" . intval($deviceId) . " AND recorded='" . $rebootOccasionSql . "' LIMIT 1)";
-						
-						$result = mysqli_query($conn, $rebootLogSql);
-						}
+				if($saveDeviceInfo) {			
+					if(strpos($ipAddress, " ") > 0){ //was getting crap from some esp8266s here
+						$ipAddress = explode(" ", $ipAddress)[0];
 					}
-					if(count($lines) > 2) {
-						$pinValuesKnownToDevice = explode("*", $lines[2]);
-						//var_dump($pinValuesKnownToDevice);
-						//echo "<P>" . $pinValuesKnownToDevice[3];
-						//echo "<P>" .count($pinValuesKnownToDevice);
+					$deviceSql = "UPDATE device SET ip_address='" . $ipAddress . "', last_poll='" . $formatedDateTime  . "' ";
+					if($measuredVoltage){
+						$deviceSql .= ", voltage=" . $measuredVoltage;
 					}
-					if(count($lines) > 3) {
-						$extraInfo = explode("*", $lines[3]);
-						if(count($extraInfo)>1){
-							$lastCommandId = $extraInfo[0];
-							markCommandDone($lastCommandId, $tenant["tenant_id"]);
-							$specificPin = $extraInfo[1]; //don't do this if $nonJsonPinData
-						}
-						//var_dump($extraInfo);
-						if(count($extraInfo)>2){
-							$mustSaveLastKnownDeviceValueAsValue = $extraInfo[2];
-						}
-						if(count($extraInfo)>3){
-							$ipAddress = $extraInfo[3];
-							if($ipAddress) {			
-								if(strpos($ipAddress, " ") > 0){ //was getting crap from some esp8266s here
-									$ipAddress = explode(" ", $ipAddress)[0];
-								}
-								$deviceSql = "UPDATE device SET ip_address='" . $ipAddress . "', last_poll='" . $formatedDateTime  . "' ";
-								if($sensorId){
-									$deviceSql .= ", sensor_id=" . intval($sensorId);
-								}
-								$deviceSql .= " WHERE device_id=" . intval($deviceId);
-								$deviceResult = mysqli_query($conn, $deviceSql);
-								//echo $deviceSql;
-							}
-						} 
-
-						if(count($extraInfo)>4) {
-							$nonJsonPinData = $extraInfo[4];
-						}
-						if(count($extraInfo)>5) {
-							$justGetDeviceInfo = $extraInfo[5];
-							if($justGetDeviceInfo == '1'){
-								$specificPin = -1; //this should always be -1 if justGetDeviceInfo is 1
-							}
-						}
+					if($sensorId){
+						$deviceSql .= ", sensor_id=" . intval($sensorId);
 					}
+					$deviceSql .= " WHERE device_id=" . intval($deviceId);
+					$deviceResult = mysqli_query($conn, $deviceSql);
+					//echo $deviceSql;
 				}
 				if($latestCommandData) {
 					$out = "!" . $latestCommandData["command_id"] . "|" . $latestCommandData["command"] . "|" . $latestCommandData["value"];
@@ -656,7 +676,7 @@ if($_REQUEST) {
 										//now all we need to do is worry about the conditions.  but these can be complicated!
 										//the way a condition works is as follows:
 										//you specify tokens of the form <logTableName[location_id_if_appropriate].columnName>, and these are replaced with values automatically
-										//so <weather_data[1].temperatureValue> is replaced with the most recent temperatureValue for location_id=1
+										//so <device_log[1].temperatureValue> is replaced with the most recent temperatureValue for location_id=1
 										//for inverter_log, there is no location_id (at least not yet!), so <inverter_log[].solar_power> provides the latest solar_power
 										//if any log value is more than 20 minutes stale, automation does not happen (might want to log it though somehow!)
 										preg_match_all($tagFindingPattern, $conditions, $matches);

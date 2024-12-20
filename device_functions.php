@@ -851,6 +851,16 @@ function editCommand($error,  $user) {
       'type' => 'read_only',
 	    'value' => gvfa("created", $source)
 	  ],
+      
+    [
+	    'label' => 'Device',
+      'accent_color' => "red",
+      'name' => 'device_id',
+      'type' => 'select',
+	    'value' => gvfa("device_id", $source), 
+      'error' => gvfa('device_id', $error),
+      'values' => "SELECT device_id, name as 'text' FROM device WHERE tenant_id='" . $tenantId  . "' ORDER BY name ASC",
+	  ],
     [
 	    'label' => 'Command Type',
       'name' => "command_type_id",
@@ -861,16 +871,7 @@ function editCommand($error,  $user) {
       'change-function' => $script,
 	  ],
  
-  
-    [
-	    'label' => 'Device',
-      'accent_color' => "red",
-      'name' => 'device_id',
-      'type' => 'select',
-	    'value' => gvfa("device_id", $source), 
-      'error' => gvfa('device_id', $error),
-      'values' => "SELECT device_id, name as 'text' FROM device WHERE tenant_id='" . $tenantId  . "' ORDER BY name ASC",
-	  ],
+
     [
 	    'label' => 'Command Value',
       'name' => "command_value",
@@ -1569,7 +1570,7 @@ function currentSensorData($tenant){
     }
   }
   $sql = "SELECT
-    weather_data_id,
+    device_log_id,
     d.last_poll,
       d.location_name,
       wd.temperature * 9 / 5 + 32 AS temperature,
@@ -1578,7 +1579,7 @@ function currentSensorData($tenant){
       wd.gas_metric,
       wd.recorded
     FROM
-      weather_data wd
+      device_log wd
     JOIN
       device d ON wd.location_id = d.device_id
     JOIN (
@@ -1586,7 +1587,7 @@ function currentSensorData($tenant){
           location_id,
           MAX(recorded) AS max_recorded
       FROM
-          weather_data
+          device_log
       GROUP BY
           location_id
     ) latest ON wd.location_id = latest.location_id AND wd.recorded = latest.max_recorded
@@ -1633,7 +1634,7 @@ function currentSensorData($tenant){
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     //var_dump($rows);
     if($rows) {
-      $out.= genericTable($rows, $weatherInfo, NULL, NULL, "weather_data", "weather_data_id", $sql);
+      $out.= genericTable($rows, $weatherInfo, NULL, NULL, "device_log", "device_log_id", $sql);
     }
   }
   return $out;
@@ -1642,7 +1643,7 @@ function currentSensorData($tenant){
 function managementRuleTools() {
   Global $conn;
   $out = "";
-  $tables = array("inverter_log", "weather_data");
+  $tables = array("inverter_log", "device_log");
   //genericSelect($id, $name, $defaultValue, $data, $event = "", $handler= "")
   $out.="\n<br/><div class='unfoldingtool'>\n";
   $out.="<div class='unfoldingtoolline'><span>Create a lookup token in conditions:</span>";
@@ -1762,7 +1763,7 @@ function templateableTables() {
 
 //all the tables of this system
 function schemaTables() {
-  return ["command", "command_type", "device", "device_feature", "device_feature_log", "device_feature_management_rule", "device_type", "device_type_feature", "feature_type", "inverter_log", "ir_pulse_sequence", "ir_target_type", "management_rule", "reboot_log", "report report_log", "tenant", "tenant_user", "user", "weather_data"];
+  return ["command", "command_type", "device", "device_feature", "device_feature_log", "device_feature_management_rule", "device_type", "device_type_feature", "feature_type", "inverter_log", "ir_pulse_sequence", "ir_target_type", "management_rule", "reboot_log", "report report_log", "tenant", "tenant_user", "user", "device_log"];
  
 }
 
