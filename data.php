@@ -506,7 +506,7 @@ if($_REQUEST) {
 							wind_direction,  wind_speed, wind_increment, 
 							precipitation, 
 							reserved1, reserved2, reserved3, reserved4,
-							sensor_id, twelve_voltage, voltage, latitude, longitude) 
+							sensor_id, twelve_voltage, voltage, latitude, longitude, elevation) 
 						VALUES (" . 
 						mysqli_real_escape_string($conn, $locationId) . "," .
 						mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
