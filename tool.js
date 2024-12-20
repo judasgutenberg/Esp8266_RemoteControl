@@ -641,7 +641,7 @@ function managementRuleTableChange() {
     if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
       //alert(xmlhttp.responseText);
       let columns = JSON.parse(xmlhttp.responseText);
-      managementToolTableHasLocationIdColumn = columns.includes("location_id");
+      managementToolTableHasLocationIdColumn = columns.includes("device_id");
       mrColumn.innerHTML = "<span>Column:</span><span> " + genericSelect("columnNameForManagementRule", "columnNameForManagementRule", "", columns, "onchange", "managementRuleColumnChange()"  )  + "</span>";
     }
   }

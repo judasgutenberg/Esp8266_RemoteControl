@@ -515,7 +515,7 @@ function editTenant($error, $user){
       'name' => 'preferences',
       'type' => 'json',
       'value' => gvfa("preferences", $source),
-      'template'=>" {  \"location_id\": \"\"  } "
+      'template'=>" {  \"device_id\": \"\"  } "
     ]
     
 
@@ -1581,16 +1581,16 @@ function currentSensorData($tenant){
     FROM
       device_log wd
     JOIN
-      device d ON wd.location_id = d.device_id
+      device d ON wd.device_id = d.device_id
     JOIN (
       SELECT
-          location_id,
+          device_id,
           MAX(recorded) AS max_recorded
       FROM
           device_log
       GROUP BY
-          location_id
-    ) latest ON wd.location_id = latest.location_id AND wd.recorded = latest.max_recorded
+          device_id
+    ) latest ON wd.device_id = latest.device_id AND wd.recorded = latest.max_recorded
     WHERE d.tenant_id = " . $tenant["tenant_id"];
   $result = mysqli_query($conn, $sql);
   $out .= "<div class='listheader'>Weather </div>";

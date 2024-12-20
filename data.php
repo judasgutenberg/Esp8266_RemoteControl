@@ -121,6 +121,7 @@ if($_REQUEST) {
 				$mustSaveLastKnownDeviceValueAsValue = 0;
 				$method = "getDeviceData";
 				$measuredVoltage = "NULL";
+				$measuredAmpage = "NULL";
 				$longitude = "NULL";
 				$latitude = "NULL";
 				$elevation = "NULL";
@@ -136,7 +137,7 @@ if($_REQUEST) {
 						$dt->setTimestamp($rebootOccasion);
 						$rebootOccasionSql = $dt->format('Y-m-d H:i:s');
 						$rebootLogSql = "INSERT INTO reboot_log(device_id, recorded) SELECT " . intval($deviceId) . ",'" .$rebootOccasionSql . "' 
-							FROM DUAL WHERE NOT EXISTS (SELECT * FROM reboot_log WHERE location_id=" . intval($deviceId) . " AND recorded='" . $rebootOccasionSql . "' LIMIT 1)";
+							FROM DUAL WHERE NOT EXISTS (SELECT * FROM reboot_log WHERE device_id=" . intval($deviceId) . " AND recorded='" . $rebootOccasionSql . "' LIMIT 1)";
 						
 						$result = mysqli_query($conn, $rebootLogSql);
 						}
@@ -149,7 +150,7 @@ if($_REQUEST) {
 					}
 					if(count($lines) > 3) {
 						$extraInfo = explode("*", $lines[3]);
-						//extraInfo: lastCommandId|pinCursor|localSource|ipAddressToUse|requestNonJsonPinInfo|justDeviceJson|changeSourceId|measuredVoltage|latitude|longitude|elevation
+						//extraInfo: lastCommandId|pinCursor|localSource|ipAddressToUse|requestNonJsonPinInfo|justDeviceJson|changeSourceId|measuredVoltage|measuredAmpage|latitude|longitude|elevation
 						if(count($extraInfo)>1){
 							$lastCommandId = $extraInfo[0];
 							markCommandDone($lastCommandId, $tenant["tenant_id"]);
@@ -175,16 +176,19 @@ if($_REQUEST) {
 						}
 						//changeSourceId, $extraInfo[6], not used here
 						if(count($extraInfo)>7) {
-							$measuredVoltage = $extraInfo[7];
+							$measuredVoltage = defaultFailDown($extraInfo[7], "NULL");
 						}
 						if(count($extraInfo)>8) {
-							$latitude = $extraInfo[8];
+							$measuredAmpage = defaultFailDown($extraInfo[8], "NULL");
 						}
 						if(count($extraInfo)>9) {
-							$longitude = $extraInfo[9];
+							$latitude = defaultFailDown($extraInfo[9], "NULL");
 						}
 						if(count($extraInfo)>10) {
-							$elevation = $extraInfo[10];
+							$longitude = defaultFailDown($extraInfo[10], "NULL");
+						}
+						if(count($extraInfo)>11) {
+							$elevation = defaultFailDown($extraInfo[11], "NULL");
 						}
 					}
 				}
@@ -264,7 +268,7 @@ if($_REQUEST) {
 			if($mode=="kill") {
 				$method  = "kill";
 			} else if (beginsWith($mode, "getDevices")) {
-				$deviceIdsPassedIn = gvfw("device_ids");
+				$deviceIdsPassedIn = gvfw("location_ids");
 				$deviceIdsToUse = $deviceIds;
 				if($deviceIdsPassedIn) {
 					$deviceIdsToUse = explode("*", $deviceIdsPassedIn);
@@ -317,7 +321,7 @@ if($_REQUEST) {
 					$sql .= " AND tenant_id=" . $tenant["tenant_id"];
 				}
 				if($locationId && $tableName != 'inverter_log') {
-					$sql .= " AND location_id=" . $locationId;
+					$sql .= " AND device_id=" . $locationId;
 				}
 				$result = mysqli_query($conn, $sql);
 				$error = mysqli_error($conn);
@@ -387,10 +391,10 @@ if($_REQUEST) {
 					$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
 					$groupBy = gvfa("group_by", $scaleRecord, "");
 					if($specificColumn) {
-						//to revisit:  need to figure out a way to keep users without a location_id from seeing someone else's devices
-						$sql = "SELECT " . filterStringForSqlEntities($specificColumn)  . ", location_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE  location_id IN (" . filterCommasAndDigits($locationIds) . ") ";
+						//to revisit:  need to figure out a way to keep users without a device_id from seeing someone else's devices
+						$sql = "SELECT " . filterStringForSqlEntities($specificColumn)  . ", device_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE  device_id IN (" . filterCommasAndDigits($locationIds) . ") ";
 					} else {
-						$sql = "SELECT temperature, pressure, humidity, location_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE  location_id=" . $locationId;
+						$sql = "SELECT temperature, pressure, humidity, device_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE device_id=" . $locationId;
 					}
 					if ($absoluteTimespanCusps == 1) {
 						// Calculate starting point at the "cusp" of each period scale
@@ -443,7 +447,7 @@ if($_REQUEST) {
 				//test url;:
 				//http://randomsprocket.com/weather/data.php?storagePassword=vvvvvvv&locationId=3&mode=saveData&data=10736712.76*12713103.20*1075869.28*NULL|0*0*1710464489*1710464504*1710464519*1710464534*1710464549*1710464563*1710464579*1710464593*
 				
-				//select * from weathertron.device_log where location_id=3 order by recorded desc limit 0,10;
+				//select * from weathertron.device_log where device_id=3 order by recorded desc limit 0,10;
 				if(count($multipleSensorArray) == 0) {
 					$multipleSensorArray = explode("!", $weatherInfoString);
 				}
@@ -500,7 +504,7 @@ if($_REQUEST) {
 
 						//die("x" . $consolidateAllSensorsToOneRecord);
 						$weatherSql = "INSERT INTO 
-						device_log(location_id, device_feature_id, recorded, 
+						device_log(device_id, device_feature_id, recorded, 
 							temperature, pressure, humidity, 
 							gas_metric, 
 							wind_direction,  wind_speed, wind_increment, 
@@ -690,9 +694,9 @@ if($_REQUEST) {
 									if($timeValidStart == NULL || $timeValidEnd == NULL || $currentTime >= $timeValidStart  && $currentTime <=  $timeValidEnd ) {
 										//now all we need to do is worry about the conditions.  but these can be complicated!
 										//the way a condition works is as follows:
-										//you specify tokens of the form <logTableName[location_id_if_appropriate].columnName>, and these are replaced with values automatically
-										//so <device_log[1].temperatureValue> is replaced with the most recent temperatureValue for location_id=1
-										//for inverter_log, there is no location_id (at least not yet!), so <inverter_log[].solar_power> provides the latest solar_power
+										//you specify tokens of the form <logTableName[device_id_if_appropriate].columnName>, and these are replaced with values automatically
+										//so <device_log[1].temperatureValue> is replaced with the most recent temperatureValue for device_id=1
+										//for inverter_log, there is no device_id (at least not yet!), so <inverter_log[].solar_power> provides the latest solar_power
 										//if any log value is more than 20 minutes stale, automation does not happen (might want to log it though somehow!)
 										preg_match_all($tagFindingPattern, $conditions, $matches);
 										//now we have all our tags! we need to look up their respective data and substitute in!
@@ -722,7 +726,7 @@ if($_REQUEST) {
 												}
 												$extraManagementWhereClause = "";
 												if($managementLocationId != ""){
-													$extraManagementWhereClause = " AND location_id=" . intval($managementLocationId);
+													$extraManagementWhereClause = " AND device_id=" . intval($managementLocationId);
 												}
 												$managmentValueLookupSql = "SELECT " . $managmentColumn . " As value FROM " . $managementTableName . " WHERE recorded >= '" . $formatedDateTime20MinutesAgo . "' AND " . $managementTableName . "_id = (SELECT MAX(" . $managementTableName. "_id) FROM " . $managementTableName . " WHERE 1=1 " . $extraManagementWhereClause . ") " . $extraManagementWhereClause;
 												//echo $managmentValueLookupSql . "\n";

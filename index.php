@@ -591,7 +591,7 @@ function getWeatherData(yearsAgo) {
 					for(let datum of dataObject["records"]) {
 						let time = datum["recorded"];
 						if(plotType == "multi") {
-;							locationId = datum["location_id"];
+;							locationId = datum["device_id"];
 							let value = datum[specificColumn];
 							if(specificColumn == "temperature"){
 								value = value * (9/5) + 32;
