@@ -23,6 +23,7 @@ $date = new DateTime("now", new DateTimeZone($timezone));//set the $timezone glo
 $pastDate = $date;
 $aFewMinutesPastDate = $date;
 $formatedDateTime =  $date->format('Y-m-d H:i:s');
+$storageDateTime = $formatedDateTime;
 $currentTime = $date->format('H:i:s');
 $pastDate->modify('-20 minutes');
 $formatedDateTime20MinutesAgo =  $pastDate->format('Y-m-d H:i:s');
@@ -68,7 +69,7 @@ if($_REQUEST) {
 		$periodAgo = intval($_REQUEST["period_ago"]);
 	}  
 	$storagePassword  = gvfw("storage_password", gvfw("storagePassword"));
-	if($user) {
+	if($user && !$storagePassword) {
 		$storagePassword  = $user['storage_password'];
 		if(!in_array($mode, ["getOfficialWeatherData", "getInverterData", "getWeatherData", "getEarliestRecorded"])){ //keeps certain kinds of hacks from working
 			die(json_encode(["error"=>"your brilliant hack has failed"]));
@@ -152,7 +153,7 @@ if($_REQUEST) {
 					}
 					if(count($lines) > 3) {
 						$extraInfo = explode("*", $lines[3]);
-						//extraInfo: lastCommandId|pinCursor|localSource|ipAddressToUse|requestNonJsonPinInfo|justDeviceJson|changeSourceId|measuredVoltage|measuredAmpage|latitude|longitude|elevation
+						//extraInfo: lastCommandId|pinCursor|localSource|ipAddressToUse|requestNonJsonPinInfo|justDeviceJson|changeSourceId
 						if(count($extraInfo)>1){
 							$lastCommandId = $extraInfo[0];
 							markCommandDone($lastCommandId, $tenant["tenant_id"]);
@@ -177,20 +178,32 @@ if($_REQUEST) {
 							}
 						}
 						//changeSourceId, $extraInfo[6], not used here
-						if(count($extraInfo)>7) {
-							$measuredVoltage = defaultFailDown($extraInfo[7], "NULL");
+
+					}
+					if(count($lines) > 4) {
+						$whereAndWhen = explode("*", $lines[4]); 
+						//$whereAndWhen: numericTimestamp|measuredVoltage|measuredAmpage|latitude|longitude|elevation
+						if(count($whereAndWhen)>0) {
+							$numericTimestamp = defaultFailDown($whereAndWhen[0], "NULL"); //if a device has been offline, it might decide to timestamp the data it is sending from local storage
+							if(is_numeric($numericTimestamp) && $numericTimestamp > 0){
+								$dt->setTimestamp($numericTimestamp);
+								$storageDateTime = $dt->format('Y-m-d H:i:s'); //set this to whatever was in the timestamp
+							}
 						}
-						if(count($extraInfo)>8) {
-							$measuredAmpage = defaultFailDown($extraInfo[8], "NULL");
+						if(count($whereAndWhen)>1) {
+							$measuredVoltage = defaultFailDown($whereAndWhen[1], "NULL");
 						}
-						if(count($extraInfo)>9) {
-							$latitude = defaultFailDown($extraInfo[9], "NULL");
+						if(count($whereAndWhen)>2) {
+							$measuredAmpage = defaultFailDown($whereAndWhen[2], "NULL");
 						}
-						if(count($extraInfo)>10) {
-							$longitude = defaultFailDown($extraInfo[10], "NULL");
+						if(count($whereAndWhen)>3) {
+							$latitude = defaultFailDown($whereAndWhen[3], "NULL");
 						}
-						if(count($extraInfo)>11) {
-							$elevation = defaultFailDown($extraInfo[11], "NULL");
+						if(count($whereAndWhen)>4) {
+							$longitude = defaultFailDown($whereAndWhen[4], "NULL");
+						}
+						if(count($whereAndWhen)>5) {
+							$elevation = defaultFailDown($whereAndWhen[5], "NULL");
 						}
 					}
 				}
@@ -204,7 +217,7 @@ if($_REQUEST) {
 				$irData = removeTrailingChar($irData, ","); //remove trailing commas from the sequence if it is there
 				$irSql = "INSERT INTO 
 				ir_pulse_sequence(ir_target_type_id, name, sequence, tenant_id, created) 
-				VALUES (0, 'new', '" . $irData . "'," . $tenant["tenant_id"] . ",'" . $formatedDateTime . "')";
+				VALUES (0, 'new', '" . $irData . "'," . $tenant["tenant_id"] . ",'" . $storageDateTime . "')";
 				$result = mysqli_query($conn, $irSql);
 				//echo $irSql;
 				$error = mysqli_error($conn);
@@ -516,7 +529,7 @@ if($_REQUEST) {
 						VALUES (" . 
 						mysqli_real_escape_string($conn, $locationId) . "," .
 						mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
-						mysqli_real_escape_string($conn, $formatedDateTime)  . "'," . 
+						mysqli_real_escape_string($conn, $storageDateTime)  . "'," . 
 						mysqli_real_escape_string($conn, $temperature) . "," . 
 						mysqli_real_escape_string($conn, $pressure) . "," . 
 						mysqli_real_escape_string($conn, $humidity) . "," . 
