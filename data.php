@@ -68,7 +68,7 @@ if($_REQUEST) {
 		$periodAgo = intval($_REQUEST["period_ago"]);
 	}  
 	if(array_key_exists("storagePassword", $_REQUEST)) {
-		$storagePassword  = $_REQUEST["storagePassword"];
+		$storagePassword  = gvfw("storage_password", gvfw("storagePassword"));
 	} else if($user) {
 		$storagePassword  = $user['storage_password'];
 		if(!in_array($mode, ["getOfficialWeatherData", "getInverterData", "getWeatherData", "getEarliestRecorded"])){ //keeps certain kinds of hacks from working
@@ -88,6 +88,9 @@ if($_REQUEST) {
 	}
 	if (array_key_exists("deviceId", $_REQUEST)) {
 		$deviceId = $_REQUEST["deviceId"];
+	}
+	if (array_key_exists("device_id", $_REQUEST)) {
+		$deviceId = $_REQUEST["device_id"];
 	}
 	if(!$locationId) {
 		$locationId =  $deviceId;
