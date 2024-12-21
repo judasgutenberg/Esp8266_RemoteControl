@@ -67,9 +67,8 @@ if($_REQUEST) {
 	if(array_key_exists("period_ago", $_REQUEST)) {
 		$periodAgo = intval($_REQUEST["period_ago"]);
 	}  
-	if(array_key_exists("storagePassword", $_REQUEST)) {
-		$storagePassword  = gvfw("storage_password", gvfw("storagePassword"));
-	} else if($user) {
+	$storagePassword  = gvfw("storage_password", gvfw("storagePassword"));
+	if($user) {
 		$storagePassword  = $user['storage_password'];
 		if(!in_array($mode, ["getOfficialWeatherData", "getInverterData", "getWeatherData", "getEarliestRecorded"])){ //keeps certain kinds of hacks from working
 			die(json_encode(["error"=>"your brilliant hack has failed"]));
