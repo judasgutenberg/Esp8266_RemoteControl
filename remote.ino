@@ -52,7 +52,7 @@ long connectionFailureTime = 0;
 long lastDataLogTime = 0;
 long localChangeTime = 0;
 long lastPoll = 0;
-int timeSkewAmount = 0; //i had it as much as 20000 for 20 seconds, but serves no purpose that I can tell
+ 
 int pinTotal = 12;
 String pinList[12]; //just a list of pins
 String pinName[12]; //for friendly names
@@ -390,7 +390,7 @@ void sendRemoteData(String datastring) {
   if(deviceName == "") {
     mode = "getInitialDeviceInfo";
   }
-  url =  (String)url_get + "?storagePassword=" + (String)storage_password + "&locationId=" + device_id + "&mode=" + mode + "&data=" + datastring;
+  url =  (String)url_get + "?storage_password=" + (String)storage_password + "&device_id=" + device_id + "&mode=" + mode + "&data=" + datastring;
   Serial.println("\r>>> Connecting to host: ");
   //Serial.println(host_get);
   int attempts = 0;
@@ -424,7 +424,6 @@ void sendRemoteData(String datastring) {
         //let's try a simpler connection and if that fails, then reboot moxee
         //clientGet.stop();
         if(clientGet.connect(host_get, httpGetPort)){
-         //timeOffset = timeOffset + timeSkewAmount; //in case two probes are stepping on each other, make this one skew a 20 seconds from where it tried to upload data
          clientGet.println("GET / HTTP/1.1");
          clientGet.print("Host: ");
          clientGet.println(host_get);
@@ -790,8 +789,8 @@ void runCommandsFromNonJson(char * nonJsonLine){
   commandData = commandArray[2];
   if(command == "reboot") {
     rebootEsp();
-  } else if(command == "allpinsatonce") {
-    onePinAtATimeMode = 0; //setting a global.
+  } else if(command == "one pin at a time") {
+    onePinAtATimeMode = (boolean)commandData.toInt(); //setting a global.
   } else if(command == "ir") {
     sendIr(commandData); //ir data must be comma-delimited
   }
