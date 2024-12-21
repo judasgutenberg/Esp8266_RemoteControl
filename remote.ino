@@ -13,6 +13,7 @@
 #include <ESP8266WebServer.h>
 #include <IRremoteESP8266.h>
 #include <IRsend.h>
+#include <Adafruit_INA219.h>
 
 #include <NTPClient.h>
 #include <WiFiUdp.h>
@@ -34,15 +35,16 @@
 //amusingly, this barely ate into memory at all
 //since many I2C sensors only permit two sensors per I2C bus, you could reduce the size of these object arrays
 //and so i've dropped some of these down to 2
-DHT* dht[6];
+DHT* dht[4];
 SFE_BMP180 BMP180[2];
 BME680_Class BME680[2];
 Adafruit_BMP085 BMP085d[2];
 Generic_LM75 LM75[12];
 Adafruit_BMP280 BMP280[2];
 IRsend irsend(ir_pin);
- 
-StaticJsonDocument<1000> jsonBuffer;
+Adafruit_INA219* ina219;
+
+StaticJsonDocument<500> jsonBuffer;
 WiFiUDP ntpUDP; //i guess i need this for time lookup
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
@@ -61,6 +63,8 @@ String ipAddressAffectingChange;
 int changeSourceId = 0;
 String deviceName = "";
 String additionalSensorInfo; //we keep it stored in a delimited string just the way it came from the server and unpack it periodically to get the data necessary to read sensors
+float measuredVoltage;
+float measuredAmpage;
 
 //https://github.com/spacehuhn/SimpleMap
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
@@ -90,6 +94,37 @@ ESP8266WebServer server(80); //Server on port 80
 void handleRoot() {
  String s = MAIN_page; //Read HTML contents
  server.send(200, "text/html", s); //Send web page
+}
+
+void lookupLocalPowerData() {
+  if(ina219_address < 0) { //if we don't have a ina219 then do not bother
+    return;
+  }
+  float shuntvoltage = 0;
+  float busvoltage = 0;
+  float current_mA = 0;
+  float loadvoltage = 0;
+  float power_mW = 0;
+
+  shuntvoltage = ina219->getShuntVoltage_mV();
+  busvoltage = ina219->getBusVoltage_V();
+  current_mA = ina219->getCurrent_mA();
+  power_mW = ina219->getPower_mW();
+  loadvoltage = busvoltage + (shuntvoltage / 1000);
+  measuredVoltage = loadvoltage;
+  measuredAmpage = current_mA;
+  /*
+  Serial.print("volt: ");
+  Serial.print(measuredVoltage);
+  Serial.print(" amp: ");
+  Serial.println(measuredAmpage);
+  Serial.print("Bus Voltage:   "); Serial.print(busvoltage); Serial.println(" V");
+  Serial.print("Shunt Voltage: "); Serial.print(shuntvoltage); Serial.println(" mV");
+  Serial.print("Load Voltage:  "); Serial.print(loadvoltage); Serial.println(" V");
+  Serial.print("Current:       "); Serial.print(current_mA); Serial.println(" mA");
+  Serial.print("Power:         "); Serial.print(power_mW); Serial.println(" mW");
+  Serial.println("");
+  */
 }
 
 //returns a "*"-delimited string containing weather data, starting with temperature and ending with deviceFeatureId,    a url-encoded sensorName, and consolidateAllSensorsToOneRecord
@@ -305,6 +340,7 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
       Serial.println("Couldn't find BMX280!");
     }
   }
+
   sensorObjectCursor->put((String)sensorIdLocal, objectCursor + 1); //we keep track of how many of a particular sensor_id we use
 }
 
@@ -343,6 +379,8 @@ void handleWeatherData() {
   transmissionString = transmissionString + "|" + joinMapValsOnDelimiter(pinMap, "*", pinTotal); //also send pin as they are known back to the server
   //other server-relevant info as needed, delimited by *
   transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddressToUse + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson + "*" + changeSourceId;
+  transmissionString = transmissionString + "|*" + measuredVoltage + "*" + measuredAmpage; //if this device could timestamp data from its archives, it would put the numeric timetamp before measuredVoltage
+  //transmissionString = transmissionString + "*" + latitude + "*" + longitude; //not yet supported. might also include accelerometer data some day
   //Serial.println(transmissionString);
   //had to use a global, died a little inside
   if(glblRemote) {
@@ -863,7 +901,7 @@ void setup(void){
   wiFiConnect();
   server.on("/", handleRoot);      //Displays a form where devices can be turned on and off and the outputs of sensors
   server.on("/readLocalData", localShowData);
-  server.on("/weatherdata", handleWeatherData); //This page is called by java Script AJAX
+  server.on("/weatherdata", handleWeatherData);
   server.on("/writeLocalData", localSetData);
   server.begin(); 
   Serial.println("HTTP server started");
@@ -876,6 +914,14 @@ void setup(void){
   // GMT -1 = -3600
   // GMT 0 = 0
   timeClient.setTimeOffset(0);
+  if(ina219_address > -1) {
+    ina219 = new Adafruit_INA219(ina219_address);
+    if (!ina219->begin()) {
+      Serial.println("Failed to find INA219 chip");
+    } else {
+      ina219->setCalibration_16V_400mA();
+    }
+  }
   if(ir_pin > -1) {
     //irsend.begin(); //do this elsewhere?
   }
@@ -914,11 +960,8 @@ void loop(void){
     glblRemote = false;
     lastPoll = nowTime;
   }
-  
-  //digitalWrite(0, HIGH );
-  //delay(100);
-  //digitalWrite(0, LOW);
-  //so far, this does not work:
+
+  lookupLocalPowerData();
  
   if(millis() > 10000) {
     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
