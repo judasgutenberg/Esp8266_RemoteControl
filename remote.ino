@@ -96,7 +96,7 @@ void handleRoot() {
  server.send(200, "text/html", s); //Send web page
 }
 
-void lookupLocalPowerData() {
+void lookupLocalPowerData() {//sets the globals with the current reading from the ina219
   if(ina219_address < 0) { //if we don't have a ina219 then do not bother
     return;
   }
