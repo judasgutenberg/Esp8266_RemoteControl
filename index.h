@@ -119,6 +119,9 @@ function updateWeatherDisplay() {
               if(weatherData.length > columnCursor) {
                 let value = weatherData[columnCursor];
                 let unitName = units[columnCursor];
+                if(column == "temperature") {//units are in C but we need F because AMERICA F YEAH!!
+                  value = (value * 9/5) + 32;
+                }
                 if(value != "NULL" && !isNaN(value) && value != "") {
                   potentialWeatherDisplay += "<td class='weatherdata'>" +  parseFloat(value).toFixed(2) + unitName + "</td>";
                   weHadData = true;
