@@ -378,7 +378,8 @@ void handleWeatherData() {
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
   transmissionString = transmissionString + "|" + joinMapValsOnDelimiter(pinMap, "*", pinTotal); //also send pin as they are known back to the server
   //other server-relevant info as needed, delimited by *
-  transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddressToUse + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson + "*" + changeSourceId + "*" +  timeClient.getEpochTime() ;
+  transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddressToUse + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson + "*" + changeSourceId + "*" + timeClient.getEpochTime();
+  transmissionString = transmissionString + "*" + millis(); //so we can know how long the gizmo has been up
   transmissionString = transmissionString + "|*" + measuredVoltage + "*" + measuredAmpage; //if this device could timestamp data from its archives, it would put the numeric timetamp before measuredVoltage
   //transmissionString = transmissionString + "*" + latitude + "*" + longitude; //not yet supported. might also include accelerometer data some day
   //Serial.println(transmissionString);
@@ -421,7 +422,7 @@ void sendRemoteData(String datastring) {
   String url;
   String mode = "getDeviceData";
   //most of the time we want to getDeviceData, not saveData. the former picks up remote control activity. the latter sends sensor data
-  if(millis() - lastDataLogTime > data_logging_granularity * 1000) {
+  if(millis() - lastDataLogTime > data_logging_granularity * 1000 || millis() < data_logging_granularity * 1000) {
     mode = "saveData";
     lastDataLogTime = millis();
   }
@@ -955,7 +956,7 @@ void loop(void){
   //Serial.print(granularityToUse);
   //Serial.print(" ");
   //Serial.println(connectionFailureTime);
-  if((nowTime - lastPoll)/1000 > granularityToUse || connectionFailureTime>0 && connectionFailureTime + connection_failure_retry_seconds * 1000 > millis()) {  //send data to backend server every <polling_granularity> seconds or so
+  if(nowTime < granularityToUse * 1000 || (nowTime - lastPoll)/1000 > granularityToUse || connectionFailureTime>0 && connectionFailureTime + connection_failure_retry_seconds * 1000 > millis()) {  //send data to backend server every <polling_granularity> seconds or so
     //Serial.print("Connection failure time: ");
     //Serial.println(connectionFailureTime);
     //Serial.print("  Connection failure calculation: ");
@@ -975,8 +976,6 @@ void loop(void){
     if(deep_sleep_time_per_loop > 0) {
       Serial.println("sleeping...");
       ESP.deepSleep(deep_sleep_time_per_loop * 1e6); 
-      Serial.println("awake...");
-      wiFiConnect();
     }
   }
 }
