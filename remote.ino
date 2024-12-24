@@ -39,7 +39,7 @@ DHT* dht[4];
 SFE_BMP180 BMP180[2];
 BME680_Class BME680[2];
 Adafruit_BMP085 BMP085d[2];
-Generic_LM75 LM75[12];
+Generic_LM75 LM75[2];
 Adafruit_BMP280 BMP280[2];
 IRsend irsend(ir_pin);
 Adafruit_INA219* ina219;
@@ -63,8 +63,8 @@ String ipAddressAffectingChange;
 int changeSourceId = 0;
 String deviceName = "";
 String additionalSensorInfo; //we keep it stored in a delimited string just the way it came from the server and unpack it periodically to get the data necessary to read sensors
-float measuredVoltage;
-float measuredAmpage;
+float measuredVoltage = 0;
+float measuredAmpage = 0;
 
 //https://github.com/spacehuhn/SimpleMap
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
@@ -378,7 +378,7 @@ void handleWeatherData() {
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
   transmissionString = transmissionString + "|" + joinMapValsOnDelimiter(pinMap, "*", pinTotal); //also send pin as they are known back to the server
   //other server-relevant info as needed, delimited by *
-  transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddressToUse + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson + "*" + changeSourceId;
+  transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddressToUse + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson + "*" + changeSourceId + "*" +  timeClient.getEpochTime() ;
   transmissionString = transmissionString + "|*" + measuredVoltage + "*" + measuredAmpage; //if this device could timestamp data from its archives, it would put the numeric timetamp before measuredVoltage
   //transmissionString = transmissionString + "*" + latitude + "*" + longitude; //not yet supported. might also include accelerometer data some day
   //Serial.println(transmissionString);
@@ -815,6 +815,7 @@ void runCommandsFromJson(char * json){
 */
 
 void runCommandsFromNonJson(char * nonJsonLine){
+  //can change the default values of some config data for things like polling
   String command;
   int commandId;
   String commandData;
@@ -829,6 +830,12 @@ void runCommandsFromNonJson(char * nonJsonLine){
     rebootEsp();
   } else if(command == "one pin at a time") {
     onePinAtATimeMode = (boolean)commandData.toInt(); //setting a global.
+  } else if(command == "sleep seconds per loop") {
+    deep_sleep_time_per_loop = commandData.toInt(); //setting a global.
+  } else if(command == "polling granularity") {
+    polling_granularity = commandData.toInt(); //setting a global.
+  } else if(command == "logging granularity") {
+    data_logging_granularity = commandData.toInt(); //setting a global.
   } else if(command == "ir") {
     sendIr(commandData); //ir data must be comma-delimited
   }
