@@ -131,6 +131,7 @@ if($_REQUEST) {
 				$pinValuesKnownToDevice = [];
 				$specificPin = -1;
 				$saveDeviceInfo = false;
+				$transmissionTimestamp = 0;
 
 				if(count($lines)>1) {
 					$recentReboots = explode("*", $lines[1]);
@@ -153,7 +154,7 @@ if($_REQUEST) {
 					}
 					if(count($lines) > 3) {
 						$extraInfo = explode("*", $lines[3]);
-						//extraInfo: lastCommandId|pinCursor|localSource|ipAddressToUse|requestNonJsonPinInfo|justDeviceJson|changeSourceId
+						//extraInfo: lastCommandId*pinCursor*localSource*ipAddressToUse*requestNonJsonPinInfo88*justDeviceJson*changeSourceId*transmissiontimestamp
 						if(count($extraInfo)>1){
 							$lastCommandId = $extraInfo[0];
 							markCommandDone($lastCommandId, $tenant["tenant_id"]);
@@ -177,8 +178,12 @@ if($_REQUEST) {
 								$specificPin = -1; //this should always be -1 if justGetDeviceInfo is 1
 							}
 						}
-						//changeSourceId, $extraInfo[6], not used here
 
+						//changeSourceId, $extraInfo[6], not used here
+						if(count($extraInfo)>7) {
+							$transmissionTimestamp = $extraInfo[7];
+						}
+					 
 					}
 					if(count($lines) > 4) {
 						$whereAndWhen = explode("*", $lines[4]); 
@@ -209,8 +214,9 @@ if($_REQUEST) {
 				}
 				////////
 
-
-
+				$out["transmission_timestamp"] = $transmissionTimestamp;
+				$out["backend_timestamp"] =  time();
+				logSql("timediff: for device# " . $deviceId . ": " . intval(intval($transmissionTimestamp)-intval(time())));
 
 			if($mode=="saveIrData") { //data was captured from an irRecorder, so store it in the database!
 				$irData = str_replace("*", ",", $lines[0]); //probably unnecessary now
@@ -226,7 +232,10 @@ if($_REQUEST) {
 					logSql("bad infrared data save sql:" .  $irSql);
 					$out["error"] = $error;
 				}
-			} else if ($mode=="saveLocallyGatheredSolarData") { //used by the special inverter monitoring MCU to send fine-grain data promptly
+			} else if ($mode=="debug") {
+
+			}
+			else if ($mode=="saveLocallyGatheredSolarData") { //used by the special inverter monitoring MCU to send fine-grain data promptly
 					if($canAccessData) {
 						///weather/data.php?storagePassword=xxxxxx&locationId=16&mode=saveLocallyGatheredSolarData&data=0*61*3336*3965*425*420*0*0*6359|||***192.168.1.200 
 						$multipleSensorArray = explode("!", $lines[0]);
@@ -280,6 +289,8 @@ if($_REQUEST) {
 				$lines = [];
 				$arrWeatherData = [0,0,0,0,0,0,0,0,0,0,0,0];
 			}
+
+			
 			if($mode=="kill") {
 				$method  = "kill";
 			} else if (beginsWith($mode, "getDevices")) {
