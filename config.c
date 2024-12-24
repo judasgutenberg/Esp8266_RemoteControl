@@ -11,27 +11,29 @@ const int sensor_id = 280; //2301;//2301;//680; //SENSORS! -- we support these: 
 const int sensor_i2c = 0x76;
 const int consolidate_all_sensors_to_one_record = 1;
 const int device_id = 11; //3 really is watchdog
-const int polling_granularity = 4; //how often to poll backend in seconds, 4 makes sense
-const int data_logging_granularity = 300; //how often to store data in backend, 300 makes sense
+int polling_granularity = 4; //how often to poll backend in seconds, 4 makes sense
+int data_logging_granularity = 300; //how often to store data in backend, 300 makes sense
 const int connection_failure_retry_seconds = 4;
 const int connection_retry_number = 22;
 
-const int granularity_when_in_connection_failure_mode = 40; //40 was enough time for everything to come up and start working reliably, at least with my sketchy cellular connection
+const int granularity_when_in_connection_failure_mode = 5; //40 was too little time for everything to come up and start working reliably, at least with my sketchy cellular connection
 const int number_of_hotspot_reboots_over_limited_timeframe_before_esp_reboot = 4; //reboots moxee four times in 340 seconds (number below) and then reboots itself
 const int hotspot_limited_time_frame = 340; //seconds
 
 const int moxee_power_switch = 13; //usually 14 set to -1 if not used
 
-const int deep_sleep_time_per_loop = 0;  //in seconds. saves energy.  set to zero if unneeded
+int deep_sleep_time_per_loop = 0;  //in seconds. saves energy.  set to zero if unneeded. can be changed remotely
 
 //if you are using a DHT hygrometer/temperature probe, these values will be important
 //particularly if you reflashed a MySpool temperature probe (https://myspool.com/) with custom firmware
 //on those, the sensorData is 14 and sensorPower is 12
-const int sensor_data_pin = 14; 
+const int sensor_data_pin = -1; 
 const int sensor_power_pin = 12;
-//sensor_sub_type DHT11 // DHT11 = 11
-// sensor_sub_type DHT22 // DHT22, AM2302, AM2321 = 22 or 21
+// #define dhType DHT11 // DHT 11
+// #define dhType DHT22 // DHT 22, AM2302, AM2321
 const int sensor_sub_type = 21; // DHT 21, AM2301
-const int ir_pin = -1; //set to the value of an actual data pin if you want to send data via ir from your controller on occasion
-const int ina219_address = 0x40; //set to -1 if you have no power voltage to monitor
+
 const char pins_to_start_low[] = {12, 13, -1}; //so when the device comes up it doesn't immediately turn on attached devices
+
+const int ir_pin = 14; //set to the value of an actual data pin if you want to send data via ir from your controller on occasion
+const int ina219_address = 0x40; //set to -1 if you have no power voltage to monitor
