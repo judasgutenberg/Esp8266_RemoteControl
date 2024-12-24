@@ -132,6 +132,7 @@ if($_REQUEST) {
 				$specificPin = -1;
 				$saveDeviceInfo = false;
 				$transmissionTimestamp = 0;
+				$millis = "NULL";
 
 				if(count($lines)>1) {
 					$recentReboots = explode("*", $lines[1]);
@@ -182,6 +183,9 @@ if($_REQUEST) {
 						//changeSourceId, $extraInfo[6], not used here
 						if(count($extraInfo)>7) {
 							$transmissionTimestamp = $extraInfo[7];
+						}
+						if(count($extraInfo)>8) {
+							$millis = $extraInfo[8];
 						}
 					 
 					}
@@ -536,7 +540,7 @@ if($_REQUEST) {
 							wind_direction,  wind_speed, wind_increment, 
 							precipitation, 
 							reserved1, reserved2, reserved3, reserved4,
-							sensor_id, twelve_voltage, voltage, latitude, longitude, elevation) 
+							sensor_id, twelve_voltage, voltage, latitude, longitude, elevation, millis) 
 						VALUES (" . 
 						mysqli_real_escape_string($conn, $locationId) . "," .
 						mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
@@ -558,7 +562,8 @@ if($_REQUEST) {
 						mysqli_real_escape_string($conn, $measuredVoltage)  . "," .
 						mysqli_real_escape_string($conn, $latitude)  . "," .
 						mysqli_real_escape_string($conn, $longitude) . "," .
-						mysqli_real_escape_string($conn, $elevation) .
+						mysqli_real_escape_string($conn, $elevation) . "," .
+						mysqli_real_escape_string($conn, $millis) .
 						")";
 					}
 					
