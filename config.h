@@ -22,7 +22,8 @@ extern const int number_of_hotspot_reboots_over_limited_timeframe_before_esp_reb
 extern const int hotspot_limited_time_frame; //seconds
 
 extern const int moxee_power_switch; //usually 14
-extern int deep_sleep_time_per_loop; //seconds. doesn't yet work
+extern int deep_sleep_time_per_loop; //seconds. 
+extern int light_sleep_time_per_loop;
 
 extern const int sensor_data_pin;  
 extern const int sensor_power_pin;  
