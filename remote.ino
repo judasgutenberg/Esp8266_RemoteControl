@@ -516,10 +516,17 @@ void sendRemoteData(String datastring) {
         setLocalHardwareToServerStateFromJson((char *)retLine.c_str());
         receivedDataJson = true;
         break; 
-      } else if(retLine.charAt(0) == '|') {
+      } else if(retLine.charAt(0) == '|') { 
         Serial.print("non-JSON: ");
         Serial.println(retLine);
-        setLocalHardwareToServerStateFromNonJson((char *)retLine.c_str());
+        String serverCommandParts[2];
+        splitString(retLine, '!', serverCommandParts, 2);
+        setLocalHardwareToServerStateFromNonJson((char *)serverCommandParts[0].c_str());
+        if(retLine.indexOf("!") > -1) {
+          Serial.print("COMMAND (beside pin data): ");
+          Serial.println(serverCommandParts[1]);
+          runCommandsFromNonJson((char *)("!" + serverCommandParts[1]).c_str());
+        }
         receivedDataJson = true;
         break;      
       } else if(retLine.charAt(0) == '!') { //it's a command, so an exclamation point seems right
@@ -833,6 +840,8 @@ void runCommandsFromNonJson(char * nonJsonLine){
     onePinAtATimeMode = (boolean)commandData.toInt(); //setting a global.
   } else if(command == "sleep seconds per loop") {
     deep_sleep_time_per_loop = commandData.toInt(); //setting a global.
+  } else if(command == "snooze seconds per loop") {
+    light_sleep_time_per_loop = commandData.toInt(); //setting a global.
   } else if(command == "polling granularity") {
     polling_granularity = commandData.toInt(); //setting a global.
   } else if(command == "logging granularity") {
@@ -977,8 +986,28 @@ void loop(void){
       Serial.println("sleeping...");
       ESP.deepSleep(deep_sleep_time_per_loop * 1e6); 
     }
+     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
+    if(light_sleep_time_per_loop > 0) {
+      Serial.println("snoozing...");
+      sleepForSeconds(light_sleep_time_per_loop);
+      wiFiConnect();
+    }
   }
 }
+
+
+void sleepForSeconds(int seconds) {
+    wifi_set_opmode(NULL_MODE);            // Turn off Wi-Fi for lower power
+    wifi_set_sleep_type(LIGHT_SLEEP_T);    // Enable Light Sleep Mode
+
+    uint32_t sleepEndTime = millis() + seconds * 1000;
+    while (millis() < sleepEndTime) {
+        delay(10); // Short delays allow CPU to periodically enter light sleep
+    }
+    // GPIO states are preserved during this period
+}
+
+
 
 //this is the easiest way I could find to read querystring parameters on an ESP8266. ChatGPT was suprisingly unhelpful
 void localSetData() {
