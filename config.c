@@ -22,8 +22,8 @@ const int hotspot_limited_time_frame = 340; //seconds
 
 const int moxee_power_switch = 13; //usually 14 set to -1 if not used
 
-int deep_sleep_time_per_loop = 0;  //in seconds. saves energy.  set to zero if unneeded. GPIO16/D0 needs to be conneted to RST in hardware first. can be changed remotely
-int light_sleep_time_per_loop = 0;
+int deep_sleep_time_per_loop = 0;  //in seconds. saves energy.  set to zero if unneeded. GPIO16/D0 needs to be connected to RST in hardware first. can be changed remotely.  all state is lost when sleeping
+int light_sleep_time_per_loop = 0; //GPIO pins will hold state and so will variables through this
 
 //if you are using a DHT hygrometer/temperature probe, these values will be important
 //particularly if you reflashed a MySpool temperature probe (https://myspool.com/) with custom firmware
