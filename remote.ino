@@ -65,6 +65,7 @@ String deviceName = "";
 String additionalSensorInfo; //we keep it stored in a delimited string just the way it came from the server and unpack it periodically to get the data necessary to read sensors
 float measuredVoltage = 0;
 float measuredAmpage = 0;
+bool canSleep = false;
 
 //https://github.com/spacehuhn/SimpleMap
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
@@ -448,6 +449,9 @@ void sendRemoteData(String datastring) {
     Serial.print(host_get);
     Serial.println();
   } else {
+    if(mode != "getInitialDeviceInfo") {
+      canSleep = true; //canSleep is a global and will not be set until all the tasks of the device are finished.
+    }
      connectionFailureTime = 0;
      connectionFailureMode = false;
      Serial.println(url);
@@ -944,7 +948,7 @@ void setup(void){
   }
 }
 //LOOP----------------------------------------------------
-void loop(void){
+void loop(){
   //Serial.println("loop");
   for(int i=0; i <4; i++) { //doing this four times here is helpful to make web service reasonably responsive. once is not enough
     server.handleClient();          //Handle client requests
@@ -980,7 +984,7 @@ void loop(void){
 
   lookupLocalPowerData();
  
-  if(millis() > 10000) {
+  if(canSleep) {
     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
     if(deep_sleep_time_per_loop > 0) {
       Serial.println("sleeping...");
@@ -990,6 +994,7 @@ void loop(void){
     if(light_sleep_time_per_loop > 0) {
       Serial.println("snoozing...");
       sleepForSeconds(light_sleep_time_per_loop);
+      Serial.println("awakening...");
       wiFiConnect();
     }
   }
