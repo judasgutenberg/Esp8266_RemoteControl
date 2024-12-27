@@ -238,8 +238,7 @@ if($_REQUEST) {
 				}
 			} else if ($mode=="debug") {
 
-			}
-			else if ($mode=="saveLocallyGatheredSolarData") { //used by the special inverter monitoring MCU to send fine-grain data promptly
+			} else if ($mode=="saveLocallyGatheredSolarData") { //used by the special inverter monitoring MCU to send fine-grain data promptly
 					if($canAccessData) {
 						///weather/data.php?storagePassword=xxxxxx&locationId=16&mode=saveLocallyGatheredSolarData&data=0*61*3336*3965*425*420*0*0*6359|||***192.168.1.200 
 						$multipleSensorArray = explode("!", $lines[0]);
@@ -632,8 +631,9 @@ if($_REQUEST) {
 					//echo $deviceSql;
 				}
 				if($latestCommandData) {
-					$out = "!" . $latestCommandData["command_id"] . "|" . $latestCommandData["command"] . "|" . $latestCommandData["value"];
-					die($out);
+					//old way to do things:
+					//$out = "!" . $latestCommandData["command_id"] . "|" . $latestCommandData["command"] . "|" . $latestCommandData["value"];
+					//die($out);
 				} 
 				//var_dump($pinValuesKnownToDevice);
 				$managementCache = []; //save us some database lookups
@@ -1031,7 +1031,9 @@ if($_REQUEST) {
 		}
 		// Concatenate each item's values with "|" as the delimiter
 		$result = implode('|', $parsedValues);
-		die($result);
+		
+		
+	
 
 		
 	} else if($nonJsonPinData == '1' && array_key_exists("device_data", $out) && !array_key_exists("error", $out)) { //create a very bare-bones non-JSON delimited data object to speed up data propagation to device
@@ -1043,11 +1045,15 @@ if($_REQUEST) {
 				} else {
 					$pinName = $deviceDatum["pin_number"];
 				}
-				$nonJsonOutString .=  str_replace("|", "", str_replace("*", "", $deviceDatum["name"])) . "*" . $pinName . "*" . intval($deviceDatum["value"]) .  "*" . intval($deviceDatum["can_be_analog"]) . "*" . $deviceDatum["ss"] . "|";
+				$nonJsonOutString .=  removeDelimiters($deviceDatum["name"]) . "*" . $pinName . "*" . intval($deviceDatum["value"]) .  "*" . intval($deviceDatum["can_be_analog"]) . "*" . $deviceDatum["ss"] . "|";
 			}
 
 		}
 		$nonJsonOutString = substr($nonJsonOutString, 0, -1);
+		//new way to do it:
+		if($latestCommandData) {
+			$nonJsonOutString .= "!" . $latestCommandData["command_id"] . "|" . removeDelimiters($latestCommandData["command"]) . "|" . removeDelimiters($latestCommandData["value"]);
+		}
 		die($nonJsonOutString);
 	} else {
 		if($justGetDeviceInfo == '1' && array_key_exists("device_data", $out)) { //used to greatly limit sent back JSON data to a just-started ESP8266
@@ -1055,6 +1061,7 @@ if($_REQUEST) {
 		}
 		echo json_encode($out);
 	}
+	
 } else {
 	echo '{"message":"done", "method":"' . $method . '"}';
 }
