@@ -23,6 +23,7 @@
 
 #include "Zanshin_BME680.h"  // Include the BME680 Sensor library
 #include <DHT.h>
+#include <Adafruit_AHTX0.h>
 #include <SFE_BMP180.h>
 #include <Adafruit_BMP085.h>
 #include <Temperature_LM75_Derived.h>
@@ -36,6 +37,7 @@
 //since many I2C sensors only permit two sensors per I2C bus, you could reduce the size of these object arrays
 //and so i've dropped some of these down to 2
 DHT* dht[4];
+Adafruit_AHTX0 AHT[2];
 SFE_BMP180 BMP180[2];
 BME680_Class BME680[2];
 Adafruit_BMP085 BMP085d[2];
@@ -216,6 +218,12 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
     humidityValue = NULL;
     temperatureValue = BMP280[objectCursor].readTemperature();
     pressureValue = BMP280[objectCursor].readPressure()/100;
+  } else if(sensor_id == 2320) { //AHT20
+    sensors_event_t humidity, temp;
+    AHT[objectCursor].getEvent(&humidity, &temp);
+    humidityValue = humidity.relative_humidity;
+    temperatureValue = temp.temperature;
+    pressureValue = NULL;
   } else if(sensor_id == 180) { //so much trouble for a not-very-good sensor 
     //BMP180 code:
     char status;
@@ -326,6 +334,12 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
     }
     dht[objectCursor] = new DHT(pinNumber, sensorSubTypeLocal);
     dht[objectCursor]->begin();
+  } else if (sensorIdLocal == 2320) { //AHT20
+    if (AHT[objectCursor].begin()) {
+      Serial.println("Found AHT20");
+    } else {
+      Serial.println("Didn't find AHT20");
+    }  
   } else if (sensorIdLocal == 180) { //BMP180
     BMP180[objectCursor].begin();
   } else if (sensorIdLocal == 85) { //BMP085
@@ -791,6 +805,14 @@ void setPinValueOnSlave(char i2cAddress, char pinNumber, char pinValue) {
   //https://github.com/judasgutenberg/Generic_Arduino_I2C_Slave
   //and a device_type_feature specifies an i2c address
   //then this code will send the data to that slave Arduino
+  /*
+  Serial.print((int)i2cAddress);
+  Serial.print(" ");
+  Serial.print((int)pinNumber);
+  Serial.print(" ");
+  Serial.print((int)pinValue);
+  Serial.println("");
+  */
   Wire.beginTransmission(i2cAddress);
   Wire.write(pinNumber);
   Wire.write(pinValue);
