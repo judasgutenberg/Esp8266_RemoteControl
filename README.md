@@ -40,6 +40,7 @@ This system expects an ESP-8266-based device programmed in the Ardunio environme
 Some of the files (remote.ino, config.h, config.c, and index.h) are designed to be compiled in the Arduino environment and uploaded to an ESP8266. (I used a NodeMCU, which is cheap and has conveniently-gendered pins making it easy to work with.)  The Arduino code is designed to be able to handle a diverse collection of common sensors with the ability to dynamically change sensor types without requiring a recompilation or even a restart.  This requires, of course, that the libraries for these devices are all installed at compilation time.  As the code exists now, those libraries are as follows:
 <ul>
 <li>Adafruit DHT, a temperature/humidity sensor: (https://www.arduino.cc/reference/en/libraries/dht-sensor-library/)
+<li>Adafruit AHT, a temperature/humidity sensor: (https://github.com/adafruit/Adafruit_AHTX0)
 <li>Adafruit BMP085, a temperature/air-pressure sensor: (https://github.com/adafruit/Adafruit-BMP085-Library)
 <li>BME680, a temperature/air-pressure/humidity sensor: (https://github.com/Zanduino/BME680/blob/master/src/Zanshin_BME680.h)
 <li>BMP180, a temperature/air-pressure sensor: (https://github.com/LowPowerLab/SFE_BMP180)
