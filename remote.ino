@@ -437,9 +437,8 @@ void sendRemoteData(String datastring) {
   String url;
   String mode = "getDeviceData";
   //most of the time we want to getDeviceData, not saveData. the former picks up remote control activity. the latter sends sensor data
-  if(millis() - lastDataLogTime > data_logging_granularity * 1000 || millis() < data_logging_granularity * 1000) {
+  if(millis() - lastDataLogTime > data_logging_granularity * 1000 || lastDataLogTime == 0) {
     mode = "saveData";
-    lastDataLogTime = millis();
   }
   if(deviceName == "") {
     mode = "getInitialDeviceInfo";
@@ -516,6 +515,9 @@ void sendRemoteData(String datastring) {
       //device_features in one data object (assuming it's not too big). The ESP8266 still can respond to data in the
       //JSON format, which it will assume if the first character of the data is a '{' -- but if the first character
       //is a '|' then it assumes the data is non-JSON. Otherwise it assumes it's HTTP boilerplate and ignores it.
+      if(retLine.indexOf("\"error:") < 0 && mode == "saveData") {
+        lastDataLogTime = millis();
+      }
       if(retLine.charAt(0) == '*') { //getInitialDeviceInfo
         Serial.print("Initial Device Data: ");
         Serial.println(retLine);
