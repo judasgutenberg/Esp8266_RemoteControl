@@ -443,7 +443,13 @@ void sendRemoteData(String datastring) {
   if(deviceName == "") {
     mode = "getInitialDeviceInfo";
   }
-  url =  (String)url_get + "?storage_password=" + (String)storage_password + "&device_id=" + device_id + "&mode=" + mode + "&data=" + datastring;
+  int timeStamp = timeClient.getEpochTime();
+  char buffer[10];
+  itoa(timeStamp, buffer, 10);  // Base 10 conversion
+  String timestampString = String(buffer);
+
+  String encryptedStoragePassword = urlEncode(simpleEncrypt((String)storage_password, timestampString, salt));
+  url =  (String)url_get + "?key=" + encryptedStoragePassword + "&device_id=" + device_id + "&mode=" + mode + "&data=" + datastring;
   Serial.println("\r>>> Connecting to host: ");
   //Serial.println(host_get);
   int attempts = 0;
@@ -1093,16 +1099,17 @@ void localShowData() {
 String urlEncode(String str) {
   String encodedString = "";
   char c;
-  for (int i =0; i < str.length(); i++) {
+  char hexDigits[] = "0123456789ABCDEF"; // Hex conversion lookup
+  for (int i = 0; i < str.length(); i++) {
     c = str.charAt(i);
     if (c == ' ') {
       encodedString += "%20";
     } else if (isalnum(c)) {
-      encodedString+= c;
+      encodedString += c;
     } else {
       encodedString += '%';
-      encodedString += (byte)c >> 4;
-      encodedString += (byte)c & 0xf;
+      encodedString += hexDigits[(c >> 4) & 0xF];
+      encodedString += hexDigits[c & 0xF];
     }
   }
   return encodedString;
@@ -1184,4 +1191,16 @@ String replaceFirstOccurrenceAtChar(String str1, String str2, char atChar) { //t
     // Construct the new string with the second string inserted.
     String result = beforeDelimiter + "|" + str2 + "|" + afterDelimiter;
     return result;
+}
+
+String simpleEncrypt(String plaintext, String key, String salt) {
+    String encrypted = "";
+    int keyLength = key.length();
+    int saltLength = salt.length();
+
+    for (int i = 0; i < plaintext.length(); i++) {
+        char encryptedChar = plaintext[i] ^ key[i % keyLength] ^ salt[i % saltLength];
+        encrypted += encryptedChar;
+    }
+    return encrypted;
 }
