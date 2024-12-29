@@ -68,7 +68,13 @@ if($_REQUEST) {
 	if(array_key_exists("period_ago", $_REQUEST)) {
 		$periodAgo = intval($_REQUEST["period_ago"]);
 	}  
+
 	$storagePassword  = gvfw("storage_password", gvfw("storagePassword"));
+	$encryptedKey = gvfw("key");
+	if($encryptedKey){
+		$storagePassword = simpleDecrypt(urldecode($encryptedKey), substr(strval(time()), 0, 8) , $salt);
+	}
+	//die($storagePassword . " : " . time());
 	if($user && !$storagePassword) {
 		$storagePassword  = $user['storage_password'];
 		if(!in_array($mode, ["getOfficialWeatherData", "getInverterData", "getWeatherData", "getEarliestRecorded"])){ //keeps certain kinds of hacks from working
@@ -745,10 +751,10 @@ if($_REQUEST) {
 												//echo "cache: " . $tokenContent . "=" .  $lookedUpValue . "\n";
 											} else {
 												$dotParts = explode(".", $tokenContent);
-												$managmentColumn = "";
+												$managementColumn = "";
 												$managementLocationId = "";
 												if(count($dotParts) > 1){
-													$managmentColumn = filterStringForSqlEntities($dotParts[1]);
+													$managementColumn = filterStringForSqlEntities($dotParts[1]);
 												}
 												$bracketParts = explode("[", $dotParts[0]);
 												$managementTableName = filterStringForSqlEntities($bracketParts[0]);
@@ -759,7 +765,7 @@ if($_REQUEST) {
 												if($managementLocationId != ""){
 													$extraManagementWhereClause = " AND device_id=" . intval($managementLocationId);
 												}
-												$managmentValueLookupSql = "SELECT " . $managmentColumn . " As value FROM " . $managementTableName . " WHERE recorded >= '" . $formatedDateTime20MinutesAgo . "' AND " . $managementTableName . "_id = (SELECT MAX(" . $managementTableName. "_id) FROM " . $managementTableName . " WHERE 1=1 " . $extraManagementWhereClause . ") " . $extraManagementWhereClause;
+												$managmentValueLookupSql = "SELECT " . $managementColumn . " As value FROM " . $managementTableName . " WHERE recorded >= '" . $formatedDateTime20MinutesAgo . "' AND " . $managementTableName . "_id = (SELECT MAX(" . $managementTableName. "_id) FROM " . $managementTableName . " WHERE 1=1 " . $extraManagementWhereClause . ") " . $extraManagementWhereClause;
 												//echo $managmentValueLookupSql . "\n";
 												
 												//logSql("lookup sql:" . $managmentValueLookupSql);
@@ -1244,6 +1250,25 @@ function markCommandDone($commandId, $tenantId){
 	$result = mysqli_query($conn, $sql);
 }
 
+
+
+function simpleDecrypt($ciphertext, $key, $salt) {
+    $decrypted = "";
+    $keyLength = strlen($key);
+    $saltLength = strlen($salt);
+    $encryptedLength = strlen($ciphertext);
+
+    for ($i = 0; $i < $encryptedLength; $i++) {
+        $mix = ord($ciphertext[$i]); // Get ASCII value
+        // Reverse the circular bit shift
+        $mix = ($mix >> ($i % 5)) | ($mix << (8 - ($i % 5))) & 0xFF;
+        // Reverse the XOR operations
+        $original = $mix ^ ord($key[$i % $keyLength]) ^ ord($salt[$i % $saltLength]);
+        $decrypted .= chr($original); // Convert back to character
+    }
+    
+    return $decrypted;
+}
 //some helpful sql examples for creating sql users:
 //CREATE USER 'weathertron'@'localhost' IDENTIFIED  BY 'your_password';
 //GRANT CREATE, ALTER, DROP, INSERT, UPDATE, DELETE, SELECT, REFERENCES, RELOAD on *.* TO 'weathertron'@'localhost' WITH GRANT OPTION;
