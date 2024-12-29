@@ -4,6 +4,7 @@ $servername = "localhost";
 $username = "remote";
 $database = "remote";
 $password = "your_awesome_password";
+$salt = "blurp1277";
 
 $timezone = "America/New_York";
 $encryptionPassword = "your secret just for you";
