@@ -448,7 +448,7 @@ void sendRemoteData(String datastring) {
   itoa(timeStamp, buffer, 10);  // Base 10 conversion
   String timestampString = String(buffer);
 
-  String encryptedStoragePassword = urlEncode(simpleEncrypt((String)storage_password, timestampString, salt));
+  String encryptedStoragePassword = urlEncode(simpleEncrypt((String)storage_password, timestampString.substring(0,8), salt));
   url =  (String)url_get + "?key=" + encryptedStoragePassword + "&device_id=" + device_id + "&mode=" + mode + "&data=" + datastring;
   Serial.println("\r>>> Connecting to host: ");
   //Serial.println(host_get);
@@ -1197,10 +1197,16 @@ String simpleEncrypt(String plaintext, String key, String salt) {
     String encrypted = "";
     int keyLength = key.length();
     int saltLength = salt.length();
+    int plainLength = plaintext.length();
 
-    for (int i = 0; i < plaintext.length(); i++) {
-        char encryptedChar = plaintext[i] ^ key[i % keyLength] ^ salt[i % saltLength];
-        encrypted += encryptedChar;
+    for (int i = 0; i < plainLength; i++) {
+        // Combine plaintext, key, and salt using positions
+        char mix = plaintext[i] 
+                   ^ key[i % keyLength] 
+                   ^ salt[i % saltLength];
+        // Further scramble by shifting based on position
+        mix = (mix << (i % 5)) | (mix >> (8 - (i % 5))); // Circular bit shift
+        encrypted += mix;
     }
     return encrypted;
 }
