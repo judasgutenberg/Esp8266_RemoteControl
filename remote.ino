@@ -448,7 +448,8 @@ void sendRemoteData(String datastring) {
   itoa(timeStamp, buffer, 10);  // Base 10 conversion
   String timestampString = String(buffer);
 
-  String encryptedStoragePassword = urlEncode(simpleEncrypt((String)storage_password, timestampString.substring(0,8), salt));
+  byte checksum = calculateChecksum(datastring);
+  String encryptedStoragePassword = urlEncode(simpleEncrypt(simpleEncrypt((String)storage_password, timestampString.substring(0,8), salt), salt, String((char)checksum)));
   url =  (String)url_get + "?key=" + encryptedStoragePassword + "&device_id=" + device_id + "&mode=" + mode + "&data=" + datastring;
   Serial.println("\r>>> Connecting to host: ");
   //Serial.println(host_get);
@@ -468,9 +469,7 @@ void sendRemoteData(String datastring) {
     Serial.print(host_get);
     Serial.println();
   } else {
-    if(mode != "getInitialDeviceInfo") {
-      canSleep = true; //canSleep is a global and will not be set until all the tasks of the device are finished.
-    }
+
      connectionFailureTime = 0;
      connectionFailureMode = false;
      Serial.println(url);
@@ -523,6 +522,7 @@ void sendRemoteData(String datastring) {
       //is a '|' then it assumes the data is non-JSON. Otherwise it assumes it's HTTP boilerplate and ignores it.
       if(retLine.indexOf("\"error:") < 0 && mode == "saveData") {
         lastDataLogTime = millis();
+        canSleep = true; //canSleep is a global and will not be set until all the tasks of the device are finished.
       }
       if(retLine.charAt(0) == '*') { //getInitialDeviceInfo
         Serial.print("Initial Device Data: ");
@@ -1209,4 +1209,12 @@ String simpleEncrypt(String plaintext, String key, String salt) {
         encrypted += mix;
     }
     return encrypted;
+}
+
+byte calculateChecksum(String input) {
+    byte checksum = 0;
+    for (int i = 0; i < input.length(); i++) {
+        checksum += input[i];
+    }
+    return checksum;
 }
