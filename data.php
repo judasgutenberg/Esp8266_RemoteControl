@@ -72,12 +72,14 @@ if($_REQUEST) {
 	$storagePassword  = gvfw("storage_password", gvfw("storagePassword"));
 	$encryptedKey = gvfw("key");
 	$data = gvfa("data", $_REQUEST);
+	//$x = gvfw("x");
 	if($encryptedKey){
 		$checksum = calculateChecksum($data);
 		$partiallyDecryptedKey = simpleDecrypt(urldecode($encryptedKey), $salt, strval(chr($checksum)));
 		$storagePassword = simpleDecrypt($partiallyDecryptedKey, substr(strval(time()), 0, 8) , $salt);
+		
 	}
-	//die($storagePassword . " : " . time());
+	//die($storagePassword . " : " . time() . " ; " . $checksum . "?=" . $x  . " : " . urlencode($data));
 	if($user && !$storagePassword) {
 		$storagePassword  = $user['storage_password'];
 		if(!in_array($mode, ["getOfficialWeatherData", "getInverterData", "getWeatherData", "getEarliestRecorded"])){ //keeps certain kinds of hacks from working
