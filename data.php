@@ -75,8 +75,8 @@ if($_REQUEST) {
 	//$x = gvfw("x");
 	if($encryptedKey){
 		$checksum = calculateChecksum($data);
-		$partiallyDecryptedKey = simpleDecrypt(urldecode($encryptedKey), $salt, strval(chr($checksum)));
-		$storagePassword = simpleDecrypt($partiallyDecryptedKey, substr(strval(time()), 0, 8) , $salt);
+		$partiallyDecryptedKey = simpleDecrypt(urldecode($encryptedKey), "magic", strval(chr($checksum)));
+		$storagePassword = simpleDecrypt($partiallyDecryptedKey, substr(strval(time()), 1, 8) , $salt);
 		
 	}
 	//die($storagePassword . " : " . time() . " ; " . $checksum . "?=" . $x  . " : " . urlencode($data));
@@ -146,6 +146,7 @@ if($_REQUEST) {
 				$saveDeviceInfo = false;
 				$transmissionTimestamp = 0;
 				$millis = "NULL";
+				$latency = 0;
 
 				if(count($lines)>1) {
 					$recentReboots = explode("*", $lines[1]);
@@ -196,6 +197,7 @@ if($_REQUEST) {
 						//changeSourceId, $extraInfo[6], not used here
 						if(count($extraInfo)>7) {
 							$transmissionTimestamp = $extraInfo[7];
+							$latency = time() - intval($transmissionTimestamp);
 						}
 						if(count($extraInfo)>8) {
 							$millis = $extraInfo[8];
@@ -1065,7 +1067,9 @@ if($_REQUEST) {
 		$nonJsonOutString = substr($nonJsonOutString, 0, -1);
 		//new way to do it:
 		if($latestCommandData) {
-			$nonJsonOutString .= "!" . $latestCommandData["command_id"] . "|" . removeDelimiters($latestCommandData["command"]) . "|" . removeDelimiters($latestCommandData["value"]);
+			$nonJsonOutString .= "!" . $latestCommandData["command_id"] . "|" . removeDelimiters($latestCommandData["command"]) . "|" . removeDelimiters($latestCommandData["value"]) . "|" . $latency;
+		} else {
+			$nonJsonOutString .= "!|||" . $latency;
 		}
 		die($nonJsonOutString);
 	} else {
