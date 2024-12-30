@@ -889,6 +889,9 @@ void runCommandsFromNonJson(char * nonJsonLine){
       polling_granularity = commandData.toInt(); //setting a global.
     } else if(command == "logging granularity") {
       data_logging_granularity = commandData.toInt(); //setting a global.
+    } else if(command == "clear latency average") {
+      latencyCount = 0;
+      latencySum = 0;
     } else if(command == "ir") {
       sendIr(commandData); //ir data must be comma-delimited
     }
