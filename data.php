@@ -71,8 +71,11 @@ if($_REQUEST) {
 
 	$storagePassword  = gvfw("storage_password", gvfw("storagePassword"));
 	$encryptedKey = gvfw("key");
+	$data = gvfa("data", $_REQUEST);
 	if($encryptedKey){
-		$storagePassword = simpleDecrypt(urldecode($encryptedKey), substr(strval(time()), 0, 8) , $salt);
+		$checksum = calculateChecksum($data);
+		$partiallyDecryptedKey = simpleDecrypt(urldecode($encryptedKey), $salt, strval(chr($checksum)));
+		$storagePassword = simpleDecrypt($partiallyDecryptedKey, substr(strval(time()), 0, 8) , $salt);
 	}
 	//die($storagePassword . " : " . time());
 	if($user && !$storagePassword) {
@@ -82,6 +85,8 @@ if($_REQUEST) {
 		}
 	}
 	
+ 
+
 	$specificColumn = gvfw("specific_column");
 	if($storagePassword){
 		$deviceIds = deriveDeviceIdsFromStoragePassword($storagePassword);
@@ -121,7 +126,7 @@ if($_REQUEST) {
 			$latestCommandData = getLatestCommandData($locationId, $tenant["tenant_id"]);
 	 
 			if(array_key_exists("data", $_REQUEST)) {
-				$data = $_REQUEST["data"];
+				
 				$lines = explode("|",$data);
 				//maybe move the parsing of all data up here so we have it if we need it
 				///////
@@ -1250,7 +1255,13 @@ function markCommandDone($commandId, $tenantId){
 	$result = mysqli_query($conn, $sql);
 }
 
-
+function calculateChecksum($in) {
+    $checksum = 0;
+    for ($i = 0; $i < strlen($in); $i++) {
+        $checksum += ord($in[$i]);
+    }
+    return $checksum % 256;
+}
 
 function simpleDecrypt($ciphertext, $key, $salt) {
     $decrypted = "";
