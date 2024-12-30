@@ -68,6 +68,8 @@ String additionalSensorInfo; //we keep it stored in a delimited string just the 
 float measuredVoltage = 0;
 float measuredAmpage = 0;
 bool canSleep = false;
+long latencySum = 0;
+long latencyCount = 0;
 
 //https://github.com/spacehuhn/SimpleMap
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
@@ -146,9 +148,7 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
   static char buf[16];
   static uint16_t loopCounter = 0;  
   String transmissionString = "";
-  if(glblRemote) {
-    sensorName =  sensorName;
-  }
+ 
   if(deviceFeatureId == NULL) {
     objectCursor = 0;
   }
@@ -395,6 +395,12 @@ void handleWeatherData() {
   //other server-relevant info as needed, delimited by *
   transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddressToUse + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson + "*" + changeSourceId + "*" + timeClient.getEpochTime();
   transmissionString = transmissionString + "*" + millis(); //so we can know how long the gizmo has been up
+  
+  transmissionString = transmissionString + "*";
+  if(latencyCount > 0) {
+    transmissionString = transmissionString + (1000 * latencySum)/latencyCount;
+  }
+  
   transmissionString = transmissionString + "|*" + measuredVoltage + "*" + measuredAmpage; //if this device could timestamp data from its archives, it would put the numeric timetamp before measuredVoltage
   //transmissionString = transmissionString + "*" + latitude + "*" + longitude; //not yet supported. might also include accelerometer data some day
   //Serial.println(transmissionString);
@@ -443,13 +449,8 @@ void sendRemoteData(String datastring) {
   if(deviceName == "") {
     mode = "getInitialDeviceInfo";
   }
-  int timeStamp = timeClient.getEpochTime();
-  char buffer[10];
-  itoa(timeStamp, buffer, 10);  // Base 10 conversion
-  String timestampString = String(buffer);
 
-  byte checksum = calculateChecksum(datastring);
-  String encryptedStoragePassword = urlEncode(simpleEncrypt(simpleEncrypt((String)storage_password, timestampString.substring(0,8), salt), salt, String((char)checksum)), false);
+  String encryptedStoragePassword = encryptStoragePassword(datastring);
   url =  (String)url_get + "?key=" + encryptedStoragePassword + "&device_id=" + device_id + "&mode=" + mode + "&data=" + urlEncode(datastring, true);
   Serial.println("\r>>> Connecting to host: ");
   //Serial.println(host_get);
@@ -549,8 +550,10 @@ void sendRemoteData(String datastring) {
         splitString(retLine, '!', serverCommandParts, 2);
         setLocalHardwareToServerStateFromNonJson((char *)serverCommandParts[0].c_str());
         if(retLine.indexOf("!") > -1) {
-          Serial.print("COMMAND (beside pin data): ");
-          Serial.println(serverCommandParts[1]);
+          if(serverCommandParts[1].length()>5) { //just has latency data
+            Serial.print("COMMAND (beside pin data): ");
+            Serial.println(serverCommandParts[1]);
+          } 
           runCommandsFromNonJson((char *)("!" + serverCommandParts[1]).c_str());
         }
         receivedDataJson = true;
@@ -861,29 +864,36 @@ void runCommandsFromNonJson(char * nonJsonLine){
   String command;
   int commandId;
   String commandData;
-  String commandArray[3];
+  String commandArray[4];
+  int latency;
   //first get rid of the first character, since all it does is signal that we are receiving a command:
   nonJsonLine++;
   splitString(nonJsonLine, '|', commandArray, 3);
   commandId = commandArray[0].toInt();
   command = commandArray[1];
   commandData = commandArray[2];
-  if(command == "reboot") {
-    rebootEsp();
-  } else if(command == "one pin at a time") {
-    onePinAtATimeMode = (boolean)commandData.toInt(); //setting a global.
-  } else if(command == "sleep seconds per loop") {
-    deep_sleep_time_per_loop = commandData.toInt(); //setting a global.
-  } else if(command == "snooze seconds per loop") {
-    light_sleep_time_per_loop = commandData.toInt(); //setting a global.
-  } else if(command == "polling granularity") {
-    polling_granularity = commandData.toInt(); //setting a global.
-  } else if(command == "logging granularity") {
-    data_logging_granularity = commandData.toInt(); //setting a global.
-  } else if(command == "ir") {
-    sendIr(commandData); //ir data must be comma-delimited
+  latencyCount++;
+  latency = commandArray[3].toInt();
+  latencySum += latency;
+ 
+  if(commandId) {
+    if(command == "reboot") {
+      rebootEsp();
+    } else if(command == "one pin at a time") {
+      onePinAtATimeMode = (boolean)commandData.toInt(); //setting a global.
+    } else if(command == "sleep seconds per loop") {
+      deep_sleep_time_per_loop = commandData.toInt(); //setting a global.
+    } else if(command == "snooze seconds per loop") {
+      light_sleep_time_per_loop = commandData.toInt(); //setting a global.
+    } else if(command == "polling granularity") {
+      polling_granularity = commandData.toInt(); //setting a global.
+    } else if(command == "logging granularity") {
+      data_logging_granularity = commandData.toInt(); //setting a global.
+    } else if(command == "ir") {
+      sendIr(commandData); //ir data must be comma-delimited
+    }
+    lastCommandId = commandId;
   }
-  lastCommandId = commandId;
 }
 
 void sendIr(String rawDataStr) {
@@ -979,7 +989,6 @@ void setup(void){
 }
 //LOOP----------------------------------------------------
 void loop(){
-  //Serial.println("loop");
   for(int i=0; i <4; i++) { //doing this four times here is helpful to make web service reasonably responsive. once is not enough
     server.handleClient();          //Handle client requests
   }
@@ -1217,4 +1226,14 @@ byte calculateChecksum(String input) {
         checksum += input[i];
     }
     return checksum;
+}
+
+String encryptStoragePassword(String datastring) {
+  int timeStamp = timeClient.getEpochTime();
+  char buffer[10];
+  itoa(timeStamp, buffer, 10);  // Base 10 conversion
+  String timestampString = String(buffer);
+  byte checksum = calculateChecksum(datastring);
+  String encryptedStoragePassword = urlEncode(simpleEncrypt(simpleEncrypt((String)storage_password, timestampString.substring(1,9), salt), "magic", String((char)checksum)), false);
+  return encryptedStoragePassword;
 }
