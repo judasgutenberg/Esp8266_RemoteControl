@@ -1231,12 +1231,28 @@ byte calculateChecksum(String input) {
     return checksum;
 }
 
+byte countSetBitsInString(const String &input) {
+    byte bitCount = 0;
+    // Iterate over each character in the string
+    for (size_t i = 0; i < input.length(); ++i) {
+        char c = input[i];
+        
+        // Count the set bits in the ASCII value of the character
+        for (int bit = 0; bit < 8; ++bit) {
+            if (c & (1 << bit)) {
+                bitCount++;
+            }
+        }
+    }
+    return bitCount;
+}
+
 String encryptStoragePassword(String datastring) {
   int timeStamp = timeClient.getEpochTime();
   char buffer[10];
   itoa(timeStamp, buffer, 10);  // Base 10 conversion
   String timestampString = String(buffer);
   byte checksum = calculateChecksum(datastring);
-  String encryptedStoragePassword = urlEncode(simpleEncrypt(simpleEncrypt((String)storage_password, timestampString.substring(1,9), salt), "magic", String((char)checksum)), false);
+  String encryptedStoragePassword = urlEncode(simpleEncrypt(simpleEncrypt((String)storage_password, timestampString.substring(1,9), salt), String((char)countSetBitsInString(datastring)), String((char)checksum)), false);
   return encryptedStoragePassword;
 }
