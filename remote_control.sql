@@ -1,1261 +1,1186 @@
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
 
-/*
- * ESP8266 Remote Control. Also sends weather data from multiple kinds of sensors (configured in config.c) 
- * originally built on the basis of something I found on https://circuits4you.com
- * reorganized and extended by Gus Mueller, April 24 2022 - June 22 2024
- * Also resets a Moxee Cellular hotspot if there are network problems
- * since those do not include watchdog behaviors
- */
- 
-#include <ArduinoJson.h>
-#include <ESP8266WiFi.h>
-#include <WiFiClient.h>
-#include <ESP8266WebServer.h>
-#include <IRremoteESP8266.h>
-#include <IRsend.h>
-#include <Adafruit_INA219.h>
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
-#include <NTPClient.h>
-#include <WiFiUdp.h>
-#include <SimpleMap.h>
- 
-#include "config.h"
+--
+-- Table structure for table `command`
+--
 
-#include "Zanshin_BME680.h"  // Include the BME680 Sensor library
-#include <DHT.h>
-#include <Adafruit_AHTX0.h>
-#include <SFE_BMP180.h>
-#include <Adafruit_BMP085.h>
-#include <Temperature_LM75_Derived.h>
-#include <Adafruit_BMP280.h>
-#include <Wire.h>
+DROP TABLE IF EXISTS `command`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `command` (
+  `command_id` int(11) NOT NULL AUTO_INCREMENT,
+  `command_type_id` int(11) DEFAULT NULL,
+  `command_value` int(11) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `device_id` int(11) NOT NULL,
+  `done` tinyint(4) DEFAULT 0,
+  `performed` datetime DEFAULT NULL,
+  PRIMARY KEY (`command_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-#include "index.h" //Our HTML webpage contents with javascriptrons
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
-//i created 12 of each sensor object in case we added lots more sensors via device_features
-//amusingly, this barely ate into memory at all
-//since many I2C sensors only permit two sensors per I2C bus, you could reduce the size of these object arrays
-//and so i've dropped some of these down to 2
-DHT* dht[4];
-Adafruit_AHTX0 AHT[2];
-SFE_BMP180 BMP180[2];
-BME680_Class BME680[2];
-Adafruit_BMP085 BMP085d[2];
-Generic_LM75 LM75[2];
-Adafruit_BMP280 BMP280[2];
-IRsend irsend(ir_pin);
-Adafruit_INA219* ina219;
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
 
-StaticJsonDocument<500> jsonBuffer;
-WiFiUDP ntpUDP; //i guess i need this for time lookup
-NTPClient timeClient(ntpUDP, "pool.ntp.org");
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
-bool localSource = false; //turns true when a local edit to the data is done. at that point we have to send local upstream to the server
-byte justDeviceJson = 1;
-long connectionFailureTime = 0;
-long lastDataLogTime = 0;
-long localChangeTime = 0;
-long lastPoll = 0;
- 
-int pinTotal = 12;
-String pinList[12]; //just a list of pins
-String pinName[12]; //for friendly names
-String ipAddress;
-String ipAddressAffectingChange;
-int changeSourceId = 0;
-String deviceName = "";
-String additionalSensorInfo; //we keep it stored in a delimited string just the way it came from the server and unpack it periodically to get the data necessary to read sensors
-float measuredVoltage = 0;
-float measuredAmpage = 0;
-bool canSleep = false;
-long latencySum = 0;
-long latencyCount = 0;
+--
+-- Table structure for table `command_type`
+--
 
-//https://github.com/spacehuhn/SimpleMap
-SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
-  if (a == b) return 0;      // a and b are equal
-  else if (a > b) return 1;  // a is bigger than b
-  else return -1;            // a is smaller than b
-});
-SimpleMap<String, int> *sensorObjectCursor = new SimpleMap<String, int>([](String &a, String &b) -> int {
-  if (a == b) return 0;      // a and b are equal
-  else if (a > b) return 1;  // a is bigger than b
-  else return -1;            // a is smaller than b
-});
+DROP TABLE IF EXISTS `command_type`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `command_type` (
+  `command_type_id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(80) DEFAULT NULL,
+  `associated_table` varchar(80) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `value_column` varchar(80) DEFAULT NULL,
+  `name_column` varchar(80) DEFAULT NULL,
+  PRIMARY KEY (`command_type_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-long moxeeRebootTimes[] = {0,0,0,0,0,0,0,0,0,0,0};
-int moxeeRebootCount = 0;
-int timeOffset = 0;
-long lastCommandId = 0;
-bool glblRemote = false;
-bool onePinAtATimeMode = false; //used when the server starts gzipping data and we can't make sense of it
-char requestNonJsonPinInfo = 0; //use to get much more compressed data double-delimited data from data.php if 1, otherwise if 0 it requests JSON
-int pinCursor = -1;
-bool connectionFailureMode = true;  //when we're in connectionFailureMode, we check connection much more than polling_granularity. otherwise, we check it every polling_granularity
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
-ESP8266WebServer server(80); //Server on port 80
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
 
-//ESP8266's home page:----------------------------------------------------
-void handleRoot() {
- String s = MAIN_page; //Read HTML contents
- server.send(200, "text/html", s); //Send web page
-}
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
-void lookupLocalPowerData() {//sets the globals with the current reading from the ina219
-  if(ina219_address < 0) { //if we don't have a ina219 then do not bother
-    return;
-  }
-  float shuntvoltage = 0;
-  float busvoltage = 0;
-  float current_mA = 0;
-  float loadvoltage = 0;
-  float power_mW = 0;
+--
+-- Table structure for table `device`
+--
 
-  shuntvoltage = ina219->getShuntVoltage_mV();
-  busvoltage = ina219->getBusVoltage_V();
-  current_mA = ina219->getCurrent_mA();
-  power_mW = ina219->getPower_mW();
-  loadvoltage = busvoltage + (shuntvoltage / 1000);
-  measuredVoltage = loadvoltage;
-  measuredAmpage = current_mA;
-  /*
-  Serial.print("volt: ");
-  Serial.print(measuredVoltage);
-  Serial.print(" amp: ");
-  Serial.println(measuredAmpage);
-  Serial.print("Bus Voltage:   "); Serial.print(busvoltage); Serial.println(" V");
-  Serial.print("Shunt Voltage: "); Serial.print(shuntvoltage); Serial.println(" mV");
-  Serial.print("Load Voltage:  "); Serial.print(loadvoltage); Serial.println(" V");
-  Serial.print("Current:       "); Serial.print(current_mA); Serial.println(" mA");
-  Serial.print("Power:         "); Serial.print(power_mW); Serial.println(" mW");
-  Serial.println("");
-  */
-}
+DROP TABLE IF EXISTS `device`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `device` (
+  `device_id` int(11) NOT NULL AUTO_INCREMENT,
+  `device_type_id` int(11) DEFAULT NULL,
+  `name` varchar(100) DEFAULT NULL,
+  `description` varchar(2000) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `location_name` varchar(100) DEFAULT NULL,
+  `i2c_address` int(11) DEFAULT NULL,
+  `parent_device_id` int(11) DEFAULT NULL,
+  `ip_address` varchar(2000) DEFAULT NULL,
+  `sensor_id` int(11) DEFAULT NULL,
+  `latitude` decimal(8,5) DEFAULT NULL,
+  `longitude` decimal(8,5) DEFAULT NULL,
+  `last_poll` datetime DEFAULT NULL,
+  `reserved1_name` varchar(100) DEFAULT NULL,
+  `reserved2_name` varchar(80) DEFAULT NULL,
+  `reserved3_name` varchar(100) DEFAULT NULL,
+  `reserved4_name` varchar(100) DEFAULT NULL,
+  `voltage` decimal(6,3) DEFAULT NULL,
+  PRIMARY KEY (`device_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-//returns a "*"-delimited string containing weather data, starting with temperature and ending with deviceFeatureId,    a url-encoded sensorName, and consolidateAllSensorsToOneRecord
-//we might send multiple-such strings (separated by "!") to the backend for multiple sensors on an ESP8266
-//i've made this to handle all the weather sensors i have so i can mix and match, though of course there are many others
-String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName,  int consolidateAllSensorsToOneRecord) {
-  double humidityValue = NULL;
-  double temperatureValue = NULL;
-  double pressureValue = NULL;
-  double gasValue = NULL;
-  int32_t humidityRaw = NULL;
-  int32_t temperatureRaw = NULL;
-  int32_t pressureRaw = NULL;
-  int32_t gasRaw = NULL;
-  int32_t alt  = NULL;
-  static char buf[16];
-  static uint16_t loopCounter = 0;  
-  String transmissionString = "";
- 
-  if(deviceFeatureId == NULL) {
-    objectCursor = 0;
-  }
-  if(sensor_id == 1) { //simple analog input. we can use subType to decide what kind of sensor it is!
-    //an even smarter system would somehow be able to put together multiple analogReads here
-    if(powerPin > -1) {
-      digitalWrite(powerPin, HIGH); //turn on sensor power. 
-    }
-    delay(10);
-    double value = NULL;
-    if(i2c){
-      //i forget how we read a pin on an i2c slave. lemme see:
-      value = (double)getPinValueOnSlave((char)i2c, (char)dataPin);
-    } else {
-      value = (double)analogRead(dataPin);
-    }
-    for(char i=0; i<12; i++){ //we have 12 separate possible sensor functions:
-      //temperature*pressure*humidity*gas*windDirection*windSpeed*windIncrement*precipitation*reserved1*reserved2*reserved3*reserved4
-      //if you have some particular sensor communicating through a pin and want it to be one of these
-      //you set sensor_sub_type to be the 0-based value in that *-delimited string
-      //i'm thinking i don't bother defining the reserved ones and just let them be application-specific and different in different implementations
-      //a good one would be radioactive counts per unit time
-      if((int)i == sensor_sub_type) {
-        transmissionString = transmissionString + nullifyOrNumber(value);
-      }
-      transmissionString = transmissionString + "*";
-    }
-    //note, if temperature ends up being NULL, the record won't save. might want to tweak data.php to save records if it contains SOME data
-    
-    if(powerPin > -1) {
-      digitalWrite(powerPin, LOW);
-    }
-    
-  } else if (sensor_id == 680) { //this is the primo sensor chip, so the trouble is worth it
-    //BME680 code:
-    BME680[objectCursor].getSensorData(temperatureRaw, humidityRaw, pressureRaw, gasRaw);
-    //i'm not sure what all this is about, since i just copied it from the BME680 example:
-    sprintf(buf, "%4d %3d.%02d", (loopCounter - 1) % 9999,  // Clamp to 9999,
-            (int8_t)(temperatureRaw / 100), (uint8_t)(temperatureRaw % 100));   // Temp in decidegrees
-    //Serial.print(buf);
-    sprintf(buf, "%3d.%03d", (int8_t)(humidityRaw / 1000),
-            (uint16_t)(humidityRaw % 1000));  // Humidity milli-pct
-    //Serial.print(buf);
-    sprintf(buf, "%7d.%02d", (int16_t)(pressureRaw / 100),
-            (uint8_t)(pressureRaw % 100));  // Pressure Pascals
-    //Serial.print(buf);                                     
- 
-    //Serial.print(buf);
-    sprintf(buf, "%4d.%02d\n", (int16_t)(gasRaw / 100), (uint8_t)(gasRaw % 100));  // Resistance milliohms
-    //Serial.print(buf);
-    humidityValue = (double)humidityRaw/1000;
-    temperatureValue = (double)temperatureRaw/100;
-    pressureValue = (double)pressureRaw/100;
-    gasValue = (double)gasRaw/100;  //all i ever get for this is 129468.6 and 8083.7
-  } else if (sensor_id == 2301) { //i love the humble DHT
-    if(powerPin > -1) {
-      digitalWrite(powerPin, HIGH); //turn on DHT power, in case you're doing that. 
-    }
-    delay(10);
-    humidityValue = (double)dht[objectCursor]->readHumidity();
-    temperatureValue = (double)dht[objectCursor]->readTemperature();
-    pressureValue = NULL; //really should set unknown values as null
-    if(powerPin > -1) {
-      digitalWrite(powerPin, LOW);//turn off DHT power. maybe it saves energy, and that's why MySpool did it this way
-    }
-  } else if(sensor_id == 280) {
-    humidityValue = NULL;
-    temperatureValue = BMP280[objectCursor].readTemperature();
-    pressureValue = BMP280[objectCursor].readPressure()/100;
-  } else if(sensor_id == 2320) { //AHT20
-    sensors_event_t humidity, temp;
-    AHT[objectCursor].getEvent(&humidity, &temp);
-    humidityValue = humidity.relative_humidity;
-    temperatureValue = temp.temperature;
-    pressureValue = NULL;
-  } else if(sensor_id == 180) { //so much trouble for a not-very-good sensor 
-    //BMP180 code:
-    char status;
-    double p0,a;
-    status = BMP180[objectCursor].startTemperature();
-    if (status != 0)
-    {
-      // Wait for the measurement to complete:
-      delay(status);   
-      // Retrieve the completed temperature measurement:
-      // Note that the measurement is stored in the variable T.
-      // Function returns 1 if successful, 0 if failure.
-      status = BMP180[objectCursor].getTemperature(temperatureValue);
-      if (status != 0)
-      {
-        status = BMP180[objectCursor].startPressure(3);
-        if (status != 0)
-        {
-          // Wait for the measurement to complete:
-          delay(status);
-          // Retrieve the completed pressure measurement:
-          // Note that the measurement is stored in the variable P.
-          // Note also that the function requires the previous temperature measurement (temperatureValue).
-          // (If temperature is stable, you can do one temperature measurement for a number of pressure measurements.)
-          // Function returns 1 if successful, 0 if failure.
-          status = BMP180[objectCursor].getPressure(pressureValue,temperatureValue);
-          if (status == 0) {
-            Serial.println("error retrieving pressure measurement\n");
-          }
-        } else {
-          Serial.println("error starting pressure measurement\n");
-        }
-      } else {
-        Serial.println("error retrieving temperature measurement\n");
-      }
-    } else {
-      Serial.println("error starting temperature measurement\n");
-    }
-    humidityValue = NULL; //really should set unknown values as null
-  } else if (sensor_id == 85) {
-    //https://github.com/adafruit/Adafruit-BMP085-Library
-    temperatureValue = BMP085d[objectCursor].readTemperature();
-    pressureValue = BMP085d[objectCursor].readPressure()/100; //to get millibars!
-    humidityValue = NULL; //really should set unknown values as null
-  } else if (sensor_id == 75) { //LM75, so ghetto
-    //https://electropeak.com/learn/interfacing-lm75-temperature-sensor-with-arduino/
-    temperatureValue = LM75[objectCursor].readTemperatureC();
-    pressureValue = NULL;
-    humidityValue = NULL;
-  } else { //either sensor_id is NULL or 0
-    //no sensor at all
-    temperatureValue = NULL;//don't want to save a record in weather_data from an absent sensor, so force temperature NULL
-    pressureValue = NULL;
-    humidityValue = NULL;
-  }
-  //
-  if(sensor_id > 1) {
-    transmissionString = nullifyOrNumber(temperatureValue) + "*" + nullifyOrNumber(pressureValue);
-    transmissionString = transmissionString + "*" + nullifyOrNumber(humidityValue);
-    transmissionString = transmissionString + "*" + nullifyOrNumber(gasValue);
-    transmissionString = transmissionString + "*********"; //for esoteric weather sensors that measure wind and precipitation.  the last four are reserved for now
-  }
-  //using delimited data instead of JSON to keep things simple
-  transmissionString = transmissionString + nullifyOrInt(sensor_id) + "*" + nullifyOrInt(deviceFeatureId) + "*" + sensorName + "*" + nullifyOrInt(consolidateAllSensorsToOneRecord); 
-  return transmissionString;
-}
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
-void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int pinNumber, int powerPin) {
-  //i've made all these inputs generic across different sensors, though for now some apply and others do not on some sensors
-  //for example, you can set the i2c address of a BME680 or a BMP280 but not a BMP180.  you can specify any GPIO as a data pin for a DHT
-  int objectCursor = 0;
-  if(sensorObjectCursor->has((String)sensor_id)) {
-    objectCursor = sensorObjectCursor->get((String)sensorIdLocal);;
-  } 
-  if(sensorIdLocal == 1) { //simple analog input
-    //all we need to do is turn on power to whatever the analog device is
-    if(powerPin > -1) {
-      pinMode(powerPin, OUTPUT);
-      digitalWrite(powerPin, LOW);
-    }
-  /*
-  //if i implemented an IR transmitter as a weather device:
-  } else if(sensorIdLocal == 2) { //IR sender LED, not weather equipment, but a device certainly
-    //we don't need the objectCursor system because there will only ever be one ir sender diode
-    if(pinNumber > -1) { 
-      irsend.begin();
-    }
-  */
-  } else if(sensorIdLocal == 680) {
-    Serial.print(F("Initializing BME680 sensor...\n"));
-    while (!BME680[objectCursor].begin(I2C_STANDARD_MODE, i2c)) {  // Start B DHTME680 using I2C, use first device found
-      Serial.print(F(" - Unable to find BME680. Trying again in 5 seconds.\n"));
-      delay(5000);
-    }  // of loop until device is located
-    Serial.print(F("- Setting 16x oversampling for all sensors\n"));
-    BME680[objectCursor].setOversampling(TemperatureSensor, Oversample16);  // Use enumerated type values
-    BME680[objectCursor].setOversampling(HumiditySensor, Oversample16);     // Use enumerated type values
-    BME680[objectCursor].setOversampling(PressureSensor, Oversample16);     // Use enumerated type values
-    //Serial.print(F("- Setting IIR filter to a value of 4 samples\n"));
-    BME680[objectCursor].setIIRFilter(IIR4);  // Use enumerated type values
-    //Serial.print(F("- Setting gas measurement to 320\xC2\xB0\x43 for 150ms\n"));  // "?C" symbols
-    BME680[objectCursor].setGas(320, 150);  // 320?c for 150 milliseconds
-  } else if (sensorIdLocal == 2301) {
-    Serial.print(F("Initializing DHT AM2301 sensor at pin: "));
-    if(powerPin > -1) {
-      pinMode(powerPin, OUTPUT);
-      digitalWrite(powerPin, LOW);
-    }
-    dht[objectCursor] = new DHT(pinNumber, sensorSubTypeLocal);
-    dht[objectCursor]->begin();
-  } else if (sensorIdLocal == 2320) { //AHT20
-    if (AHT[objectCursor].begin()) {
-      Serial.println("Found AHT20");
-    } else {
-      Serial.println("Didn't find AHT20");
-    }  
-  } else if (sensorIdLocal == 180) { //BMP180
-    BMP180[objectCursor].begin();
-  } else if (sensorIdLocal == 85) { //BMP085
-    Serial.print(F("Initializing BMP085...\n"));
-    BMP085d[objectCursor].begin();
-  } else if (sensorIdLocal == 280) {
-    Serial.print("Initializing BMP280 at i2c: ");
-    Serial.print((int)i2c);
-    Serial.print(" objectcursor:");
-    Serial.print((int)objectCursor);
-    Serial.println();
-    if(!BMP280[objectCursor].begin(i2c)){
-      Serial.println("Couldn't find BMX280!");
-    }
-  }
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
 
-  sensorObjectCursor->put((String)sensorIdLocal, objectCursor + 1); //we keep track of how many of a particular sensor_id we use
-}
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
-void handleWeatherData() {
-  String transmissionString = "";
-  
-  if(ipAddress.indexOf(' ') > 0) { //i was getting HTML header info mixed in for some reason
-    ipAddress = ipAddress.substring(0, ipAddress.indexOf(' '));
-  }
-  String ipAddressToUse = ipAddress;
-  
-  if(ipAddressAffectingChange != "") {
-     ipAddressToUse = ipAddressAffectingChange;
-     changeSourceId = 1;
-  }
-  int deviceFeatureId = 0;
-  if(onePinAtATimeMode) {
-    pinCursor++;
-    if(pinCursor >= pinTotal) {
-      pinCursor = 0;
-    }
-  }
+--
+-- Table structure for table `device_feature`
+--
 
-  if(sensor_id > -1) {
-    transmissionString = weatherDataString(sensor_id, sensor_sub_type, sensor_data_pin, sensor_power_pin, sensor_i2c, NULL, 0, deviceName, consolidate_all_sensors_to_one_record);
-  }
-  //add the data for any additional sensors, delimited by '!' for each sensor
-  String additionalSensorData = handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), false);
-  if(transmissionString == "") {
-    additionalSensorData = additionalSensorData.substring(1); //trim off leading "!" if there is no default sensor data
-  }
-  transmissionString = transmissionString + additionalSensorData;
-  //the time-stamps of connection failures, delimited by *
-  transmissionString = transmissionString + "|" + joinValsOnDelimiter(moxeeRebootTimes, "*", 10);
-  //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
-  transmissionString = transmissionString + "|" + joinMapValsOnDelimiter(pinMap, "*", pinTotal); //also send pin as they are known back to the server
-  //other server-relevant info as needed, delimited by *
-  transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddressToUse + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson + "*" + changeSourceId + "*" + timeClient.getEpochTime();
-  transmissionString = transmissionString + "*" + millis(); //so we can know how long the gizmo has been up
-  
-  transmissionString = transmissionString + "*";
-  if(latencyCount > 0) {
-    transmissionString = transmissionString + (1000 * latencySum)/latencyCount;
-  }
-  
-  transmissionString = transmissionString + "|*" + measuredVoltage + "*" + measuredAmpage; //if this device could timestamp data from its archives, it would put the numeric timetamp before measuredVoltage
-  //transmissionString = transmissionString + "*" + latitude + "*" + longitude; //not yet supported. might also include accelerometer data some day
-  //Serial.println(transmissionString);
-  //had to use a global, died a little inside
-  if(glblRemote) {
-    sendRemoteData(transmissionString);
-  } else {
-    server.send(200, "text/plain", transmissionString); //Send values only to client ajax request
-  }
-}
+DROP TABLE IF EXISTS `device_feature`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `device_feature` (
+  `device_feature_id` int(11) NOT NULL AUTO_INCREMENT,
+  `device_type_feature_id` int(11) DEFAULT NULL,
+  `device_type_id` int(11) DEFAULT NULL,
+  `value` int(11) DEFAULT NULL,
+  `name` varchar(100) DEFAULT NULL,
+  `description` varchar(2000) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `modified` datetime DEFAULT NULL,
+  `enabled` tinyint(4) DEFAULT 0,
+  `tenant_id` int(11) NOT NULL,
+  `device_id` int(11) NOT NULL,
+  `last_known_device_value` int(11) DEFAULT NULL,
+  `last_known_device_modified` datetime DEFAULT NULL,
+  `allow_automatic_management` tinyint(4) DEFAULT 1,
+  `restore_automation_after` int(11) DEFAULT NULL,
+  `automation_disabled_when` datetime DEFAULT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`device_feature_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-void wiFiConnect() {
-  WiFi.persistent(false); //hopefully keeps my flash from being corrupted, see: https://rayshobby.net/wordpress/esp8266-reboot-cycled-caused-by-flash-memory-corruption-fixed/
-  WiFi.begin(wifi_ssid, wifi_password);    
-  Serial.println();
-  // Wait for connection
-  int wiFiSeconds = 0;
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.print(".");
-    wiFiSeconds++;
-    if(wiFiSeconds > 80) {
-      Serial.println("WiFi taking too long, rebooting Moxee");
-      rebootMoxee();
-      wiFiSeconds = 0; //if you don't do this, you'll be stuck in a rebooting loop if WiFi fails once
-    }
-  }
-  Serial.println("");
-  Serial.print("Connected to ");
-  Serial.println(wifi_ssid);
-  Serial.print("IP address: ");
-  ipAddress =  WiFi.localIP().toString();
-  Serial.println(WiFi.localIP());  //IP address assigned to your ESP
-}
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
-//SEND DATA TO A REMOTE SERVER TO STORE IN A DATABASE----------------------------------------------------
-void sendRemoteData(String datastring) {
-  WiFiClient clientGet;
-  const int httpGetPort = 80;
-  String url;
-  String mode = "getDeviceData";
-  //most of the time we want to getDeviceData, not saveData. the former picks up remote control activity. the latter sends sensor data
-  if(millis() - lastDataLogTime > data_logging_granularity * 1000 || lastDataLogTime == 0) {
-    mode = "saveData";
-  }
-  if(deviceName == "") {
-    mode = "getInitialDeviceInfo";
-  }
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
 
-  String encryptedStoragePassword = encryptStoragePassword(datastring);
-  url =  (String)url_get + "?key=" + encryptedStoragePassword + "&device_id=" + device_id + "&mode=" + mode + "&data=" + urlEncode(datastring, true);
-  Serial.println("\r>>> Connecting to host: ");
-  //Serial.println(host_get);
-  int attempts = 0;
-  while(!clientGet.connect(host_get, httpGetPort) && attempts < connection_retry_number) {
-    attempts++;
-    delay(200);
-  }
-  Serial.print("Connection attempts:  ");
-  Serial.print(attempts);
-  Serial.println();
-  if (attempts >= connection_retry_number) {
-    Serial.print("Connection failed, moxee rebooted: ");
-    connectionFailureTime = millis();
-    connectionFailureMode = true;
-    rebootMoxee();
-    Serial.print(host_get);
-    Serial.println();
-  } else {
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
-     connectionFailureTime = 0;
-     connectionFailureMode = false;
-     Serial.println(url);
-     clientGet.println("GET " + url + " HTTP/1.1");
-     clientGet.print("Host: ");
-     clientGet.println(host_get);
-     clientGet.println("User-Agent: ESP8266/1.0");
-     clientGet.println("Accept-Encoding: identity");
-     clientGet.println("Connection: close\r\n\r\n");
-     unsigned long timeoutP = millis();
-     while (clientGet.available() == 0) {
-       if (millis() - timeoutP > 10000) {
-        //let's try a simpler connection and if that fails, then reboot moxee
-        //clientGet.stop();
-        if(clientGet.connect(host_get, httpGetPort)){
-         clientGet.println("GET / HTTP/1.1");
-         clientGet.print("Host: ");
-         clientGet.println(host_get);
-         clientGet.println("User-Agent: ESP8266/1.0");
-         clientGet.println("Accept-Encoding: identity");
-         clientGet.println("Connection: close\r\n\r\n");
-        }//if (clientGet.connect(
-        //clientGet.stop();
-        return;
-       } //if( millis() -  
-     }
-    delay(1); //see if this improved data reception. OMG IT TOTALLY WORKED!!!
-    bool receivedData = false;
-    bool receivedDataJson = false;
-    if(clientGet.available() && ipAddressAffectingChange != "") { //don't turn these globals off until we have data back from the server
-       ipAddressAffectingChange = "";
-       changeSourceId = 0;
-    }
-    while(clientGet.available()){
-      receivedData = true;
+--
+-- Table structure for table `device_feature_log`
+--
 
-      String retLine = clientGet.readStringUntil('\n');
-      retLine.trim();
-      //Here the code is designed to be able to handle either JSON or double-delimited data from data.php
-      //I started with just JSON, but that's a notoriously bulky data format, what with the names of all the
-      //entities embedded and the overhead of quotes and brackets.  This is a problem because when the 
-      //amount of data being sent by my server reached some critical threshold (I'm not sure what it is!)
-      //it automatically gzipped the data, which I couldn't figure out how to unzip on a ESP8266.
-      //So then I made a system of sending only some of the data at a time via JSON.  That introduced a lot of
-      //complexity and also made the system less responsive, since you now had to wait for the device_feature to
-      //get its turn in a fairly slow round-robin (on a slow internet connection, it would take ten seconds per item).
-      //So that's why I implemented the non-JSON data format, which can easily specify the values for all 
-      //device_features in one data object (assuming it's not too big). The ESP8266 still can respond to data in the
-      //JSON format, which it will assume if the first character of the data is a '{' -- but if the first character
-      //is a '|' then it assumes the data is non-JSON. Otherwise it assumes it's HTTP boilerplate and ignores it.
-      if(retLine.indexOf("\"error\":") < 0 && mode == "saveData" && (retLine.charAt(0)== '{' || retLine.charAt(0)== '*' || retLine.charAt(0)== '|' || retLine.charAt(0)== '|')) {
-        Serial.println("can sleep because: ");
-        Serial.println(retLine);
-        Serial.println(retLine.indexOf("error:"));
-        lastDataLogTime = millis();
-        canSleep = true; //canSleep is a global and will not be set until all the tasks of the device are finished.
-      }
-      if(retLine.charAt(0) == '*') { //getInitialDeviceInfo
-        Serial.print("Initial Device Data: ");
-        Serial.println(retLine);
-        //set the global string; we'll just use that to store our data about addtional sensors
-        if(sensor_config_string != "") {
-          retLine = replaceFirstOccurrenceAtChar(retLine, String(sensor_config_string), '|');
-          //retLine = retLine + "|" + String(sensor_config_string); //had been doing it this way; not as good!
-        }
-        additionalSensorInfo = retLine;
-        //once we have it
-        handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), true);
-        break;
-      } else if(retLine.charAt(0) == '{') {
-        Serial.print("JSON: ");
-        Serial.println(retLine);
-        setLocalHardwareToServerStateFromJson((char *)retLine.c_str());
-        receivedDataJson = true;
-        break; 
-      } else if(retLine.charAt(0) == '|') { 
-        Serial.print("non-JSON: ");
-        Serial.println(retLine);
-        String serverCommandParts[2];
-        splitString(retLine, '!', serverCommandParts, 2);
-        setLocalHardwareToServerStateFromNonJson((char *)serverCommandParts[0].c_str());
-        if(retLine.indexOf("!") > -1) {
-          if(serverCommandParts[1].length()>5) { //just has latency data
-            Serial.print("COMMAND (beside pin data): ");
-            Serial.println(serverCommandParts[1]);
-          } 
-          runCommandsFromNonJson((char *)("!" + serverCommandParts[1]).c_str());
-        }
-        receivedDataJson = true;
-        break;      
-      } else if(retLine.charAt(0) == '!') { //it's a command, so an exclamation point seems right
-        Serial.print("COMMAND: ");
-        Serial.println(retLine);
-        runCommandsFromNonJson((char *)retLine.c_str());
-        break;      
-      } else {
-        Serial.print("non-readable line returned: ");
-        Serial.println(retLine);
-      }
-    }
-    if(receivedData && !receivedDataJson) { //an indication our server is gzipping data needed for remote control.  So instead pull it down one pin at a time and hopefully get under the gzip cutoff
-      onePinAtATimeMode = true;
-    }
-   
-  } //if (attempts >= connection_retry_number)....else....    
-  clientGet.stop();
-}
+DROP TABLE IF EXISTS `device_feature_log`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `device_feature_log` (
+  `device_feature_log_id` int(11) NOT NULL AUTO_INCREMENT,
+  `device_feature_id` int(11) DEFAULT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `recorded` datetime DEFAULT NULL,
+  `beginning_state` int(11) DEFAULT NULL,
+  `end_state` int(11) DEFAULT NULL,
+  `management_rule_id` int(11) DEFAULT NULL,
+  `mechanism` varchar(20) DEFAULT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`device_feature_log_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=139057 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
-  String additionalSensorArray[12];
-  String specificSensorData[8];
-  int i2c;
-  int pinNumber;
-  int powerPin;
-  int sensorIdLocal;
-  int sensorSubTypeLocal;
-  int deviceFeatureId;
-  int consolidateAllSensorsToOneRecord = 0;
-  String out = "";
-  int objectCursor = 0;
-  int oldsensor_id = -1;
-  String sensorName;
-  splitString(sensorData, '|', additionalSensorArray, 12);
-  deviceName = additionalSensorArray[0].substring(1);
-  requestNonJsonPinInfo = 1; //set this global
-  for(int i=1; i<12; i++) {
-    String sensorDatum = additionalSensorArray[i];
-    if(sensorDatum.indexOf('*')>-1) {
-      splitString(sensorDatum, '*', specificSensorData, 8);
-      pinNumber = specificSensorData[0].toInt();
-      powerPin = specificSensorData[1].toInt();
-      sensorIdLocal = specificSensorData[2].toInt();
-      sensorSubTypeLocal = specificSensorData[3].toInt();
-      i2c = specificSensorData[4].toInt();
-      deviceFeatureId = specificSensorData[5].toInt();
-      sensorName = specificSensorData[6];
-      consolidateAllSensorsToOneRecord = specificSensorData[7].toInt();
-      if(oldsensor_id != sensorIdLocal) { //they're sorted by sensor_id, so the objectCursor needs to be set to zero if we're seeing the first of its type
-        objectCursor = 0;
-      }
-      if(sensorIdLocal == sensor_id) { //this particular additional sensor is the same type as the base (non-additional) sensor, so we have to pre-start it higher
-        objectCursor++;
-      }
-      if(intialize) {
-        startWeatherSensors(sensorIdLocal, sensorSubTypeLocal, i2c, pinNumber, powerPin); //guess i have to pass all this additional info
-      } else {
-        //otherwise do a weatherDataString
-        out = out + "!" + weatherDataString(sensorIdLocal, sensorSubTypeLocal, pinNumber, powerPin, i2c, deviceFeatureId, objectCursor, sensorName, consolidateAllSensorsToOneRecord);
-      }
-      objectCursor++;
-      oldsensor_id = sensorIdLocal;
-    }
-  }
- return out;
-}
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
-//if the backend sends too much text data at once, it is likely to get gzipped, which is hard to deal with on a microcontroller with limited resources
-//so a better strategy is to send double-delimited data instead of JSON, with data consistently in known ordinal positions
-//thereby making the data payloads small enough that the server never gzips them
-//i've made it so the ESP8266 can receive data in either format. it takes the lead on specifying which format it prefers
-//but if it misbehaves, i can force it to be one format or the other remotely 
-void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
-  int pinNumber = 0;
-  String key;
-  int value = -1;
-  int canBeAnalog = 0;
-  int enabled = 0;
-  int pinCounter = 0;
-  int serverSaved = 0;
-  String friendlyPinName = "";
-  String nonJsonPinArray[12];
-  String nonJsonDatumString;
-  String nonJsonPinDatum[5];
-  String pinIdParts[2];
-  char i2c = 0;
-  splitString(nonJsonLine, '|', nonJsonPinArray, 12);
-  int foundPins = 0;
-  for(int i=1; i<12; i++) {
-    nonJsonDatumString = nonJsonPinArray[i];
-    if(nonJsonDatumString.indexOf('*')>-1) {  
-      splitString(nonJsonDatumString, '*', nonJsonPinDatum, 5);
-      key = nonJsonPinDatum[1];
-      friendlyPinName = nonJsonPinDatum[0];
-      value = nonJsonPinDatum[2].toInt();
-      pinName[foundPins] = friendlyPinName;
-      canBeAnalog = nonJsonPinDatum[3].toInt();
-      serverSaved = nonJsonPinDatum[4].toInt();
-      if(key.indexOf('.')>0) {
-        splitString(key, '.', pinIdParts, 2);
-        i2c = pinIdParts[0].toInt();
-        pinNumber = pinIdParts[1].toInt();
-      } else {
-        pinNumber = key.toInt();
-      }
-      //Serial.println("!ABOUT TO TURN OF localsource: " + (String)localSource +  " serverSAVED: " + (String)serverSaved);
-      if(!localSource || serverSaved == 1){
-        if(serverSaved == 1) {//confirmation of serverSaved, so localSource flag is no longer needed
-          Serial.println("SERVER SAVED==1!!");
-          localSource = false;
-        } else {
-          pinMap->remove(key);
-          pinMap->put(key, value);
-        }
-      }
-      pinList[foundPins] = key;
-      pinMode(pinNumber, OUTPUT);
-      if(i2c > 0) {
-        //Serial.print("Non-JSON i2c: ");
-        //Serial.println(key);
-        setPinValueOnSlave(i2c, (char)pinNumber, (char)value); 
-      } else {
-        if(canBeAnalog) {
-          analogWrite(pinNumber, value);
-        } else {
-          //Serial.print("Non-JSON reg: ");
-          //Serial.println(key);
-          if(value > 0) {
-            digitalWrite(pinNumber, HIGH);
-          } else {
-            digitalWrite(pinNumber, LOW);
-          }
-        }
-      }
-    }
-    foundPins++;
-  }
-  pinTotal = foundPins;
-}
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
 
-//this will set any pins specified in the JSON
-void setLocalHardwareToServerStateFromJson(char * json){
-  if(millis() - localChangeTime < 1000) { //don't accept any server values withing 5 seconds of a local change
-    return;
-  }
-  char * nodeName="device_data";
-  int pinNumber = 0;
-  int value = -1;
-  int canBeAnalog = 0;
-  int enabled = 0;
-  int pinCounter = 0;
-  int serverSaved = 0;
-  String friendlyPinName = "";
-  char i2c = 0;
-  DeserializationError error = deserializeJson(jsonBuffer, json);
-  if(jsonBuffer["device"]) { //deviceName is a global
-    deviceName = (String)jsonBuffer["device"];
-    Serial.println("DEVICE: " + deviceName);
-    //once we have deviceName, we can get data this way:
-    requestNonJsonPinInfo = 1;
-  }
-  if(jsonBuffer[nodeName]) {
-    pinCounter = 0;
-    if(!onePinAtATimeMode) {
-      pinMap->clear(); //this won't work
-    }
-    for(int i=0; i<jsonBuffer[nodeName].size(); i++) {
-      friendlyPinName = (String)jsonBuffer[nodeName][i]["name"];
-      pinNumber = (int)jsonBuffer[nodeName][i]["pin_number"];
-      value = (int)jsonBuffer[nodeName][i]["value"];
-      canBeAnalog = (int)jsonBuffer["nodeName"][i]["can_be_analog"];
-      enabled = (int)jsonBuffer[nodeName][i]["enabled"];
-      serverSaved = (int)jsonBuffer[nodeName][i]["ss"];
-      i2c = (int)jsonBuffer[nodeName][i]["i2c"];
-      if(i2c > 0) {
-        i2c = 0;
-      }
-      Serial.print("pin: ");
-      Serial.print(pinNumber);
-      Serial.print("; value: ");
-      Serial.print(value);
-      Serial.println();
-      pinMode(pinNumber, OUTPUT);
-      if(enabled) {
-        for(char j=0; j<pinTotal; j++){
-          String key;
-          char sprintBuffer[6];
-          sprintf(sprintBuffer, "%d.%d", i2c, pinNumber);
-          key = (String)sprintBuffer;
-          if(i2c < 1){
-            key = (String)pinNumber;
-          }
-          //Serial.println("! " + (String)pinList[j] +  " =?: " + key +  " correcto? " + (int((String)pinList[j] == key)));
-          if(!localSource || serverSaved == 1){
-            if((String)pinList[j] == key) {
-              if(serverSaved == 1) {//confirmation of serverSaved, so localSource flag is no longer needed
-                Serial.println("SERVER SAVED==1!!");
-                localSource = false;
-              } else { //this will have the wrong value if serverSaved == 1
-                pinMap->remove(key);
-                pinMap->put(key, value);
-              }
-              pinName[j] = friendlyPinName;
-            }
-          }
-        }
-        if(i2c > 0) {
-          setPinValueOnSlave(i2c, (char)pinNumber, (char)value); 
-        } else {
-          if(canBeAnalog) {
-            analogWrite(pinNumber, value);
-          } else {
-            if(value > 0) {
-              digitalWrite(pinNumber, HIGH);
-            } else {
-              digitalWrite(pinNumber, LOW);
-            }
-          }
-        }
-      }
-      pinCounter++;
-    }
-  }
-  nodeName="pin_list";
-  String pinString;
-  if(jsonBuffer[nodeName]) {
-    pinCounter = 0;
-    for(int i=0; i<jsonBuffer[nodeName].size(); i++) {
-      pinString = (String)jsonBuffer[nodeName][i];
-      pinList[pinCounter] = (String)pinString;
-      pinCounter++;
-    }
-  }
-  pinTotal = pinCounter;
-}
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
-long getPinValueOnSlave(char i2cAddress, char pinNumber) { //might want a user-friendlier API here
-  //reading an analog or digital value from the slave:
-  Wire.beginTransmission(i2cAddress);
-  Wire.write(pinNumber); //addresses greater than 64 are the same as AX (AnalogX) where X is 64-value
-  Wire.endTransmission();
-  delay(100); 
-  Wire.requestFrom(i2cAddress, 4); //we only ever get back four-byte long ints
-  long totalValue = 0;
-  int byteCursor = 1;
-  while (Wire.available()) {
-    byte receivedValue = Wire.read(); // Read the received value from slave
-    totalValue = totalValue + receivedValue * pow(256, 4-byteCursor);
-    Serial.println(receivedValue); // Print the received value
-    byteCursor++;
-  }
-  return totalValue;
-}
+--
+-- Table structure for table `device_feature_management_rule`
+--
 
-void setPinValueOnSlave(char i2cAddress, char pinNumber, char pinValue) {
-  //if you have a slave Arduino set up with this code:
-  //https://github.com/judasgutenberg/Generic_Arduino_I2C_Slave
-  //and a device_type_feature specifies an i2c address
-  //then this code will send the data to that slave Arduino
-  /*
-  Serial.print((int)i2cAddress);
-  Serial.print(" ");
-  Serial.print((int)pinNumber);
-  Serial.print(" ");
-  Serial.print((int)pinValue);
-  Serial.println("");
-  */
-  Wire.beginTransmission(i2cAddress);
-  Wire.write(pinNumber);
-  Wire.write(pinValue);
-  Wire.endTransmission();
-}
+DROP TABLE IF EXISTS `device_feature_management_rule`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `device_feature_management_rule` (
+  `device_feature_id` int(11) DEFAULT NULL,
+  `management_rule_id` int(11) DEFAULT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `created` datetime DEFAULT NULL,
+  `management_priority` int(11) DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-//i don't want to use JSON because the format is too bulky:
-/*
-//this will run commands sent to the server
-//still needs to be implemented on the backend. but if i need it, it's here
-void runCommandsFromJson(char * json){
-  String command;
-  int commandId;
-  char * nodeName="commands";
-  DeserializationError error = deserializeJson(jsonBuffer, json);
-  if(jsonBuffer[nodeName]) {
-    Serial.print("number of commands: ");
-    Serial.print(jsonBuffer[nodeName].size());
-    Serial.println();
-    Serial.println();
-    for(int i=0; i<jsonBuffer[nodeName].size(); i++) {
-      command = (String)jsonBuffer[nodeName][i]["command"];
-      commandId = (int)jsonBuffer[nodeName][i]["commandId"];
-      //still have to run command!
-      if(command == "reboot") {
-        rebootEsp();
-      } else if(command == "allpinsatonce") {
-        onePinAtATimeMode = 0;
-      }
-      lastCommandId = commandId;
-    }
-  }
-}
-*/
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
-void runCommandsFromNonJson(char * nonJsonLine){
-  //can change the default values of some config data for things like polling
-  String command;
-  int commandId;
-  String commandData;
-  String commandArray[4];
-  int latency;
-  //first get rid of the first character, since all it does is signal that we are receiving a command:
-  nonJsonLine++;
-  splitString(nonJsonLine, '|', commandArray, 3);
-  commandId = commandArray[0].toInt();
-  command = commandArray[1];
-  commandData = commandArray[2];
-  latencyCount++;
-  latency = commandArray[3].toInt();
-  latencySum += latency;
- 
-  if(commandId) {
-    if(command == "reboot") {
-      rebootEsp();
-    } else if(command == "one pin at a time") {
-      onePinAtATimeMode = (boolean)commandData.toInt(); //setting a global.
-    } else if(command == "sleep seconds per loop") {
-      deep_sleep_time_per_loop = commandData.toInt(); //setting a global.
-    } else if(command == "snooze seconds per loop") {
-      light_sleep_time_per_loop = commandData.toInt(); //setting a global.
-    } else if(command == "polling granularity") {
-      polling_granularity = commandData.toInt(); //setting a global.
-    } else if(command == "logging granularity") {
-      data_logging_granularity = commandData.toInt(); //setting a global.
-    } else if(command == "clear latency average") {
-      latencyCount = 0;
-      latencySum = 0;
-    } else if(command == "ir") {
-      sendIr(commandData); //ir data must be comma-delimited
-    }
-    lastCommandId = commandId;
-  }
-}
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
 
-void sendIr(String rawDataStr) {
-  irsend.begin();
-  //Example input string
-  //rawDataStr = "500,1500,500,1500,1000";
-  size_t rawDataLength = 0;
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
-  // Count commas to determine array length
-  for (size_t i = 0; i < rawDataStr.length(); i++) {
-    if (rawDataStr[i] == ',') rawDataLength++;
-  }
-  rawDataLength++; // Account for the last value
-  // Allocate array
-  uint16_t* rawData = (uint16_t*)malloc(rawDataLength * sizeof(uint16_t));
+--
+-- Table structure for table `device_type`
+--
 
-  // Parse the string into the array
-  size_t index = 0;
-  int start = 0;
-  for (size_t i = 0; i <= rawDataStr.length(); i++) {
-    if (rawDataStr[i] == ',' || rawDataStr[i] == '\0') {
-      rawData[index++] = rawDataStr.substring(start, i).toInt();
-      start = i + 1;
-    }
-  }
-  // Send the parsed raw data
-  irsend.sendRaw(rawData, rawDataLength, 38);
-  Serial.println("IR signal sent!");
-  free(rawData); // Free memory
-}
+DROP TABLE IF EXISTS `device_type`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `device_type` (
+  `device_type_id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) DEFAULT NULL,
+  `description` varchar(2000) DEFAULT NULL,
+  `architecture` varchar(100) DEFAULT NULL,
+  `power_voltage` decimal(9,3) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `tenant_id` int(11) NOT NULL,
+  PRIMARY KEY (`device_type_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-void rebootEsp() {
-  Serial.println("Rebooting ESP");
-  ESP.restart();
-}
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
-void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so here i have a little algorithm to reboot it.
-  if(moxee_power_switch > -1) {
-    digitalWrite(moxee_power_switch, LOW);
-    delay(7000);
-    digitalWrite(moxee_power_switch, HIGH);
-  }
-  //only do one reboot!  it usually takes two, but this thing can be made to cycle so fast that this same function can handle both reboots, which is important if the reboot happens to 
-  //be out of phase with the cellular hotspot
-  shiftArrayUp(moxeeRebootTimes,  timeClient.getEpochTime(), 10);
-  moxeeRebootCount++;
-}
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
 
-//SETUP----------------------------------------------------
-void setup(void){
-  //set specified pins to start low immediately, keeping devices from turning on
-  for(int i=0; i<10; i++) {
-    if((int)pins_to_start_low[i] == -1) {
-      break;
-    }
-    pinMode((int)pins_to_start_low[i], OUTPUT);
-    digitalWrite((int)pins_to_start_low[i], LOW);
-  }
-  if(moxee_power_switch > -1) {
-    pinMode(moxee_power_switch, OUTPUT);
-    digitalWrite(moxee_power_switch, HIGH);
-  }
-  Serial.begin(115200);
-  Serial.println("Just started up...");
-  Wire.begin();
-  wiFiConnect();
-  server.on("/", handleRoot);      //Displays a form where devices can be turned on and off and the outputs of sensors
-  server.on("/readLocalData", localShowData);
-  server.on("/weatherdata", handleWeatherData);
-  server.on("/writeLocalData", localSetData);
-  server.begin(); 
-  Serial.println("HTTP server started");
-  startWeatherSensors(sensor_id,  sensor_sub_type, sensor_i2c, sensor_data_pin, sensor_power_pin);
-  //initialize NTP client
-  timeClient.begin();
-  // Set offset time in seconds to adjust for your timezone, for example:
-  // GMT +1 = 3600
-  // GMT +8 = 28800
-  // GMT -1 = -3600
-  // GMT 0 = 0
-  timeClient.setTimeOffset(0);
-  if(ina219_address > -1) {
-    ina219 = new Adafruit_INA219(ina219_address);
-    if (!ina219->begin()) {
-      Serial.println("Failed to find INA219 chip");
-    } else {
-      ina219->setCalibration_16V_400mA();
-    }
-  }
-  if(ir_pin > -1) {
-    //irsend.begin(); //do this elsewhere?
-  }
-}
-//LOOP----------------------------------------------------
-void loop(){
-  for(int i=0; i <4; i++) { //doing this four times here is helpful to make web service reasonably responsive. once is not enough
-    server.handleClient();          //Handle client requests
-  }
-  timeClient.update();
-  long nowTime = millis() + timeOffset;
-  int granularityToUse = polling_granularity;
-  if(connectionFailureMode) {
-    granularityToUse = granularity_when_in_connection_failure_mode;
-  }
-  //if we've been up for a week or there have been lots of moxee reboots in a short period of time, reboot esp8266
-  if(nowTime > 1000 * 86400 * 7 || nowTime < hotspot_limited_time_frame * 1000  && moxeeRebootCount >= number_of_hotspot_reboots_over_limited_timeframe_before_esp_reboot) {
-    Serial.print("MOXEE REBOOT COUNT: ");
-    Serial.print(moxeeRebootCount);
-    Serial.println();
-    rebootEsp();
-  }
-  //Serial.print(granularityToUse);
-  //Serial.print(" ");
-  //Serial.println(connectionFailureTime);
-  if(nowTime < granularityToUse * 1000 || (nowTime - lastPoll)/1000 > granularityToUse || connectionFailureTime>0 && connectionFailureTime + connection_failure_retry_seconds * 1000 > millis()) {  //send data to backend server every <polling_granularity> seconds or so
-    //Serial.print("Connection failure time: ");
-    //Serial.println(connectionFailureTime);
-    //Serial.print("  Connection failure calculation: ");
-    //Serial.print(connectionFailureTime>0 && connectionFailureTime + connection_failure_retry_seconds * 1000);
-    //Serial.println("Epoch time:");
-    //Serial.println(timeClient.getEpochTime());
-    glblRemote = true;
-    handleWeatherData();
-    glblRemote = false;
-    lastPoll = nowTime;
-  }
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
-  lookupLocalPowerData();
- 
-  if(canSleep) {
-    //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
-    if(deep_sleep_time_per_loop > 0) {
-      Serial.println("sleeping...");
-      ESP.deepSleep(deep_sleep_time_per_loop * 1e6); 
-    }
-     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
-    if(light_sleep_time_per_loop > 0) {
-      Serial.println("snoozing...");
-      sleepForSeconds(light_sleep_time_per_loop);
-      Serial.println("awakening...");
-      wiFiConnect();
-    }
-  }
-}
+--
+-- Table structure for table `device_type_feature`
+--
 
+DROP TABLE IF EXISTS `device_type_feature`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `device_type_feature` (
+  `device_type_feature_id` int(11) NOT NULL AUTO_INCREMENT,
+  `feature_type_id` int(11) DEFAULT NULL,
+  `can_be_input` tinyint(4) DEFAULT NULL,
+  `can_be_output` tinyint(4) DEFAULT NULL,
+  `can_be_analog` tinyint(4) DEFAULT NULL,
+  `name` varchar(100) DEFAULT NULL,
+  `description` varchar(2000) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `pin_number` int(11) DEFAULT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `via_i2c_address` int(11) DEFAULT NULL,
+  `sensor_type` int(11) DEFAULT NULL,
+  `sensor_sub_type` int(11) DEFAULT NULL,
+  `power_pin` int(11) DEFAULT NULL,
+  PRIMARY KEY (`device_type_feature_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=50 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-void sleepForSeconds(int seconds) {
-    wifi_set_opmode(NULL_MODE);            // Turn off Wi-Fi for lower power
-    wifi_set_sleep_type(LIGHT_SLEEP_T);    // Enable Light Sleep Mode
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
-    uint32_t sleepEndTime = millis() + seconds * 1000;
-    while (millis() < sleepEndTime) {
-        delay(10); // Short delays allow CPU to periodically enter light sleep
-    }
-    // GPIO states are preserved during this period
-}
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
 
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
+--
+-- Table structure for table `feature_type`
+--
 
-//this is the easiest way I could find to read querystring parameters on an ESP8266. ChatGPT was suprisingly unhelpful
-void localSetData() {
-  localChangeTime = millis();
-  String id = "";
-  int onValue = 0;
-  for (int i = 0; i < server.args(); i++) {
-    if(server.argName(i) == "id") {
-      id = server.arg(i);
-      Serial.print(id);
-      Serial.print( " : ");
-    } else if (server.argName(i) == "on") {
-      onValue = (int)(server.arg(i) == "1");  
-    } else if (server.argName(i) == "ipaddress") {
-      ipAddressAffectingChange = (String)server.arg(i);  
-    }
-    Serial.print(onValue);
-    Serial.println();
-  } 
-  for (int i = 0; i < pinMap->size(); i++) {
-    String key = pinList[i];
-    Serial.print(key);
-    Serial.print(" ?= ");
-    Serial.println(id);
-    if(key == id) {
-      pinMap->remove(key);
-      pinMap->put(key, onValue);
-      Serial.print("LOCAL SOURCE TRUE :");
-      Serial.println(onValue);
-      localSource = true; //sets the NodeMCU into a mode it cannot get out of until the server sends back confirmation it got the data
-    }
-  }
-  server.send(200, "text/plain", "Data received");
-}
+DROP TABLE IF EXISTS `feature_type`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `feature_type` (
+  `feature_type_id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) DEFAULT NULL,
+  `description` varchar(2000) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `tenant_id` int(11) NOT NULL,
+  PRIMARY KEY (`feature_type_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-void localShowData() {
-  if(millis() - localChangeTime < 1000) {
-    return;
-  }
-  String out = "{\"device\":\"" + deviceName + "\", \"pins\": [";
-  for (int i = 0; i < pinMap->size(); i++) {
-    out = out + "{\"id\": \"" + pinList[i] +  "\",\"name\": \"" + pinName[i] +  "\", \"value\": \"" + (String)pinMap->getData(i) + "\"}";
-    if(i < pinMap->size()-1) {
-      out = out + ", ";
-    }
-  }
-  out += "]}";
-  server.send(200, "text/plain", out); 
-}
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
-/////////////////////////////////////////////
-//utility functions
-/////////////////////////////////////////////
-String urlEncode(String str, bool minimizeImpact) {
-  String encodedString = "";
-  char c;
-  char hexDigits[] = "0123456789ABCDEF"; // Hex conversion lookup
-  for (int i = 0; i < str.length(); i++) {
-    c = str.charAt(i);
-    if (c == ' ') {
-      encodedString += "%20";
-    } else if (isalnum(c) || c == '.' || (minimizeImpact && ( c == '|'  || c == '*' ||  c == ','))) {
-      encodedString += c;
-    } else {
-      encodedString += '%';
-      encodedString += hexDigits[(c >> 4) & 0xF];
-      encodedString += hexDigits[c & 0xF];
-    }
-  }
-  return encodedString;
-}
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
 
-String joinValsOnDelimiter(long vals[], String delimiter, int numberToDo) {
-  String out = "";
-  for(int i=0; i<numberToDo; i++){
-    out = out + (String)vals[i];
-    if(i < numberToDo-1) {
-      out = out + delimiter;
-    }
-  }
-  return out;
-}
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
-String joinMapValsOnDelimiter(SimpleMap<String, int> *pinMap, String delimiter, int numberToDo) {
-  String out = "";
-  for (int i = 0; i < pinMap->size(); i++) {
-    out = out + (String)pinMap->getData(i);
-    if(i < numberToDo-1) {
-      out = out + delimiter;
-    }
-  }
-  return out;
-}
+--
+-- Table structure for table `inverter_log`
+--
 
-String nullifyOrNumber(double inVal) {
-  if(inVal == NULL) {
-    return "";
-  } else {
-    return String(inVal);
-  }
-}
+DROP TABLE IF EXISTS `inverter_log`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `inverter_log` (
+  `inverter_log_id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(11) NOT NULL,
+  `recorded` datetime DEFAULT NULL,
+  `solar_power` int(11) DEFAULT NULL,
+  `load_power` int(11) DEFAULT NULL,
+  `grid_power` int(11) DEFAULT NULL,
+  `battery_percentage` int(11) DEFAULT NULL,
+  `battery_power` int(11) DEFAULT NULL,
+  `battery_voltage` decimal(8,5) DEFAULT NULL,
+  `mystery_value3` int(11) DEFAULT NULL,
+  `mystery_value1` int(11) DEFAULT NULL,
+  `mystery_value2` int(11) DEFAULT NULL,
+  `changer1` int(11) DEFAULT NULL,
+  `changer2` int(11) DEFAULT NULL,
+  `changer3` int(11) DEFAULT NULL,
+  `changer4` int(11) DEFAULT NULL,
+  `changer5` int(11) DEFAULT NULL,
+  `changer6` int(11) DEFAULT NULL,
+  `changer7` int(11) DEFAULT NULL,
+  `weather` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`inverter_log_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=735214 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-String nullifyOrInt(int inVal) {
-  if(inVal == NULL) {
-    return "";
-  } else {
-    return String(inVal);
-  }
-}
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
-void shiftArrayUp(long array[], long newValue, int arraySize) {
-    // Shift elements down by one index
-    for (int i =  1; i < arraySize ; i++) {
-        array[i - 1] = array[i];
-    }
-    // Insert the new value at the beginning
-    array[arraySize - 1] = newValue;
-}
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
 
-void splitString(const String& input, char delimiter, String* outputArray, int arraySize) {
-  int lastIndex = 0;
-  int count = 0;
-  for (int i = 0; i < input.length(); i++) {
-    if (input.charAt(i) == delimiter) {
-      // Extract the substring between the last index and the current index
-      outputArray[count++] = input.substring(lastIndex, i);
-      lastIndex = i + 1;
-      if (count >= arraySize) {
-        break;
-      }
-    }
-  }
-  // Extract the last substring after the last delimiter
-  outputArray[count++] = input.substring(lastIndex);
-}
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
-String replaceFirstOccurrenceAtChar(String str1, String str2, char atChar) { //thanks ChatGPT!
-    int index = str1.indexOf(atChar);
-    if (index == -1) {
-        // If there's no '|' in the first string, return it unchanged.
-        return str1;
-    }
-    String beforeDelimiter = str1.substring(0, index); // Part before the first '|'
-    String afterDelimiter = str1.substring(index + 1); // Part after the first '|'
+--
+-- Table structure for table `ir_pulse_sequence`
+--
 
-    // Construct the new string with the second string inserted.
-    String result = beforeDelimiter + "|" + str2 + "|" + afterDelimiter;
-    return result;
-}
+DROP TABLE IF EXISTS `ir_pulse_sequence`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ir_pulse_sequence` (
+  `ir_pulse_sequence_id` int(11) NOT NULL AUTO_INCREMENT,
+  `ir_target_type_id` int(11) DEFAULT NULL,
+  `name` varchar(80) DEFAULT NULL,
+  `description` varchar(1000) DEFAULT NULL,
+  `sequence` varchar(2000) DEFAULT NULL,
+  `tenant_id` int(11) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  PRIMARY KEY (`ir_pulse_sequence_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-String simpleEncrypt(String plaintext, String key, String salt) {
-    String encrypted = "";
-    int keyLength = key.length();
-    int saltLength = salt.length();
-    int plainLength = plaintext.length();
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
-    for (int i = 0; i < plainLength; i++) {
-        // Combine plaintext, key, and salt using positions
-        char mix = plaintext[i] 
-                   ^ key[i % keyLength] 
-                   ^ salt[i % saltLength];
-        // Further scramble by shifting based on position
-        mix = (mix << (i % 5)) | (mix >> (8 - (i % 5))); // Circular bit shift
-        encrypted += mix;
-    }
-    return encrypted;
-}
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
 
-byte calculateChecksum(String input) {
-    byte checksum = 0;
-    for (int i = 0; i < input.length(); i++) {
-        checksum += input[i];
-    }
-    return checksum;
-}
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
-byte countSetBitsInString(const String &input) {
-    byte bitCount = 0;
-    // Iterate over each character in the string
-    for (size_t i = 0; i < input.length(); ++i) {
-        char c = input[i];
-        
-        // Count the set bits in the ASCII value of the character
-        for (int bit = 0; bit < 8; ++bit) {
-            if (c & (1 << bit)) {
-                bitCount++;
-            }
-        }
-    }
-    return bitCount;
-}
+--
+-- Table structure for table `ir_target_type`
+--
 
-String encryptStoragePassword(String datastring) {
-  int timeStamp = timeClient.getEpochTime();
-  char buffer[10];
-  itoa(timeStamp, buffer, 10);  // Base 10 conversion
-  String timestampString = String(buffer);
-  byte checksum = calculateChecksum(datastring);
-  String encryptedStoragePassword = urlEncode(simpleEncrypt(simpleEncrypt((String)storage_password, timestampString.substring(1,9), salt), String((char)countSetBitsInString(datastring)), String((char)checksum)), false);
-  return encryptedStoragePassword;
-}
+DROP TABLE IF EXISTS `ir_target_type`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ir_target_type` (
+  `ir_target_type_id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(80) DEFAULT NULL,
+  `description` varchar(1000) DEFAULT NULL,
+  `manufacturer` varchar(80) DEFAULT NULL,
+  `tenant_id` int(11) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  PRIMARY KEY (`ir_target_type_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `management_rule`
+--
+
+DROP TABLE IF EXISTS `management_rule`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `management_rule` (
+  `management_rule_id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(11) NOT NULL,
+  `name` varchar(50) DEFAULT NULL,
+  `result_value` int(11) DEFAULT 1,
+  `description` varchar(2000) DEFAULT NULL,
+  `time_valid_start` time DEFAULT NULL,
+  `time_valid_end` time DEFAULT NULL,
+  `conditions` text DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  PRIMARY KEY (`management_rule_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=42 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `reboot_log`
+--
+
+DROP TABLE IF EXISTS `reboot_log`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `reboot_log` (
+  `reboot_log_id` int(11) NOT NULL AUTO_INCREMENT,
+  `device_id` int(11) DEFAULT NULL,
+  `recorded` datetime DEFAULT NULL,
+  PRIMARY KEY (`reboot_log_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7270 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `report`
+--
+
+DROP TABLE IF EXISTS `report`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `report` (
+  `report_id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(11) NOT NULL,
+  `name` varchar(100) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `modified` datetime DEFAULT NULL,
+  `form` text DEFAULT NULL,
+  `sql` text DEFAULT NULL,
+  `role` varchar(50) DEFAULT NULL,
+  `templateable` tinyint(4) DEFAULT 0,
+  PRIMARY KEY (`report_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `report_log`
+--
+
+DROP TABLE IF EXISTS `report_log`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `report_log` (
+  `report_log_id` int(11) NOT NULL AUTO_INCREMENT,
+  `report_id` int(11) DEFAULT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `run` datetime DEFAULT NULL,
+  `data` text DEFAULT NULL,
+  `records_returned` int(11) DEFAULT NULL,
+  `runtime` int(11) DEFAULT NULL,
+  `sql` text DEFAULT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`report_log_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=964 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `tenant`
+--
+
+DROP TABLE IF EXISTS `tenant`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `tenant` (
+  `tenant_id` int(11) NOT NULL AUTO_INCREMENT,
+  `expired` datetime DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `preferences` text DEFAULT NULL,
+  `storage_password` varchar(100) DEFAULT NULL,
+  `energy_api_username` varchar(100) DEFAULT NULL,
+  `energy_api_password` varchar(100) DEFAULT NULL,
+  `energy_api_plant_id` int(11) DEFAULT NULL,
+  `open_weather_api_key` varchar(100) DEFAULT NULL,
+  `name` varchar(100) NOT NULL,
+  `about` text DEFAULT NULL,
+  `latitude` decimal(8,5) DEFAULT NULL,
+  `longitude` decimal(8,5) DEFAULT NULL,
+  PRIMARY KEY (`tenant_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `tenant_user`
+--
+
+DROP TABLE IF EXISTS `tenant_user`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `tenant_user` (
+  `user_id` int(11) DEFAULT NULL,
+  `tenant_id` int(11) DEFAULT NULL,
+  `role` varchar(50) DEFAULT 'normal',
+  `expired` datetime DEFAULT NULL,
+  `created` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `user`
+--
+
+DROP TABLE IF EXISTS `user`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `user` (
+  `user_id` int(11) NOT NULL AUTO_INCREMENT,
+  `email` varchar(100) DEFAULT NULL,
+  `password` varchar(100) DEFAULT NULL,
+  `expired` datetime DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `role` varchar(50) DEFAULT 'normal',
+  `preferences` text DEFAULT NULL,
+  PRIMARY KEY (`user_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `device_log`
+--
+
+DROP TABLE IF EXISTS `device_log`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `device_log` (
+  `device_log_id` int(11) NOT NULL AUTO_INCREMENT,
+  `device_id` int(11) DEFAULT NULL,
+  `recorded` datetime DEFAULT NULL,
+  `temperature` decimal(6,3) DEFAULT NULL,
+  `pressure` decimal(9,4) DEFAULT NULL,
+  `humidity` decimal(6,3) DEFAULT NULL,
+  `wind_direction` int(11) DEFAULT NULL,
+  `precipitation` int(11) DEFAULT NULL,
+  `wind_speed` decimal(8,3) DEFAULT NULL,
+  `wind_increment` int(11) DEFAULT NULL,
+  `gas_metric` decimal(15,4) DEFAULT NULL,
+  `sensor_id` int(11) DEFAULT NULL,
+  `device_feature_id` int(11) DEFAULT NULL,
+  `reserved1` decimal(9,4) DEFAULT NULL,
+  `reserved2` decimal(9,4) DEFAULT NULL,
+  `reserved3` decimal(9,4) DEFAULT NULL,
+  `reserved4` decimal(9,4) DEFAULT NULL,
+  `twelve_voltage` decimal(9,4) DEFAULT NULL,
+  `voltage` decimal(6,3) DEFAULT NULL,
+  `latitude` decimal(10,7) DEFAULT NULL,
+  `longitude` decimal(10,7) DEFAULT NULL,
+  `elevation` decimal(10,7) DEFAULT NULL,
+  `ampage` decimal(6,3) DEFAULT NULL,
+  `millis` int(11) DEFAULT NULL,
+  PRIMARY KEY (`device_log_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=497992 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Dumping data for table `feature_type`
+--
+-- WHERE:  tenant_id=0
+
+LOCK TABLES `feature_type` WRITE;
+/*!40000 ALTER TABLE `feature_type` DISABLE KEYS */;
+INSERT INTO `feature_type` VALUES (29,'GPIO pin','','2024-08-13 16:47:59',0),(30,'GPIO pin via I2C','','2024-08-13 16:47:59',0),(31,'Sensor','','2024-08-13 16:47:59',0);
+/*!40000 ALTER TABLE `feature_type` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Dumping data for table `device_type`
+--
+-- WHERE:  tenant_id=0
+
+LOCK TABLES `device_type` WRITE;
+/*!40000 ALTER TABLE `device_type` DISABLE KEYS */;
+INSERT INTO `device_type` VALUES (22,'NodeMCU Weather-Remote','','ESP8266',3.300,'2024-08-13 16:47:59',0),(23,'SolArk Monitor','','ESP8266',3.300,'2024-08-13 16:47:59',0);
+/*!40000 ALTER TABLE `device_type` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Dumping data for table `device_type_feature`
+--
+-- WHERE:  tenant_id=0
+
+LOCK TABLES `device_type_feature` WRITE;
+/*!40000 ALTER TABLE `device_type_feature` DISABLE KEYS */;
+INSERT INTO `device_type_feature` VALUES (33,1,1,1,1,'D14',NULL,'2024-08-13 16:47:59',13,0,NULL,NULL,NULL,NULL),(34,1,1,1,NULL,'GPIO12','','2024-08-13 16:47:59',12,0,NULL,NULL,NULL,NULL),(35,1,1,1,NULL,'GPIO13','','2024-08-13 16:47:59',13,0,NULL,NULL,NULL,NULL),(36,1,1,1,0,'GPIO16','','2024-08-13 16:47:59',16,0,NULL,NULL,NULL,NULL),(37,1,1,1,0,'Pin 3 on Slave','','2024-08-13 16:47:59',3,0,20,NULL,NULL,NULL),(38,1,1,1,0,'gpio14','','2024-08-13 16:47:59',14,0,0,NULL,NULL,NULL),(39,1,1,1,0,'Pin 7 on i2c 20','','2024-08-13 16:47:59',7,0,20,NULL,NULL,NULL),(40,1,1,1,0,'pin 8 on i2c 20','','2024-08-13 16:47:59',8,0,20,NULL,NULL,NULL),(41,1,1,1,0,'Pin 15','','2024-08-13 16:47:59',15,0,NULL,NULL,NULL,NULL),(42,1,1,1,0,'Pin 10 on Arduino Slave','','2024-08-13 16:47:59',10,0,20,NULL,NULL,NULL),(43,0,1,1,0,'pin 11 on slave i2c 20','','2024-08-13 16:47:59',13,0,20,NULL,NULL,NULL),(44,4,0,0,0,'BMP280 Sensor @ 0x77','','2024-08-13 16:47:59',NULL,0,119,280,NULL,NULL),(45,4,0,0,0,'DHT on pin 14','','2024-08-13 16:47:59',14,0,NULL,2301,11,99),(46,NULL,1,1,0,'gpio2','','2024-08-13 16:47:59',2,0,NULL,NULL,NULL,NULL);
+/*!40000 ALTER TABLE `device_type_feature` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Dumping data for table `management_rule`
+--
+-- WHERE:  tenant_id=0
+
+LOCK TABLES `management_rule` WRITE;
+/*!40000 ALTER TABLE `management_rule` DISABLE KEYS */;
+INSERT INTO `management_rule` VALUES (29,0,'is battery near 100?',1,'',NULL,NULL,'<inverter_log[].battery_percentage> > 90','2024-08-13 16:47:59'),(30,0,'big test 2',1,'',NULL,NULL,'yerp','2024-08-13 16:47:59'),(31,0,'is battery less than 70?',0,'',NULL,NULL,'<inverter_log[].battery_percentage> < 70','2024-08-13 16:47:59'),(32,0,'Solar Power Above 2000 and Battery near full',1,'',NULL,NULL,'<inverter_log[].solar_power> > 2000 && <inverter_log[].battery_percentage> > 90','2024-08-13 16:47:59'),(33,0,'not much power being used and battery pretty full',1,'',NULL,NULL,'<inverter_log[].load_power> < 500 && <inverter_log[].battery_percentage> > 60','2024-08-13 16:47:59'),(34,0,'battery less than half full',0,'',NULL,NULL,'<inverter_log[].battery_percentage> < 54','2024-08-13 16:47:59'),(35,0,'kill if solar gets a bit weak',NULL,'',NULL,NULL,'<inverter_log[].solar_power> < 1000 && <inverter_log[].battery_percentage> < 100','2024-08-13 16:47:59'),(36,0,'temperature above 70',1,'',NULL,NULL,'<weather_data[1].temperature/>  > 21','2024-08-13 16:47:59'),(37,0,'temperature below 70',0,'',NULL,NULL,' <weather_data[1].temperature/>  < 20','2024-08-13 16:47:59');
+/*!40000 ALTER TABLE `management_rule` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2024-12-24 22:28:41
+/*M!999999\- enable the sandbox mode */ 
+-- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: weathertron
+-- ------------------------------------------------------
+-- Server version	10.5.26-MariaDB-0+deb11u2
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Dumping data for table `report`
+--
+-- WHERE:  tenant_id=0
+
+LOCK TABLES `report` WRITE;
+/*!40000 ALTER TABLE `report` DISABLE KEYS */;
+INSERT INTO `report` VALUES (24,0,'Run SQL','2024-08-13 16:47:59','2024-08-08 10:29:04','{\r\n  \"form\": [\r\n    {\r\n      \"name\": \"sql\",\r\n      \"type\": \"text\",\r\n      \"code_language\": \"sql\",\r\n      \"height\": 100,\r\n      \"width\": 400\r\n    }\r\n  ]\r\n}',' <sql/>','super',1);
+/*!40000 ALTER TABLE `report` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2024-12-24 22:28:41
