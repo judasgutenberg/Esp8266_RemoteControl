@@ -521,7 +521,10 @@ void sendRemoteData(String datastring) {
       //device_features in one data object (assuming it's not too big). The ESP8266 still can respond to data in the
       //JSON format, which it will assume if the first character of the data is a '{' -- but if the first character
       //is a '|' then it assumes the data is non-JSON. Otherwise it assumes it's HTTP boilerplate and ignores it.
-      if(retLine.indexOf("\"error:") < 0 && mode == "saveData") {
+      if(retLine.indexOf("error") < 0 && mode == "saveData" && (retLine.charAt(0)== '{' || retLine.charAt(0)== '*' || retLine.charAt(0)== '|' || retLine.charAt(0)== '|')) {
+        Serial.println("can sleep because: ");
+        Serial.println(retLine);
+        Serial.println(retLine.indexOf("error:"));
         lastDataLogTime = millis();
         canSleep = true; //canSleep is a global and will not be set until all the tasks of the device are finished.
       }
