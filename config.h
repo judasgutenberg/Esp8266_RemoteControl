@@ -9,7 +9,7 @@ extern const char* salt;
 extern const char* url_get;
 extern const char* host_get;
 extern const char* sensor_config_string;
-extern const int sensor_id; //SENSORS! -- we support these: 75 for LM75, 85 for BMP085, 180 for BMP180, 2301 for DHT 2301, 680 for BME680.  0 for no sensor.  No support for multiple sensors for now.
+extern const int sensor_id; //SENSORS! -- we support these: 7410 for ADT7410, 2320 for AHT20, 75 for LM75, 85 for BMP085, 180 for BMP180, 2301 for DHT 2301, 680 for BME680.  0 for no sensor. Multiple sensors are possible.
 extern const int sensor_i2c;
 extern const int consolidate_all_sensors_to_one_record;
 extern const int device_id; //3 really is watchdog
