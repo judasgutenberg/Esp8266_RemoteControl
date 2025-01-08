@@ -39,3 +39,4 @@ const char pins_to_start_low[] = {12, 13, -1}; //so when the device comes up it 
 
 const int ir_pin = 14; //set to the value of an actual data pin if you want to send data via ir from your controller on occasion
 const int ina219_address = 0x40; //set to -1 if you have no power voltage to monitor
+const int time_of_flight_address = 0x29; //set to -1 if you have no distance measurement sensor
