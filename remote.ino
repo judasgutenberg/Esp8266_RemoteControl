@@ -49,7 +49,7 @@ Adafruit_BMP280 BMP280[2];
 IRsend irsend(ir_pin);
 Adafruit_INA219* ina219;
 
-Adafruit_VL53L0X lox = Adafruit_VL53L0X();
+Adafruit_VL53L0X lox[4];
 
 StaticJsonDocument<500> jsonBuffer;
 WiFiUDP ntpUDP; //i guess i need this for time lookup
@@ -75,8 +75,7 @@ float measuredAmpage = 0;
 bool canSleep = false;
 long latencySum = 0;
 long latencyCount = 0;
-int distance = 0;
-
+ 
 //https://github.com/spacehuhn/SimpleMap
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
   if (a == b) return 0;      // a and b are equal
@@ -141,7 +140,7 @@ void lookupLocalPowerData() {//sets the globals with the current reading from th
 //returns a "*"-delimited string containing weather data, starting with temperature and ending with deviceFeatureId,    a url-encoded sensorName, and consolidateAllSensorsToOneRecord
 //we might send multiple-such strings (separated by "!") to the backend for multiple sensors on an ESP8266
 //i've made this to handle all the weather sensors i have so i can mix and match, though of course there are many others
-String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName,  int consolidateAllSensorsToOneRecord) {
+String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName, int ordinalOfOverwrite, int consolidateAllSensorsToOneRecord) {
   double humidityValue = NULL;
   double temperatureValue = NULL;
   double pressureValue = NULL;
@@ -154,6 +153,11 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
   static char buf[16];
   static uint16_t loopCounter = 0;  
   String transmissionString = "";
+  String sensorValue;
+  double humidityFromSensor = NULL;
+  double temperatureFromSensor = NULL;
+  double pressureFromSensor = NULL;
+  double gasFromSensor = NULL;
  
   if(deviceFeatureId == NULL) {
     objectCursor = 0;
@@ -167,25 +171,35 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
     double value = NULL;
     if(i2c){
       //i forget how we read a pin on an i2c slave. lemme see:
-      value = (double)getPinValueOnSlave((char)i2c, (char)dataPin);
+      sensorValue = (double)getPinValueOnSlave((char)i2c, (char)dataPin);
     } else {
-      value = (double)analogRead(dataPin);
+      sensorValue = (double)analogRead(dataPin);
     }
+    /*
     for(char i=0; i<12; i++){ //we have 12 separate possible sensor functions:
       //temperature*pressure*humidity*gas*windDirection*windSpeed*windIncrement*precipitation*reserved1*reserved2*reserved3*reserved4
       //if you have some particular sensor communicating through a pin and want it to be one of these
       //you set sensor_sub_type to be the 0-based value in that *-delimited string
       //i'm thinking i don't bother defining the reserved ones and just let them be application-specific and different in different implementations
       //a good one would be radioactive counts per unit time
-      if((int)i == sensor_sub_type) {
+      if((int)i == ordinalOfOverwrite) { //had been using sensor_sub_type
         transmissionString = transmissionString + nullifyOrNumber(value);
       }
       transmissionString = transmissionString + "*";
     }
+    */
     //note, if temperature ends up being NULL, the record won't save. might want to tweak data.php to save records if it contains SOME data
     
     if(powerPin > -1) {
       digitalWrite(powerPin, LOW);
+    }
+  } else if (sensor_id == 53) { //distance sensor, does not produce weather data
+    VL53L0X_RangingMeasurementData_t measure;
+    lox[objectCursor].rangingTest(&measure, false); // pass in 'true' to get debug data printout!
+    if (measure.RangeStatus != 4) {  // phase failures have incorrect data
+      sensorValue = String(measure.RangeMilliMeter);
+    } else {
+      sensorValue = "-1";
     }
     
   } else if (sensor_id == 680) { //this is the primo sensor chip, so the trouble is worth it
@@ -205,35 +219,31 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
     //Serial.print(buf);
     sprintf(buf, "%4d.%02d\n", (int16_t)(gasRaw / 100), (uint8_t)(gasRaw % 100));  // Resistance milliohms
     //Serial.print(buf);
-    humidityValue = (double)humidityRaw/1000;
-    temperatureValue = (double)temperatureRaw/100;
-    pressureValue = (double)pressureRaw/100;
-    gasValue = (double)gasRaw/100;  //all i ever get for this is 129468.6 and 8083.7
+
+    humidityFromSensor = (double)humidityRaw/1000;
+    temperatureFromSensor = (double)temperatureRaw/100;
+    pressureFromSensor = (double)pressureRaw/100;
+    gasFromSensor = (double)gasRaw/100;  //all i ever get for this is 129468.6 and 8083.7
   } else if (sensor_id == 2301) { //i love the humble DHT
     if(powerPin > -1) {
       digitalWrite(powerPin, HIGH); //turn on DHT power, in case you're doing that. 
     }
     delay(10);
-    humidityValue = (double)dht[objectCursor]->readHumidity();
-    temperatureValue = (double)dht[objectCursor]->readTemperature();
-    pressureValue = NULL; //really should set unknown values as null
+    humidityFromSensor = (double)dht[objectCursor]->readHumidity();
+    temperatureFromSensor = (double)dht[objectCursor]->readTemperature();
     if(powerPin > -1) {
       digitalWrite(powerPin, LOW);//turn off DHT power. maybe it saves energy, and that's why MySpool did it this way
     }
   } else if(sensor_id == 280) {
-    humidityValue = NULL;
-    temperatureValue = BMP280[objectCursor].readTemperature();
-    pressureValue = BMP280[objectCursor].readPressure()/100;
+    temperatureFromSensor = BMP280[objectCursor].readTemperature();
+    pressureFromSensor = BMP280[objectCursor].readPressure()/100;
   } else if(sensor_id == 2320) { //AHT20
     sensors_event_t humidity, temp;
     AHT[objectCursor].getEvent(&humidity, &temp);
-    humidityValue = humidity.relative_humidity;
-    temperatureValue = temp.temperature;
-    pressureValue = NULL;
+    humidityFromSensor = humidity.relative_humidity;
+    temperatureFromSensor = temp.temperature;
   } else if(sensor_id == 7410) {  
-    temperatureValue = adt7410[objectCursor].readTempC();
-    humidityValue = NULL;
-    pressureValue = NULL;
+    temperatureFromSensor = adt7410[objectCursor].readTempC();
   } else if(sensor_id == 180) { //so much trouble for a not-very-good sensor 
     char status;
     double p0,a;
@@ -245,7 +255,7 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
       // Retrieve the completed temperature measurement:
       // Note that the measurement is stored in the variable T.
       // Function returns 1 if successful, 0 if failure.
-      status = BMP180[objectCursor].getTemperature(temperatureValue);
+      status = BMP180[objectCursor].getTemperature(temperatureFromSensor);
       if (status != 0)
       {
         status = BMP180[objectCursor].startPressure(3);
@@ -258,7 +268,7 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
           // Note also that the function requires the previous temperature measurement (temperatureValue).
           // (If temperature is stable, you can do one temperature measurement for a number of pressure measurements.)
           // Function returns 1 if successful, 0 if failure.
-          status = BMP180[objectCursor].getPressure(pressureValue,temperatureValue);
+          status = BMP180[objectCursor].getPressure(pressureFromSensor,temperatureFromSensor);
           if (status == 0) {
             //Serial.println("error retrieving pressure measurement\n");
           }
@@ -271,32 +281,48 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
     } else {
       //Serial.println("error starting temperature measurement\n");
     }
-    humidityValue = NULL; //really should set unknown values as null
   } else if (sensor_id == 85) {
     //https://github.com/adafruit/Adafruit-BMP085-Library
-    temperatureValue = BMP085d[objectCursor].readTemperature();
-    pressureValue = BMP085d[objectCursor].readPressure()/100; //to get millibars!
-    humidityValue = NULL; //really should set unknown values as null
+    temperatureFromSensor = BMP085d[objectCursor].readTemperature();
+    pressureFromSensor = BMP085d[objectCursor].readPressure()/100; //to get millibars!
   } else if (sensor_id == 75) { //LM75, so ghetto
     //https://electropeak.com/learn/interfacing-lm75-temperature-sensor-with-arduino/
-    temperatureValue = LM75[objectCursor].readTemperatureC();
-    pressureValue = NULL;
-    humidityValue = NULL;
+    temperatureFromSensor = LM75[objectCursor].readTemperatureC();
   } else { //either sensor_id is NULL or 0
     //no sensor at all
-    temperatureValue = NULL;//don't want to save a record in weather_data from an absent sensor, so force temperature NULL
-    pressureValue = NULL;
-    humidityValue = NULL;
+  }
+  //ordinalOfOverwrite allows us to take the temperature (and other values) from one of the previous sensors and place it in an arbitrary position of the delimited string
+  if(ordinalOfOverwrite < 0) {
+    temperatureValue = temperatureFromSensor;
+    pressureValue = pressureFromSensor;
+    humidityValue = humidityFromSensor;
+    gasValue = gasFromSensor;
+  } else {
+    if(sensorValue == NULL) {
+      if(sensor_sub_type == 1){
+        sensorValue = String(pressureFromSensor);
+      } else if (sensor_sub_type == 2){
+        sensorValue = String(humidityFromSensor);
+      } else if (sensor_sub_type == 3){
+        sensorValue = String(gasFromSensor);
+      } else {
+        sensorValue = String(temperatureFromSensor); 
+      }
+    }
+    
   }
   //
-  if(sensor_id > 1) {
+  if(sensor_id > 0) {
     transmissionString = nullifyOrNumber(temperatureValue) + "*" + nullifyOrNumber(pressureValue);
     transmissionString = transmissionString + "*" + nullifyOrNumber(humidityValue);
     transmissionString = transmissionString + "*" + nullifyOrNumber(gasValue);
-    transmissionString = transmissionString + "*******" + distance + "**"; //for esoteric weather sensors that measure wind and precipitation.  the last four are reserved for now
+    transmissionString = transmissionString + "*********"; //for esoteric weather sensors that measure wind and precipitation.  the last four are reserved for now
   }
   //using delimited data instead of JSON to keep things simple
   transmissionString = transmissionString + nullifyOrInt(sensor_id) + "*" + nullifyOrInt(deviceFeatureId) + "*" + sensorName + "*" + nullifyOrInt(consolidateAllSensorsToOneRecord); 
+  if(ordinalOfOverwrite > -1) {
+    transmissionString = replaceNthElement(transmissionString, ordinalOfOverwrite, sensorValue, '*');
+  }
   return transmissionString;
 }
 
@@ -321,6 +347,13 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
       irsend.begin();
     }
   */
+  } else if(sensorIdLocal == 53) {
+    if(!lox[objectCursor].begin(i2c)) {
+      Serial.println(F("Failed to boot VL53L0X"));
+    } else {
+      Serial.print(F("VL53L0X at "));
+      Serial.println(i2c);
+    }
   } else if(sensorIdLocal == 680) {
     Serial.print(F("Initializing BME680 sensor...\n"));
     while (!BME680[objectCursor].begin(I2C_STANDARD_MODE, i2c)) {  // Start B DHTME680 using I2C, use first device found
@@ -391,7 +424,7 @@ void handleWeatherData() {
   }
 
   if(sensor_id > -1) {
-    transmissionString = weatherDataString(sensor_id, sensor_sub_type, sensor_data_pin, sensor_power_pin, sensor_i2c, NULL, 0, deviceName, consolidate_all_sensors_to_one_record);
+    transmissionString = weatherDataString(sensor_id, sensor_sub_type, sensor_data_pin, sensor_power_pin, sensor_i2c, NULL, 0, deviceName, -1, consolidate_all_sensors_to_one_record);
   }
   //add the data for any additional sensors, delimited by '!' for each sensor
   String additionalSensorData = handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), false);
@@ -603,6 +636,7 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
   String out = "";
   int objectCursor = 0;
   int oldsensor_id = -1;
+  int ordinalOfOverwrite = 0;
   String sensorName;
   splitString(sensorData, '|', additionalSensorArray, 12);
   deviceName = additionalSensorArray[0].substring(1);
@@ -618,7 +652,8 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
       i2c = specificSensorData[4].toInt();
       deviceFeatureId = specificSensorData[5].toInt();
       sensorName = specificSensorData[6];
-      consolidateAllSensorsToOneRecord = specificSensorData[7].toInt();
+      ordinalOfOverwrite = specificSensorData[7].toInt();
+      consolidateAllSensorsToOneRecord = specificSensorData[8].toInt();
       if(oldsensor_id != sensorIdLocal) { //they're sorted by sensor_id, so the objectCursor needs to be set to zero if we're seeing the first of its type
         objectCursor = 0;
       }
@@ -629,7 +664,7 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
         startWeatherSensors(sensorIdLocal, sensorSubTypeLocal, i2c, pinNumber, powerPin); //guess i have to pass all this additional info
       } else {
         //otherwise do a weatherDataString
-        out = out + "!" + weatherDataString(sensorIdLocal, sensorSubTypeLocal, pinNumber, powerPin, i2c, deviceFeatureId, objectCursor, sensorName, consolidateAllSensorsToOneRecord);
+        out = out + "!" + weatherDataString(sensorIdLocal, sensorSubTypeLocal, pinNumber, powerPin, i2c, deviceFeatureId, objectCursor, sensorName, ordinalOfOverwrite, consolidateAllSensorsToOneRecord);
       }
       objectCursor++;
       oldsensor_id = sensorIdLocal;
@@ -819,7 +854,7 @@ long getPinValueOnSlave(char i2cAddress, char pinNumber) { //might want a user-f
   while (Wire.available()) {
     byte receivedValue = Wire.read(); // Read the received value from slave
     totalValue = totalValue + receivedValue * pow(256, 4-byteCursor);
-    Serial.println(receivedValue); // Print the received value
+    //Serial.println(receivedValue); // Print the received value
     byteCursor++;
   }
   return totalValue;
@@ -1003,11 +1038,7 @@ void setup(void){
   if(ir_pin > -1) {
     //irsend.begin(); //do this elsewhere?
   }
-  if(time_of_flight_address > 0) {
-    if(!lox.begin()) {
-      Serial.println(F("Failed to boot VL53L0X"));
-    }
-  }
+ 
 }
 //LOOP----------------------------------------------------
 void loop(){
@@ -1044,16 +1075,7 @@ void loop(){
   }
 
   lookupLocalPowerData();
-
-  if(time_of_flight_address > 0) {
-    VL53L0X_RangingMeasurementData_t measure;
-    lox.rangingTest(&measure, false); // pass in 'true' to get debug data printout!
-    if (measure.RangeStatus != 4) {  // phase failures have incorrect data
-      distance = measure.RangeMilliMeter;
-    } else {
-      distance = -1;
-    }
-  }
+ 
  
   if(canSleep) {
     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
@@ -1232,6 +1254,34 @@ String replaceFirstOccurrenceAtChar(String str1, String str2, char atChar) { //t
     // Construct the new string with the second string inserted.
     String result = beforeDelimiter + "|" + str2 + "|" + afterDelimiter;
     return result;
+}
+
+String replaceNthElement(const String& input, int n, const String& replacement, char delimiter) {
+  String result = "";
+  int currentIndex = 0;
+  int start = 0;
+  int end = input.indexOf(delimiter);
+
+  while (end != -1 || start < input.length()) {
+    if (currentIndex == n) {
+      // Replace the nth element
+      result += replacement;
+    } else {
+      // Append the current element
+      result += input.substring(start, end != -1 ? end : input.length());
+    }
+    if (end == -1) break; // No more delimiters
+    result += delimiter; // Append the delimiter
+    start = end + 1;     // Move to the next element
+    end = input.indexOf(delimiter, start);
+    currentIndex++;
+  }
+
+  // If n is out of range, return the original string
+  if (n >= currentIndex) {
+    return input;
+  }
+  return result;
 }
 
 String simpleEncrypt(String plaintext, String key, String salt) {
