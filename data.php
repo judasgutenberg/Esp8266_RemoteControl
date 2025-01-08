@@ -55,45 +55,6 @@ if($_POST) {
 if($_REQUEST) {
 	$periodAgo = 0;
 	$scale = "day";
-	//absolute_timespan_cusps
-	$absoluteTimespanCusps = false;
-	$absoluteTimespanCusps = gvfw("absolute_timespan_cusps");
-	$yearsAgo = 0;
-	if(array_key_exists("years_ago", $_REQUEST)) {
-		$yearsAgo = intval($_REQUEST["years_ago"]);
-	} 
-	if(array_key_exists("scale", $_REQUEST)) {
-		$scale = $_REQUEST["scale"];
-	} 
-	if(array_key_exists("period_ago", $_REQUEST)) {
-		$periodAgo = intval($_REQUEST["period_ago"]);
-	}  
-
-	$storagePassword  = gvfw("storage_password", gvfw("storagePassword"));
-	$encryptedKey = gvfw("key");
-	$data = gvfa("data", $_REQUEST);
-	//$x = gvfw("x");
-	if($encryptedKey){
-		$checksum = calculateChecksum($data);
-		$partiallyDecryptedKey = simpleDecrypt(urldecode($encryptedKey), "magic", strval(chr($checksum)));
-		$storagePassword = simpleDecrypt($partiallyDecryptedKey, substr(strval(time()), 1, 8) , $salt);
-		
-	}
-	//die($storagePassword . " : " . time() . " ; " . $checksum . "?=" . $x  . " : " . urlencode($data));
-	if($user && !$storagePassword) {
-		$storagePassword  = $user['storage_password'];
-		if(!in_array($mode, ["getOfficialWeatherData", "getInverterData", "getWeatherData", "getEarliestRecorded"])){ //keeps certain kinds of hacks from working
-			die(json_encode(["error"=>"your brilliant hack has failed"]));
-		}
-	}
-	
- 
-
-	$specificColumn = gvfw("specific_column");
-	if($storagePassword){
-		$deviceIds = deriveDeviceIdsFromStoragePassword($storagePassword);
-	}
-
 	//i may end up deciding that locationId and deviceId are the same thing, and for now they are
 	//but maybe some day they will be different things
 	if(array_key_exists("locationId", $_REQUEST)) {
@@ -118,6 +79,46 @@ if($_REQUEST) {
 	if(!$locationIds){
 		$locationIds = $locationId;
 	}
+
+	$averageLatency = intval(readMemoryCache("latency-" . $deviceId));
+
+	//absolute_timespan_cusps
+	$absoluteTimespanCusps = false;
+	$absoluteTimespanCusps = gvfw("absolute_timespan_cusps");
+	$yearsAgo = 0;
+	if(array_key_exists("years_ago", $_REQUEST)) {
+		$yearsAgo = intval($_REQUEST["years_ago"]);
+	} 
+	if(array_key_exists("scale", $_REQUEST)) {
+		$scale = $_REQUEST["scale"];
+	} 
+	if(array_key_exists("period_ago", $_REQUEST)) {
+		$periodAgo = intval($_REQUEST["period_ago"]);
+	}  
+
+	$storagePassword  = gvfw("storage_password", gvfw("storagePassword"));
+	$encryptedKey = gvfw("key");
+	$data = gvfa("data", $_REQUEST);
+	//$x = gvfw("x");
+	if($encryptedKey){
+		$checksum = calculateChecksum($data);
+		$partiallyDecryptedKey = simpleDecrypt(urldecode($encryptedKey), strval(chr(countSetBitsInString($data))), strval(chr($checksum)));
+		$storagePassword = simpleDecrypt($partiallyDecryptedKey, substr(strval(time() - ceil($averageLatency/1000) ), 1, 8) , $salt);
+		
+	}
+	//die($storagePassword . " : " . time() . " ; " . $checksum . "?=" . $x  . " : " . urlencode($data));
+	if($user && !$storagePassword) {
+		$storagePassword  = $user['storage_password'];
+		if(!in_array($mode, ["getOfficialWeatherData", "getInverterData", "getWeatherData", "getEarliestRecorded"])){ //keeps certain kinds of hacks from working
+			die(json_encode(["error"=>"your brilliant hack has failed"]));
+		}
+	}
+	
+	$specificColumn = gvfw("specific_column");
+	if($storagePassword){
+		$deviceIds = deriveDeviceIdsFromStoragePassword($storagePassword);
+	}
+
 	$canAccessData = array_search($locationId, $deviceIds) !== false;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
 	if($canAccessData) {		
 		$tenant = deriveTenantFromStoragePassword($storagePassword);
@@ -146,6 +147,7 @@ if($_REQUEST) {
 				$saveDeviceInfo = false;
 				$transmissionTimestamp = 0;
 				$millis = "NULL";
+				$averageLatency = "NULL";
 				$latency = 0;
 
 				if(count($lines)>1) {
@@ -202,6 +204,11 @@ if($_REQUEST) {
 						if(count($extraInfo)>8) {
 							$millis = $extraInfo[8];
 						}
+						if(count($extraInfo)>9) {
+							$averageLatency = $extraInfo[9];
+							writeMemoryCache("latency-" . $deviceId, $averageLatency);
+						}
+
 					 
 					}
 					if(count($lines) > 4) {
@@ -235,7 +242,7 @@ if($_REQUEST) {
 
 				$out["transmission_timestamp"] = $transmissionTimestamp;
 				$out["backend_timestamp"] =  time();
-				logSql("timediff: for device# " . $deviceId . ": " . intval(intval($transmissionTimestamp)-intval(time())));
+				//logSql("timediff: for device# " . $deviceId . ": " . intval(intval($transmissionTimestamp)-intval(time())));
 
 			if($mode=="saveIrData") { //data was captured from an irRecorder, so store it in the database!
 				$irData = str_replace("*", ",", $lines[0]); //probably unnecessary now
@@ -509,7 +516,7 @@ if($_REQUEST) {
 				$reserved2 = "NULL";
 				$reserved3 = "NULL";
 				$reserved4 = "NULL";
-				$twelveVoltBatteryVoltage = NULL;
+				//$twelveVoltBatteryVoltage = NULL;
 				$consolidateAllSensorsToOneRecord = 0; //if this is set to one by the first weather record, all weather data is stored in a single device_log record
 				$weatherRecordCounter = 0;
 				$doNotSaveBecauseNoData = true;
@@ -529,7 +536,7 @@ if($_REQUEST) {
 						$reserved3 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved3, $arrWeatherData, 10);
 						$reserved4 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved4, $arrWeatherData, 11);
 						$sensorId = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $sensorId, $arrWeatherData, 12);
-						$twelveVoltBatteryVoltage = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $twelveVoltBatteryVoltage, $arrWeatherData, 16);
+						//$twelveVoltBatteryVoltage = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $twelveVoltBatteryVoltage, $arrWeatherData, 16);
 						if($consolidateAllSensorsToOneRecord){
 							$deviceFeatureId = "NULL";
 						} else {
@@ -554,7 +561,7 @@ if($_REQUEST) {
 							wind_direction,  wind_speed, wind_increment, 
 							precipitation, 
 							reserved1, reserved2, reserved3, reserved4,
-							sensor_id, twelve_voltage, voltage, latitude, longitude, elevation, millis) 
+							sensor_id, voltage, ampage, latitude, longitude, elevation, millis) 
 						VALUES (" . 
 						mysqli_real_escape_string($conn, $locationId) . "," .
 						mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
@@ -572,8 +579,8 @@ if($_REQUEST) {
 						mysqli_real_escape_string($conn, $reserved3) . "," .  
 						mysqli_real_escape_string($conn, $reserved4) . "," .  
 						mysqli_real_escape_string($conn, $sensorId) . "," .
-						mysqli_real_escape_string($conn, $twelveVoltBatteryVoltage) . "," .
 						mysqli_real_escape_string($conn, $measuredVoltage)  . "," .
+						mysqli_real_escape_string($conn, $measuredAmpage)  . "," .
 						mysqli_real_escape_string($conn, $latitude)  . "," .
 						mysqli_real_escape_string($conn, $longitude) . "," .
 						mysqli_real_escape_string($conn, $elevation) . "," .
@@ -1024,6 +1031,7 @@ if($_REQUEST) {
  
 	} else {
 		$out = ["error"=>"you lack permissions"];
+		logSql("permission failed " . $formatedDateTime . ": " . $data);
 	}
 	
 	//var_dump($extraInfo);
@@ -1267,6 +1275,22 @@ function calculateChecksum($in) {
         $checksum += ord($in[$i]);
     }
     return $checksum % 256;
+}
+
+function countSetBitsInString(string $input): int {
+    $bitCount = 0;
+    // Iterate over each character in the string
+    for ($i = 0; $i < strlen($input); $i++) {
+        $char = $input[$i];
+        $asciiValue = ord($char); // Get the ASCII value of the character
+
+        // Count the set bits in the ASCII value
+        while ($asciiValue > 0) {
+            $bitCount += $asciiValue & 1; // Add the least significant bit
+            $asciiValue >>= 1; // Right shift to process the next bit
+        }
+    }
+    return $bitCount;
 }
 
 function simpleDecrypt($ciphertext, $key, $salt) {
