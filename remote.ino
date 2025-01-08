@@ -14,6 +14,8 @@
 #include <IRremoteESP8266.h>
 #include <IRsend.h>
 #include <Adafruit_INA219.h>
+#include <Adafruit_VL53L0X.h>
+#include <Adafruit_ADT7410.h>
 
 #include <NTPClient.h>
 #include <WiFiUdp.h>
@@ -36,6 +38,7 @@
 //amusingly, this barely ate into memory at all
 //since many I2C sensors only permit two sensors per I2C bus, you could reduce the size of these object arrays
 //and so i've dropped some of these down to 2
+Adafruit_ADT7410 adt7410[4];
 DHT* dht[4];
 Adafruit_AHTX0 AHT[2];
 SFE_BMP180 BMP180[2];
@@ -45,6 +48,8 @@ Generic_LM75 LM75[2];
 Adafruit_BMP280 BMP280[2];
 IRsend irsend(ir_pin);
 Adafruit_INA219* ina219;
+
+Adafruit_VL53L0X lox = Adafruit_VL53L0X();
 
 StaticJsonDocument<500> jsonBuffer;
 WiFiUDP ntpUDP; //i guess i need this for time lookup
@@ -70,6 +75,7 @@ float measuredAmpage = 0;
 bool canSleep = false;
 long latencySum = 0;
 long latencyCount = 0;
+int distance = 0;
 
 //https://github.com/spacehuhn/SimpleMap
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
@@ -224,6 +230,10 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
     humidityValue = humidity.relative_humidity;
     temperatureValue = temp.temperature;
     pressureValue = NULL;
+  } else if(sensor_id == 7410) {  
+    temperatureValue = adt7410[objectCursor].readTempC();
+    humidityValue = NULL;
+    pressureValue = NULL;
   } else if(sensor_id == 180) { //so much trouble for a not-very-good sensor 
     //BMP180 code:
     char status;
@@ -251,16 +261,16 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
           // Function returns 1 if successful, 0 if failure.
           status = BMP180[objectCursor].getPressure(pressureValue,temperatureValue);
           if (status == 0) {
-            Serial.println("error retrieving pressure measurement\n");
+            //Serial.println("error retrieving pressure measurement\n");
           }
         } else {
-          Serial.println("error starting pressure measurement\n");
+          //Serial.println("error starting pressure measurement\n");
         }
       } else {
-        Serial.println("error retrieving temperature measurement\n");
+        //Serial.println("error retrieving temperature measurement\n");
       }
     } else {
-      Serial.println("error starting temperature measurement\n");
+      //Serial.println("error starting temperature measurement\n");
     }
     humidityValue = NULL; //really should set unknown values as null
   } else if (sensor_id == 85) {
@@ -284,7 +294,7 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
     transmissionString = nullifyOrNumber(temperatureValue) + "*" + nullifyOrNumber(pressureValue);
     transmissionString = transmissionString + "*" + nullifyOrNumber(humidityValue);
     transmissionString = transmissionString + "*" + nullifyOrNumber(gasValue);
-    transmissionString = transmissionString + "*********"; //for esoteric weather sensors that measure wind and precipitation.  the last four are reserved for now
+    transmissionString = transmissionString + "*******" + distance + "**"; //for esoteric weather sensors that measure wind and precipitation.  the last four are reserved for now
   }
   //using delimited data instead of JSON to keep things simple
   transmissionString = transmissionString + nullifyOrInt(sensor_id) + "*" + nullifyOrInt(deviceFeatureId) + "*" + sensorName + "*" + nullifyOrInt(consolidateAllSensorsToOneRecord); 
@@ -315,8 +325,7 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
   } else if(sensorIdLocal == 680) {
     Serial.print(F("Initializing BME680 sensor...\n"));
     while (!BME680[objectCursor].begin(I2C_STANDARD_MODE, i2c)) {  // Start B DHTME680 using I2C, use first device found
-      Serial.print(F(" - Unable to find BME680. Trying again in 5 seconds.\n"));
-      delay(5000);
+      Serial.print(F(" - Unable to find BME680.\n"));
     }  // of loop until device is located
     Serial.print(F("- Setting 16x oversampling for all sensors\n"));
     BME680[objectCursor].setOversampling(TemperatureSensor, Oversample16);  // Use enumerated type values
@@ -340,6 +349,9 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
     } else {
       Serial.println("Didn't find AHT20");
     }  
+  } else if (sensorIdLocal == 7410) { //adt7410
+    adt7410[objectCursor].begin(i2c);
+    adt7410[objectCursor].setResolution(ADT7410_16BIT);
   } else if (sensorIdLocal == 180) { //BMP180
     BMP180[objectCursor].begin();
   } else if (sensorIdLocal == 85) { //BMP085
@@ -992,6 +1004,11 @@ void setup(void){
   if(ir_pin > -1) {
     //irsend.begin(); //do this elsewhere?
   }
+  if(time_of_flight_address > 0) {
+    if(!lox.begin()) {
+      Serial.println(F("Failed to boot VL53L0X"));
+    }
+  }
 }
 //LOOP----------------------------------------------------
 void loop(){
@@ -1028,6 +1045,16 @@ void loop(){
   }
 
   lookupLocalPowerData();
+
+  if(time_of_flight_address > 0) {
+    VL53L0X_RangingMeasurementData_t measure;
+    lox.rangingTest(&measure, false); // pass in 'true' to get debug data printout!
+    if (measure.RangeStatus != 4) {  // phase failures have incorrect data
+      distance = measure.RangeMilliMeter;
+    } else {
+      distance = -1;
+    }
+  }
  
   if(canSleep) {
     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
