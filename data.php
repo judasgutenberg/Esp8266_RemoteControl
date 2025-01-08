@@ -629,7 +629,7 @@ if($_REQUEST) {
 					$rows = mysqli_fetch_all($sensorResult, MYSQLI_ASSOC);
 					foreach($rows as $row){
 						//var_dump($row);
-						$outString .= "|" . $row["pin_number"] . "*" . $row["power_pin"] . "*" . $row["sensor_type"] . "*" . $row["sensor_sub_type"] . "*" . $row["via_i2c_address"] . "*" . $row["device_feature_id"] . "*" . str_replace("|", "", str_replace("*", "", $row["name"])) . "*0";
+						$outString .= "|" . $row["pin_number"] . "*" . $row["power_pin"] . "*" . $row["sensor_type"] . "*" . $row["sensor_sub_type"] . "*" . $row["via_i2c_address"] . "*" . $row["device_feature_id"] . "*" .  removeDelimiters($row["name"]) . "*" . $row["overwrite_ordinal"] . "*0";
 					}
 				}
 				if(strpos($outString, "|") === false){
