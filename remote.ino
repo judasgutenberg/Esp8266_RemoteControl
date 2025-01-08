@@ -235,7 +235,6 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
     humidityValue = NULL;
     pressureValue = NULL;
   } else if(sensor_id == 180) { //so much trouble for a not-very-good sensor 
-    //BMP180 code:
     char status;
     double p0,a;
     status = BMP180[objectCursor].startTemperature();
