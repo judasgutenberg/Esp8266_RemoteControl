@@ -36,3 +36,4 @@ extern const char pins_to_start_low[];
 
 extern const int ir_pin; 
 extern const int ina219_address;
+extern const int time_of_flight_address;
