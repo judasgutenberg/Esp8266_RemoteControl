@@ -1910,7 +1910,7 @@ function templateableTables() {
 
 //all the tables of this system
 function schemaTables() {
-  return ["command", "command_type", "device", "device_feature", "device_feature_log", "device_feature_management_rule", "device_log", "device_type", "device_type_feature", "feature_type", "inverter_log", "ir_pulse_sequence", "ir_target_type", "management_rule", "reboot_log", "report report_log", "tenant", "tenant_user", "user"];
+  return ["command", "command_type", "device", "device_column_map", "device_feature", "device_feature_log", "device_feature_management_rule", "device_log", "device_type", "device_type_feature", "feature_type", "inverter_log", "ir_pulse_sequence", "ir_target_type", "management_rule", "reboot_log", "report report_log", "tenant", "tenant_user", "user"];
  
 }
 
