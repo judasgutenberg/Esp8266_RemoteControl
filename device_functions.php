@@ -139,6 +139,7 @@ function devices($tenantId) {
     );
     $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
     $toolsTemplate .= " | <a href='?table=device_feature&device_id=<" . $table . "_id/>'>Device Features</a>";
+    $toolsTemplate .= " | <a href='?table=device_column_map&device_id=<" . $table . "_id/>'>Custom Columns</a>";
     $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
     if($result) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
@@ -949,6 +950,152 @@ function commands($tenantId, $deviceId){
   }
   return $out;
 }
+
+function deviceColumnMaps($deviceId, $tenantId){
+  Global $conn;
+  $table = "device_column_map";
+  $out = "<div class='listheader'>Device Column Maps</div>";
+  $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "&device_id=" . $deviceId . "'>Create</a></div> a device column map</div>\n";
+  $headerData = array(
+    [
+	    'label' => 'id',
+      'name' => $table . "_id"
+	  ],
+		[
+	    'label' => 'table',
+      'name' => 'table_name'
+	  ] ,
+    [
+	    'label' => 'column',
+      'name' => 'column_name'
+	  ] ,
+    [
+	    'label' => 'display',
+      'name' => 'display_name'
+	  ] ,
+    [
+	    'label' => 'save processed',
+      'name' => 'process_before_save'
+	  ] ,
+		[
+	    'label' => 'created',
+      'name' => 'created'
+	  ] 
+    );
+ 
+  $sql = "SELECT * FROM " . $table . "    WHERE tenant_id =" . intval($tenantId);
+  if($deviceId) {
+    $sql .= " AND device_id = " . intval($deviceId);  
+  }
+  $sql .= " ORDER BY t.created DESC";
+  $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
+  $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
+  $result = mysqli_query($conn, $sql);
+ 
+  if($result) {
+    $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    //var_dump($rows);
+    if($rows) {
+      $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id", $sql);
+    }
+    
+  }
+  return $out;
+}
+
+function editDeviceColumnMap($error, $deviceId, $tenantId) {
+  Global $conn;
+  $table = "device_column_map";
+  $pk = gvfw($table . "_id");
+  
+  $submitLabel = "save command";
+  if($pk  == "") {
+    $submitLabel = "create command";
+    $source = $_POST;
+  } else {
+    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
+    if($deviceId != ""){
+      $sql .= " AND device_id=" . intval($deviceId);
+    }
+    $result = mysqli_query($conn, $sql);
+    if($result) {
+      $source = mysqli_fetch_array($result);
+    }
+  }
+  if(!$pk){
+    $pk = "NULL";
+  }
+   
+  $formData = array(
+    [
+	    'label' => 'id',
+      'name' => $table . "_id",
+      'type' => 'read_only',
+	    'value' => gvfa($table . "_id", $source)
+	  ],
+    [
+	    'label' => 'created',
+      'name' => "created",
+      'type' => 'read_only',
+	    'value' => gvfa("created", $source)
+	  ],
+      
+    [
+	    'label' => 'Device',
+      'accent_color' => "red",
+      'name' => 'device_id',
+      'type' => 'select',
+	    'value' => gvfa("device_id", $source), 
+      'error' => gvfa('device_id', $error),
+      'values' => "SELECT device_id, name as 'text' FROM device WHERE tenant_id='" . $tenantId  . "' ORDER BY name ASC",
+	  ],
+    [
+	    'label' => 'Associated Table',
+      'name' => "table_name",
+      'type' => 'select',
+	    'value' => gvfa("table_name", $source), 
+      'error' => gvfa("table_name", $error),
+      'change-function' => "getColumnsForTable('table_name', 'column_name')",
+      'values' => schemaTables()
+	  ],
+    [
+	    'label' => 'Column',
+      'name' => "column_name",
+      'type' => 'select',
+	    'value' => gvfa("column_name", $source), 
+      'error' => gvfa("column_name", $error),
+      'values' => getColumns(gvfa("table_name", $source))
+	  ],
+    [
+	    'label' => 'Label',
+      'name' => "display_name",
+      'type' => 'string',
+	    'value' => gvfa("display_name", $source), 
+      'error' => gvfa("display_name", $error),
+	  ],
+    [
+	    'label' => 'Process Algorithm',
+      'name' => "process_algorithm",
+      'type' => 'string',
+      'width' => 500,
+      'height' => 200,
+	    'value' => gvfa("process_algorithm", $source), 
+      'error' => gvfa("process_algorithm", $error),
+	  ],
+    [
+	    'label' => 'Save Processed (not raw) Data',
+      'name' => "process_before_save",
+      'type' => 'checkbox',
+	    'value' => gvfa("process_before_save", $source), 
+      'error' => gvfa("process_before_save", $error),
+	  ]
+ 
+ 
+    );
+  $form = genericForm($formData, $submitLabel);
+  return $form;
+}
+
 
 function editReport($error,  $tenantId) {
   Global $conn;
@@ -1763,7 +1910,7 @@ function templateableTables() {
 
 //all the tables of this system
 function schemaTables() {
-  return ["command", "command_type", "device", "device_feature", "device_feature_log", "device_feature_management_rule", "device_type", "device_type_feature", "feature_type", "inverter_log", "ir_pulse_sequence", "ir_target_type", "management_rule", "reboot_log", "report report_log", "tenant", "tenant_user", "user", "device_log"];
+  return ["command", "command_type", "device", "device_feature", "device_feature_log", "device_feature_management_rule", "device_log", "device_type", "device_type_feature", "feature_type", "inverter_log", "ir_pulse_sequence", "ir_target_type", "management_rule", "reboot_log", "report report_log", "tenant", "tenant_user", "user"];
  
 }
 
@@ -2034,7 +2181,7 @@ function visitorLog($deviceId, $number) {
   $lines=array();
   $logFile = "/var/log/apache2/access.log";
   if($deviceId){
-    $strToExec = "grep \"locationId=" . $deviceId . "\" " . $logFile . " | tail -n " . $number;
+    $strToExec = "grep -E \"device_id=" . $deviceId . "|locationId=" .   $deviceId . "\" " . $logFile . " | tail -n " . $number;
   } else {
     $strToExec = "cat " . $logFile . " | tail -n " . $number;
   }

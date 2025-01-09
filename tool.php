@@ -317,6 +317,12 @@ if ($user) {
     } else {
      $out .= devices($tenantId);
     }
+	} else if($table == "device_column_map") {
+    if ($action == "startcreate" || gvfw("device_column_map_id") != "") {
+      $out .=  editDeviceColumnMap($errors, $deviceId, $tenantId);
+    } else {
+     $out .= deviceColumnMaps($deviceId, $tenantId);
+    }
 	} else if($table == "device_feature") {
     if ($action == "startcreate" || gvfw("device_feature_id") != "") {
       $out .=  editDeviceFeature($errors,  $user);

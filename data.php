@@ -587,7 +587,6 @@ if($_REQUEST) {
 						mysqli_real_escape_string($conn, $millis) .
 						")";
 					}
-					
 					for($datumCounter = 0; $datumCounter < 12; $datumCounter++){
 						$testValue = $arrWeatherData[$datumCounter];
 						if(strtolower($testValue) != "null" && $testValue != "" && strtolower($testValue) != "nan"){
@@ -740,10 +739,8 @@ if($_REQUEST) {
 									$originalConditions = $conditions;
 									$managementResultValue = $automationRow["result_value"];
 									$managementRuleName = $automationRow["name"];
-
 									$conditions = trim($conditions); // Remove any leading/trailing whitespace
 									$conditions = mb_convert_encoding($conditions, 'UTF-8', 'auto'); 
-					
 									if($timeValidStart == NULL || $timeValidEnd == NULL || $currentTime >= $timeValidStart  && $currentTime <=  $timeValidEnd ) {
 										//now all we need to do is worry about the conditions.  but these can be complicated!
 										//the way a condition works is as follows:
@@ -754,7 +751,6 @@ if($_REQUEST) {
 										preg_match_all($tagFindingPattern, $conditions, $matches);
 										//now we have all our tags! we need to look up their respective data and substitute in!
 										$tokenContents = $matches[0];
-										
 										foreach ($tokenContents as $originalToken) {
 											$tokenReplaced = false;
 											$lookedUpValue = NULL;
@@ -782,9 +778,6 @@ if($_REQUEST) {
 													$extraManagementWhereClause = " AND device_id=" . intval($managementLocationId);
 												}
 												$managmentValueLookupSql = "SELECT " . $managementColumn . " As value FROM " . $managementTableName . " WHERE recorded >= '" . $formatedDateTime20MinutesAgo . "' AND " . $managementTableName . "_id = (SELECT MAX(" . $managementTableName. "_id) FROM " . $managementTableName . " WHERE 1=1 " . $extraManagementWhereClause . ") " . $extraManagementWhereClause;
-												//echo $managmentValueLookupSql . "\n";
-												
-												//logSql("lookup sql:" . $managmentValueLookupSql);
 												$managementValueResult = mysqli_query($conn, $managmentValueLookupSql);
 
 												if($managementValueResult) {
@@ -792,7 +785,6 @@ if($_REQUEST) {
 													if($valueArray) {
 														$lookedUpValue = gvfa("value", $valueArray);
 													}
-													//echo $originalToken . " :" .  $lookedUpValue . "\n";
 												}
 											}
 											if($lookedUpValue != NULL) {
@@ -808,8 +800,6 @@ if($_REQUEST) {
 												$conditions = str_replace($originalToken, "<fail/>", $conditions);
 												//echo  "!" . $lookedUpValue . "|=|" . $originalToken . "|:" . $conditions . "\n";
 											}
-
-											
 										}
 										if(count($tokenContents) > 0 ) {
 											//logSql("management conditions:" .  $conditions);
@@ -824,8 +814,6 @@ if($_REQUEST) {
 											} else {
 												logSql("FAILED TOKEN REPLACEMENT:" .  $originalConditions);
 											}
-
-											//logSql("management judgment:" . $managementJudgment);
 											if($managementJudgment == 1  && $row["value"] != $managementResultValue){
 												//don't automate a change within five minutes of a user change
 												if(timeDifferenceInMinutes($modified, $formatedDateTime) > 5) {
@@ -848,11 +836,6 @@ if($_REQUEST) {
 						}
 						$lastModified  = "";
 						$sqlToUpdateDeviceFeature = "";
-						//echo count($pinValuesKnownToDevice) . "*" . $pinCursor . "<BR>";
-						//this part update device_feature so we can tell from the server if the device has taken on the server's value
-						//var_dump($pinValuesKnownToDevice);
-						//echo $deviceFeatureId  . "*" .  intval(count($pinValuesKnownToDevice) > $pinCursor)  . "*" .  $pinValuesKnownToDevice[$pinCursor] . "*" . intval(is_numeric($pinValuesKnownToDevice[$pinCursor])) ."<BR>";
-
 
 						//if we have a pinValuesKnownToDevice change AND there is allowAutomaticManagement then we need to take the $formatedDateTime, and use that to set automation_disabled_when 
 						if(count($pinValuesKnownToDevice) > $pinCursor && is_numeric($pinValuesKnownToDevice[$pinCursor])) {
@@ -860,8 +843,6 @@ if($_REQUEST) {
 							$lastModified = " last_known_device_modified='" . $formatedDateTime . "',";
 							$lastKnownDevice = " last_known_device_value =  " . nullifyOrNumber($pinValuesKnownToDevice[$pinCursor]) . ","; //only do this when we actually have data from the microcontroller
 							$sqlToUpdateDeviceFeature = "UPDATE device_feature SET <lastknowndevice/><lastmodified/><additional/>";
-							
-							//echo $sqlToUpdateDeviceFeature  . "<BR> " . $specificPin  . "<BR>";
 							$sqlIfDataGoingUpstream = " value =" . $pinValuesKnownToDevice[$pinCursor] . ",";
 							if($deviceFeatureId == 3){
 								//logSql("going upstream sql:" . $sqlIfDataGoingUpstream . " " . $lines[2]);
@@ -889,17 +870,13 @@ if($_REQUEST) {
 								$sqlToUpdateDeviceFeature = str_replace("<additional/>", "", $sqlToUpdateDeviceFeature);
 							}
 							$row["ss"] = 0;
-							
 						}
 						if(count($pinValuesKnownToDevice) > $pinCursor) { //do all the logging and the lastModified part
 							if($row["value"] != $pinValuesKnownToDevice[$pinCursor] || $row["last_known_device_value"] !=  $row["value"]) { //we're changing a value by sending one upstream. otherwise we shouldn't change last_known_device_modified
-								
-								
 								$sqlToUpdateDeviceFeature = str_replace("<lastmodified/>", $lastModified, $sqlToUpdateDeviceFeature);
 
 								$oldValue = $row["value"];
 								$newValue = $pinValuesKnownToDevice[$pinCursor];
-								
 								//mechanism is the ipAddress or "automation" at this point
 								if($row["last_known_device_value"] !=  $row["value"]) {
 									$mechanism = "server-side";
@@ -909,51 +886,16 @@ if($_REQUEST) {
 								if(!$automationDisabledWhen && $allowAutomaticManagement && !$automatedChangeMade && intval($oldValue) != intval($newValue)) {  
 									$sqlToUpdateDeviceFeature .= " automation_disabled_when='" . $formatedDateTime . "',";
 								}
-
 								//if this is an ipaddress-mechanism change undoing a recent automation change, then don't bother
 								if($historicMechanism == "automation" && intval($historicBecame) != intval($newValue)  &&  $mechanism == $ipAddress && $historicRecorded > $formatedDateTimeAFewMinutesAgo){
 									$canUpdateDeviceFeature = false;
 								}
 								//also log this change in the new device_feature_log table!  we're going to need that for when device_features get changed automatically based on data as well!
- 
-
-
 								$weJustHadALogItemLikeThis = intval($historicWas) == intval($oldValue) && intval($historicBecame) == intval($newValue) && $historicMechanism == $mechanism && $historicRecorded > $formatedDateTimeAFewMinutesAgo;
 
 								if(!$weJustHadALogItemLikeThis && $canUpdateDeviceFeature) {
 									$loggingSql = "INSERT INTO device_feature_log (device_feature_id, tenant_id, recorded, beginning_state, end_state, management_rule_id, mechanism, user_id) VALUES (";
 									$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "'," . $userId .")";
-				 
-									
-									/*
-									$loggingSql = "INSERT INTO device_feature_log (device_feature_id, tenant_id, recorded, beginning_state, end_state, management_rule_id, mechanism, user_id) SELECT ";
-									$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "'," . $userId;
-									
-									$loggingSql .= " WHERE NOT EXISTS (
-										SELECT 1 FROM device_feature_log
-										WHERE device_feature_id = " . nullifyOrNumber($row["device_feature_id"]) . "
-										AND tenant_id = " . $tenant["tenant_id"] . "
-										AND beginning_state = " . intval($oldValue) . "
-										AND end_state = " . intval($newValue) . "
-		
-										AND mechanism = '" . $mechanism . "'
-										AND user_id = " . $userId . "
-										AND recorded > '" . $formatedDateTime2MinutesAgo . "'
-									)";
-									*/
-									//--AND management_rule_id = " . nullifyOrNumber($managementRuleId) . "
-								
-							 
-								
-								
-									//if($mechanism == "automation"){
-										//logSql("logging sql: " . $loggingSql);
-										//logSql("update sql: " . $sqlToUpdateDeviceFeature);
-									//}
-									//echo $loggingSql;
-									//logSql($sqlToUpdateDeviceFeature);
-									//logSql("specific pin: ".$specificPin . " pinCursor:" . $pinCursor  );
-									//logSql("querystring: ". $_SERVER['QUERY_STRING']  );
 									if($automatedChangeMade || $specificPin > -1 && $specificPin == $pinCursor  || $specificPin == -1){ //otherwise we get too much logging if we're in one-pin-at-a-mode time
 										if(intval($oldValue) != intval($newValue) ) { //let's only log ch-ch-ch-changes
 											$loggingResult = mysqli_query($conn, $loggingSql);
@@ -1017,7 +959,6 @@ if($_REQUEST) {
 								}
 							}
 						}
-							
 						if($row["i2c"] > 0){
 							$out["pin_list"][] = $row["i2c"] . "." . $pinNumber ;
 						} else {
@@ -1028,37 +969,24 @@ if($_REQUEST) {
 				}
 			} 
 		}
- 
 	} else {
 		$out = ["error"=>"you lack permissions"];
 		logSql("permission failed " . $formatedDateTime . ": " . $data);
 	}
 	
-	//var_dump($extraInfo);
-	//var_dump($nonJsonPinData);
-	//var_dump($justGetDeviceInfo);
 	if (endsWith(strtolower($mode), "nonjson")) {
 		//let's just double-delimit using pipes and stars
-		//lots of comments because CHAT fucking GPT!
 		// Get the first item in the root level
 		//note: this only works with a one-property object 
 		$firstItem = reset($out); //this was the main thing i need to know but didn't
 		// Initialize an array to hold the parsed values
 		$parsedValues = [];
-		// Iterate through each item in the array
 		foreach ($firstItem as $item) {
-			// Extract the values from the associative array
 			$values = array_values($item);
-			// Concatenate the values with "*" as the delimiter
 			$parsedValues[] = implode('*', $values);
 		}
 		// Concatenate each item's values with "|" as the delimiter
-		$result = implode('|', $parsedValues);
-		
-		
-	
-
-		
+		$result = implode('|', $parsedValues);	
 	} else if($nonJsonPinData == '1' && array_key_exists("device_data", $out) && !array_key_exists("error", $out)) { //create a very bare-bones non-JSON delimited data object to speed up data propagation to device
 		$nonJsonOutString = "|";
 		foreach($out["device_data"] as $deviceDatum){
@@ -1070,7 +998,6 @@ if($_REQUEST) {
 				}
 				$nonJsonOutString .=  removeDelimiters($deviceDatum["name"]) . "*" . $pinName . "*" . intval($deviceDatum["value"]) .  "*" . intval($deviceDatum["can_be_analog"]) . "*" . $deviceDatum["ss"] . "|";
 			}
-
 		}
 		$nonJsonOutString = substr($nonJsonOutString, 0, -1);
 		//new way to do it:
@@ -1086,7 +1013,6 @@ if($_REQUEST) {
 		}
 		echo json_encode($out);
 	}
-	
 } else {
 	echo '{"message":"done", "method":"' . $method . '"}';
 }
@@ -1226,7 +1152,6 @@ function sqlForStartOfPeriodScale($periodScale, $now) {
 	}
 	return $startOfPeriod;
 }
-
 
 function getLatestCommandData($deviceId, $tenantId){
 	Global $conn;

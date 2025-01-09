@@ -587,10 +587,16 @@ function getColumnsForTable(sourceTableSelectName, destColumnSelectName, dest2Co
             
             // Remember the currently selected option
             let currentlySelectedValue = destSelect.value;
-			let currently2SelectedValue = dest2Select.value;
+			let currently2SelectedValue;
+			if(dest2ColumnSelectName) {
+				currently2SelectedValue = dest2Select.value;
+			}
+ 
             // Clear existing options
             destSelect.innerHTML = "";
-			dest2Select.innerHTML = "";
+			if(dest2Select){
+				dest2Select.innerHTML = "";
+			}
             // Populate the select with new options
             let foundSelected = false;
 			let found2Selected = false;
@@ -602,13 +608,15 @@ function getColumnsForTable(sourceTableSelectName, destColumnSelectName, dest2Co
 				option2.value = column;
                 option2.textContent = column;
                 destSelect.appendChild(option);
-				dest2Select.appendChild(option2);
+				if(dest2Select){
+					dest2Select.appendChild(option2);
+				}
                 // Preserve selection if the value exists in the new options
                 if (column === currentlySelectedValue) {
                     option.selected = true;
                     foundSelected = true;
                 }
-				if (column === currently2SelectedValue) {
+				if (currently2SelectedValue && column === currently2SelectedValue) {
                     option2.selected = true;
                     found2Selected = true;
                 }
@@ -618,7 +626,7 @@ function getColumnsForTable(sourceTableSelectName, destColumnSelectName, dest2Co
             if (!foundSelected) {
                 destSelect.value = ""; // Clear selection
             }
-			if (!found2Selected) {
+			if (!found2Selected && dest2Select) {
                 dest2Select.value = ""; // Clear selection
             }
         }
