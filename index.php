@@ -14,18 +14,7 @@ $conn = mysqli_connect($servername, $username, $password, $database);
 $user = autoLogin();
 if($user){
 	$devices = getDevices($user["tenant_id"], false);
-	$weatherColumns = [];
-	foreach($devices as $device){
-		if(array_key_exists("device_column_maps", $device)){
-			foreach($device["device_column_maps"] as $map){
-				$column = $map["column_name"];
-				if (!in_array($column, $weatherColumns, true)) {
-					$weatherColumns[] = $column;
-				}
-			}
-		}
-		 
-	}
+	$weatherColumns = getGraphColumns($user["tenant_id"]);
 	//var_dump($devices);
 	if(array_key_exists( "locationId", $_REQUEST)) {
 		$locationId = $_REQUEST["locationId"];
@@ -35,6 +24,7 @@ if($user){
 		}
 	}
 }
+
 $tenantSelector = "";
 $scaleConfig =  timeScales();
 
@@ -94,8 +84,10 @@ function plotTypePicker($type, $handler){
   <title>Weather Information</title>
   <!--For offline ESP graphs see this tutorial https://circuits4you.com/2018/03/10/esp8266-jquery-and-ajax-web-server/ -->
   <script src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>  
+  <script src = "tinycolor.js"></script>  
   <script>
   	let scaleConfig = JSON.parse('<?php echo json_encode(timeScales()); ?>');
+	let devices = [];//JSON.parse('<?php echo json_encode($devices); ?>');
 	window.timezone ='<?php echo $timezone ?>';
   </script>
   <script src='tool.js'></script>
@@ -148,6 +140,8 @@ function plotTypePicker($type, $handler){
 				echo "<tr><td>Use Absolute Timespan Cusps</td><td><input type='checkbox' value='absolute_timespan_cusps' id='atc_id' onchange='" . $handler . "'/></td></tr>";
 				echo "\n</table>\n";
 				echo "<br/><button onclick='getWeatherData(1);return false'>show data from a year before</button>";
+				echo "<br/><button onclick='editColumns();return false'>edit weather columns</button>";
+				
 				?>
 				</div>
 
@@ -201,7 +195,7 @@ let pastYearsViewed = [];
 let columnsWeCareAbout = <?php echo json_encode($weatherColumns)?>;
 let yearsIntoThePastWeCareAbout = [0,1,2,3];
 let timeStamp = [];
-let devices = [];
+//let devices = [];
 
 resetGraphData();
 
@@ -230,7 +224,7 @@ function resetGraphData(locationIdArray){
 	}
 }
 
-function addPastYearToGraph(locationIdArray, yearsAgo, plotType){
+function addPastYearToGraph(locationIdArray, locationId, yearsAgo, plotType){
 	yearsAgo = parseInt(yearsAgo);
 	let columnCount = 0;
 	let colorSeries = ["#ffcccc","#ccffcc", "#ccccff", "#999999", "#aaaaaa", "#bbbbbb", "#cccccc"];
@@ -262,22 +256,42 @@ function addPastYearToGraph(locationIdArray, yearsAgo, plotType){
 		//console.log(graphDataObject);
 		if(graphDataObject[yearsAgo]){
 			for (let column of columnsWeCareAbout){
-				//console.log(graphDataObject);
-				let yAxisId = "A";
-					if(column == "pressure"){
-						yAxisId = "B";
+				let mapToUse;
+				let foundDevice = findObjectByColumn(devices, "device_id", locationId.toString());
+				let deviceColumnMaps = foundDevice["device_column_maps"];
+				for(let map of deviceColumnMaps){
+					if(column == map["column_name"] && map["table_name"] == "device_log"){
+						mapToUse = map;
 					}
-				glblChart.data.datasets.push(
-						{
-							label: column + " " + parseInt(parseInt(new Date().getFullYear()) - yearsAgo),
-							fill: false,  //Try with true
-							backgroundColor: colorSeries[columnCount],
-							borderColor: colorSeries[columnCount],
-							data: graphDataObject[yearsAgo][column],
-							yAxisID: yAxisId
+				}
+				if(mapToUse["include_in_graph"] == 1) {
+					let color = colorSeries[columnCount];
+					let label = column;
+					if(mapToUse["color"]){
+						color = mapToUse["color"];
+						color = tinycolor(color).lighten(26);
+					}
+					if(mapToUse["display_name"]){
+						label = mapToUse["display_name"];
+					}
+					label = label + " " + parseInt(parseInt(new Date().getFullYear()) - yearsAgo);
+					//console.log(graphDataObject);
+					let yAxisId = "A";
+						if(column == "pressure"){
+							yAxisId = "B";
 						}
-				);
-				columnCount++;
+					glblChart.data.datasets.push(
+							{
+								label: label,
+								fill: false,  //Try with true
+								backgroundColor: color,
+								borderColor: color,
+								data: graphDataObject[yearsAgo][column],
+								yAxisID: yAxisId
+							}
+					);
+					columnCount++;
+				}
 			}
 		}
 	}
@@ -296,24 +310,45 @@ function showGraph(locationId, plotType){
 	//graphDataObject[yearsAgo][column]
 	let chartDataSet = [];
 	let columnCount = 0;
+	let foundDevice = findObjectByColumn(devices, "device_id", locationId.toString());
+	let deviceColumnMaps = foundDevice["device_column_maps"];
 	if(plotType == "single"){
 		for (let column of columnsWeCareAbout){
-			let yAxisId = "A";
-			if(column == "pressure"){
-				yAxisId = "B";
-			}
-			//console.log(graphDataObject[0][column]);
-			chartDataSet.push(
-				{
-					label: column,
-					fill: false,  //Try with true
-					backgroundColor: colorSeries[columnCount],
-					borderColor: colorSeries[columnCount],
-					data: graphDataObject[0][column],
-					yAxisID: yAxisId
+			let mapToUse;
+			for(let map of deviceColumnMaps){
+				if(column == map["column_name"] && map["table_name"] == "device_log"){
+					mapToUse = map;
 				}
-			);
-			columnCount++;
+			}
+			if(mapToUse["include_in_graph"] == 1) {
+				let graphSubtitle;
+				let color = colorSeries[columnCount];
+				let label = column;
+				if(mapToUse["color"]){
+					color = mapToUse["color"];
+				}
+				if(mapToUse["display_name"]){
+					label = mapToUse["display_name"];
+				}
+				let yAxisId = "A";
+				if(column == "pressure"){
+					yAxisId = "B";
+				}
+				graphSubtitle =   foundDevice["location_name"] + " data";
+	
+				//console.log(graphDataObject[0][column]);
+				chartDataSet.push(
+					{
+						label: label,
+						fill: false,  //Try with true
+						backgroundColor: color,
+						borderColor: color,
+						data: graphDataObject[0][column],
+						yAxisID: yAxisId
+					}
+				);
+				columnCount++;
+			}
 		}
 	}
 	let scales = {
@@ -627,7 +662,23 @@ function getWeatherData(yearsAgo) {
 						} else {
 							//graphDataObject[year][column]
 							for (let column of columnsWeCareAbout){
+								let mapToUse;
+								let foundDevice = findObjectByColumn(devices, "device_id", locationId.toString());
+								let deviceColumnMaps = foundDevice["device_column_maps"];
+								for(let map of deviceColumnMaps){
+									if(column == map["column_name"] && map["table_name"] == "device_log" && map["process_before_save"] == 0){
+										mapToUse = map;
+									}
+								}
 								let value = datum[column];
+
+
+								if(mapToUse && mapToUse["process_algorithm"]) {
+									//process the string using the process_algorithm if it's for post-processing
+									let evalString = tokenReplace(mapToUse["process_algorithm"], datum,  "<", "/>");
+									value = eval(evalString);
+									
+								}
 								if(column == "temperature"){
 									value = value * (9/5) + 32;
 								}
@@ -662,11 +713,10 @@ function getWeatherData(yearsAgo) {
 			}
 			
 			if(yearsAgo == 0){
-				console.log(multiGraphDataObject);
 				glblChart = showGraph(locationId, plotType);  //Update Graphs
 				document.getElementById('greatestTime').innerHTML = " Latest Data: " + timeAgo(greatestTime);
 			} else {
-				addPastYearToGraph(locationIdArray, yearsAgo, plotType);
+				addPastYearToGraph(locationIdArray, locationId, yearsAgo, plotType);
 			}
 			officialWeather(locationId);
 			if(yearsAgoToShow){
@@ -755,7 +805,6 @@ function officialWeather(locationId) {
 }
 
 function updateColumnsWeCareAbout(devices, locationIds){
-	console.log(locationIds);
 	columnsWeCareAbout = [];
 	for(const device of devices){
 		if(device["device_column_maps"]) {
@@ -769,7 +818,12 @@ function updateColumnsWeCareAbout(devices, locationIds){
 			}
 		}
 	}
-	console.log(columnsWeCareAbout);
+}
+
+function editColumns(){
+	const queryParams = new URLSearchParams(window.location.search);
+	const locationId = queryParams.get('location_id');
+	window.location = "tool.php?table=device_column_map&device_id=" + locationId;
 }
 
 getWeatherData();

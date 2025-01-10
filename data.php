@@ -335,7 +335,7 @@ if($_REQUEST) {
 						if($allDeviceColumnMaps) {
 						$additionalWhere = " AND include_in_graph = 1 ";
 						}
-						$sql = "SELECT * FROM device_column_map WHERE device_id=" . $deviceId . " " . $additionalWhere . " ORDER BY display_name";
+						$sql = "SELECT * FROM device_column_map WHERE device_id=" . $deviceId . " " . $additionalWhere . "  ORDER BY sort_order, display_name, column_name ";
 						$subResult = mysqli_query($conn, $sql);
 						if($subResult) {
 							$subRows = mysqli_fetch_all($subResult, MYSQLI_ASSOC);
@@ -458,7 +458,8 @@ if($_REQUEST) {
 						//to revisit:  need to figure out a way to keep users without a device_id from seeing someone else's devices
 						$sql = "SELECT " . filterStringForSqlEntities($specificColumn)  . ", device_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE  device_id IN (" . filterCommasAndDigits($locationIds) . ") ";
 					} else {
-						$sql = "SELECT temperature, pressure, humidity, device_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE device_id=" . $locationId;
+						$weatherColumns = getGraphColumns($user["tenant_id"], $locationId);
+						$sql = "SELECT " . implode(",", $weatherColumns) . ", device_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE device_id=" . $locationId;
 					}
 					if ($absoluteTimespanCusps == 1) {
 						// Calculate starting point at the "cusp" of each period scale

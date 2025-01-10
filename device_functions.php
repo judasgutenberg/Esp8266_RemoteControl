@@ -139,7 +139,7 @@ function devices($tenantId) {
     );
     $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
     $toolsTemplate .= " | <a href='?table=device_feature&device_id=<" . $table . "_id/>'>Device Features</a>";
-    $toolsTemplate .= " | <a href='?table=device_column_map&device_id=<" . $table . "_id/>'>Custom Columns</a>";
+    $toolsTemplate .= " | <a href='?table=device_column_map&device_id=<" . $table . "_id/>'>Graph Columns</a>";
     $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
     if($result) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
@@ -955,7 +955,8 @@ function deviceColumnMaps($deviceId, $tenantId){
   Global $conn;
   $table = "device_column_map";
   $out = "<div class='listheader'>Device Column Maps</div>";
-  $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "&device_id=" . $deviceId . "'>Create</a></div> a device column map</div>\n";
+  $out .= "<div class='listtools'>";
+  $out .= "<div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "&device_id=" . $deviceId . "'>Create</a></div> a device column map</div>\n";
   $headerData = array(
     [
 	    'label' => 'id',
@@ -966,6 +967,18 @@ function deviceColumnMaps($deviceId, $tenantId){
       'changeable' => true,
       'type' => "checkbox",
       'name' => 'include_in_graph'
+	  ] ,
+    [
+	    'label' => 'sort order',
+      'changeable' => true,
+      'type' => "number",
+      'name' => 'sort_order'
+	  ] ,
+    [
+	    'label' => 'color',
+      'changeable' => true,
+      'type' => "color",
+      'name' => 'color'
 	  ] ,
 		[
 	    'label' => 'table',
@@ -1007,6 +1020,7 @@ function deviceColumnMaps($deviceId, $tenantId){
     }
     
   }
+  $out .= "<div class='basicbutton'><a href='index.php?location_id=" . $deviceId  . "'>See Graph</a></div><br/>";
   return $out;
 }
 
@@ -1047,6 +1061,18 @@ function editDeviceColumnMap($error, $deviceId, $tenantId) {
       'type' => 'checkbox',
 	    'value' => gvfa("include_in_graph", $source)
 	  ],
+    [
+	    'label' => 'sort order',
+      'type' => "int",
+      'name' => 'sort_order',
+      'value' => gvfa("sort_order", $source)
+	  ] ,
+    [
+	    'label' => 'color',
+      'type' => "color",
+      'name' => 'color',
+      'value' => gvfa("color", $source)
+	  ] ,
     [
 	    'label' => 'Device',
       'accent_color' => "red",
@@ -1505,7 +1531,7 @@ function getGeneric($table, $pk, $tenantId){
 
 function getDevices($tenantId, $allDeviceColumnMaps = true){
   Global $conn;
-  $sql = "SELECT * FROM device WHERE tenant_id=" . intval($tenantId);
+  $sql = "SELECT * FROM device WHERE tenant_id=" . intval($tenantId) . " ORDER BY device_id";
 	$result = mysqli_query($conn, $sql);
 	if($result) {
 		$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
@@ -1515,7 +1541,7 @@ function getDevices($tenantId, $allDeviceColumnMaps = true){
       if($allDeviceColumnMaps) {
         $additionalWhere = " AND include_in_graph = 1 ";
       }
-      $sql = "SELECT * FROM device_column_map WHERE device_id=" . $deviceId . " " . $additionalWhere . " ORDER BY display_name";
+      $sql = "SELECT * FROM device_column_map WHERE device_id=" . $deviceId . " " . $additionalWhere . " ORDER BY sort_order, display_name, column_name";
       $subResult = mysqli_query($conn, $sql);
       if($subResult) {
         $subRows = mysqli_fetch_all($subResult, MYSQLI_ASSOC);
@@ -2258,7 +2284,20 @@ function backupDatabase() {
   return "The database <b>" . $database . "</b> was backed up.  It came to " . formatBytes($fileSize) . ".";
 }
 
-
-
-
+function getGraphColumns($tenantId, $deviceId = NULL) {
+  $devices = getDevices($tenantId, false);
+	$weatherColumns = [];
+	foreach($devices as $device){
+		if(array_key_exists("device_column_maps", $device) && ($deviceId == NULL || $deviceId == $device["device_id"])){
+			foreach($device["device_column_maps"] as $map){
+				$column = $map["column_name"];
+				if (!in_array($column, $weatherColumns, true) && $map["include_in_graph"] == 1) {
+					$weatherColumns[] = $column;
+				}
+			}
+		}
+		 
+	}
+  return $weatherColumns;
+}
  
