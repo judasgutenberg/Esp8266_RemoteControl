@@ -961,6 +961,12 @@ function deviceColumnMaps($deviceId, $tenantId){
 	    'label' => 'id',
       'name' => $table . "_id"
 	  ],
+    [
+	    'label' => 'graph',
+      'changeable' => true,
+      'type' => "checkbox",
+      'name' => 'include_in_graph'
+	  ] ,
 		[
 	    'label' => 'table',
       'name' => 'table_name'
@@ -987,9 +993,10 @@ function deviceColumnMaps($deviceId, $tenantId){
   if($deviceId) {
     $sql .= " AND device_id = " . intval($deviceId);  
   }
-  $sql .= " ORDER BY t.created DESC";
+  $sql .= " ORDER BY created DESC";
+  //echo $sql;
   $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
-  $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
+  $toolsTemplate .= " | " . deleteLink($table, $table. "_id", "device_id=" . $deviceId); 
   $result = mysqli_query($conn, $sql);
  
   if($result) {
@@ -1008,12 +1015,13 @@ function editDeviceColumnMap($error, $deviceId, $tenantId) {
   $table = "device_column_map";
   $pk = gvfw($table . "_id");
   
-  $submitLabel = "save command";
+  $submitLabel = "save device column map";
   if($pk  == "") {
-    $submitLabel = "create command";
+    $submitLabel = "create device column map";
     $source = $_POST;
   } else {
     $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
+ 
     if($deviceId != ""){
       $sql .= " AND device_id=" . intval($deviceId);
     }
@@ -1034,12 +1042,11 @@ function editDeviceColumnMap($error, $deviceId, $tenantId) {
 	    'value' => gvfa($table . "_id", $source)
 	  ],
     [
-	    'label' => 'created',
-      'name' => "created",
-      'type' => 'read_only',
-	    'value' => gvfa("created", $source)
+	    'label' => 'include in graph',
+      'name' => "include_in_graph",
+      'type' => 'checkbox',
+	    'value' => gvfa("include_in_graph", $source)
 	  ],
-      
     [
 	    'label' => 'Device',
       'accent_color' => "red",
@@ -1088,6 +1095,12 @@ function editDeviceColumnMap($error, $deviceId, $tenantId) {
       'type' => 'checkbox',
 	    'value' => gvfa("process_before_save", $source), 
       'error' => gvfa("process_before_save", $error),
+	  ],
+    [
+	    'label' => 'created',
+      'name' => "created",
+      'type' => 'read_only',
+	    'value' => gvfa("created", $source)
 	  ]
  
  
@@ -1490,15 +1503,29 @@ function getGeneric($table, $pk, $tenantId){
 	}
 }
 
-function getDevices($tenantId){
+function getDevices($tenantId, $allDeviceColumnMaps = true){
   Global $conn;
   $sql = "SELECT * FROM device WHERE tenant_id=" . intval($tenantId);
 	$result = mysqli_query($conn, $sql);
 	if($result) {
 		$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    foreach($rows as &$row) {
+      $deviceId = $row["device_id"];
+      $additionalWhere = "";
+      if($allDeviceColumnMaps) {
+        $additionalWhere = " AND include_in_graph = 1 ";
+      }
+      $sql = "SELECT * FROM device_column_map WHERE device_id=" . $deviceId . " " . $additionalWhere . " ORDER BY display_name";
+      $subResult = mysqli_query($conn, $sql);
+      if($subResult) {
+        $subRows = mysqli_fetch_all($subResult, MYSQLI_ASSOC);
+        $row["device_column_maps"] = $subRows;
+      }
+    }
 		return $rows;
 	}
 }
+
 function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $loadPower, 
   $solarString1, $solarString2, $batteryVoltage, 
   $mysteryValue3,

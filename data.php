@@ -329,6 +329,19 @@ if($_REQUEST) {
 				$result = mysqli_query($conn, $sql);
 				if($result) {
 					$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+					foreach($rows as &$row) {
+						$deviceId = $row["device_id"];
+						$additionalWhere = "";
+						if($allDeviceColumnMaps) {
+						$additionalWhere = " AND include_in_graph = 1 ";
+						}
+						$sql = "SELECT * FROM device_column_map WHERE device_id=" . $deviceId . " " . $additionalWhere . " ORDER BY display_name";
+						$subResult = mysqli_query($conn, $sql);
+						if($subResult) {
+							$subRows = mysqli_fetch_all($subResult, MYSQLI_ASSOC);
+							$row["device_column_maps"] = $subRows;
+						}
+					}
 					$out["devices"] = $rows;
 				}
 			} else if ($mode=="getEnergyInfo"){ //this gets critical SolArk data for possible use automating certain things
@@ -476,14 +489,8 @@ if($_REQUEST) {
 							$out["records"] = mysqli_fetch_all($result, MYSQLI_ASSOC);
 							$out["sql"] = $sql;
 						}
-						 //we need info about the locations if we are plotting data from multiple ones
-						$sql = "SELECT * FROM device WHERE  tenant_id = " . $user["tenant_id"];
-						//die($sql);
-						$result = mysqli_query($conn, $sql);
-						$error = mysqli_error($conn);
-						if($result && $canAccessData) {
-							$out["devices"] = mysqli_fetch_all($result, MYSQLI_ASSOC);
-						}
+						 //we need info about the devices if we are plotting data from multiple ones
+						$out["devices"] = getDevices($tenant["tenant_id"], true);
 						if(count($out) < 1){
 							array_push($out, ["sql" => $sql, "error"=>$error]);
 						}

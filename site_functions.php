@@ -1715,7 +1715,6 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
       } else if($type == "time" && $value == "") {
         $skip  = true;
 
-
       } else if($column == "last_known_device_modified" || $column == "created" || $column == "modified"  || $type=="datetime") {
         if($type == "datetime" && $value=="" && $column != "created" && $column != "modified" ){
           $sanitized = 'NULL';
@@ -1727,6 +1726,9 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
       } else if(($type == "bool"  || $type == "checkbox") && !$value){
         $sanitized = '0';
       } else if ((beginsWith($type, "number")  ||  $type == "int") && $value === "") {
+        $sanitized = 'NULL';
+      } else if (beginsWith($type, "string") && $value === "") {
+        //echo $type . "=" . $column . "<BR>";
         $sanitized = 'NULL';
       } else {
         $sanitized = "'" . mysqli_real_escape_string($conn, $value) . "'";
@@ -1969,8 +1971,11 @@ function getAssociatedRecords($commandTypeId, $tenantId){
   }
 }
 
-function deleteLink($table, $pkName) {
-  $out = "<a onclick='return confirm(\"Are you sure you want to delete this " . $table . "?\")' href='?table=" . $table . "&action=delete&" . $pkName . "=<" . $pkName . "/>&hashed_entities=<hashed_entities/>'>Delete</a>";
+function deleteLink($table, $pkName, $extraData = "") {
+  if($extraData  && !beginsWith($extraData, "&")){
+    $extraData = "&" . $extraData;
+  }
+  $out = "<a onclick='return confirm(\"Are you sure you want to delete this " . $table . "?\")' href='?table=" . $table . "&action=delete&" . $pkName . "=<" . $pkName . "/>&hashed_entities=<hashed_entities/>" . $extraData ."'>Delete</a>";
   return $out;
 }
 
@@ -2418,3 +2423,14 @@ function checkPhpFunctionCallIsBogus($str){
   $pattern = '/\(\s*,|,\s*\)/';
   return preg_match($pattern, $str) === 1;
 }
+
+
+
+function removeDelimiters($str, $replacement = "_") {
+  $delimiters = "|*!";
+  // Replace all delimiters with an empty string
+  $str = str_replace(str_split($delimiters), $replacement, $str);
+  return $str;
+}
+
+ 

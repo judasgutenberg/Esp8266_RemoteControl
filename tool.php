@@ -26,7 +26,7 @@ $action = strtolower(gvfw('action', "list"));
 $user = autoLogin();
 $tenantId = gvfa("tenant_id", $user);
  
-$deviceId = gvfa('device_id', $_GET);
+$deviceId = gvfw('device_id');
 $userId = gvfa("user_id", $user);
 $outputFormat = gvfw("output_format");
 //used to impersonate another user
@@ -285,7 +285,7 @@ if ($user) {
       die("Data appears to have been tampered with.");
     }
     $result = mysqli_query($conn, $sql);
-    header('Location: '.$_SERVER['PHP_SELF'] . "?table=" . $table);
+    header('Location: '.$_SERVER['PHP_SELF'] . "?table=" . $table . "&device_id=" . $deviceId);
   } elseif($action == "json"){
     if($table!= "user" || $user["role"]  == "super") {
       $sql = "SELECT * FROM " .  $table  . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "'";

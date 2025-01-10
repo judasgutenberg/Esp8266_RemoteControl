@@ -13,7 +13,20 @@ $out = "";
 $conn = mysqli_connect($servername, $username, $password, $database);
 $user = autoLogin();
 if($user){
-	$devices = getDevices($user["tenant_id"]);
+	$devices = getDevices($user["tenant_id"], false);
+	$weatherColumns = [];
+	foreach($devices as $device){
+		if(array_key_exists("device_column_maps", $device)){
+			foreach($device["device_column_maps"] as $map){
+				$column = $map["column_name"];
+				if (!in_array($column, $weatherColumns, true)) {
+					$weatherColumns[] = $column;
+				}
+			}
+		}
+		 
+	}
+	//var_dump($devices);
 	if(array_key_exists( "locationId", $_REQUEST)) {
 		$locationId = $_REQUEST["locationId"];
 	} else {
@@ -165,7 +178,7 @@ function plotTypePicker($type, $handler){
 			echo plotTypePicker("multi", $handler);
 			echo "<div  id='multiplotdiv'>";
 			echo "<div>Weather Column: ";
-			$weatherColumns = ["temperature", "pressure", "humidity"];
+			//$weatherColumns = ["temperature", "pressure", "humidity"]; //now derived programmatically
 			echo "</div>";
 			echo genericSelect("specific_column", "specific_column", defaultFailDown(gvfw("specific_column"), "temperature"), $weatherColumns, "onchange", $handler);
 			echo multiDevicePicker($user["tenant_id"], $devices);
@@ -488,7 +501,6 @@ function getWeatherData(yearsAgo) {
 	if(!justLoaded){
 		specificColumn = document.getElementById('specific_column')[document.getElementById('specific_column').selectedIndex].value;
 	} else {
-		
 		if(specificColumnSelect) {
 			let index = 0;
 			for(let option of specificColumnSelect.options) {
@@ -587,6 +599,9 @@ function getWeatherData(yearsAgo) {
 					//console.log(dataObject[0]["sql"], dataObject[0]["error"]);
 				} else {
 					devices = dataObject["devices"]; //for proper labels in the graph
+					const locationsForColumnsWeCareAbout = [...locationIdArray];
+					locationsForColumnsWeCareAbout.push(locationId.toString());
+					updateColumnsWeCareAbout(devices,  locationsForColumnsWeCareAbout);
 					//console.log(devices);
 					for(let datum of dataObject["records"]) {
 						let time = datum["recorded"];
@@ -615,6 +630,12 @@ function getWeatherData(yearsAgo) {
 								let value = datum[column];
 								if(column == "temperature"){
 									value = value * (9/5) + 32;
+								}
+								if(!graphDataObject[yearsAgo]){
+									graphDataObject[yearsAgo] = [];
+								}
+								if(!graphDataObject[yearsAgo][column]){
+									graphDataObject[yearsAgo][column] = [];
 								}
 								graphDataObject[yearsAgo][column].push(value);
 							}
@@ -731,6 +752,24 @@ function officialWeather(locationId) {
 	  };
   xhttp.open("GET", endpointUrl, true); //Handle getData server on ESP8266
   xhttp.send();
+}
+
+function updateColumnsWeCareAbout(devices, locationIds){
+	console.log(locationIds);
+	columnsWeCareAbout = [];
+	for(const device of devices){
+		if(device["device_column_maps"]) {
+			if(locationIds.indexOf(device["device_id"])>-1){
+				for(const map of device["device_column_maps"]){
+					const columnName = map["column_name"];
+					if(columnsWeCareAbout.indexOf(columnName) < 0){
+						columnsWeCareAbout.push(map["column_name"]);
+					}		
+				}
+			}
+		}
+	}
+	console.log(columnsWeCareAbout);
 }
 
 getWeatherData();
