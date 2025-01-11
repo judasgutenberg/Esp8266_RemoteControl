@@ -45,7 +45,7 @@ CREATE TABLE `command` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:58
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -92,7 +92,7 @@ CREATE TABLE `command_type` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:58
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -134,6 +134,7 @@ CREATE TABLE `device` (
   `longitude` decimal(8,5) DEFAULT NULL,
   `last_poll` datetime DEFAULT NULL,
   `voltage` decimal(6,3) DEFAULT NULL,
+  `color` varchar(15) DEFAULT NULL,
   PRIMARY KEY (`device_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -147,7 +148,7 @@ CREATE TABLE `device` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:58
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -178,13 +179,16 @@ CREATE TABLE `device_column_map` (
   `device_id` int(11) NOT NULL,
   `table_name` varchar(100) NOT NULL,
   `column_name` varchar(100) NOT NULL,
-  `display_name` varchar(100) NOT NULL,
-  `process_algorithm` text DEFAULT NULL,
-  `process_before_save` tinyint(4) DEFAULT 0,
+  `display_name` varchar(100) DEFAULT NULL,
+  `view_function` text DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `tenant_id` int(11) NOT NULL,
+  `include_in_graph` tinyint(4) DEFAULT 0,
+  `sort_order` int(11) DEFAULT 0,
+  `color` varchar(15) DEFAULT NULL,
+  `storage_function` text DEFAULT NULL,
   PRIMARY KEY (`device_column_map_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -196,7 +200,7 @@ CREATE TABLE `device_column_map` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:58
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -253,7 +257,7 @@ CREATE TABLE `device_feature` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:58
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -290,7 +294,7 @@ CREATE TABLE `device_feature_log` (
   `mechanism` varchar(20) DEFAULT NULL,
   `user_id` int(11) DEFAULT NULL,
   PRIMARY KEY (`device_feature_log_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=153079 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=163363 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -302,7 +306,7 @@ CREATE TABLE `device_feature_log` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:58
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -346,7 +350,7 @@ CREATE TABLE `device_feature_management_rule` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:58
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -397,7 +401,7 @@ CREATE TABLE `device_log` (
   `ampage` decimal(6,3) DEFAULT NULL,
   `millis` int(11) DEFAULT NULL,
   PRIMARY KEY (`device_log_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=576960 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=579228 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -409,7 +413,7 @@ CREATE TABLE `device_log` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:58
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -456,7 +460,7 @@ CREATE TABLE `device_type` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:58
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -511,7 +515,7 @@ CREATE TABLE `device_type_feature` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:58
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -556,7 +560,7 @@ CREATE TABLE `feature_type` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:58
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -604,7 +608,7 @@ CREATE TABLE `inverter_log` (
   `changer7` int(11) DEFAULT NULL,
   `weather` varchar(50) DEFAULT NULL,
   PRIMARY KEY (`inverter_log_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=745647 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=747861 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -616,7 +620,7 @@ CREATE TABLE `inverter_log` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:58
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -663,7 +667,7 @@ CREATE TABLE `ir_pulse_sequence` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:58
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -709,7 +713,7 @@ CREATE TABLE `ir_target_type` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:58
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -758,7 +762,7 @@ CREATE TABLE `management_rule` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:58
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -789,7 +793,7 @@ CREATE TABLE `reboot_log` (
   `device_id` int(11) DEFAULT NULL,
   `recorded` datetime DEFAULT NULL,
   PRIMARY KEY (`reboot_log_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=7655 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7822 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -801,7 +805,7 @@ CREATE TABLE `reboot_log` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:58
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -850,7 +854,7 @@ CREATE TABLE `report` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:59
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -887,7 +891,7 @@ CREATE TABLE `report_log` (
   `sql` text DEFAULT NULL,
   `user_id` int(11) DEFAULT NULL,
   PRIMARY KEY (`report_log_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1039 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1073 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -899,7 +903,7 @@ CREATE TABLE `report_log` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:59
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -952,7 +956,7 @@ CREATE TABLE `tenant` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:59
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -996,7 +1000,7 @@ CREATE TABLE `tenant_user` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:59
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -1043,7 +1047,7 @@ CREATE TABLE `user` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:59
+-- Dump completed on 2025-01-11 19:37:32
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -1080,7 +1084,7 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:59
+-- Dump completed on 2025-01-11 19:37:33
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -1117,7 +1121,7 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:59
+-- Dump completed on 2025-01-11 19:37:33
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -1154,7 +1158,7 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:59
+-- Dump completed on 2025-01-11 19:37:33
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -1191,7 +1195,7 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:59
+-- Dump completed on 2025-01-11 19:37:33
 /*M!999999\- enable the sandbox mode */ 
 -- MariaDB dump 10.19  Distrib 10.5.26-MariaDB, for debian-linux-gnu (x86_64)
 --
@@ -1228,4 +1232,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-09 17:02:59
+-- Dump completed on 2025-01-11 19:37:33

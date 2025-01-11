@@ -992,10 +992,6 @@ function deviceColumnMaps($deviceId, $tenantId){
 	    'label' => 'display',
       'name' => 'display_name'
 	  ] ,
-    [
-	    'label' => 'save processed',
-      'name' => 'process_before_save'
-	  ] ,
 		[
 	    'label' => 'created',
       'name' => 'created'
@@ -1107,20 +1103,22 @@ function editDeviceColumnMap($error, $deviceId, $tenantId) {
       'error' => gvfa("display_name", $error),
 	  ],
     [
-	    'label' => 'Process Algorithm',
-      'name' => "process_algorithm",
+	    'label' => 'Save Function',
+      'name' => "storage_function",
       'type' => 'string',
       'width' => 500,
       'height' => 200,
-	    'value' => gvfa("process_algorithm", $source), 
-      'error' => gvfa("process_algorithm", $error),
+	    'value' => gvfa("storage_function", $source), 
+      'error' => gvfa("storage_function", $error),
 	  ],
     [
-	    'label' => 'Save Processed (not raw) Data',
-      'name' => "process_before_save",
-      'type' => 'checkbox',
-	    'value' => gvfa("process_before_save", $source), 
-      'error' => gvfa("process_before_save", $error),
+	    'label' => 'View Function',
+      'name' => "view_function",
+      'type' => 'string',
+      'width' => 500,
+      'height' => 200,
+	    'value' => gvfa("view_function", $source), 
+      'error' => gvfa("view_function", $error),
 	  ],
     [
 	    'label' => 'created',

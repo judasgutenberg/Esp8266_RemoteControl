@@ -666,16 +666,16 @@ function getWeatherData(yearsAgo) {
 								let foundDevice = findObjectByColumn(devices, "device_id", locationId.toString());
 								let deviceColumnMaps = foundDevice["device_column_maps"];
 								for(let map of deviceColumnMaps){
-									if(column == map["column_name"] && map["table_name"] == "device_log" && map["process_before_save"] == 0){
+									if(column == map["column_name"] && map["table_name"] == "device_log"){
 										mapToUse = map;
 									}
 								}
 								let value = datum[column];
 
-
-								if(mapToUse && mapToUse["process_algorithm"]) {
-									//process the string using the process_algorithm if it's for post-processing
-									let evalString = tokenReplace(mapToUse["process_algorithm"], datum,  "<", "/>");
+ 
+								if(mapToUse && mapToUse["view_function"]) {
+									//process the string using the view_function if it's for post-processing
+									let evalString = tokenReplace(mapToUse["view_function"], datum,  "<", "/>");
 									value = eval(evalString);
 									
 								}
