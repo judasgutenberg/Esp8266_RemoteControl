@@ -122,7 +122,7 @@ if($_REQUEST) {
 	$canAccessData = array_search($locationId, $deviceIds) !== false;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
 	if($canAccessData) {		
 		$tenant = deriveTenantFromStoragePassword($storagePassword);
- 
+		$tenantId = $tenant["tenant_id"];
 		if(!$conn) {
 			$out = ["error"=>"bad database connection"];
 		} else {
@@ -174,7 +174,7 @@ if($_REQUEST) {
 						//extraInfo: lastCommandId*pinCursor*localSource*ipAddressToUse*requestNonJsonPinInfo88*justDeviceJson*changeSourceId*transmissiontimestamp
 						if(count($extraInfo)>1){
 							$lastCommandId = $extraInfo[0];
-							markCommandDone($lastCommandId, $tenant["tenant_id"]);
+							markCommandDone($lastCommandId, $tenantId);
 							$specificPin = $extraInfo[1]; //don't do this if $nonJsonPinData
 						}
 						//var_dump($extraInfo);
@@ -249,7 +249,7 @@ if($_REQUEST) {
 				$irData = removeTrailingChar($irData, ","); //remove trailing commas from the sequence if it is there
 				$irSql = "INSERT INTO 
 				ir_pulse_sequence(ir_target_type_id, name, sequence, tenant_id, created) 
-				VALUES (0, 'new', '" . $irData . "'," . $tenant["tenant_id"] . ",'" . $storageDateTime . "')";
+				VALUES (0, 'new', '" . $irData . "'," . $tenantId . ",'" . $storageDateTime . "')";
 				$result = mysqli_query($conn, $irSql);
 				//echo $irSql;
 				$error = mysqli_error($conn);
@@ -382,7 +382,7 @@ if($_REQUEST) {
 				$tableName = filterStringForSqlEntities(gvfw("table"));
 				$sql = "SELECT MIN(recorded) AS recorded FROM " . $tableName . " WHERE 1=1 ";
 				if($tenant && $tableName != 'device_log') {
-					$sql .= " AND tenant_id=" . $tenant["tenant_id"];
+					$sql .= " AND tenant_id=" . $tenantId;
 				}
 				if($locationId && $tableName != 'inverter_log') {
 					$sql .= " AND device_id=" . $locationId;
@@ -408,7 +408,7 @@ if($_REQUEST) {
 					$startOfPeriod = "'" . $formatedDateTime . "'"; 
 					$historyOffset = 1;
 					$sql = "SELECT * FROM inverter_log  
-						WHERE tenant_id = " . $tenant["tenant_id"] . " ";
+						WHERE tenant_id = " . $tenantId . " ";
 					if ($absoluteTimespanCusps == 1) {
 						// Calculate starting point at the "cusp" of each period scale
 						$startOfPeriod = sqlForStartOfPeriodScale($periodScale, $formatedDateTime);
@@ -531,19 +531,19 @@ if($_REQUEST) {
 				foreach($multipleSensorArray  as $sensorDataString) { //if there is a ! in the weatherInfoString, 
 					$arrWeatherData = explode("*", $sensorDataString);
 					if(count($arrWeatherData) > 1) { //it's possible the $weatherInfoString began with a !, meaning the first weather record is technically empty
-						$temperature = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $temperature, $arrWeatherData, 0);
-						$pressure = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $pressure, $arrWeatherData, 1);
-						$humidity = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $humidity, $arrWeatherData, 2);
-						$gasMetric = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $gasMetric, $arrWeatherData, 3);
-						$windDirection = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windDirection, $arrWeatherData, 4);
-						$windSpeed = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windSpeed, $arrWeatherData, 5);
-						$windIncrement = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windIncrement, $arrWeatherData, 6);
-						$precipitation = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $precipitation, $arrWeatherData, 7);
-						$reserved1 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved1, $arrWeatherData, 8);
-						$reserved2 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved2, $arrWeatherData, 9);
-						$reserved3 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved3, $arrWeatherData, 10);
-						$reserved4 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved4, $arrWeatherData, 11);
-						$sensorId = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $sensorId, $arrWeatherData, 12);
+						$temperature = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $temperature, $arrWeatherData, "temperature", $deviceId, $tenantId);
+						$pressure = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $pressure, $arrWeatherData, "pressure", $deviceId, $tenantId);
+						$humidity = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $humidity, $arrWeatherData, "humidity", $deviceId, $tenantId);
+						$gasMetric = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $gasMetric, $arrWeatherData, "gas_metric", $deviceId, $tenantId);
+						$windDirection = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windDirection, $arrWeatherData, "wind_direction", $deviceId, $tenantId);
+						$windSpeed = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windSpeed, $arrWeatherData, "wind_speed", $deviceId, $tenantId);
+						$windIncrement = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windIncrement, $arrWeatherData, "wind_increment", $deviceId, $tenantId);
+						$precipitation = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $precipitation, $arrWeatherData, "precipitation", $deviceId, $tenantId);
+						$reserved1 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved1, $arrWeatherData, "reserved1", $deviceId, $tenantId);
+						$reserved2 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved2, $arrWeatherData, "reserved2", $deviceId, $tenantId);
+						$reserved3 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved3, $arrWeatherData, "reserved3", $deviceId, $tenantId);
+						$reserved4 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved4, $arrWeatherData, "reserved4", $deviceId, $tenantId);
+						$sensorId = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $sensorId, $arrWeatherData, "sensor_id");
 						//$twelveVoltBatteryVoltage = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $twelveVoltBatteryVoltage, $arrWeatherData, 16);
 						if($consolidateAllSensorsToOneRecord){
 							$deviceFeatureId = "NULL";
@@ -559,7 +559,7 @@ if($_REQUEST) {
 						}
 						//sensorName is $arrWeatherData[14] -- not used here
 						//i put $consolidateAllSensorsToOneRecord on the sensor record so that some sensors could be separate and then later ones could be consolidated
-						$consolidateAllSensorsToOneRecord = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $consolidateAllSensorsToOneRecord, $arrWeatherData, 15);
+						$consolidateAllSensorsToOneRecord = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $consolidateAllSensorsToOneRecord, $arrWeatherData, "consolidate");
 
 						//die("x" . $consolidateAllSensorsToOneRecord);
 						$weatherSql = "INSERT INTO 
@@ -1077,11 +1077,54 @@ function logSql($sql){
 	$myfile = file_put_contents('sql.txt', "\n\n" . $formatedDateTime . ": " . $sql, FILE_APPEND | LOCK_EX);
 }
 
-function mergeWeatherDatum($consolidateAllSensorsToOneRecord, $existingValue, $sourceArray, $itemNumber) {
-	$columnList = "temperature,pressure,humidity,gas_metric,wind_direction,wind_increment,precipitation,reserved1,reserved2,reserved3,reserved4";
+function mergeWeatherDatum($consolidateAllSensorsToOneRecord, $existingValue, $sourceArray, $keyName, $deviceId = null, $tenantId = null) {
+	//this is the order of data coming from the microcontroller in "*"-delimited form:
+	$columnList = "temperature,pressure,humidity,gas_metric,wind_direction,wind_speed,wind_increment,precipitation,reserved1,reserved2,reserved3,reserved4,sensor_id,device_feature_id,sensor_name,consolidate";
 	$columns = explode(",", $columnList);
-	$value = $sourceArray[$itemNumber];
-	//where we do data manipulations involving storage_function -- which we cache!!
+	$itemNumber = array_search($keyName, $columns);
+	//create an array of values keyed to the respective weather params so we can use these in the storage_function as needed
+	$values = [];
+	foreach($sourceArray as $index => $sourceValue) {
+		$values[$columns[$index]] = $sourceValue;
+	}
+	$value = trim($sourceArray[$itemNumber]);//someone might separate sensor value names with comma-space, so trim that hedge
+	if($deviceId && $tenantId) {
+		//where we do data manipulations involving storage_function -- which we cache so as not to look it up a million times!!
+		$lookupKey = "storage_function" . "-" . $tenantId  . "-" . $deviceId . "-" . $keyName;
+		$storageFunction = readMemoryCache($lookupKey, $persistTimeInMinutes = 10);
+		if($storageFunction === null) {
+			$sql = "SELECT storage_function FROM device_column_map WHERE device_id = " . intval($deviceId) . " AND tenant_id=" . intval($tenantId) . " AND table_name='device_log' AND column_name='" . $keyName . "'";
+			$result = mysqli_query($conn, $sql);
+			if($result) {
+				$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
+				if($row){
+					$storageFunction = $row["storage_function"];
+					if($storageFunction == null) {
+						//if we didn't find a storage function, that means there is none, so no point looking it up. so save it as "none" in the cache
+						writeMemoryCache($lookupKey, "none");
+					} else {
+						writeMemoryCache($lookupKey, $storageFunction);
+					}
+				}
+			}
+		} else {
+			if($storageFunction == "none") {
+				//but never return "none" to the processing logic
+				$storageFunction = null;
+			}
+		}
+		if($storageFunction){
+			$storageFunction = tokenReplace(storageFunction, $values);
+			try {
+			  if($storageFunction) {
+				eval('$value  =' . $storageFunction . ";"); //need to revisit this to make it so some bonehead admin doesn't cause chaos with bad code 
+			  }
+			}
+			catch(ParseError $error) { //this shit does not work. does try/catch ever work in PHP?
+				logSql("problem with storage function: " . $storageFunction);
+			}
+		}
+	}
 	if(intval($consolidateAllSensorsToOneRecord) == 1) {
 		if(strtolower($existingValue) == "null"  || $existingValue == "" || strtolower($existingValue) == "nan") {
 			if(count($sourceArray) > $itemNumber) {
