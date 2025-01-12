@@ -233,15 +233,19 @@ function addPastYearToGraph(locationIdArray, locationId, yearsAgo, plotType){
 			let yAxisId = "A";
 			let foundDevice = findObjectByColumn(devices, "device_id", locationId);
 			let label;
+			let color = colorSeries[columnCount];
 			if(foundDevice){
 				label = foundDevice["location_name"];
+				if(foundDevice["color"]){
+					color = tinycolor(foundDevice["color"]).lighten(26);
+				}
 			}
 			glblChart.data.datasets.push(
 					{
 						label: label + " " + parseInt(parseInt(new Date().getFullYear()) - yearsAgo),
 						fill: false,  //Try with true
-						backgroundColor: colorSeries[columnCount],
-						borderColor: colorSeries[columnCount],
+						backgroundColor: color,
+						borderColor: color,
 						data: multiGraphDataObject[yearsAgo][locationId].values,
 						yAxisID: yAxisId,
 						tension: 0.1
@@ -384,16 +388,20 @@ function showGraph(locationId, plotType){
 			//console.log(value["values"]);
 			let foundDevice = findObjectByColumn(devices, "device_id", key);
 			let label;
+			let color = colorSeries[columnCount];
 			if(foundDevice){
 				label = foundDevice["location_name"];
+				if(foundDevice["color"]){
+					color = foundDevice["color"];
+				}
 			}
 			if(label){
 				chartDataSet.push(
 					{
 					label: label,
 					fill: false,  //Try with true
-					backgroundColor: colorSeries[colorCursor], //Dot marker color
-					borderColor: colorSeries[colorCursor], //Graph Line Color
+					backgroundColor: color, //Dot marker color
+					borderColor: color, //Graph Line Color
 					data: value["values"],
 					tension: 0.1,
 					yAxisID: thisAxis

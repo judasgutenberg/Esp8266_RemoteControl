@@ -136,11 +136,20 @@ function devices($tenantId) {
       'name' => 'last_poll',
        'function' => 'timeAgo("<last_poll/>")'
     ],
+    [
+	    'label' => 'color',
+      'type' => 'color',
+      'changeable' => true,
+      'name' => 'color'
+	  ],
     );
-    $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
+    $toolsTemplate = "<div class='listtools' style='border-color:<color/>'>";
+    $toolsTemplate .= "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
     $toolsTemplate .= " | <a href='?table=device_feature&device_id=<" . $table . "_id/>'>Device Features</a>";
+    $toolsTemplate .= " | <a href='index.php?location_id=<" . $table . "_id/>'>Weather Graph</a>";
     $toolsTemplate .= " | <a href='?table=device_column_map&device_id=<" . $table . "_id/>'>Graph Columns</a>";
     $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
+    $toolsTemplate .= "</div>";
     if($result) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
       if($rows) {
@@ -977,7 +986,7 @@ function deviceColumnMaps($deviceId, $tenantId){
     [
 	    'label' => 'color',
       'changeable' => true,
-      'type' => "color",
+      'type' => 'color',
       'name' => 'color'
 	  ] ,
 		[
@@ -1065,7 +1074,7 @@ function editDeviceColumnMap($error, $deviceId, $tenantId) {
 	  ] ,
     [
 	    'label' => 'color',
-      'type' => "color",
+      'type' => 'color',
       'name' => 'color',
       'value' => gvfa("color", $source)
 	  ] ,
@@ -1247,6 +1256,12 @@ function editDevice($error,  $tenantId) {
       'name' => $table . "_id",
       'type' => 'read_only',
 	    'value' => gvfa($table . "_id", $source)
+	  ],
+    [
+	    'label' => 'color',
+      'type' => 'color',
+      'name' => 'color',
+      'value' => gvfa("color", $source)
 	  ],
 		[
 	    'label' => 'name',

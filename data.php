@@ -1078,10 +1078,14 @@ function logSql($sql){
 }
 
 function mergeWeatherDatum($consolidateAllSensorsToOneRecord, $existingValue, $sourceArray, $itemNumber) {
+	$columnList = "temperature,pressure,humidity,gas_metric,wind_direction,wind_increment,precipitation,reserved1,reserved2,reserved3,reserved4";
+	$columns = explode(",", $columnList);
+	$value = $sourceArray[$itemNumber];
+	//where we do data manipulations involving storage_function -- which we cache!!
 	if(intval($consolidateAllSensorsToOneRecord) == 1) {
 		if(strtolower($existingValue) == "null"  || $existingValue == "" || strtolower($existingValue) == "nan") {
 			if(count($sourceArray) > $itemNumber) {
-				$out = $sourceArray[$itemNumber];
+				$out = $value;
 			} else {
 				$out = "NULL";
 			}
@@ -1090,7 +1094,7 @@ function mergeWeatherDatum($consolidateAllSensorsToOneRecord, $existingValue, $s
 		}
 	} else {
 		if(count($sourceArray) > $itemNumber) {
-			$out = $sourceArray[$itemNumber];
+			$out = $value;
 		} else {
 			$out = "NULL";
 		}
