@@ -1078,6 +1078,7 @@ function logSql($sql){
 }
 
 function mergeWeatherDatum($consolidateAllSensorsToOneRecord, $existingValue, $sourceArray, $keyName, $deviceId = null, $tenantId = null) {
+	Global $conn;
 	//this is the order of data coming from the microcontroller in "*"-delimited form:
 	$columnList = "temperature,pressure,humidity,gas_metric,wind_direction,wind_speed,wind_increment,precipitation,reserved1,reserved2,reserved3,reserved4,sensor_id,device_feature_id,sensor_name,consolidate";
 	$columns = explode(",", $columnList);
