@@ -15,7 +15,7 @@ const int device_id = 11; //3 really is watchdog
 int polling_granularity = 4; //how often to poll backend in seconds, 4 makes sense
 int data_logging_granularity = 300; //how often to store data in backend, 300 makes sense
 int offline_log_granularity = 100;
-int wifi_timeout = 100; //normally 100;
+int wifi_timeout = 100; //normally 100 in seconds
 
 const int connection_failure_retry_seconds = 4;
 const int connection_retry_number = 22;
