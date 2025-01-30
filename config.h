@@ -17,7 +17,8 @@ extern int polling_granularity; //how often to poll backend in seconds, 4 makes 
 extern int data_logging_granularity; //how often to store data in backend, 300 makes sense
 extern int offline_log_granularity; //will usually be paired with a value in fram_address
 extern int wifi_timeout;
-extern int fram_index_size;
+extern const int fram_index_size;
+extern const int fram_log_top;
 
 extern const int connection_failure_retry_seconds;
 extern const int connection_retry_number;
