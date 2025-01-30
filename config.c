@@ -17,6 +17,7 @@ int data_logging_granularity = 300; //how often to store data in backend, 300 ma
 int offline_log_granularity = 100;
 int wifi_timeout = 100; //normally 100 in seconds
 const int fram_index_size = 256;
+const int fram_log_top = 28672; //if we have a FRAM, we should partition it so the last 4k can be used to store various values like Moxee Reboot times, e
 
 const int connection_failure_retry_seconds = 4;
 const int connection_retry_number = 22;
