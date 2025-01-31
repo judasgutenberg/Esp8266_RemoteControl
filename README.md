@@ -76,6 +76,9 @@ From there, here's an overview of how to set up control for a particular system 
 
 Here is the user interface, which allows you to turn items on and off in the list by checking the "power on" column. (You do it all from the device_feature list view.)
 
+## Data Logging
+The ESP8266 transmits delimited data in a querystring to the backend at a regular polling interval. This data includes temperature, air pressure, humidity, and many other possible weather sensor values.  It can also transmit positional data from a mobile ESP8266. All of this data is processed by data.php and logged in the device_log table.
+
 ![alt text](esp8266-remote.jpg?raw=true)
 ## Remote Control
 The model of remote control this system uses is server-as-truth. Every time a device polls the server, it gets the server's idea of what the state of its features should be.  The device then dutifully changes the device features as necessary.  The only exceptions to this behavior are cases where either actions performed on a device's locally-served web page or a Local Remote make  changes to a device_feature on the device directly, and this sets a flag telling the device (and the server) that data from the device should flow in the opposite direction, from device to server. In that case server-as-truth is overriden and the server updates its state accordingly using backwards-flowing data.
