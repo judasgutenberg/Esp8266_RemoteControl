@@ -45,3 +45,4 @@ const char pins_to_start_low[] = {12, 13, -1}; //so when the device comes up it 
 const int ir_pin = 14; //set to the value of an actual data pin if you want to send data via ir from your controller on occasion
 const int ina219_address = 0x40; //set to -1 if you have no power voltage to monitor
 const int fram_address = 0x50; //used for storing offline logged data, etc. Make sure to also set offline_log_granularity so offline data can be stored in the FRAM
+const int rtc_address = 0x68;  //for offline timestamping using a DS3231 or a DS1307; in many cases unnecessary  
