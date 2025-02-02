@@ -42,3 +42,5 @@ extern const char pins_to_start_low[];
 extern const int ir_pin; 
 extern const int ina219_address;
 extern const int fram_address; //will usually be paired with a value in offline_log_granularity as a way to store offline log data
+
+extern const int rtc_address;
