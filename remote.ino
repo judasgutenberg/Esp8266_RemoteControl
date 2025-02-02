@@ -16,6 +16,7 @@
 #include <Adafruit_INA219.h>
 #include <Adafruit_VL53L0X.h>
 #include <Adafruit_ADT7410.h>
+#include <Adafruit_FRAM_I2C.h>
 
 #include <NTPClient.h>
 #include <WiFiUdp.h>
@@ -31,6 +32,9 @@
 #include <Temperature_LM75_Derived.h>
 #include <Adafruit_BMP280.h>
 #include <Wire.h>
+
+#include <tuple>
+#include <cmath> 
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
@@ -50,6 +54,14 @@ IRsend irsend(ir_pin);
 Adafruit_INA219* ina219;
 
 Adafruit_VL53L0X lox[4];
+
+Adafruit_FRAM_I2C fram;
+
+
+
+ 
+uint16_t framIndexAddress = 0;   
+uint16_t  currentRecordCount = 0;
 
 StaticJsonDocument<500> jsonBuffer;
 WiFiUDP ntpUDP; //i guess i need this for time lookup
@@ -75,6 +87,9 @@ float measuredAmpage = 0;
 bool canSleep = false;
 long latencySum = 0;
 long latencyCount = 0;
+bool offlineMode = false;
+long lastOfflineLog = 0;
+uint8_t lastRecordSize = 0;
  
 //https://github.com/spacehuhn/SimpleMap
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
@@ -313,10 +328,38 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
   }
   //
   if(sensor_id > 0) {
+
+    
     transmissionString = nullifyOrNumber(temperatureValue) + "*" + nullifyOrNumber(pressureValue);
     transmissionString = transmissionString + "*" + nullifyOrNumber(humidityValue);
     transmissionString = transmissionString + "*" + nullifyOrNumber(gasValue);
     transmissionString = transmissionString + "*********"; //for esoteric weather sensors that measure wind and precipitation.  the last four are reserved for now
+
+    if(offlineMode) {
+      if(millis() - lastOfflineLog > 1000 * offline_log_granularity) {
+        long millisVal = millis();
+        //store that data in the FRAM:
+        std::vector<std::tuple<uint8_t, uint8_t, double>> framWeatherRecord;
+        addOfflineRecord(framWeatherRecord, 0, 5, temperatureValue); 
+        addOfflineRecord(framWeatherRecord, 1, 5, pressureValue); 
+        addOfflineRecord(framWeatherRecord, 2, 5, humidityValue); 
+        //addOfflineRecord(framWeatherRecord, 28, 2, (double)millis()); 
+        if(rtc_address > 0) {
+          addOfflineRecord(framWeatherRecord, 40, 2, currentRTCTimestamp());
+        } else {
+          addOfflineRecord(framWeatherRecord, 40, 2, timeClient.getEpochTime());
+          
+        }
+        //addOfflineRecord(framWeatherRecord, 8, 6, 3.141592653872233); 
+        writeRecordToFRAM(framWeatherRecord);
+        Serial.println("Saved a record to FRAM.");
+        Serial.print(transmissionString);
+        Serial.println(millisVal);
+        //Serial.println("stored millis:");
+        //printHexBytes(millisVal);
+        lastOfflineLog = millis();
+      }
+    } 
   }
   //using delimited data instead of JSON to keep things simple
   transmissionString = transmissionString + nullifyOrInt(sensor_id) + "*" + nullifyOrInt(deviceFeatureId) + "*" + sensorName + "*" + nullifyOrInt(consolidateAllSensorsToOneRecord); 
@@ -450,7 +493,9 @@ void handleWeatherData() {
   //Serial.println(transmissionString);
   //had to use a global, died a little inside
   if(glblRemote) {
-    sendRemoteData(transmissionString);
+    if(!offlineMode) {
+      sendRemoteData(transmissionString);
+    }
   } else {
     server.send(200, "text/plain", transmissionString); //Send values only to client ajax request
   }
@@ -462,14 +507,22 @@ void wiFiConnect() {
   Serial.println();
   // Wait for connection
   int wiFiSeconds = 0;
+  bool initialAttemptPhase = true;
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     Serial.print(".");
     wiFiSeconds++;
-    if(wiFiSeconds > 80) {
+    if(wiFiSeconds > wifi_timeout) {
       Serial.println("WiFi taking too long, rebooting Moxee");
       rebootMoxee();
       wiFiSeconds = 0; //if you don't do this, you'll be stuck in a rebooting loop if WiFi fails once
+      initialAttemptPhase = false;
+    }
+    if(!initialAttemptPhase && wiFiSeconds > (wifi_timeout/2)) {
+      //give up for the time being
+      offlineMode = true;
+      Serial.print("Entering offline mode...");
+      return;
     }
   }
   Serial.println("");
@@ -924,8 +977,9 @@ void runCommandsFromNonJson(char * nonJsonLine){
   latencyCount++;
   latency = commandArray[3].toInt();
   latencySum += latency;
- 
+  //Serial.println(commandId);
   if(commandId) {
+    //Serial.println(command);
     if(command == "reboot") {
       rebootEsp();
     } else if(command == "one pin at a time") {
@@ -943,8 +997,40 @@ void runCommandsFromNonJson(char * nonJsonLine){
       latencySum = 0;
     } else if(command == "ir") {
       sendIr(commandData); //ir data must be comma-delimited
+    } else if(command == "clear fram") {
+      clearFramLog(); 
+    } else if(command == "dump fram") {
+      displayAllFramRecords(); 
+    } else if(command == "dump fram hex") {
+      if(!commandData || commandData == "") {
+        hexDumpFRAM(2 * fram_index_size, lastRecordSize + 1, 15);
+      } else {
+        hexDumpFRAM(commandData.toInt(), lastRecordSize + 1, 15);
+      }
+    } else if(command == "swap fram") {
+      swapFRAMContents(fram_index_size * 2, 554, lastRecordSize);
+    } else if(command == "dump fram record") {
+      displayFramRecord((uint16_t)commandData.toInt()); 
+    } else if(command == "dump fram index") {
+      dumpFramRecordIndexes();
+    } else if (command == "set date") {
+      String dateArray[7];
+      splitString(commandData, ',', dateArray, 7);
+      setDateDs1307((byte) dateArray[0].toInt(), 
+                   (byte) dateArray[1].toInt(),     
+                   (byte) dateArray[2].toInt(),  
+                   (byte) dateArray[3].toInt(),  
+                   (byte) dateArray[4].toInt(),   
+                   (byte) dateArray[5].toInt(),      
+                   (byte) dateArray[6].toInt()); 
+                   
+    } else if (command ==  "get date") {
+ 
+      printRTCDate();
     }
-    lastCommandId = commandId;
+    if(commandId > 0) { //don't reset lastCommandId if the command came via serial port
+      lastCommandId = commandId;
+    }
   }
 }
 
@@ -996,6 +1082,7 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
 
 //SETUP----------------------------------------------------
 void setup(void){
+  
   //set specified pins to start low immediately, keeping devices from turning on
   for(int i=0; i<10; i++) {
     if((int)pins_to_start_low[i] == -1) {
@@ -1035,10 +1122,23 @@ void setup(void){
       ina219->setCalibration_16V_400mA();
     }
   }
+  if(fram_address > -1) {
+    if (!fram.begin(fram_address)) {
+      Serial.println("Could not find FRAM (or EEPROM).");
+    } else {
+      Serial.println("FRAM or EEPROM found");
+    }
+  }
   if(ir_pin > -1) {
     //irsend.begin(); //do this elsewhere?
   }
- 
+  currentRecordCount = readRecordCountFromFRAM();
+  if(lastRecordSize == 0) {
+    lastRecordSize = getLastRecordSizeFromFRAM();
+  }
+  //clearFramLog();
+ //displayAllFramRecords();
+  
 }
 //LOOP----------------------------------------------------
 void loop(){
@@ -1053,10 +1153,11 @@ void loop(){
   }
   //if we've been up for a week or there have been lots of moxee reboots in a short period of time, reboot esp8266
   if(nowTime > 1000 * 86400 * 7 || nowTime < hotspot_limited_time_frame * 1000  && moxeeRebootCount >= number_of_hotspot_reboots_over_limited_timeframe_before_esp_reboot) {
-    Serial.print("MOXEE REBOOT COUNT: ");
-    Serial.print(moxeeRebootCount);
-    Serial.println();
-    rebootEsp();
+    //let's not do this anymore
+    //Serial.print("MOXEE REBOOT COUNT: ");
+    //Serial.print(moxeeRebootCount);
+    //Serial.println();
+    //rebootEsp();
   }
   //Serial.print(granularityToUse);
   //Serial.print(" ");
@@ -1075,7 +1176,10 @@ void loop(){
   }
 
   lookupLocalPowerData();
- 
+  if (Serial.available()) 
+  {
+    doSerialCommands();
+  }
  
   if(canSleep) {
     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
@@ -1093,6 +1197,22 @@ void loop(){
   }
 }
 
+void doSerialCommands() {
+  char serialByte;
+  String command = "!-1|";
+ 
+  while(Serial.available()) {
+    serialByte = Serial.read();
+    if(serialByte == '\r' || serialByte == '\n') {
+      Serial.print("Serial command: ");
+      Serial.println(command);
+      runCommandsFromNonJson((char *) command.c_str());
+    } else {
+      command = command + serialByte;
+    }
+  }
+  
+}
 
 void sleepForSeconds(int seconds) {
     wifi_set_opmode(NULL_MODE);            // Turn off Wi-Fi for lower power
@@ -1102,7 +1222,7 @@ void sleepForSeconds(int seconds) {
     while (millis() < sleepEndTime) {
         delay(10); // Short delays allow CPU to periodically enter light sleep
     }
-    // GPIO states are preserved during this period
+    // GPIO states are preserved during this periodd
 }
 
 
@@ -1156,9 +1276,515 @@ void localShowData() {
   server.send(200, "text/plain", out); 
 }
 
+void printHexBytes(uint32_t value) {
+    Serial.print(((value >> 24) & 0xFF), HEX);
+    Serial.print(((value >> 16) & 0xFF), HEX);
+    Serial.print(((value >> 8) & 0xFF), HEX);
+    Serial.println((value & 0xFF), HEX);
+}
+
+byte decToBcd(byte val){
+  return ( (val/10*16) + (val%10) );
+}
+
+// Convert binary coded decimal to normal decimal numbers
+byte bcdToDec(byte val)
+{
+  return ( (val/16*10) + (val%16) );
+}
+
+//RTC functions
+const int _ytab[2][12] = {
+{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31},
+{31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+};
+
+#define DAYSPERWEEK (7)
+#define DAYSPERNORMYEAR (365U)
+#define DAYSPERLEAPYEAR (366U)
+#define SECSPERDAY (86400UL) /* == ( 24 * 60 * 60) */
+#define SECSPERHOUR (3600UL) /* == ( 60 * 60) */
+#define SECSPERMIN (60UL) /* == ( 60) */
+#define LEAPYEAR(year)          (!((year) % 4) && (((year) % 100) || !((year) % 400)))
+/****************************************************
+* Class:Function    : getSecsSinceEpoch
+* Input     : uint16_t epoch date (ie, 1970)
+* Input     : uint8 ptr to returned month
+* Input     : uint8 ptr to returned day
+* Input     : uint8 ptr to returned years since Epoch
+* Input     : uint8 ptr to returned hour
+* Input     : uint8 ptr to returned minute
+* Input     : uint8 ptr to returned seconds
+* Output        : uint32_t Seconds between Epoch year and timestamp
+* Behavior      :
+*
+* Converts MM/DD/YY HH:MM:SS to actual seconds since epoch.
+* Epoch year is assumed at Jan 1, 00:00:01am.
+* looks like epoch has to be a date like 1900 or 2000 with two zeros at the end.  1984 will not work!
+****************************************************/
+uint32_t getSecsSinceEpoch(uint16_t epoch, uint8_t month, uint8_t day, uint8_t years, uint8_t hour, uint8_t minute, uint8_t second){
+  unsigned long secs = 0;
+  int countleap = 0;
+  int i;
+  int dayspermonth;
+  
+  secs = years * (SECSPERDAY * 365);
+  for (i = 0; i < (years - 1); i++)
+  {   
+      if (LEAPYEAR((epoch + i)))
+        countleap++;
+  }
+  secs += (countleap * SECSPERDAY);
+  
+  secs += second;
+  secs += (hour * SECSPERHOUR);
+  secs += (minute * SECSPERMIN);
+  secs += ((day - 1) * SECSPERDAY);
+  
+  if (month > 1)
+  {
+      dayspermonth = 0;
+  
+      if (LEAPYEAR((epoch + years))) // Only counts when we're on leap day or past it
+      {
+          if (month > 2)
+          {
+              dayspermonth = 1;
+          } else if (month == 2 && day >= 29) {
+              dayspermonth = 1;
+          }
+      }
+  
+      for (i = 0; i < month - 1; i++)
+      {   
+          secs += (_ytab[dayspermonth][i] * SECSPERDAY);
+      }
+  }
+  
+  return secs;
+}
+
+// 1) Sets the date and time on the ds1307
+// 2) Starts the clock
+// 3) Sets hour mode to 24 hour clock
+// Assumes you're passing in valid numbers
+void setDateDs1307(byte second,        // 0-59
+                   byte minute,        // 0-59
+                   byte hour,          // 1-23
+                   byte dayOfWeek,     // 1-7
+                   byte dayOfMonth,    // 1-28/29/30/31
+                   byte month,         // 1-12
+                   byte year)          // 0-99
+{
+  /*
+  Serial.print(year);
+  Serial.print("-");
+  Serial.print(month);
+  Serial.print("-");
+  Serial.print(dayOfMonth);
+  Serial.print(" ");
+  
+  Serial.print(hour);
+  Serial.print(":");
+  Serial.print(minute);
+  Serial.print(":");
+  Serial.print(second);
+  Serial.print("/");
+  Serial.print(dayOfWeek);
+  Serial.println(" ");
+   */
+   Wire.beginTransmission(rtc_address);
+   Wire.write(0);
+   Wire.write(decToBcd(second));    // 0 to bit 7 starts the clock
+   Wire.write(decToBcd(minute));
+   Wire.write(decToBcd(hour));      // If you want 12 hour am/pm you need to set
+                                   // bit 6 (also need to change readDateDs1307)
+   Wire.write(decToBcd(dayOfWeek));
+   Wire.write(decToBcd(dayOfMonth));
+   Wire.write(decToBcd(month));
+   Wire.write(decToBcd(year));
+   Wire.endTransmission();
+}
+
+// Gets the date and time from the ds1307
+void getDateDs1307(byte *second,
+          byte *minute,
+          byte *hour,
+          byte *dayOfWeek,
+          byte *dayOfMonth,
+          byte *month,
+          byte *year)
+{
+  // Reset the register pointer
+  Wire.beginTransmission(rtc_address);
+  Wire.write(0);
+  Wire.endTransmission();
+  
+  Wire.requestFrom(rtc_address, 7);
+
+  // A few of these need masks because certain bits are control bits
+  *second     = bcdToDec(Wire.read() & 0x7f);
+  *minute     = bcdToDec(Wire.read());
+  *hour       = bcdToDec(Wire.read() & 0x3f);  // Need to change this if 12 hour am/pm
+  *dayOfWeek  = bcdToDec(Wire.read());
+  *dayOfMonth = bcdToDec(Wire.read());
+  *month      = bcdToDec(Wire.read());
+  *year       = bcdToDec(Wire.read());
+}
+
+void printRTCDate()
+{
+  byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
+  getDateDs1307(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
+  Serial.print(year);
+  Serial.print("-");
+  Serial.print(month);
+  Serial.print("-");
+  Serial.print(dayOfMonth);
+  Serial.print(" ");
+  Serial.print(hour);
+  Serial.print(":");
+  Serial.print(minute);
+  Serial.print(":");
+  Serial.print(second);
+  Serial.println("");
+}
+
+uint32_t currentRTCTimestamp()
+{
+  byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
+  getDateDs1307(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
+  //Serial.println(dayOfMonth);
+  //Serial.println(month);
+  //Serial.println(year);
+  return getSecsSinceEpoch((uint16_t)2000, (uint8_t)month,  (uint8_t)dayOfMonth,   (uint8_t)year,  (uint8_t)hour,  (uint8_t)minute,  (uint8_t)second);
+}
+
+//FRAM functions 
+
+void writeRecordToFRAM(const std::vector<std::tuple<uint8_t, uint8_t, double>>& record) {
+  Serial.println(currentRecordCount);
+  if (currentRecordCount >= fram_index_size) {
+    currentRecordCount = 0;
+  }
+  uint16_t recordStartAddress = (currentRecordCount == 0) 
+    ? framIndexAddress + (fram_index_size * 2)  // Leave space for the index table
+    : read16(framIndexAddress + uint16_t((currentRecordCount -1) * 2)) + lastRecordSize + 1; //record.size is 4 now?
+
+  //Serial.println(record.size());
+  uint16_t addr = recordStartAddress;
+ 
+  Serial.println(addr);
+  lastRecordSize = 0;
+  for (const auto& [ordinal, type, dbl] : record) {
+    uint8_t ordinalTypeArray[2] = {ordinal, type};
+    // Write the 1-byte ordinal
+    fram.write(addr, ordinalTypeArray, 2); // Write 2 bytes for ordinal and type
+    lastRecordSize += 2;
+    addr += 2;
+    // Write the value (either float or 4-byte integer based on ordinal)
+    if (type == 5) {
+      // Write as float
+      float temp = (float)dbl; // Non-const copy
+      uint8_t* valueBytes = reinterpret_cast<uint8_t*>(&temp);
+      fram.write(addr, valueBytes, 4);
+      lastRecordSize += 4;
+      addr += 4;
+    } else if (type == 2){
+      // Write as 4-byte integer
+      int32_t asInt = static_cast<int32_t>(dbl); // Convert double to int
+      uint8_t valueBytes[4] = {
+        (asInt >> 24) & 0xFF,
+        (asInt >> 16) & 0xFF,
+        (asInt >> 8) & 0xFF,
+        asInt & 0xFF
+      };
+      fram.write(addr, valueBytes, 4);
+      lastRecordSize += 4;
+      addr += 4;
+    } else if (type == 0){
+      // Write as 1-byte integer
+      uint8_t asInt = static_cast<uint8_t>(dbl); // Convert double to int
+      uint8_t asIntArray[1];
+      asIntArray[0] = asInt;
+      fram.write(addr, asIntArray, 1);
+      lastRecordSize += 1;
+      addr += 1;
+    } else if (type == 6) {
+      // Write as double
+      float temp = (double)dbl; // Non-const copy
+      uint8_t* valueBytes = reinterpret_cast<uint8_t*>(&temp);
+      fram.write(addr, valueBytes, 8);
+      lastRecordSize += 8;
+      addr += 8;
+    }
+
+    //ordinal++;
+  }
+
+  // Write a delimiter (0xFFFFFFFF) to mark the end of the record
+  uint8_t delimiter = 0xFF;
+  uint8_t delimiterArray[1] = {delimiter};
+  fram.write(addr, delimiterArray, 1);
+  //don't count the delimter in lastRecordSize;
+  //addr +=  1;
+
+  Serial.print(" last record size: ");
+  Serial.println((int)lastRecordSize);
+    
+  // Update the index table
+  uint8_t indexBytes[2] = {uint8_t(recordStartAddress >> 8), uint8_t(recordStartAddress & 0xFF)};
+ 
+  fram.write(framIndexAddress + currentRecordCount * 2, indexBytes, 2);
+  currentRecordCount++;
+  //also store currentRecordCount
+  writeRecordCountToFRAM(currentRecordCount);
+  //did it save correctly at all?
+  displayFramRecord(currentRecordCount-1);
+}
+
+//this stores the NUMBER of FRAM records, nothing else
+void writeRecordCountToFRAM(uint16_t recordCount) {
+  uint8_t countBytes[2] = {
+    (recordCount >> 8) & 0xFF, // High byte
+    recordCount & 0xFF         // Low byte
+  };
+  fram.write(fram_log_top, countBytes, 2); // Write 2 bytes to address 0x0000
+}
+
+//this retrieves the NUMBER of FRAM records, nothing else
+uint16_t readRecordCountFromFRAM() {
+  uint8_t countBytes[2];
+  fram.read(fram_log_top, countBytes, 2); // Read 2 bytes from address 0x0000
+
+  // Reassemble the uint16_t from the high and low bytes
+  uint16_t recordCount = (static_cast<uint16_t>(countBytes[0]) << 8) | countBytes[1];
+  return recordCount;
+}
+
+uint16_t read16(uint16_t addr) {
+  uint8_t bytes[2];
+  fram.read(addr, bytes, 2); // Read 2 bytes
+  return (uint16_t(bytes[0]) << 8) | uint16_t(bytes[1]);
+}
+
+void readRecordFromFRAM(uint16_t recordIndex, std::vector<std::tuple<uint8_t, uint8_t, double>>& record) {
+  uint16_t indexAddress = framIndexAddress + (recordIndex * 2);
+  uint16_t recordStartAddress = read16(indexAddress);
+  record.clear();
+  uint16_t addr = recordStartAddress;
+  while (addr < fram_log_top) {
+    uint8_t ordinal;
+    uint8_t type;
+    fram.read(addr, &ordinal, 1); // Read 1 byte for the ordinal
+    addr += 1;
+    fram.read(addr, &type, 1); // Read 1 byte for the type
+    addr += 1;
+    if (ordinal >= 0xF0) break; // End of record... we allow a variety of end delimiters to encode record status
+    if (type == 5) {
+      // Read value as float
+      uint8_t valueBytes[4];
+      fram.read(addr, valueBytes, 4);
+      addr += 4;
+      float dbl;
+      memcpy(&dbl, valueBytes, 4);
+      record.emplace_back(std::make_tuple(ordinal, type, (double)dbl));
+    } else if (type == 2){
+      // Read value as 4-byte integer
+      uint8_t valueBytes[4];
+      fram.read(addr, valueBytes, 4);
+      addr += 4;
+
+      int32_t value = (valueBytes[0] << 24) | (valueBytes[1] << 16) | (valueBytes[2] << 8) | valueBytes[3];
+      //Serial.println("retrieved millis:");
+      //printHexBytes(value);
+      record.emplace_back(std::make_tuple(ordinal, type, static_cast<double>(value))); // Convert back to double for compatibility
+    } else if (type == 0){
+      // Read value as 4-byte integer
+      uint8_t valueBytes[1];
+      fram.read(addr, valueBytes, 1);
+      addr += 1;
+
+      int32_t value = valueBytes[0];
+      //Serial.println("retrieved millis:");
+      //printHexBytes(value);
+      record.emplace_back(std::make_tuple(ordinal, type, static_cast<double>(value))); // Convert back to double for compatibility
+    } else if (type == 6) { //read double
+      uint8_t valueBytes[8];
+      fram.read(addr, valueBytes, 8);
+      double dbl;
+      memcpy(&dbl, valueBytes, 8);
+      record.emplace_back(std::make_tuple(ordinal, type, (double)dbl));
+      addr += 8;
+    }
+  }
+}
+
+uint16_t getLastRecordSizeFromFRAM() {
+  if (currentRecordCount == 0) {
+    //Serial.println("No records exist.");
+    return 0;
+  }
+
+  // Locate the last record's start address using the index table
+  uint16_t lastRecordIndex = currentRecordCount - 1;
+  uint16_t indexAddress = framIndexAddress + (lastRecordIndex * 2);
+  uint16_t recordStartAddress = read16(indexAddress);
+
+  uint16_t size = 0;
+
+  while (size + recordStartAddress < fram_log_top) {
+    uint8_t readBytes[2];
+    fram.read(recordStartAddress + size, readBytes, 2); // Read ordinal (1 byte)
+    uint8_t ordinal = readBytes[0];
+    uint8_t type = readBytes[1];
+    size += 2;
+
+    if (ordinal >= 0xF0) { // Found the delimiter (end of record) ... we allow a variety of end delimiters to encode record status 
+      break;
+    }
+    if (type == 5 || type == 2) {
+      // Float (4 bytes)
+      size += 4;
+    } else if (type == 0) {
+      // 1-byte integer
+      size += 1;
+    } else if (type == 6) {
+      // Double (8 bytes)
+      size += 8;
+    }
+  }
+  //Serial.print("Last record size: ");
+  //Serial.println(size);
+
+  return size;
+}
+
+
+void clearFramLog(){
+  currentRecordCount = 0;
+  writeRecordCountToFRAM(currentRecordCount);
+  Serial.println("Current record cursor reset");
+}
+
+void displayFramRecord(uint16_t recordIndex) { //want to get rid of after testing!
+    // Read the record from FRAM
+    std::vector<std::tuple<uint8_t, uint8_t, double>> record;
+    readRecordFromFRAM(recordIndex, record);
+    // Display the record
+    Serial.print("Record #");    
+    Serial.print(recordIndex);
+    Serial.println(":");
+    for (const auto& [ordinal, type, value] : record) {
+      Serial.print("  Ordinal: ");
+      Serial.print(ordinal);
+      //Serial.print("  Type: ");
+      //Serial.print(type);
+      Serial.print(", Value: ");
+      if(type == 5) {
+        Serial.println(value, 3); // Print with 3 decimal places
+      } else if (type == 6) {
+        Serial.println(value, 12); // Print with 12 decimal places
+      } else if (type == 0 || type == 2) {
+        Serial.println(value, 0); // Print with 0 decimal places
+      }
+      
+    }
+    Serial.println(); // Add spacing between records
+}
+
+void displayAllFramRecords() { //want to get rid of after testing!
+  Serial.println("Reading all records from FRAM:");
+  Serial.print("Record Count: ");
+  Serial.println(currentRecordCount);
+  for (uint16_t i = 0; i < currentRecordCount; i++) {
+    displayFramRecord(i);
+    Serial.println(); // Add spacing between records
+  }
+
+  Serial.println("All records displayed.");
+}
+
+void dumpFramRecordIndexes() {  
+  uint8_t bytes[2];
+  for(int i=0; i<currentRecordCount; i++) {
+    int index = read16(uint16_t (i*2));
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.println(index);
+  }
+}
+
+void hexDumpFRAM(uint16_t startAddress, uint8_t bytesPerLine, uint16_t maxLines) {
+  uint16_t address = startAddress; // Initialize with the starting address
+  uint8_t buffer[bytesPerLine];   // Buffer to hold data for one line
+  
+  for (uint16_t line = 0; line < maxLines; ++line) {
+    // Read a line's worth of data from FRAM
+    fram.read(address, buffer, bytesPerLine);
+    
+    // Print the address with leading zeros
+    Serial.print("0x");
+    if (address < 0x1000) Serial.print("0");
+    if (address < 0x0100) Serial.print("0");
+    if (address < 0x0010) Serial.print("0");
+    Serial.print(address, HEX);
+    Serial.print(": ");
+    
+    // Print the data in hexadecimal format with leading zeros
+    for (uint8_t i = 0; i < bytesPerLine; ++i) {
+      if (address + i < 0xFFFF) { // Ensure we don't overflow the 16-bit address space
+        if (buffer[i] < 0x10) Serial.print("0"); // Add leading zero if less than 0x10
+        Serial.print(buffer[i], HEX);
+        Serial.print(" ");
+      } else {
+        break; // Stop if address exceeds FRAM bounds
+      }
+    }
+    
+    Serial.println(); // Move to the next line
+    
+    address += bytesPerLine; // Increment the address for the next line
+    
+    // Stop if we've reached the end of FRAM memory
+    if (address >= 0xFFFF) {
+      break;
+    }
+  }
+}
+
+void swapFRAMContents(uint16_t location1, uint16_t location2, uint16_t length) {
+  if (length == 0) {
+    Serial.println("Invalid length: 0");
+    return;
+  }
+
+  // Allocate a buffer to temporarily store data
+  uint8_t buffer1[length];
+  uint8_t buffer2[length];
+
+  // Read data from the two locations
+  fram.read(location1, buffer1, length); // Read `length` bytes from location1 into buffer1
+  fram.read(location2, buffer2, length); // Read `length` bytes from location2 into buffer2
+
+  // Swap the data by writing back to the other location
+  fram.write(location1, buffer2, length); // Write buffer2's data to location1
+  fram.write(location2, buffer1, length); // Write buffer1's data to location2
+
+  Serial.println("Swap completed");
+}
+
+void addOfflineRecord(std::vector<std::tuple<uint8_t, uint8_t, double>>& record, uint8_t ordinal, uint8_t type, double value) {
+  if (!isnan(value)) {
+    record.emplace_back(std::make_tuple(ordinal, type, value));  // ✅ Safer
+  }
+}
+
 /////////////////////////////////////////////
 //utility functions
 /////////////////////////////////////////////
+
+
 String urlEncode(String str, bool minimizeImpact) {
   String encodedString = "";
   char c;
@@ -1201,7 +1827,7 @@ String joinMapValsOnDelimiter(SimpleMap<String, int> *pinMap, String delimiter, 
 }
 
 String nullifyOrNumber(double inVal) {
-  if(inVal == NULL) {
+  if(isnan(inVal)) {
     return "";
   } else {
     return String(inVal);
@@ -1209,7 +1835,7 @@ String nullifyOrNumber(double inVal) {
 }
 
 String nullifyOrInt(int inVal) {
-  if(inVal == NULL) {
+  if(isnan(inVal)) {
     return "";
   } else {
     return String(inVal);
