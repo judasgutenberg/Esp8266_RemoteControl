@@ -69,7 +69,7 @@ This is another advancement from my Moxee Hotspot Watchdog system, which was its
 From there, here's an overview of how to set up control for a particular system controlled by a pin on your ESP8266:
 
 1. Add a record to the device table to represent your particular ESP8266.  In the code, device_id and location_id refer to the same entity. Your ESP8266 will send that id as device_id to the server whenever it polls it to get updates on what values the device with its pins should have.  You will need to set device_id to this value in config.c before compiling the code for you ESP8266.
-2. Add a record to the device_type table describing your particular type of device (in this case, ESP8266).  Details for this don't matter much.
+2. Add a record to the device_type table describing your particular type of device (in this case, ESP8266).  Details for these don't matter much.
 3. Add a record to the device_type_feature table describing the pin (mostly the pin number and, if it is on an Arduino slave, the I2C address).
 4. Add a record to the device_feature table describing the specific pin (here a human readable name would be useful).
 5. You can change the state of a particular ESP8266's pin by changing the state of the value column in the device_feature record.  Make sure to set enabled to 1 as well.  Depending on the speed of your network and how frequently you set polling, the change should manifest within a minute or so.
