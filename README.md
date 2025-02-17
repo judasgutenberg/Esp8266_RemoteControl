@@ -58,7 +58,7 @@ This system also requires a number of external libraries:
 
 
 ## Server Setup
-The rest of the code needs to be placed on a server that can process PHP pages and communicate with a MySQL database. (It's not an elegant language, but I like PHP because it runs pretty well and doesn't require compilation or setup headaches on most servers or Raspberry Pis.) 
+The rest of the code needs to be placed on a server that can process PHP pages and communicate with a MySQL database you create and control. (It's not an elegant language, but I like PHP because it runs pretty well and doesn't require compilation or setup headaches on most servers or Raspberry Pis.) 
 
 To get this installed, first create an initial database by running remote_control.sql on the server and then change config.php so the PHP will know how to connect to the database.  You then create a tenant and a user connected to that tenant via tenant_user and give that tenant a storage_password so that the ESP8266 will be able to authenticate communication with the backend (all this can be done under the tenant tab in the web UI if your user has 'super' status).  This storage password is then set as storage_password (along with other important config information like your WiFi credentials and the domain and path where your backend is hosted) in config.c before compiling the Arduino code and uploading it to an ESP8266.  Then you create a device and give it device_features, and set the device_id of the ESP8266 to the device_id of that device in config.c so that the backend will know which ESP8266 is polling to log sensor data and perhaps pick up remote control settings and additional sensors.
 
