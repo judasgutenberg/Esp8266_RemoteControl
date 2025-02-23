@@ -90,6 +90,11 @@ long latencyCount = 0;
 bool offlineMode = false;
 long lastOfflineLog = 0;
 uint8_t lastRecordSize = 0;
+
+long lastOfflineReconnectAttemptTime = 0;
+bool haveReconnected = true; //we need to start reconnected in case we reboot and there are stored FRAM records
+uint16_t fRAMRecordsSkipped = 0;
+uint32_t lastRtcSyncTime = 0;
  
 //https://github.com/spacehuhn/SimpleMap
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
@@ -107,7 +112,7 @@ long moxeeRebootTimes[] = {0,0,0,0,0,0,0,0,0,0,0};
 int moxeeRebootCount = 0;
 int timeOffset = 0;
 long lastCommandId = 0;
-bool glblRemote = false;
+ 
 bool onePinAtATimeMode = false; //used when the server starts gzipping data and we can't make sense of it
 char requestNonJsonPinInfo = 0; //use to get much more compressed data double-delimited data from data.php if 1, otherwise if 0 it requests JSON
 int pinCursor = -1;
@@ -447,27 +452,18 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
 }
 
 void handleWeatherData() {
-  String transmissionString = "";
-  
-  if(ipAddress.indexOf(' ') > 0) { //i was getting HTML header info mixed in for some reason
-    ipAddress = ipAddress.substring(0, ipAddress.indexOf(' '));
-  }
-  String ipAddressToUse = ipAddress;
-  
-  if(ipAddressAffectingChange != "") {
-     ipAddressToUse = ipAddressAffectingChange;
-     changeSourceId = 1;
-  }
-  int deviceFeatureId = 0;
-  if(onePinAtATimeMode) {
-    pinCursor++;
-    if(pinCursor >= pinTotal) {
-      pinCursor = 0;
-    }
-  }
+  String transmissionString = weatherDataString(sensor_id, sensor_sub_type, sensor_data_pin, sensor_power_pin, sensor_i2c, NULL, 0, deviceName, -1, consolidate_all_sensors_to_one_record);
+  server.send(200, "text/plain", transmissionString); //Send values only to client ajax request
+}
 
-  if(sensor_id > -1) {
-    transmissionString = weatherDataString(sensor_id, sensor_sub_type, sensor_data_pin, sensor_power_pin, sensor_i2c, NULL, 0, deviceName, -1, consolidate_all_sensors_to_one_record);
+void compileAndSendWeatherData(String zerothRowData, String thirdRowData, String fourthRowData, bool doPinCursorChanges, uint16_t fRAMOrdinal) {
+  String transmissionString = "";
+  if(zerothRowData != "") {
+    transmissionString = zerothRowData;
+  } else {
+    if(sensor_id > -1) {
+      transmissionString = weatherDataString(sensor_id, sensor_sub_type, sensor_data_pin, sensor_power_pin, sensor_i2c, NULL, 0, deviceName, -1, consolidate_all_sensors_to_one_record);
+    }
   }
   //add the data for any additional sensors, delimited by '!' for each sensor
   String additionalSensorData = handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), false);
@@ -480,28 +476,54 @@ void handleWeatherData() {
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
   transmissionString = transmissionString + "|" + joinMapValsOnDelimiter(pinMap, "*", pinTotal); //also send pin as they are known back to the server
   //other server-relevant info as needed, delimited by *
-  transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddressToUse + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson + "*" + changeSourceId + "*" + timeClient.getEpochTime();
-  transmissionString = transmissionString + "*" + millis(); //so we can know how long the gizmo has been up
+  //transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddressToUse + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson + "*" + changeSourceId + "*" + timeClient.getEpochTime();
+  transmissionString = transmissionString + "|";
+  if(thirdRowData) {
+    transmissionString = transmissionString + thirdRowData;
+  } else {
+
+
+  if(ipAddress.indexOf(' ') > 0) { //i was getting HTML header info mixed in for some reason
+    ipAddress = ipAddress.substring(0, ipAddress.indexOf(' '));
+  }
+    String ipAddressToUse = ipAddress;
+    if(ipAddressAffectingChange != "") {
+       ipAddressToUse = ipAddressAffectingChange;
+       changeSourceId = 1;
+    }
   
-  transmissionString = transmissionString + "*";
-  if(latencyCount > 0) {
-    transmissionString = transmissionString + (1000 * latencySum)/latencyCount;
+    if(onePinAtATimeMode) {
+      if(doPinCursorChanges) {
+        pinCursor++;
+        if(pinCursor >= pinTotal) {
+          pinCursor = 0;
+        }
+      }
+    }
+    transmissionString = transmissionString + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddressToUse + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson + "*" + changeSourceId + "*" + timeClient.getEpochTime();
+    transmissionString = transmissionString + "*" + millis(); //so we can know how long the gizmo has been up
+    transmissionString = transmissionString + "*";
+    if(latencyCount > 0) {
+      transmissionString = transmissionString + (1000 * latencySum)/latencyCount;
+    }
+
   }
   
-  transmissionString = transmissionString + "|*" + measuredVoltage + "*" + measuredAmpage; //if this device could timestamp data from its archives, it would put the numeric timetamp before measuredVoltage
-  //transmissionString = transmissionString + "*" + latitude + "*" + longitude; //not yet supported. might also include accelerometer data some day
-  //Serial.println(transmissionString);
-  //had to use a global, died a little inside
-  if(glblRemote) {
-    if(!offlineMode) {
-      sendRemoteData(transmissionString);
-    }
+  transmissionString = transmissionString + "|";
+  if(fourthRowData != "") {
+    transmissionString = transmissionString + fourthRowData;
   } else {
-    server.send(200, "text/plain", transmissionString); //Send values only to client ajax request
+    transmissionString = transmissionString + "*" + measuredVoltage + "*" + measuredAmpage; //if this device could timestamp data from its archives, it would put the numeric timetamp before measuredVoltage
+    //transmissionString = transmissionString + "*" + latitude + "*" + longitude; //not yet supported. might also include accelerometer data some day
+    //Serial.println(transmissionString);
+  }
+  if(!offlineMode) {
+    sendRemoteData(transmissionString, fRAMOrdinal); //if fRAMOrdinal == 0xFFFF then don't worry about FRAM
   }
 }
 
 void wiFiConnect() {
+  lastOfflineReconnectAttemptTime = millis();
   WiFi.persistent(false); //hopefully keeps my flash from being corrupted, see: https://rayshobby.net/wordpress/esp8266-reboot-cycled-caused-by-flash-memory-corruption-fixed/
   WiFi.begin(wifi_ssid, wifi_password);    
   Serial.println();
@@ -521,10 +543,15 @@ void wiFiConnect() {
     if(!initialAttemptPhase && wiFiSeconds > (wifi_timeout/2)) {
       //give up for the time being
       offlineMode = true;
+      haveReconnected = false;
       Serial.print("Entering offline mode...");
       return;
     }
   }
+  if(offlineMode){
+    haveReconnected = true;
+  }
+  offlineMode = false;
   Serial.println("");
   Serial.print("Connected to ");
   Serial.println(wifi_ssid);
@@ -534,7 +561,7 @@ void wiFiConnect() {
 }
 
 //SEND DATA TO A REMOTE SERVER TO STORE IN A DATABASE----------------------------------------------------
-void sendRemoteData(String datastring) {
+void sendRemoteData(String datastring, uint16_t fRAMordinal) {
   WiFiClient clientGet;
   const int httpGetPort = 80;
   String url;
@@ -566,6 +593,7 @@ void sendRemoteData(String datastring) {
     rebootMoxee();
     Serial.print(host_get);
     Serial.println();
+ 
   } else {
 
      connectionFailureTime = 0;
@@ -670,6 +698,9 @@ void sendRemoteData(String datastring) {
     }
     if(receivedData && !receivedDataJson) { //an indication our server is gzipping data needed for remote control.  So instead pull it down one pin at a time and hopefully get under the gzip cutoff
       onePinAtATimeMode = true;
+    }
+    if(fRAMordinal != 0xFFFF) {
+      changeDelimiterOnRecord(fRAMordinal, 0xFE);
     }
    
   } //if (attempts >= connection_retry_number)....else....    
@@ -1078,6 +1109,10 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
   //be out of phase with the cellular hotspot
   shiftArrayUp(moxeeRebootTimes,  timeClient.getEpochTime(), 10);
   moxeeRebootCount++;
+  if(moxeeRebootCount > 9) {
+    offlineMode = true;
+    moxeeRebootCount = 0;
+  }
 }
 
 //SETUP----------------------------------------------------
@@ -1169,9 +1204,9 @@ void loop(){
     //Serial.print(connectionFailureTime>0 && connectionFailureTime + connection_failure_retry_seconds * 1000);
     //Serial.println("Epoch time:");
     //Serial.println(timeClient.getEpochTime());
-    glblRemote = true;
-    handleWeatherData();
-    glblRemote = false;
+
+    //compileAndSendWeatherData(String zerothRowData, String thirdRowData, String fourthRowData, bool doPinCursorChanges, uint16_t fRAMOrdinal)
+    compileAndSendWeatherData("", "", "", true, 0xFFFF);
     lastPoll = nowTime;
   }
 
@@ -1179,6 +1214,25 @@ void loop(){
   if (Serial.available()) 
   {
     doSerialCommands();
+  }
+
+  if(offlineMode){
+    if(millis() - lastOfflineReconnectAttemptTime > 1000 * offline_reconnect_interval) {
+      //time to attempt a reconnection
+      wiFiConnect();
+      
+    }
+  } else {
+    if(rtc_address > 0) { //if we have an RTC and we are not offline, sync RTC
+      if (millis() - lastRtcSyncTime > 86400000 || lastRtcSyncTime == 0) {
+        syncRTCWithNTP();
+        lastRtcSyncTime = millis();
+      }
+    }
+  }
+  if(haveReconnected) {
+    //try to send stored records to the backend
+    sendAStoredRecordToBackend();
   }
  
   if(canSleep) {
@@ -1306,6 +1360,28 @@ const int _ytab[2][12] = {
 #define SECSPERHOUR (3600UL) /* == ( 60 * 60) */
 #define SECSPERMIN (60UL) /* == ( 60) */
 #define LEAPYEAR(year)          (!((year) % 4) && (((year) % 100) || !((year) % 400)))
+
+
+void syncRTCWithNTP() {
+  timeClient.update();
+  time_t rawTime = timeClient.getEpochTime();
+  
+  struct tm *timeInfo = gmtime(&rawTime);  // Convert to UTC struct
+
+  byte second      = timeInfo->tm_sec;
+  byte minute      = timeInfo->tm_min;
+  byte hour        = timeInfo->tm_hour;
+  byte dayOfWeek   = timeInfo->tm_wday == 0 ? 7 : timeInfo->tm_wday; // Convert Sunday (0) to 7
+  byte dayOfMonth  = timeInfo->tm_mday;
+  byte month       = timeInfo->tm_mon + 1; // tm_mon is 0-based
+  byte year        = timeInfo->tm_year - 100; // Convert from years since 1900
+
+  Serial.printf("Setting RTC: %02d:%02d:%02d %02d/%02d/%02d\n",
+                hour, minute, second,  month,  dayOfMonth, year + 2000);
+
+  setDateDs1307(second, minute, hour, dayOfWeek, dayOfMonth, month, year);
+}
+
 /****************************************************
 * Class:Function    : getSecsSinceEpoch
 * Input     : uint16_t epoch date (ie, 1970)
@@ -1549,8 +1625,80 @@ void writeRecordCountToFRAM(uint16_t recordCount) {
     (recordCount >> 8) & 0xFF, // High byte
     recordCount & 0xFF         // Low byte
   };
-  fram.write(fram_log_top, countBytes, 2); // Write 2 bytes to address 0x0000
+  fram.write(fram_log_top, countBytes, 2);  
 }
+
+//stores the last sent FRAM record ordinal
+void writeLastFRAMRecordSentOrdinal(uint16_t ordinal) {
+  uint8_t countBytes[2] = {
+    (ordinal >> 8) & 0xFF, // High byte
+    ordinal & 0xFF         // Low byte
+  };
+  fram.write(fram_log_top + 2, countBytes, 2); // Write 2 bytes 
+}
+
+//writes a single record to the backend and changes its delimiter so that it won't be sent again
+void sendAStoredRecordToBackend() {
+  //first get the last FRAM record sent:
+  uint16_t positionInFram = read16(fram_log_top + 2);
+  uint32_t timestamp = 0;
+  uint8_t delimiter;
+  String zerothDataRowString = "**********";
+  String fourthDataRowString = "**********";
+  if(positionInFram >= fram_index_size){ //it might be too big if it overflows or way off if it was never written
+    positionInFram = 0;
+  }
+  std::vector<std::tuple<uint8_t, uint8_t, double>> record;
+  readRecordFromFRAM(positionInFram, record, delimiter);
+  
+  if(delimiter == 0xFF) { //we only send records to the backend if this is the delimiter.  after we send it, we update the delimiter to 0xFE
+    fRAMRecordsSkipped = 0;
+    //we need to assemble a suitable string from the FRAM record
+    //the string looks something like: 
+    for (const auto& [ordinal, type, value] : record) {
+      if(ordinal < 20) {  
+        zerothDataRowString = replaceNthElement(zerothDataRowString, ordinal, String(value), '*');
+      } else if (ordinal >= 40 && ordinal < 60) {
+        fourthDataRowString = replaceNthElement(fourthDataRowString, ordinal-40, String(value), '*');
+      }
+    }
+
+    //void handleWeatherData(String zerothRowData, String thirdRowData, String fourthRowData, bool doPinCursorChanges, uint16_t fRAMOrdinal) {
+    compileAndSendWeatherData(zerothDataRowString, "", fourthDataRowString, true, positionInFram);
+  } else {
+    positionInFram++;
+    //now save the ordinal in fram_log_top + 2
+    fRAMRecordsSkipped++;
+    if(fRAMRecordsSkipped > fram_index_size) {
+      fRAMRecordsSkipped = 0;
+      haveReconnected = false; //we sent all the stored records, so we're all done being reconnected
+    }
+    writeLastFRAMRecordSentOrdinal(positionInFram);
+  }
+}
+
+void changeDelimiterOnRecord(uint16_t ordinal, uint8_t newDelimiter) {
+  uint16_t indexAddress = framIndexAddress + (ordinal * 2);
+  uint16_t location = read16(indexAddress);
+  uint8_t bytesPerLine = getLastRecordSizeFromFRAM() + 1;
+  Serial.print("Bytes per line: ");
+  Serial.println(bytesPerLine);
+  uint8_t buffer[bytesPerLine];   // Buffer to hold data for one line
+  fram.read(location, buffer, bytesPerLine); 
+  buffer[bytesPerLine-1] = newDelimiter;
+  fram.write(location, buffer, bytesPerLine); 
+  ordinal++;
+  //now save the ordinal in fram_log_top + 2
+  writeLastFRAMRecordSentOrdinal(ordinal);
+}
+
+//FRAM MEMORY MAP:
+/*
+fram_log_top: number of FRAM records
+fram_log_top + 2: ordinal of last FRAM record sent to backend
+
+
+*/
 
 //this retrieves the NUMBER of FRAM records, nothing else
 uint16_t readRecordCountFromFRAM() {
@@ -1568,7 +1716,8 @@ uint16_t read16(uint16_t addr) {
   return (uint16_t(bytes[0]) << 8) | uint16_t(bytes[1]);
 }
 
-void readRecordFromFRAM(uint16_t recordIndex, std::vector<std::tuple<uint8_t, uint8_t, double>>& record) {
+void readRecordFromFRAM(uint16_t recordIndex, std::vector<std::tuple<uint8_t, uint8_t, double>>& record, uint8_t & delimiter) {
+  //was causing lots of out of memory runtime errors
   uint16_t indexAddress = framIndexAddress + (recordIndex * 2);
   uint16_t recordStartAddress = read16(indexAddress);
   record.clear();
@@ -1580,40 +1729,37 @@ void readRecordFromFRAM(uint16_t recordIndex, std::vector<std::tuple<uint8_t, ui
     addr += 1;
     fram.read(addr, &type, 1); // Read 1 byte for the type
     addr += 1;
-    if (ordinal >= 0xF0) break; // End of record... we allow a variety of end delimiters to encode record status
+    if (ordinal >= 0xF0) {
+      delimiter = ordinal; // Correctly assign to reference parameter
+      break; // End of record... we allow a variety of end delimiters to encode record status
+    }
+    ESP.getFreeHeap(); // This sometimes triggers internal cleanup
+    yield();  
     if (type == 5) {
-      // Read value as float
       uint8_t valueBytes[4];
       fram.read(addr, valueBytes, 4);
       addr += 4;
       float dbl;
+      //dumpMemoryStats(2);
       memcpy(&dbl, valueBytes, 4);
       record.emplace_back(std::make_tuple(ordinal, type, (double)dbl));
-    } else if (type == 2){
-      // Read value as 4-byte integer
+    } else if (type == 2) {
       uint8_t valueBytes[4];
       fram.read(addr, valueBytes, 4);
       addr += 4;
-
       int32_t value = (valueBytes[0] << 24) | (valueBytes[1] << 16) | (valueBytes[2] << 8) | valueBytes[3];
-      //Serial.println("retrieved millis:");
-      //printHexBytes(value);
-      record.emplace_back(std::make_tuple(ordinal, type, static_cast<double>(value))); // Convert back to double for compatibility
-    } else if (type == 0){
-      // Read value as 4-byte integer
+      record.emplace_back(std::make_tuple(ordinal, type, static_cast<double>(value)));
+    } else if (type == 0) {
       uint8_t valueBytes[1];
       fram.read(addr, valueBytes, 1);
       addr += 1;
-
       int32_t value = valueBytes[0];
-      //Serial.println("retrieved millis:");
-      //printHexBytes(value);
-      record.emplace_back(std::make_tuple(ordinal, type, static_cast<double>(value))); // Convert back to double for compatibility
-    } else if (type == 6) { //read double
+      record.emplace_back(std::make_tuple(ordinal, type, static_cast<double>(value)));
+    } else if (type == 6) { // Read double
       uint8_t valueBytes[8];
       fram.read(addr, valueBytes, 8);
       double dbl;
-      memcpy(&dbl, valueBytes, 8);
+      memcpy(&dbl, valueBytes, 8);;
       record.emplace_back(std::make_tuple(ordinal, type, (double)dbl));
       addr += 8;
     }
@@ -1670,7 +1816,8 @@ void clearFramLog(){
 void displayFramRecord(uint16_t recordIndex) { //want to get rid of after testing!
     // Read the record from FRAM
     std::vector<std::tuple<uint8_t, uint8_t, double>> record;
-    readRecordFromFRAM(recordIndex, record);
+    uint8_t delimiter;
+    readRecordFromFRAM(recordIndex, record, delimiter);
     // Display the record
     Serial.print("Record #");    
     Serial.print(recordIndex);
@@ -1783,7 +1930,15 @@ void addOfflineRecord(std::vector<std::tuple<uint8_t, uint8_t, double>>& record,
 /////////////////////////////////////////////
 //utility functions
 /////////////////////////////////////////////
+int freeMemory() {
+    return ESP.getFreeHeap();
+}
 
+void dumpMemoryStats(int marker){
+    Serial.printf("Memory (%d): Free=%d, MaxBlock=%d, Fragmentation=%d%%\n", marker,
+                  ESP.getFreeHeap(), ESP.getMaxFreeBlockSize(),
+                  100 - (ESP.getMaxFreeBlockSize() * 100 / ESP.getFreeHeap()));
+}
 
 String urlEncode(String str, bool minimizeImpact) {
   String encodedString = "";
