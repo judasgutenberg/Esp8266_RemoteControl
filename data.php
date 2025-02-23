@@ -171,7 +171,7 @@ if($_REQUEST) {
 					}
 					if(count($lines) > 3) {
 						$extraInfo = explode("*", $lines[3]);
-						//extraInfo: lastCommandId*pinCursor*localSource*ipAddressToUse*requestNonJsonPinInfo88*justDeviceJson*changeSourceId*transmissiontimestamp
+						//extraInfo: lastCommandId*pinCursor*localSource*ipAddressToUse*requestNonJsonPinInfo88*justDeviceJson*changeSourceId*transmissiontimestamp*millis*averageLatency
 						if(count($extraInfo)>1){
 							$lastCommandId = $extraInfo[0];
 							markCommandDone($lastCommandId, $tenantId);
@@ -217,6 +217,7 @@ if($_REQUEST) {
 						if(count($whereAndWhen)>0) {
 							$numericTimestamp = defaultFailDown($whereAndWhen[0], "NULL"); //if a device has been offline, it might decide to timestamp the data it is sending from local storage
 							if(is_numeric($numericTimestamp) && $numericTimestamp > 0){
+								$dt = new DateTime();
 								$dt->setTimestamp($numericTimestamp);
 								$storageDateTime = $dt->format('Y-m-d H:i:s'); //set this to whatever was in the timestamp
 							}
@@ -596,12 +597,14 @@ if($_REQUEST) {
 						")";
 					}
 					for($datumCounter = 0; $datumCounter < 12; $datumCounter++){
-						$testValue = $arrWeatherData[$datumCounter];
-						if(strtolower($testValue) != "null" && $testValue != "" && strtolower($testValue) != "nan"){
-							$doNotSaveBecauseNoData = false;
-							//echo $datumCounter . ": " . $testValue . ", should now be false<BR>";
-						} else {
-							//echo $datumCounter . ": " . $testValue . "<BR>";
+						if(count($arrWeatherData)> $datumCounter){
+							$testValue = $arrWeatherData[$datumCounter];
+							if(strtolower($testValue) != "null" && $testValue != "" && strtolower($testValue) != "nan"){
+								$doNotSaveBecauseNoData = false;
+								//echo $datumCounter . ": " . $testValue . ", should now be false<BR>";
+							} else {
+								//echo $datumCounter . ": " . $testValue . "<BR>";
+							}
 						}
 					}
 					//echo $doNotSaveBecauseNoData . "<BR>";
@@ -1088,43 +1091,47 @@ function mergeWeatherDatum($consolidateAllSensorsToOneRecord, $existingValue, $s
 	foreach($sourceArray as $index => $sourceValue) {
 		$values[$columns[$index]] = $sourceValue;
 	}
-	$value = trim($sourceArray[$itemNumber]);//someone might separate sensor value names with comma-space, so trim that hedge
-	if($deviceId && $tenantId) {
-		//where we do data manipulations involving storage_function -- which we cache so as not to look it up a million times!!
-		$lookupKey = "storage_function" . "-" . $tenantId  . "-" . $deviceId . "-" . $keyName;
-		$storageFunction = readMemoryCache($lookupKey, $persistTimeInMinutes = 10);
-		if($storageFunction === null) {
-			$sql = "SELECT storage_function FROM device_column_map WHERE device_id = " . intval($deviceId) . " AND tenant_id=" . intval($tenantId) . " AND table_name='device_log' AND column_name='" . $keyName . "'";
-			$result = mysqli_query($conn, $sql);
-			if($result) {
-				$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
-				if($row){
-					$storageFunction = $row["storage_function"];
-					if($storageFunction == null) {
-						//if we didn't find a storage function, that means there is none, so no point looking it up. so save it as "none" in the cache
-						writeMemoryCache($lookupKey, "none");
-					} else {
-						writeMemoryCache($lookupKey, $storageFunction);
+	if(count($sourceArray) > $itemNumber) {
+		$value = trim($sourceArray[$itemNumber]);//someone might separate sensor value names with comma-space, so trim that hedge
+		if($deviceId && $tenantId) {
+			//where we do data manipulations involving storage_function -- which we cache so as not to look it up a million times!!
+			$lookupKey = "storage_function" . "-" . $tenantId  . "-" . $deviceId . "-" . $keyName;
+			$storageFunction = readMemoryCache($lookupKey, $persistTimeInMinutes = 10);
+			if($storageFunction === null) {
+				$sql = "SELECT storage_function FROM device_column_map WHERE device_id = " . intval($deviceId) . " AND tenant_id=" . intval($tenantId) . " AND table_name='device_log' AND column_name='" . $keyName . "'";
+				$result = mysqli_query($conn, $sql);
+				if($result) {
+					$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
+					if($row){
+						$storageFunction = $row["storage_function"];
+						if($storageFunction == null) {
+							//if we didn't find a storage function, that means there is none, so no point looking it up. so save it as "none" in the cache
+							writeMemoryCache($lookupKey, "none");
+						} else {
+							writeMemoryCache($lookupKey, $storageFunction);
+						}
 					}
 				}
+			} else {
+				if($storageFunction == "none") {
+					//but never return "none" to the processing logic
+					$storageFunction = null;
+				}
 			}
-		} else {
-			if($storageFunction == "none") {
-				//but never return "none" to the processing logic
-				$storageFunction = null;
+			if($storageFunction){
+				$storageFunction = tokenReplace(storageFunction, $values);
+				try {
+				if($storageFunction) {
+					eval('$value  =' . $storageFunction . ";"); //need to revisit this to make it so some bonehead admin doesn't cause chaos with bad code 
+				}
+				}
+				catch(ParseError $error) { //this shit does not work. does try/catch ever work in PHP?
+					logSql("problem with storage function: " . $storageFunction);
+				}
 			}
 		}
-		if($storageFunction){
-			$storageFunction = tokenReplace(storageFunction, $values);
-			try {
-			  if($storageFunction) {
-				eval('$value  =' . $storageFunction . ";"); //need to revisit this to make it so some bonehead admin doesn't cause chaos with bad code 
-			  }
-			}
-			catch(ParseError $error) { //this shit does not work. does try/catch ever work in PHP?
-				logSql("problem with storage function: " . $storageFunction);
-			}
-		}
+	} else {
+		$value = "";
 	}
 	if(intval($consolidateAllSensorsToOneRecord) == 1) {
 		if(strtolower($existingValue) == "null"  || $existingValue == "" || strtolower($existingValue) == "nan") {
