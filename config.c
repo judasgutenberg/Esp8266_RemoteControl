@@ -16,6 +16,7 @@ int polling_granularity = 4; //how often to poll backend in seconds, 4 makes sen
 int data_logging_granularity = 300; //how often to store data in backend, 300 makes sense
 int offline_log_granularity = 100;
 int wifi_timeout = 100; //normally 100 in seconds
+int offline_reconnect_interval = 20;
 const int fram_index_size = 256;
 const int fram_log_top = 28672; //if we have a FRAM, we should partition it so the last 4k can be used to store various values like Moxee Reboot times, e
 
