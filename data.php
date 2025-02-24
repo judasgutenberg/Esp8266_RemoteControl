@@ -690,7 +690,7 @@ if($_REQUEST) {
 						(SELECT recorded FROM device_feature_log  dfl WHERE dfl.device_feature_id=f.device_feature_id ORDER BY device_feature_log_id DESC LIMIT 0,1) as historic_recorded
 					FROM device_feature f 
 					LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id 
-					WHERE pin_number IS NOT NULL AND sensor_type IS NULL AND device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
+					WHERE pin_number IS NOT NULL AND sensor_type IS NULL AND enabled=1 AND device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
 				//echo $deviceSql;
 				$result = mysqli_query($conn, $deviceSql);
 				if($result) {
@@ -847,10 +847,10 @@ if($_REQUEST) {
 						}
 						$lastModified  = "";
 						$sqlToUpdateDeviceFeature = "";
-
+						//echo $deviceFeatureId . "*" . $pinCursor . "<BR>";
 						//if we have a pinValuesKnownToDevice change AND there is allowAutomaticManagement then we need to take the $formatedDateTime, and use that to set automation_disabled_when 
 						if(count($pinValuesKnownToDevice) > $pinCursor && is_numeric($pinValuesKnownToDevice[$pinCursor])) {
-							//echo $deviceFeatureId   . "<BR>";
+							//echo $deviceFeatureId   . "=" . $pinCursor . "<BR>";
 							$lastModified = " last_known_device_modified='" . $formatedDateTime . "',";
 							$lastKnownDevice = " last_known_device_value =  " . nullifyOrNumber($pinValuesKnownToDevice[$pinCursor]) . ","; //only do this when we actually have data from the microcontroller
 							$sqlToUpdateDeviceFeature = "UPDATE device_feature SET <lastknowndevice/><lastmodified/><additional/>";
@@ -961,6 +961,7 @@ if($_REQUEST) {
 								}
 								$sqlToUpdateDeviceFeature = removeTrailingChar($sqlToUpdateDeviceFeature, ",", 2);
 								$sqlToUpdateDeviceFeature = removeTrailingChar($sqlToUpdateDeviceFeature, ",", 3);
+								//echo $sqlToUpdateDeviceFeature. "<BR>";
 								$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
 								$error = mysqli_error($conn);
 								if($error != ""){
