@@ -63,7 +63,7 @@ Adafruit_FRAM_I2C fram;
 uint16_t framIndexAddress = 0;   
 uint16_t  currentRecordCount = 0;
 
-StaticJsonDocument<500> jsonBuffer;
+StaticJsonDocument<800> jsonBuffer;
 WiFiUDP ntpUDP; //i guess i need this for time lookup
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
@@ -114,7 +114,7 @@ int timeOffset = 0;
 long lastCommandId = 0;
  
 bool onePinAtATimeMode = false; //used when the server starts gzipping data and we can't make sense of it
-char requestNonJsonPinInfo = 0; //use to get much more compressed data double-delimited data from data.php if 1, otherwise if 0 it requests JSON
+char requestNonJsonPinInfo = 1; //use to get much more compressed data double-delimited data from data.php if 1, otherwise if 0 it requests JSON
 int pinCursor = -1;
 bool connectionFailureMode = true;  //when we're in connectionFailureMode, we check connection much more than polling_granularity. otherwise, we check it every polling_granularity
 
@@ -474,11 +474,13 @@ void compileAndSendWeatherData(String zerothRowData, String thirdRowData, String
   //the time-stamps of connection failures, delimited by *
   transmissionString = transmissionString + "|" + joinValsOnDelimiter(moxeeRebootTimes, "*", 10);
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
-  transmissionString = transmissionString + "|" + joinMapValsOnDelimiter(pinMap, "*", pinTotal); //also send pin as they are known back to the server
+  Serial.print("pin total: ");
+  Serial.println(pinTotal);
+  transmissionString = transmissionString + "|" + joinMapValsOnDelimiter(pinMap, "*"); //also send pin as they are known back to the server
   //other server-relevant info as needed, delimited by *
   //transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddressToUse + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson + "*" + changeSourceId + "*" + timeClient.getEpochTime();
   transmissionString = transmissionString + "|";
-  if(thirdRowData) {
+  if(thirdRowData != "") {
     transmissionString = transmissionString + thirdRowData;
   } else {
 
@@ -724,6 +726,7 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
   String sensorName;
   splitString(sensorData, '|', additionalSensorArray, 12);
   deviceName = additionalSensorArray[0].substring(1);
+ 
   requestNonJsonPinInfo = 1; //set this global
   for(int i=1; i<12; i++) {
     String sensorDatum = additionalSensorArray[i];
@@ -778,6 +781,7 @@ void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
   char i2c = 0;
   splitString(nonJsonLine, '|', nonJsonPinArray, 12);
   int foundPins = 0;
+  //pinMap->clear();
   for(int i=1; i<12; i++) {
     nonJsonDatumString = nonJsonPinArray[i];
     if(nonJsonDatumString.indexOf('*')>-1) {  
@@ -788,6 +792,7 @@ void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
       pinName[foundPins] = friendlyPinName;
       canBeAnalog = nonJsonPinDatum[3].toInt();
       serverSaved = nonJsonPinDatum[4].toInt();
+
       if(key.indexOf('.')>0) {
         splitString(key, '.', pinIdParts, 2);
         i2c = pinIdParts[0].toInt();
@@ -795,7 +800,7 @@ void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
       } else {
         pinNumber = key.toInt();
       }
-      //Serial.println("!ABOUT TO TURN OF localsource: " + (String)localSource +  " serverSAVED: " + (String)serverSaved);
+      //Serial.println("!ABOUT TO TURN OFF localsource: " + (String)localSource +  " serverSAVED: " + (String)serverSaved);
       if(!localSource || serverSaved == 1){
         if(serverSaved == 1) {//confirmation of serverSaved, so localSource flag is no longer needed
           Serial.println("SERVER SAVED==1!!");
@@ -803,6 +808,9 @@ void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
         } else {
           pinMap->remove(key);
           pinMap->put(key, value);
+          //Serial.print(key);
+          //Serial.print(": ");
+          //Serial.println(pinMap->getIndex(key));
         }
       }
       pinList[foundPins] = key;
@@ -824,8 +832,9 @@ void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
           }
         }
       }
+      foundPins++;
     }
-    foundPins++;
+    
   }
   pinTotal = foundPins;
 }
@@ -865,12 +874,14 @@ void setLocalHardwareToServerStateFromJson(char * json){
       serverSaved = (int)jsonBuffer[nodeName][i]["ss"];
       i2c = (int)jsonBuffer[nodeName][i]["i2c"];
       if(i2c > 0) {
-        i2c = 0;
+        //i2c = 0;
       }
-      Serial.print("pin: ");
+      Serial.print("json pin: ");
       Serial.print(pinNumber);
       Serial.print("; value: ");
       Serial.print(value);
+      Serial.print("; i2c: ");
+      Serial.print((int)i2c);
       Serial.println();
       pinMode(pinNumber, OUTPUT);
       if(enabled) {
@@ -1232,7 +1243,11 @@ void loop(){
   }
   if(haveReconnected) {
     //try to send stored records to the backend
-    sendAStoredRecordToBackend();
+    if(fram_address > 0){
+      sendAStoredRecordToBackend();
+    } else {
+      haveReconnected = false;
+    }
   }
  
   if(canSleep) {
@@ -1604,19 +1619,17 @@ void writeRecordToFRAM(const std::vector<std::tuple<uint8_t, uint8_t, double>>& 
   fram.write(addr, delimiterArray, 1);
   //don't count the delimter in lastRecordSize;
   //addr +=  1;
-
   Serial.print(" last record size: ");
   Serial.println((int)lastRecordSize);
-    
   // Update the index table
   uint8_t indexBytes[2] = {uint8_t(recordStartAddress >> 8), uint8_t(recordStartAddress & 0xFF)};
- 
   fram.write(framIndexAddress + currentRecordCount * 2, indexBytes, 2);
   currentRecordCount++;
   //also store currentRecordCount
   writeRecordCountToFRAM(currentRecordCount);
+
   //did it save correctly at all?
-  displayFramRecord(currentRecordCount-1);
+  //displayFramRecord(currentRecordCount-1);
 }
 
 //this stores the NUMBER of FRAM records, nothing else
@@ -1652,6 +1665,8 @@ void sendAStoredRecordToBackend() {
   readRecordFromFRAM(positionInFram, record, delimiter);
   
   if(delimiter == 0xFF) { //we only send records to the backend if this is the delimiter.  after we send it, we update the delimiter to 0xFE
+    Serial.print("Sending FRAM Record at ");
+    Serial.println(positionInFram);
     fRAMRecordsSkipped = 0;
     //we need to assemble a suitable string from the FRAM record
     //the string looks something like: 
@@ -1721,6 +1736,7 @@ void readRecordFromFRAM(uint16_t recordIndex, std::vector<std::tuple<uint8_t, ui
   uint16_t indexAddress = framIndexAddress + (recordIndex * 2);
   uint16_t recordStartAddress = read16(indexAddress);
   record.clear();
+  record.reserve(200);
   uint16_t addr = recordStartAddress;
   while (addr < fram_log_top) {
     uint8_t ordinal;
@@ -1734,14 +1750,19 @@ void readRecordFromFRAM(uint16_t recordIndex, std::vector<std::tuple<uint8_t, ui
       break; // End of record... we allow a variety of end delimiters to encode record status
     }
     ESP.getFreeHeap(); // This sometimes triggers internal cleanup
-    yield();  
+    yield();      
+    delay(5);
+   
     if (type == 5) {
+    
       uint8_t valueBytes[4];
       fram.read(addr, valueBytes, 4);
       addr += 4;
       float dbl;
-      //dumpMemoryStats(2);
+
+      //ESP.getMaxFreeBlockSize();
       memcpy(&dbl, valueBytes, 4);
+  
       record.emplace_back(std::make_tuple(ordinal, type, (double)dbl));
     } else if (type == 2) {
       uint8_t valueBytes[4];
@@ -1759,7 +1780,9 @@ void readRecordFromFRAM(uint16_t recordIndex, std::vector<std::tuple<uint8_t, ui
       uint8_t valueBytes[8];
       fram.read(addr, valueBytes, 8);
       double dbl;
-      memcpy(&dbl, valueBytes, 8);;
+      dumpMemoryStats(68);
+      memcpy(&dbl, valueBytes, 8);
+      dumpMemoryStats(69);
       record.emplace_back(std::make_tuple(ordinal, type, (double)dbl));
       addr += 8;
     }
@@ -1817,7 +1840,9 @@ void displayFramRecord(uint16_t recordIndex) { //want to get rid of after testin
     // Read the record from FRAM
     std::vector<std::tuple<uint8_t, uint8_t, double>> record;
     uint8_t delimiter;
+    dumpMemoryStats(9);
     readRecordFromFRAM(recordIndex, record, delimiter);
+    dumpMemoryStats(10);
     // Display the record
     Serial.print("Record #");    
     Serial.print(recordIndex);
@@ -1935,6 +1960,11 @@ int freeMemory() {
 }
 
 void dumpMemoryStats(int marker){
+    
+    ESP.getFreeHeap(); // This sometimes triggers internal cleanup
+    yield();      
+    delay(5);
+    return;
     Serial.printf("Memory (%d): Free=%d, MaxBlock=%d, Fragmentation=%d%%\n", marker,
                   ESP.getFreeHeap(), ESP.getMaxFreeBlockSize(),
                   100 - (ESP.getMaxFreeBlockSize() * 100 / ESP.getFreeHeap()));
@@ -1970,11 +2000,13 @@ String joinValsOnDelimiter(long vals[], String delimiter, int numberToDo) {
   return out;
 }
 
-String joinMapValsOnDelimiter(SimpleMap<String, int> *pinMap, String delimiter, int numberToDo) {
+String joinMapValsOnDelimiter(SimpleMap<String, int> *pinMap, String delimiter) {
   String out = "";
   for (int i = 0; i < pinMap->size(); i++) {
-    out = out + (String)pinMap->getData(i);
-    if(i < numberToDo-1) {
+    //i had to rework this because pinMap was saving out of order in some cases
+    String key = pinList[i];
+    out = out + (String)pinMap->get(key);
+    if(i < pinMap->size()- 1) {
       out = out + delimiter;
     }
   }
