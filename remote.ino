@@ -7,7 +7,7 @@
  * since those do not include watchdog behaviors
  */
  
-#include <ArduinoJson.h>
+ 
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
@@ -63,7 +63,7 @@ Adafruit_FRAM_I2C fram;
 uint16_t framIndexAddress = 0;   
 uint16_t  currentRecordCount = 0;
 
-StaticJsonDocument<800> jsonBuffer;
+ 
 WiFiUDP ntpUDP; //i guess i need this for time lookup
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
@@ -95,6 +95,8 @@ long lastOfflineReconnectAttemptTime = 0;
 bool haveReconnected = true; //we need to start reconnected in case we reboot and there are stored FRAM records
 uint16_t fRAMRecordsSkipped = 0;
 uint32_t lastRtcSyncTime = 0;
+uint32_t wifiOnTime = 0;
+bool debug = true;
  
 //https://github.com/spacehuhn/SimpleMap
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
@@ -143,18 +145,7 @@ void lookupLocalPowerData() {//sets the globals with the current reading from th
   loadvoltage = busvoltage + (shuntvoltage / 1000);
   measuredVoltage = loadvoltage;
   measuredAmpage = current_mA;
-  /*
-  Serial.print("volt: ");
-  Serial.print(measuredVoltage);
-  Serial.print(" amp: ");
-  Serial.println(measuredAmpage);
-  Serial.print("Bus Voltage:   "); Serial.print(busvoltage); Serial.println(" V");
-  Serial.print("Shunt Voltage: "); Serial.print(shuntvoltage); Serial.println(" mV");
-  Serial.print("Load Voltage:  "); Serial.print(loadvoltage); Serial.println(" V");
-  Serial.print("Current:       "); Serial.print(current_mA); Serial.println(" mA");
-  Serial.print("Power:         "); Serial.print(power_mW); Serial.println(" mW");
-  Serial.println("");
-  */
+
 }
 
 //returns a "*"-delimited string containing weather data, starting with temperature and ending with deviceFeatureId,    a url-encoded sensorName, and consolidateAllSensorsToOneRecord
@@ -228,18 +219,11 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
     //i'm not sure what all this is about, since i just copied it from the BME680 example:
     sprintf(buf, "%4d %3d.%02d", (loopCounter - 1) % 9999,  // Clamp to 9999,
             (int8_t)(temperatureRaw / 100), (uint8_t)(temperatureRaw % 100));   // Temp in decidegrees
-    //Serial.print(buf);
     sprintf(buf, "%3d.%03d", (int8_t)(humidityRaw / 1000),
             (uint16_t)(humidityRaw % 1000));  // Humidity milli-pct
-    //Serial.print(buf);
     sprintf(buf, "%7d.%02d", (int16_t)(pressureRaw / 100),
             (uint8_t)(pressureRaw % 100));  // Pressure Pascals
-    //Serial.print(buf);                                     
- 
-    //Serial.print(buf);
     sprintf(buf, "%4d.%02d\n", (int16_t)(gasRaw / 100), (uint8_t)(gasRaw % 100));  // Resistance milliohms
-    //Serial.print(buf);
-
     humidityFromSensor = (double)humidityRaw/1000;
     temperatureFromSensor = (double)temperatureRaw/100;
     pressureFromSensor = (double)pressureRaw/100;
@@ -351,6 +335,7 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
         //addOfflineRecord(framWeatherRecord, 28, 2, (double)millis()); 
         if(rtc_address > 0) {
           addOfflineRecord(framWeatherRecord, 40, 2, currentRTCTimestamp());
+          Serial.println(currentRTCTimestamp());
         } else {
           addOfflineRecord(framWeatherRecord, 40, 2, timeClient.getEpochTime());
           
@@ -474,8 +459,8 @@ void compileAndSendWeatherData(String zerothRowData, String thirdRowData, String
   //the time-stamps of connection failures, delimited by *
   transmissionString = transmissionString + "|" + joinValsOnDelimiter(moxeeRebootTimes, "*", 10);
   //the values of the pins as the microcontroller understands them, delimited by *, in the order of the pin_list provided by the server
-  Serial.print("pin total: ");
-  Serial.println(pinTotal);
+  //Serial.print("pin total: ");
+  //Serial.println(pinTotal);
   transmissionString = transmissionString + "|" + joinMapValsOnDelimiter(pinMap, "*"); //also send pin as they are known back to the server
   //other server-relevant info as needed, delimited by *
   //transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddressToUse + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson + "*" + changeSourceId + "*" + timeClient.getEpochTime();
@@ -526,6 +511,9 @@ void compileAndSendWeatherData(String zerothRowData, String thirdRowData, String
 
 void wiFiConnect() {
   lastOfflineReconnectAttemptTime = millis();
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
+  WiFi.setAutoReconnect(false);
   WiFi.persistent(false); //hopefully keeps my flash from being corrupted, see: https://rayshobby.net/wordpress/esp8266-reboot-cycled-caused-by-flash-memory-corruption-fixed/
   WiFi.begin(wifi_ssid, wifi_password);    
   Serial.println();
@@ -550,6 +538,7 @@ void wiFiConnect() {
       return;
     }
   }
+  wifiOnTime = millis();
   if(offlineMode){
     haveReconnected = true;
   }
@@ -578,29 +567,39 @@ void sendRemoteData(String datastring, uint16_t fRAMordinal) {
 
   String encryptedStoragePassword = encryptStoragePassword(datastring);
   url =  (String)url_get + "?key=" + encryptedStoragePassword + "&device_id=" + device_id + "&mode=" + mode + "&data=" + urlEncode(datastring, true);
-  Serial.println("\r>>> Connecting to host: ");
+  if(debug) {
+    Serial.println("\r>>> Connecting to host: ");
+  }
   //Serial.println(host_get);
   int attempts = 0;
   while(!clientGet.connect(host_get, httpGetPort) && attempts < connection_retry_number) {
     attempts++;
+    cleanup();
     delay(200);
   }
-  Serial.print("Connection attempts:  ");
-  Serial.print(attempts);
-  Serial.println();
+  if(debug) {
+    Serial.print("Connection attempts:  ");
+    Serial.print(attempts);
+    Serial.println();
+  }
+  cleanup();
   if (attempts >= connection_retry_number) {
     Serial.print("Connection failed, moxee rebooted: ");
     connectionFailureTime = millis();
     connectionFailureMode = true;
     rebootMoxee();
-    Serial.print(host_get);
-    Serial.println();
+    if(debug) {
+      Serial.print(host_get);
+      Serial.println();
+    }
  
   } else {
 
      connectionFailureTime = 0;
      connectionFailureMode = false;
-     Serial.println(url);
+     if(debug) {
+      Serial.println(url);
+     }
      clientGet.println("GET " + url + " HTTP/1.1");
      clientGet.print("Host: ");
      clientGet.println(host_get);
@@ -624,6 +623,7 @@ void sendRemoteData(String datastring, uint16_t fRAMordinal) {
         return;
        } //if( millis() -  
      }
+    yield();
     delay(1); //see if this improved data reception. OMG IT TOTALLY WORKED!!!
     bool receivedData = false;
     bool receivedDataJson = false;
@@ -633,7 +633,7 @@ void sendRemoteData(String datastring, uint16_t fRAMordinal) {
     }
     while(clientGet.available()){
       receivedData = true;
-
+      yield();
       String retLine = clientGet.readStringUntil('\n');
       retLine.trim();
       //Here the code is designed to be able to handle either JSON or double-delimited data from data.php
@@ -649,15 +649,19 @@ void sendRemoteData(String datastring, uint16_t fRAMordinal) {
       //JSON format, which it will assume if the first character of the data is a '{' -- but if the first character
       //is a '|' then it assumes the data is non-JSON. Otherwise it assumes it's HTTP boilerplate and ignores it.
       if(retLine.indexOf("\"error\":") < 0 && mode == "saveData" && (retLine.charAt(0)== '{' || retLine.charAt(0)== '*' || retLine.charAt(0)== '|' || retLine.charAt(0)== '|')) {
-        Serial.println("can sleep because: ");
-        Serial.println(retLine);
-        Serial.println(retLine.indexOf("error:"));
+        if(debug) {
+          Serial.println("can sleep because: ");
+          Serial.println(retLine);
+          Serial.println(retLine.indexOf("error:"));
+        }
         lastDataLogTime = millis();
         canSleep = true; //canSleep is a global and will not be set until all the tasks of the device are finished.
       }
       if(retLine.charAt(0) == '*') { //getInitialDeviceInfo
-        Serial.print("Initial Device Data: ");
-        Serial.println(retLine);
+        if(debug) {
+          Serial.print("Initial Device Data: ");
+          Serial.println(retLine);
+        }
         //set the global string; we'll just use that to store our data about addtional sensors
         if(sensor_config_string != "") {
           retLine = replaceFirstOccurrenceAtChar(retLine, String(sensor_config_string), '|');
@@ -668,40 +672,55 @@ void sendRemoteData(String datastring, uint16_t fRAMordinal) {
         handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), true);
         break;
       } else if(retLine.charAt(0) == '{') {
-        Serial.print("JSON: ");
-        Serial.println(retLine);
-        setLocalHardwareToServerStateFromJson((char *)retLine.c_str());
+        if(debug) {
+          Serial.print("JSON: ");
+          Serial.println(retLine);
+        }
+        //setLocalHardwareToServerStateFromJson((char *)retLine.c_str());
         receivedDataJson = true;
         break; 
       } else if(retLine.charAt(0) == '|') { 
-        Serial.print("non-JSON: ");
-        Serial.println(retLine);
+        if(debug) {
+          Serial.print("non-JSON: ");
+          Serial.println(retLine);
+        }
         String serverCommandParts[2];
         splitString(retLine, '!', serverCommandParts, 2);
         setLocalHardwareToServerStateFromNonJson((char *)serverCommandParts[0].c_str());
         if(retLine.indexOf("!") > -1) {
           if(serverCommandParts[1].length()>5) { //just has latency data
-            Serial.print("COMMAND (beside pin data): ");
-            Serial.println(serverCommandParts[1]);
+            if(debug) {
+              Serial.print("COMMAND (beside pin data): ");
+              Serial.println(serverCommandParts[1]);
+            }
           } 
           runCommandsFromNonJson((char *)("!" + serverCommandParts[1]).c_str());
         }
         receivedDataJson = true;
         break;      
       } else if(retLine.charAt(0) == '!') { //it's a command, so an exclamation point seems right
-        Serial.print("COMMAND: ");
-        Serial.println(retLine);
+        if(debug) {
+          Serial.print("COMMAND: ");
+          Serial.println(retLine);
+        }
         runCommandsFromNonJson((char *)retLine.c_str());
         break;      
       } else {
-        Serial.print("non-readable line returned: ");
-        Serial.println(retLine);
+        if(debug) {
+          Serial.print("non-readable line returned: ");
+          Serial.println(retLine);
+        }
       }
     }
     if(receivedData && !receivedDataJson) { //an indication our server is gzipping data needed for remote control.  So instead pull it down one pin at a time and hopefully get under the gzip cutoff
       onePinAtATimeMode = true;
     }
+    if(debug) {
+      Serial.print("Fram ordinal: ");
+      Serial.println(fRAMordinal);
+    }
     if(fRAMordinal != 0xFFFF) {
+      yield();
       changeDelimiterOnRecord(fRAMordinal, 0xFE);
     }
    
@@ -840,6 +859,8 @@ void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
 }
 
 //this will set any pins specified in the JSON
+//but we don't do this any more
+/*
 void setLocalHardwareToServerStateFromJson(char * json){
   if(millis() - localChangeTime < 1000) { //don't accept any server values withing 5 seconds of a local change
     return;
@@ -936,6 +957,7 @@ void setLocalHardwareToServerStateFromJson(char * json){
   }
   pinTotal = pinCounter;
 }
+*/
 
 long getPinValueOnSlave(char i2cAddress, char pinNumber) { //might want a user-friendlier API here
   //reading an analog or digital value from the slave:
@@ -1067,8 +1089,13 @@ void runCommandsFromNonJson(char * nonJsonLine){
                    (byte) dateArray[6].toInt()); 
                    
     } else if (command ==  "get date") {
- 
       printRTCDate();
+    } else if (command == "get memory") {
+      dumpMemoryStats(0);
+    } else if (command == "set debug") {
+      debug = true;
+    } else if (command == "clear debug") {
+      debug = false;
     }
     if(commandId > 0) { //don't reset lastCommandId if the command came via serial port
       lastCommandId = commandId;
@@ -1141,9 +1168,13 @@ void setup(void){
     pinMode(moxee_power_switch, OUTPUT);
     digitalWrite(moxee_power_switch, HIGH);
   }
-  Serial.begin(115200);
+  Serial.begin(115200, SERIAL_8N1, SERIAL_FULL);
+  Serial.setRxBufferSize(256);  
+ 
+  Serial.setDebugOutput(false);
   Serial.println("Just started up...");
-  Wire.begin();
+  Wire.setClock(100000); // Set I2C speed to 100kHz (default is 400kHz)
+  
   wiFiConnect();
   server.on("/", handleRoot);      //Displays a form where devices can be turned on and off and the outputs of sensors
   server.on("/readLocalData", localShowData);
@@ -1180,7 +1211,7 @@ void setup(void){
   }
   currentRecordCount = readRecordCountFromFRAM();
   if(lastRecordSize == 0) {
-    lastRecordSize = getLastRecordSizeFromFRAM();
+    lastRecordSize = getRecordSizeFromFRAM(0xFFFF);
   }
   //clearFramLog();
  //displayAllFramRecords();
@@ -1188,9 +1219,46 @@ void setup(void){
 }
 //LOOP----------------------------------------------------
 void loop(){
+
+  
+  /*
+  uint8_t testHi = 0;//(millis() >> 8) & 0xFF;
+  uint8_t testLow = 4;// millis() & 0xFF;
+  noInterrupts();
+  fram.write(28674, &testHi, 1);  // Write test byte to address 1000
+  fram.write(28674+1, &testLow, 1);  // Write test byte to address 1000
+  interrupts();
+ 
+  uint8_t readBack;
+  Serial.print(" Original: ");
+  Serial.print(testHi, HEX);
+  Serial.println(testLow, HEX);
+  
+ 
+  Serial.print(" Read back: ");
+  fram.read(28674, &readBack, 1);  // Read it back
+  Serial.print(readBack, HEX);
+  fram.read(28674 +1, &readBack, 1);  // Read it back
+  Serial.println(readBack, HEX);
+  */
+  //displayFramRecord(147);
+
   for(int i=0; i <4; i++) { //doing this four times here is helpful to make web service reasonably responsive. once is not enough
     server.handleClient();          //Handle client requests
   }
+ 
+  //dumpMemoryStats(122);
+  //was doing an experiment:
+  if(millis() - wifiOnTime > 20000) {
+    //WiFi.disconnect(true);
+  }
+  cleanup();
+ 
+  if (Serial.available()) 
+  {
+    doSerialCommands();
+  }
+ 
   timeClient.update();
   long nowTime = millis() + timeOffset;
   int granularityToUse = polling_granularity;
@@ -1222,10 +1290,6 @@ void loop(){
   }
 
   lookupLocalPowerData();
-  if (Serial.available()) 
-  {
-    doSerialCommands();
-  }
 
   if(offlineMode){
     if(millis() - lastOfflineReconnectAttemptTime > 1000 * offline_reconnect_interval) {
@@ -1267,6 +1331,7 @@ void loop(){
 }
 
 void doSerialCommands() {
+  delay(5);
   char serialByte;
   String command = "!-1|";
  
@@ -1419,7 +1484,10 @@ uint32_t getSecsSinceEpoch(uint16_t epoch, uint8_t month, uint8_t day, uint8_t y
   int i;
   int dayspermonth;
   
-  secs = years * (SECSPERDAY * 365);
+  secs = years  * (SECSPERDAY * 365);
+  if(epoch == 1970) {
+    secs = secs + 946684800;
+  }
   for (i = 0; i < (years - 1); i++)
   {   
       if (LEAPYEAR((epoch + i)))
@@ -1548,7 +1616,12 @@ uint32_t currentRTCTimestamp()
   //Serial.println(dayOfMonth);
   //Serial.println(month);
   //Serial.println(year);
-  return getSecsSinceEpoch((uint16_t)2000, (uint8_t)month,  (uint8_t)dayOfMonth,   (uint8_t)year,  (uint8_t)hour,  (uint8_t)minute,  (uint8_t)second);
+  return getSecsSinceEpoch((uint16_t)1970, (uint8_t)month,  (uint8_t)dayOfMonth,   (uint8_t)year,  (uint8_t)hour,  (uint8_t)minute,  (uint8_t)second);
+}
+
+void cleanup(){
+  ESP.getFreeHeap(); // This sometimes triggers internal cleanup
+  yield();    
 }
 
 //FRAM functions 
@@ -1570,7 +1643,9 @@ void writeRecordToFRAM(const std::vector<std::tuple<uint8_t, uint8_t, double>>& 
   for (const auto& [ordinal, type, dbl] : record) {
     uint8_t ordinalTypeArray[2] = {ordinal, type};
     // Write the 1-byte ordinal
+    noInterrupts();
     fram.write(addr, ordinalTypeArray, 2); // Write 2 bytes for ordinal and type
+    interrupts();
     lastRecordSize += 2;
     addr += 2;
     // Write the value (either float or 4-byte integer based on ordinal)
@@ -1578,7 +1653,9 @@ void writeRecordToFRAM(const std::vector<std::tuple<uint8_t, uint8_t, double>>& 
       // Write as float
       float temp = (float)dbl; // Non-const copy
       uint8_t* valueBytes = reinterpret_cast<uint8_t*>(&temp);
+      noInterrupts();
       fram.write(addr, valueBytes, 4);
+      interrupts();
       lastRecordSize += 4;
       addr += 4;
     } else if (type == 2){
@@ -1590,7 +1667,9 @@ void writeRecordToFRAM(const std::vector<std::tuple<uint8_t, uint8_t, double>>& 
         (asInt >> 8) & 0xFF,
         asInt & 0xFF
       };
+      noInterrupts();
       fram.write(addr, valueBytes, 4);
+      interrupts();
       lastRecordSize += 4;
       addr += 4;
     } else if (type == 0){
@@ -1598,14 +1677,18 @@ void writeRecordToFRAM(const std::vector<std::tuple<uint8_t, uint8_t, double>>& 
       uint8_t asInt = static_cast<uint8_t>(dbl); // Convert double to int
       uint8_t asIntArray[1];
       asIntArray[0] = asInt;
+      noInterrupts();
       fram.write(addr, asIntArray, 1);
+      interrupts();
       lastRecordSize += 1;
       addr += 1;
     } else if (type == 6) {
       // Write as double
       float temp = (double)dbl; // Non-const copy
       uint8_t* valueBytes = reinterpret_cast<uint8_t*>(&temp);
+      noInterrupts();
       fram.write(addr, valueBytes, 8);
+      interrupts();
       lastRecordSize += 8;
       addr += 8;
     }
@@ -1623,7 +1706,9 @@ void writeRecordToFRAM(const std::vector<std::tuple<uint8_t, uint8_t, double>>& 
   Serial.println((int)lastRecordSize);
   // Update the index table
   uint8_t indexBytes[2] = {uint8_t(recordStartAddress >> 8), uint8_t(recordStartAddress & 0xFF)};
+  noInterrupts();
   fram.write(framIndexAddress + currentRecordCount * 2, indexBytes, 2);
+  interrupts();
   currentRecordCount++;
   //also store currentRecordCount
   writeRecordCountToFRAM(currentRecordCount);
@@ -1632,28 +1717,67 @@ void writeRecordToFRAM(const std::vector<std::tuple<uint8_t, uint8_t, double>>& 
   //displayFramRecord(currentRecordCount-1);
 }
 
+//this retrieves the last FRAM record sent to the backend
+uint16_t readLastFramRecordSentIndex() {
+  uint8_t countBytes[2];
+  noInterrupts();
+  fram.read(fram_log_top + 2, countBytes, 2); // Read 2 bytes from address fram_log_top + 2
+  interrupts();
+  delay(10);
+  // Reassemble the uint16_t from the high and low bytes
+  uint16_t outVal = (static_cast<uint16_t>(countBytes[0]) << 8) | countBytes[1];
+  return outVal;
+}
+
+//this retrieves the NUMBER of FRAM records, nothing else
+uint16_t readRecordCountFromFRAM() {
+  uint8_t countBytes[2];
+  noInterrupts();
+  fram.read(fram_log_top, countBytes, 2); // Read 2 bytes from address fram_log_top
+  interrupts();
+  delay(10);
+  // Reassemble the uint16_t from the high and low bytes
+  uint16_t recordCount = (static_cast<uint16_t>(countBytes[0]) << 8) | countBytes[1];
+  return recordCount;
+}
+
+
 //this stores the NUMBER of FRAM records, nothing else
 void writeRecordCountToFRAM(uint16_t recordCount) {
   uint8_t countBytes[2] = {
     (recordCount >> 8) & 0xFF, // High byte
     recordCount & 0xFF         // Low byte
   };
-  fram.write(fram_log_top, countBytes, 2);  
+  uint8_t hi = countBytes[0];
+  uint8_t low = countBytes[1];
+  noInterrupts();
+  delay(5);
+  fram.write(fram_log_top, &hi, 1); // Write 2 bytes 
+  fram.write(fram_log_top + 1, &low, 1); // Write 2 bytes 
+  interrupts(); 
 }
 
 //stores the last sent FRAM record ordinal
-void writeLastFRAMRecordSentOrdinal(uint16_t ordinal) {
+void writeLastFRAMRecordSentIndex(uint16_t location) {
   uint8_t countBytes[2] = {
-    (ordinal >> 8) & 0xFF, // High byte
-    ordinal & 0xFF         // Low byte
+    (location >> 8) & 0xFF, // High byte
+    location & 0xFF         // Low byte
   };
-  fram.write(fram_log_top + 2, countBytes, 2); // Write 2 bytes 
+  //no, i do not know why i had to do this
+  uint8_t hi = countBytes[0];
+  uint8_t low = countBytes[1];
+  noInterrupts();
+  delay(5);
+  fram.write(fram_log_top + 2, &hi, 1); // Write 2 bytes 
+  fram.write(fram_log_top + 3, &low, 1); // Write 2 bytes 
+  interrupts();
 }
 
 //writes a single record to the backend and changes its delimiter so that it won't be sent again
 void sendAStoredRecordToBackend() {
   //first get the last FRAM record sent:
-  uint16_t positionInFram = read16(fram_log_top + 2);
+  Serial.println(readLastFramRecordSentIndex());
+  uint16_t positionInFram = readLastFramRecordSentIndex();
   uint32_t timestamp = 0;
   uint8_t delimiter;
   String zerothDataRowString = "**********";
@@ -1665,8 +1789,10 @@ void sendAStoredRecordToBackend() {
   readRecordFromFRAM(positionInFram, record, delimiter);
   
   if(delimiter == 0xFF) { //we only send records to the backend if this is the delimiter.  after we send it, we update the delimiter to 0xFE
-    Serial.print("Sending FRAM Record at ");
-    Serial.println(positionInFram);
+    if(debug) {
+      Serial.print("Sending FRAM Record at ");
+      Serial.println(positionInFram);
+    }
     fRAMRecordsSkipped = 0;
     //we need to assemble a suitable string from the FRAM record
     //the string looks something like: 
@@ -1688,23 +1814,34 @@ void sendAStoredRecordToBackend() {
       fRAMRecordsSkipped = 0;
       haveReconnected = false; //we sent all the stored records, so we're all done being reconnected
     }
-    writeLastFRAMRecordSentOrdinal(positionInFram);
+    writeLastFRAMRecordSentIndex(positionInFram);
   }
 }
 
-void changeDelimiterOnRecord(uint16_t ordinal, uint8_t newDelimiter) {
-  uint16_t indexAddress = framIndexAddress + (ordinal * 2);
+void changeDelimiterOnRecord(uint16_t index, uint8_t newDelimiter) {
+  uint16_t indexAddress = framIndexAddress + (index * 2);
   uint16_t location = read16(indexAddress);
-  uint8_t bytesPerLine = getLastRecordSizeFromFRAM() + 1;
-  Serial.print("Bytes per line: ");
-  Serial.println(bytesPerLine);
+  yield();
+  uint8_t bytesPerLine = getRecordSizeFromFRAM(index) + 0;
+  if(debug) {
+    Serial.print("Bytes per line: ");
+    Serial.println(bytesPerLine);
+    Serial.print("index in: ");
+    Serial.println(index);
+  }
   uint8_t buffer[bytesPerLine];   // Buffer to hold data for one line
+  displayFramRecord(index);
   fram.read(location, buffer, bytesPerLine); 
+  Serial.print("delimiter found: ");
+  Serial.println(buffer[bytesPerLine-1], HEX);
   buffer[bytesPerLine-1] = newDelimiter;
+  noInterrupts();
+  delay(5);
   fram.write(location, buffer, bytesPerLine); 
-  ordinal++;
+  interrupts();
+  //index++;
   //now save the ordinal in fram_log_top + 2
-  writeLastFRAMRecordSentOrdinal(ordinal);
+  writeLastFRAMRecordSentIndex(index + 1);
 }
 
 //FRAM MEMORY MAP:
@@ -1715,15 +1852,6 @@ fram_log_top + 2: ordinal of last FRAM record sent to backend
 
 */
 
-//this retrieves the NUMBER of FRAM records, nothing else
-uint16_t readRecordCountFromFRAM() {
-  uint8_t countBytes[2];
-  fram.read(fram_log_top, countBytes, 2); // Read 2 bytes from address 0x0000
-
-  // Reassemble the uint16_t from the high and low bytes
-  uint16_t recordCount = (static_cast<uint16_t>(countBytes[0]) << 8) | countBytes[1];
-  return recordCount;
-}
 
 uint16_t read16(uint16_t addr) {
   uint8_t bytes[2];
@@ -1749,8 +1877,7 @@ void readRecordFromFRAM(uint16_t recordIndex, std::vector<std::tuple<uint8_t, ui
       delimiter = ordinal; // Correctly assign to reference parameter
       break; // End of record... we allow a variety of end delimiters to encode record status
     }
-    ESP.getFreeHeap(); // This sometimes triggers internal cleanup
-    yield();      
+    cleanup();   
     delay(5);
    
     if (type == 5) {
@@ -1789,20 +1916,22 @@ void readRecordFromFRAM(uint16_t recordIndex, std::vector<std::tuple<uint8_t, ui
   }
 }
 
-uint16_t getLastRecordSizeFromFRAM() {
+//if you pass in 0xFFFF it gets the length of the latest record
+uint16_t getRecordSizeFromFRAM(uint16_t recordStartAddress) {
   if (currentRecordCount == 0) {
     //Serial.println("No records exist.");
     return 0;
   }
-
   // Locate the last record's start address using the index table
   uint16_t lastRecordIndex = currentRecordCount - 1;
   uint16_t indexAddress = framIndexAddress + (lastRecordIndex * 2);
-  uint16_t recordStartAddress = read16(indexAddress);
-
+  if(recordStartAddress == 0xFFFF) {
+    recordStartAddress = read16(indexAddress);
+  }
   uint16_t size = 0;
 
   while (size + recordStartAddress < fram_log_top) {
+    yield();
     uint8_t readBytes[2];
     fram.read(recordStartAddress + size, readBytes, 2); // Read ordinal (1 byte)
     uint8_t ordinal = readBytes[0];
@@ -1840,9 +1969,9 @@ void displayFramRecord(uint16_t recordIndex) { //want to get rid of after testin
     // Read the record from FRAM
     std::vector<std::tuple<uint8_t, uint8_t, double>> record;
     uint8_t delimiter;
-    dumpMemoryStats(9);
+    //dumpMemoryStats(9);
     readRecordFromFRAM(recordIndex, record, delimiter);
-    dumpMemoryStats(10);
+    //dumpMemoryStats(10);
     // Display the record
     Serial.print("Record #");    
     Serial.print(recordIndex);
@@ -1862,7 +1991,12 @@ void displayFramRecord(uint16_t recordIndex) { //want to get rid of after testin
       }
       
     }
+    Serial.print("  Delimiter: ");
+    Serial.print(delimiter, HEX);
     Serial.println(); // Add spacing between records
+
+
+    //hexDumpFRAM(read16(recordIndex), 28, 5);
 }
 
 void displayAllFramRecords() { //want to get rid of after testing!
@@ -1960,11 +2094,6 @@ int freeMemory() {
 }
 
 void dumpMemoryStats(int marker){
-    
-    ESP.getFreeHeap(); // This sometimes triggers internal cleanup
-    yield();      
-    delay(5);
-    return;
     Serial.printf("Memory (%d): Free=%d, MaxBlock=%d, Fragmentation=%d%%\n", marker,
                   ESP.getFreeHeap(), ESP.getMaxFreeBlockSize(),
                   100 - (ESP.getMaxFreeBlockSize() * 100 / ESP.getFreeHeap()));
