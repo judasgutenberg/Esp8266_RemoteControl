@@ -98,7 +98,9 @@ uint16_t fRAMRecordsSkipped = 0;
 uint32_t lastRtcSyncTime = 0;
 uint32_t wifiOnTime = 0;
 bool debug = true;
- 
+uint8_t outputMode = 0;
+String responseBuffer = "";
+
 //https://github.com/spacehuhn/SimpleMap
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
   if (a == b) return 0;      // a and b are equal
@@ -506,7 +508,7 @@ void compileAndSendWeatherData(String zerothRowData, String thirdRowData, String
     //Serial.println(transmissionString);
   }
   if(!offlineMode) {
-    sendRemoteData(transmissionString, fRAMOrdinal); //if fRAMOrdinal == 0xFFFF then don't worry about FRAM
+    sendRemoteData(transmissionString, "getDeviceData", fRAMOrdinal); //if fRAMOrdinal == 0xFFFF then don't worry about FRAM
   }
 }
 
@@ -553,21 +555,24 @@ void wiFiConnect() {
 }
 
 //SEND DATA TO A REMOTE SERVER TO STORE IN A DATABASE----------------------------------------------------
-void sendRemoteData(String datastring, uint16_t fRAMordinal) {
+void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
   WiFiClient clientGet;
   const int httpGetPort = 80;
   String url;
-  String mode = "getDeviceData";
+  //String mode = "getDeviceData";
   //most of the time we want to getDeviceData, not saveData. the former picks up remote control activity. the latter sends sensor data
-  if(millis() - lastDataLogTime > data_logging_granularity * 1000 || lastDataLogTime == 0) {
-    mode = "saveData";
-  }
-  if(deviceName == "") {
-    mode = "getInitialDeviceInfo";
+  if(mode == "getDeviceData") {
+    if(millis() - lastDataLogTime > data_logging_granularity * 1000 || lastDataLogTime == 0) {
+      mode = "saveData";
+    }
+    if(deviceName == "") {
+      mode = "getInitialDeviceInfo";
+    }
   }
 
   String encryptedStoragePassword = encryptStoragePassword(datastring);
-  url =  (String)url_get + "?key=" + encryptedStoragePassword + "&device_id=" + device_id + "&mode=" + mode + "&data=" + urlEncode(datastring, true);
+  url = (String)url_get + "?key=" + encryptedStoragePassword + "&device_id=" + device_id + "&mode=" + mode + "&data=" + urlEncode(datastring, true);
+ 
   if(debug) {
     Serial.println("\r>>> Connecting to host: ");
   }
@@ -649,7 +654,7 @@ void sendRemoteData(String datastring, uint16_t fRAMordinal) {
       //device_features in one data object (assuming it's not too big). The ESP8266 still can respond to data in the
       //JSON format, which it will assume if the first character of the data is a '{' -- but if the first character
       //is a '|' then it assumes the data is non-JSON. Otherwise it assumes it's HTTP boilerplate and ignores it.
-      if(retLine.indexOf("\"error\":") < 0 && mode == "saveData" && (retLine.charAt(0)== '{' || retLine.charAt(0)== '*' || retLine.charAt(0)== '|' || retLine.charAt(0)== '|')) {
+      if(retLine.indexOf("\"error\":") < 0 && (mode == "saveData" || mode=="commandout") && (retLine.charAt(0)== '{' || retLine.charAt(0)== '*' || retLine.charAt(0)== '|' || retLine.charAt(0)== '|')) {
         if(debug) {
           Serial.println("can sleep because: ");
           Serial.println(retLine);
@@ -657,6 +662,11 @@ void sendRemoteData(String datastring, uint16_t fRAMordinal) {
         }
         lastDataLogTime = millis();
         canSleep = true; //canSleep is a global and will not be set until all the tasks of the device are finished.
+        //also we can switch outputMode to 0 and clear responseBuffer
+        Serial.println("output mode to zero-------------------------------------------------------------------------------------");
+        outputMode = 0;
+        responseBuffer = "";
+        //responseBuffer.reserve(0);
       }
       if(retLine.charAt(0) == '*') { //getInitialDeviceInfo
         if(debug) {
@@ -698,7 +708,7 @@ void sendRemoteData(String datastring, uint16_t fRAMordinal) {
           runCommandsFromNonJson((char *)("!" + serverCommandParts[1]).c_str());
         }
         receivedDataJson = true;
-        break;      
+        break;              
       } else if(retLine.charAt(0) == '!') { //it's a command, so an exclamation point seems right
         if(debug) {
           Serial.print("COMMAND: ");
@@ -1044,6 +1054,9 @@ void runCommandsFromNonJson(char * nonJsonLine){
   latency = commandArray[3].toInt();
   latencySum += latency;
   //Serial.println(commandId);
+  if(commandId == -2) {
+    outputMode = 2;
+  }
   if(commandId) {
     //Serial.println(command);
     if(command == "reboot") {
@@ -1069,9 +1082,9 @@ void runCommandsFromNonJson(char * nonJsonLine){
       displayAllFramRecords(); 
     } else if(command == "dump fram hex") {
       if(!commandData || commandData == "") {
-        hexDumpFRAM(2 * fram_index_size, lastRecordSize + 1, 15);
+        hexDumpFRAM(2 * fram_index_size, lastRecordSize, 15);
       } else {
-        hexDumpFRAM(commandData.toInt(), lastRecordSize + 1, 15);
+        hexDumpFRAM(commandData.toInt(), lastRecordSize, 15);
       }
     } else if(command == "swap fram") {
       swapFRAMContents(fram_index_size * 2, 554, lastRecordSize);
@@ -1258,6 +1271,10 @@ void loop(){
   if (Serial.available()) 
   {
     doSerialCommands();
+  }
+
+  if(responseBuffer != "") {
+    sendRemoteData(responseBuffer, "commandout", 0xFFFF);
   }
  
   timeClient.update();
@@ -1597,18 +1614,18 @@ void printRTCDate()
 {
   byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
   getDateDs1307(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
-  Serial.print(year);
-  Serial.print("-");
-  Serial.print(month);
-  Serial.print("-");
-  Serial.print(dayOfMonth);
-  Serial.print(" ");
-  Serial.print(hour);
-  Serial.print(":");
-  Serial.print(minute);
-  Serial.print(":");
-  Serial.print(second);
-  Serial.println("");
+  textOut(String(year));
+  textOut("-");
+  textOut(String(month));
+  textOut("-");
+  textOut(String(dayOfMonth));
+  textOut(" ");
+  textOut(String(hour));
+  textOut(":");
+  textOut(String(minute));
+  textOut(":");
+  textOut(String(second));
+  textOut("\n");
 }
 
 uint32_t currentRTCTimestamp()
@@ -1743,11 +1760,11 @@ uint16_t readRecordCountFromFRAM() {
   return recordCount;
 }
 
-//stores the last sent FRAM record ordinal
-void writeLastFRAMRecordSentIndex(uint16_t location) {
+//stores the last sent FRAM record index
+void writeLastFRAMRecordSentIndex(uint16_t index) {
   uint8_t countBytes[2] = {
-    (location >> 8) & 0xFF, // High byte
-    location & 0xFF         // Low byte
+    (index >> 8) & 0xFF, // High byte
+    index & 0xFF         // Low byte
   };
   //no, i do not know why i had to do this
   uint8_t hi = countBytes[0];
@@ -1772,6 +1789,13 @@ void writeRecordCountToFRAM(uint16_t recordCount) {
   fram.write(fram_log_top, &hi, 1); // Write 2 bytes 
   fram.write(fram_log_top + 1, &low, 1); // Write 2 bytes 
   interrupts(); 
+  //when we do this, we ALSO want to update lastFramRecordSentIndex so that it will point to the record immediately after the one we just saved so that we can maximize rescued data should we lose the internet
+  uint16_t nextRecord = recordCount+1;
+  if(nextRecord >= fram_index_size)
+  {
+    nextRecord = 0;
+  }
+  writeLastFRAMRecordSentIndex(nextRecord);
 }
 
 //writes a single record to the backend and changes its delimiter so that it won't be sent again
@@ -2028,9 +2052,10 @@ void dumpFramRecordIndexes() {
   uint8_t bytes[2];
   for(int i=0; i<currentRecordCount; i++) {
     int index = read16(uint16_t (i*2));
-    Serial.print(i);
-    Serial.print(": ");
-    Serial.println(index);
+    textOut(String(i));
+    textOut(": ");
+    textOut(String(index));
+    textOut("\n");
   }
 }
 
@@ -2043,25 +2068,25 @@ void hexDumpFRAM(uint16_t startAddress, uint8_t bytesPerLine, uint16_t maxLines)
     fram.read(address, buffer, bytesPerLine);
     
     // Print the address with leading zeros
-    Serial.print("0x");
-    if (address < 0x1000) Serial.print("0");
-    if (address < 0x0100) Serial.print("0");
-    if (address < 0x0010) Serial.print("0");
-    Serial.print(address, HEX);
-    Serial.print(": ");
+    textOut("0x");
+    if (address < 0x1000) textOut("0");
+    if (address < 0x0100) textOut("0");
+    if (address < 0x0010) textOut("0");
+    textOut(String(address, HEX));
+    textOut(": ");
     
     // Print the data in hexadecimal format with leading zeros
     for (uint8_t i = 0; i < bytesPerLine; ++i) {
       if (address + i < 0xFFFF) { // Ensure we don't overflow the 16-bit address space
-        if (buffer[i] < 0x10) Serial.print("0"); // Add leading zero if less than 0x10
-        Serial.print(buffer[i], HEX);
-        Serial.print(" ");
+        if (buffer[i] < 0x10) textOut("0"); // Add leading zero if less than 0x10
+        textOut(String(buffer[i], HEX));
+        textOut(" ");
       } else {
         break; // Stop if address exceeds FRAM bounds
       }
     }
     
-    Serial.println(); // Move to the next line
+    textOut("\n"); // Move to the next line
     
     address += bytesPerLine; // Increment the address for the next line
     
@@ -2102,6 +2127,16 @@ void addOfflineRecord(std::vector<std::tuple<uint8_t, uint8_t, double>>& record,
 /////////////////////////////////////////////
 //utility functions
 /////////////////////////////////////////////
+void textOut(String data){
+  if(outputMode == 2) {
+    //sendRemoteData(data, "commandout", 0xFFFF); //do this in loop, not now
+    responseBuffer += data;
+  } else {
+    Serial.print(data);
+  }
+}
+
+
 int freeMemory() {
     return ESP.getFreeHeap();
 }
@@ -2116,9 +2151,11 @@ String makeAsteriskString(uint8_t number){
 
 
 void dumpMemoryStats(int marker){
-    Serial.printf("Memory (%d): Free=%d, MaxBlock=%d, Fragmentation=%d%%\n", marker,
+  char buffer[80]; 
+  sprintf(buffer, "Memory (%d): Free=%d, MaxBlock=%d, Fragmentation=%d%%\n", marker,
                   ESP.getFreeHeap(), ESP.getMaxFreeBlockSize(),
                   100 - (ESP.getMaxFreeBlockSize() * 100 / ESP.getFreeHeap()));
+  textOut(String(buffer));
 }
 
 String urlEncode(String str, bool minimizeImpact) {
