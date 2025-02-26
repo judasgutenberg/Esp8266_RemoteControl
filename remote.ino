@@ -2010,42 +2010,43 @@ void displayFramRecord(uint16_t recordIndex) { //want to get rid of after testin
     readRecordFromFRAM(recordIndex, record, delimiter);
     //dumpMemoryStats(10);
     // Display the record
-    Serial.print("Record #");    
-    Serial.print(recordIndex);
-    Serial.println(":");
+    textOut("Record #");    
+    textOut(String(recordIndex));
+    textOut(":\n");
     for (const auto& [ordinal, type, value] : record) {
-      Serial.print("  Ordinal: ");
-      Serial.print(ordinal);
+      textOut("  Ordinal: ");
+      textOut(String(ordinal));
       //Serial.print("  Type: ");
       //Serial.print(type);
-      Serial.print(", Value: ");
+      textOut(", Value: ");
       if(type == 5) {
-        Serial.println(value, 3); // Print with 3 decimal places
+        textOut(String(value, 3)); // Print with 3 decimal places
       } else if (type == 6) {
-        Serial.println(value, 12); // Print with 12 decimal places
+        textOut(String(value, 12)); // Print with 12 decimal places
       } else if (type == 0 || type == 2) {
-        Serial.println(value, 0); // Print with 0 decimal places
+        textOut(String(value, 0)); // Print with 0 decimal places
       }
-      
+      textOut("\n");
     }
-    Serial.print("  Delimiter: ");
-    Serial.print(delimiter, HEX);
-    Serial.println(); // Add spacing between records
+    textOut("  Delimiter: ");
+    textOut(String(delimiter, HEX));
+    textOut("\n"); // Add spacing between records
 
 
     //hexDumpFRAM(read16(recordIndex), 28, 5);
 }
 
 void displayAllFramRecords() { //want to get rid of after testing!
-  Serial.println("Reading all records from FRAM:");
-  Serial.print("Record Count: ");
-  Serial.println(currentRecordCount);
+  textOut("Reading all records from FRAM:");
+  textOut("Record Count: ");
+  textOut(String(currentRecordCount));
+  textOut("\n");
   for (uint16_t i = 0; i < currentRecordCount; i++) {
     displayFramRecord(i);
-    Serial.println(); // Add spacing between records
+    textOut("\n"); // Add spacing between records
   }
 
-  Serial.println("All records displayed.");
+  textOut("All records displayed.\n");
 }
 
 void dumpFramRecordIndexes() {  
