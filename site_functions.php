@@ -8,10 +8,16 @@ function utilityForm($user, $foundData) {
     $mergedData =  $foundData["form"];
     $form = genericForm($mergedData, "Run", "Running " . $foundData["label"], $user);
     $confirmJs = "";
-    if($foundData["skip_confirmation"] === false) {
+    if(gvfa("skip_confirmation", $foundData) === false) {
       $confirmJs  = "onclick=\"return(confirm('Are you sure you want to run " . $foundData["label"] . "?'))\"";
     }
-    $form = str_replace("value='Run' type='submit'/>", "value='Run' type='submit'  " . $confirmJs  . "/>", $form);
+    $runOverride = gvfa("run_override", $foundData);
+    if($runOverride){
+      $form = str_replace("value='Run' type='submit'/>", "value='Run' type='button'  onclick='return(" . $runOverride  . ")'/>", $form);
+    } else {
+      $form = str_replace("value='Run' type='submit'/>", "value='Run' type='submit'  " . $confirmJs  . "/>", $form);
+    }
+    
     $out .= $form;
   }
   return $out;

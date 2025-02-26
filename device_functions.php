@@ -2138,6 +2138,41 @@ function utilities($user, $viewMode = "list") {
       'action' => "",
       'skip_confirmation' => false,
       'output_format' => 'download'
+    ]    ,
+    [
+      'label' => 'Instant Command',
+      'url' => '?table=utilities&action=instantcommand',
+      'description' => "Download the latest database backup.",
+      'key' => 'instantcommand',
+      'role' => "super",
+      'action' => "instantCommand(<device_id/>)",
+      'run_override' => "instantCommand()",
+      'form'=>    [
+      [
+        'label' => 'Device',
+        'name' => 'device_id',
+        'value' => gvfa("device_id", gvfw("device_id")),
+        'type' => 'select',
+        'values' => 'SELECT name as text, device_id FROM device ORDER BY name'
+      ] ,
+      [
+        'label' => 'command',
+        'name' => 'command_text',
+        'type' => 'text',
+        'width' => 300,
+        'height'=> 100,
+        'value' => gvfa("command_text", gvfw("device_id")),
+      ] ,
+      [
+        'label' => 'response',
+        'name' => 'command_response',
+        'no_syntax_highlighting' => true,
+        'type' => 'text',
+        'width' => 680,
+        'height'=> 400,
+        'value' => gvfa("command_text", gvfw("device_id")),
+      ] 
+    ]
     ]
   );
 
@@ -2242,6 +2277,18 @@ function copyTemplatesToTenant($tenantId, $tablesString){
  
 }
 
+//runs a command instantly targeting a device
+function instantCommand() {
+  if(gvfw("command_text")){
+    $commandText = gvfw("command_text");
+    echo $commandText;
+    echo "<br>";
+    echo gvfw("device_id");
+    //write the command to a text file so data.php can find it and include it in the commands sent to the device
+    file_put_contents("instant_command_" . gvfw("device_id") . ".txt", $commandText);
+    die();
+  }
+}
 
 function visitorLog($deviceId, $number) {
   $lines=array();

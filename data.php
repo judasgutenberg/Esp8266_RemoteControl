@@ -260,7 +260,8 @@ if($_REQUEST) {
 					$out["error"] = $error;
 				}
 			} else if ($mode=="debug") {
-
+			} else if ($mode=="commandout") { //if we sent an instant_command, then the ESP8266 will redirect any output it generates to sendRemoteData, sending the output in the "data" parameter
+				file_put_contents("instant_response_" . gvfw("device_id") . ".txt", $data, FILE_APPEND | LOCK_EX);
 			} else if ($mode=="saveLocallyGatheredSolarData") { //used by the special inverter monitoring MCU to send fine-grain data promptly
 					if($canAccessData) {
 						///weather/data.php?storagePassword=xxxxxx&locationId=16&mode=saveLocallyGatheredSolarData&data=0*61*3336*3965*425*420*0*0*6359|||***192.168.1.200 
@@ -1219,6 +1220,17 @@ function sqlForStartOfPeriodScale($periodScale, $now) {
 
 function getLatestCommandData($deviceId, $tenantId){
 	Global $conn;
+	$possibleTemporaryCommandFileName = "instant_command_" . $deviceId . ".txt";
+	if(file_exists($possibleTemporaryCommandFileName)){
+		$temporaryComandText = file_get_contents($possibleTemporaryCommandFileName);
+		$commandArray = explode("|", $temporaryComandText);
+		$value = null;
+		if(count($commandArray)>1) {
+			$value = $commandArray[1];
+		}
+		unlink($possibleTemporaryCommandFileName);
+		return array("command_id"=> -2 , "command" => $commandArray[0], "value" => $value);
+	}
 	$sql = "SELECT * FROM command c JOIN command_type t ON c.command_type_id=t.command_type_id AND c.tenant_id=t.tenant_id WHERE device_id=" . intval($deviceId) . " AND c.tenant_id=" . $tenantId . " AND done=0 ORDER BY command_id ASC LIMIT 0,1";
 	$result = mysqli_query($conn, $sql);
 	if($result) {

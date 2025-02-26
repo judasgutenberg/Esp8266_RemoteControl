@@ -742,6 +742,42 @@ function managementConditionsAddTag() {
   }
 }
 
+function instantCommand() {
+	let xmlhttp = new XMLHttpRequest();
+	const params = new URLSearchParams();
+	const commandTextInput = document.querySelector(`textarea[name="command_text"]`);
+	const commandText = commandTextInput.value;
+	const deviceDropdown = document.querySelector(`select[name="device_id"]`);
+	const deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
+	let url = "?table=utilities&action=instantcommand"; 
+	params.append("command_text", commandText);
+	params.append("device_id", deviceId);
+    xmlhttp.open("POST", url, true);
+    xmlhttp.send(params);
+	updateInstantCommandResponse();
+	return false;
+}
+
+function updateInstantCommandResponse() {
+	console.log("update command");
+	let xmlhttp = new XMLHttpRequest();
+	const commandResponseTextArea = document.querySelector(`textarea[name="command_response"]`);
+	xmlhttp.onreadystatechange = function() {
+		console.log("did" + xmlhttp.readyState + " " +xmlhttp.status  );
+		if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+			const data = xmlhttp.responseText;
+			//console.log(data);
+			commandResponseTextArea.value += data;
+		}
+	}
+	const deviceDropdown = document.querySelector(`select[name="device_id"]`);
+	const deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
+	let url = "?action=commandpoll&device_id=" + deviceId; 
+    xmlhttp.open("GET", url, true);
+	xmlhttp.send();
+	console.log(url);
+	setTimeout(()=>updateInstantCommandResponse(), 2000);
+}
 
 
 //report-related graphing:

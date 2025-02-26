@@ -85,6 +85,15 @@ if($_POST || gvfw("table")) { //gvfw("table")
 if ($user) {
 
 	$out .= "<div>\n";
+  if($action == "commandpoll"){
+    $possibleTemporaryCommandFileName = "instant_response_" . $deviceId . ".txt";
+    if(file_exists($possibleTemporaryCommandFileName)){
+      $temporaryComandText = file_get_contents($possibleTemporaryCommandFileName);
+      echo $temporaryComandText;
+      unlink($possibleTemporaryCommandFileName);
+    }
+    die();
+  }
   if($action == "checksqlsyntax") {
     $sql = gvfw('sql');
     $out = json_encode(checkMySqlSyntax($sql));
@@ -181,6 +190,7 @@ if ($user) {
     
     $data = json_decode(gvfw("_data")); //don't actually need this
     $foundData = getUtilityInfo($user, $action); 
+
     if ($foundData) {
       $role = gvfa("role", $foundData);
       $path = gvfa("path", $foundData);
