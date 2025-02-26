@@ -16,7 +16,8 @@
 #include <Adafruit_INA219.h>
 #include <Adafruit_VL53L0X.h>
 #include <Adafruit_ADT7410.h>
-#include <Adafruit_FRAM_I2C.h>
+#include "Adafruit_EEPROM_I2C.h"
+#include "Adafruit_FRAM_I2C.h"
 
 #include <NTPClient.h>
 #include <WiFiUdp.h>
@@ -720,6 +721,7 @@ void sendRemoteData(String datastring, uint16_t fRAMordinal) {
       Serial.println(fRAMordinal);
     }
     if(fRAMordinal != 0xFFFF) {
+      dumpMemoryStats(99);
       yield();
       changeDelimiterOnRecord(fRAMordinal, 0xFE);
     }
@@ -1173,7 +1175,8 @@ void setup(void){
  
   Serial.setDebugOutput(false);
   Serial.println("Just started up...");
-  Wire.setClock(100000); // Set I2C speed to 100kHz (default is 400kHz)
+  Wire.begin();
+  //Wire.setClock(50000); // Set I2C speed to 100kHz (default is 400kHz)
   
   wiFiConnect();
   server.on("/", handleRoot);      //Displays a form where devices can be turned on and off and the outputs of sensors
@@ -1199,7 +1202,7 @@ void setup(void){
       ina219->setCalibration_16V_400mA();
     }
   }
-  if(fram_address > -1) {
+  if(fram_address > 0) {
     if (!fram.begin(fram_address)) {
       Serial.println("Could not find FRAM (or EEPROM).");
     } else {
@@ -1225,16 +1228,14 @@ void loop(){
   uint8_t testHi = 0;//(millis() >> 8) & 0xFF;
   uint8_t testLow = 4;// millis() & 0xFF;
   noInterrupts();
+  delay(5);
   fram.write(28674, &testHi, 1);  // Write test byte to address 1000
   fram.write(28674+1, &testLow, 1);  // Write test byte to address 1000
   interrupts();
- 
   uint8_t readBack;
   Serial.print(" Original: ");
   Serial.print(testHi, HEX);
   Serial.println(testLow, HEX);
-  
- 
   Serial.print(" Read back: ");
   fram.read(28674, &readBack, 1);  // Read it back
   Serial.print(readBack, HEX);
@@ -1308,6 +1309,7 @@ void loop(){
   if(haveReconnected) {
     //try to send stored records to the backend
     if(fram_address > 0){
+      dumpMemoryStats(101);
       sendAStoredRecordToBackend();
     } else {
       haveReconnected = false;
@@ -1741,6 +1743,21 @@ uint16_t readRecordCountFromFRAM() {
   return recordCount;
 }
 
+//stores the last sent FRAM record ordinal
+void writeLastFRAMRecordSentIndex(uint16_t location) {
+  uint8_t countBytes[2] = {
+    (location >> 8) & 0xFF, // High byte
+    location & 0xFF         // Low byte
+  };
+  //no, i do not know why i had to do this
+  uint8_t hi = countBytes[0];
+  uint8_t low = countBytes[1];
+  noInterrupts();
+  delay(100);
+  fram.write(fram_log_top + 2, &hi, 1); // Write 2 bytes 
+  fram.write(fram_log_top + 3, &low, 1); // Write 2 bytes 
+  interrupts();
+}
 
 //this stores the NUMBER of FRAM records, nothing else
 void writeRecordCountToFRAM(uint16_t recordCount) {
@@ -1757,34 +1774,21 @@ void writeRecordCountToFRAM(uint16_t recordCount) {
   interrupts(); 
 }
 
-//stores the last sent FRAM record ordinal
-void writeLastFRAMRecordSentIndex(uint16_t location) {
-  uint8_t countBytes[2] = {
-    (location >> 8) & 0xFF, // High byte
-    location & 0xFF         // Low byte
-  };
-  //no, i do not know why i had to do this
-  uint8_t hi = countBytes[0];
-  uint8_t low = countBytes[1];
-  noInterrupts();
-  delay(5);
-  fram.write(fram_log_top + 2, &hi, 1); // Write 2 bytes 
-  fram.write(fram_log_top + 3, &low, 1); // Write 2 bytes 
-  interrupts();
-}
-
 //writes a single record to the backend and changes its delimiter so that it won't be sent again
 void sendAStoredRecordToBackend() {
   //first get the last FRAM record sent:
-  Serial.println(readLastFramRecordSentIndex());
+  
+  Serial.print("Last FRAM record sent: ");
+  
   uint16_t positionInFram = readLastFramRecordSentIndex();
   uint32_t timestamp = 0;
   uint8_t delimiter;
-  String zerothDataRowString = "**********";
-  String fourthDataRowString = "**********";
+  String zerothDataRowString = makeAsteriskString(12);
+  String fourthDataRowString = makeAsteriskString(12);
   if(positionInFram >= fram_index_size){ //it might be too big if it overflows or way off if it was never written
     positionInFram = 0;
   }
+  Serial.println(positionInFram);
   std::vector<std::tuple<uint8_t, uint8_t, double>> record;
   readRecordFromFRAM(positionInFram, record, delimiter);
   
@@ -1797,6 +1801,8 @@ void sendAStoredRecordToBackend() {
     //we need to assemble a suitable string from the FRAM record
     //the string looks something like: 
     for (const auto& [ordinal, type, value] : record) {
+      Serial.print("ordinal being dealt with: ");
+      Serial.println(ordinal);
       if(ordinal < 20) {  
         zerothDataRowString = replaceNthElement(zerothDataRowString, ordinal, String(value), '*');
       } else if (ordinal >= 40 && ordinal < 60) {
@@ -1821,16 +1827,21 @@ void sendAStoredRecordToBackend() {
 void changeDelimiterOnRecord(uint16_t index, uint8_t newDelimiter) {
   uint16_t indexAddress = framIndexAddress + (index * 2);
   uint16_t location = read16(indexAddress);
+
+  
   yield();
-  uint8_t bytesPerLine = getRecordSizeFromFRAM(index) + 0;
+  uint8_t bytesPerLine = getRecordSizeFromFRAM(location);
   if(debug) {
     Serial.print("Bytes per line: ");
     Serial.println(bytesPerLine);
     Serial.print("index in: ");
     Serial.println(index);
   }
+  //bytes per line should be 25
+  
   uint8_t buffer[bytesPerLine];   // Buffer to hold data for one line
   displayFramRecord(index);
+  hexDumpFRAM(location, bytesPerLine, 5);
   fram.read(location, buffer, bytesPerLine); 
   Serial.print("delimiter found: ");
   Serial.println(buffer[bytesPerLine-1], HEX);
@@ -1935,12 +1946,15 @@ uint16_t getRecordSizeFromFRAM(uint16_t recordStartAddress) {
     uint8_t readBytes[2];
     fram.read(recordStartAddress + size, readBytes, 2); // Read ordinal (1 byte)
     uint8_t ordinal = readBytes[0];
-    uint8_t type = readBytes[1];
-    size += 2;
-
     if (ordinal >= 0xF0) { // Found the delimiter (end of record) ... we allow a variety of end delimiters to encode record status 
+      size++;
+      return size;
       break;
     }
+    
+    size += 2;
+    uint8_t type = readBytes[1];
+
     if (type == 5 || type == 2) {
       // Float (4 bytes)
       size += 4;
@@ -1957,7 +1971,6 @@ uint16_t getRecordSizeFromFRAM(uint16_t recordStartAddress) {
 
   return size;
 }
-
 
 void clearFramLog(){
   currentRecordCount = 0;
@@ -2092,6 +2105,15 @@ void addOfflineRecord(std::vector<std::tuple<uint8_t, uint8_t, double>>& record,
 int freeMemory() {
     return ESP.getFreeHeap();
 }
+
+String makeAsteriskString(uint8_t number){
+  String out = "";
+  for(uint8_t i=0; i<number; i++) {
+    out += "*";
+  }
+  return out;
+}
+
 
 void dumpMemoryStats(int marker){
     Serial.printf("Memory (%d): Free=%d, MaxBlock=%d, Fragmentation=%d%%\n", marker,
