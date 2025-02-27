@@ -1085,6 +1085,8 @@ void runCommandsFromNonJson(char * nonJsonLine){
       } else {
         hexDumpFRAM(commandData.toInt(), lastRecordSize, 15);
       }
+    } else if(command == "dump fram hex#") {
+        hexDumpFRAMAtIndex(commandData.toInt(), lastRecordSize, 15);
     } else if(command == "swap fram") {
       swapFRAMContents(fram_index_size * 2, 554, lastRecordSize);
     } else if(command == "dump fram record") {
@@ -2037,6 +2039,42 @@ void dumpFramRecordIndexes() {
     textOut(": ");
     textOut(String(index));
     textOut("\n");
+  }
+}
+
+void hexDumpFRAMAtIndex(uint16_t index, uint8_t bytesPerLine, uint16_t maxLines) {
+  uint16_t indexAddress = framIndexAddress + (index * 2);
+  uint16_t address = read16(indexAddress);
+  uint8_t buffer[bytesPerLine];   // Buffer to hold data for one line
+  
+  for (uint16_t line = 0; line < maxLines; ++line) {
+    // Read a line's worth of data from FRAM
+    fram.read(address, buffer, bytesPerLine);
+    
+    // Print the address with leading zeros
+    textOut("0x");
+    if (address < 0x1000) textOut("0");
+    if (address < 0x0100) textOut("0");
+    if (address < 0x0010) textOut("0");
+    textOut(String(address, HEX));
+    textOut(": ");
+    
+    // Print the data in hexadecimal format with leading zeros
+    for (uint8_t i = 0; i < bytesPerLine; ++i) {
+      if (address + i < 0xFFFF) { // Ensure we don't overflow the 16-bit address space
+        if (buffer[i] < 0x10) textOut("0"); // Add leading zero if less than 0x10
+        textOut(String(buffer[i], HEX));
+        textOut(" ");
+      } else {
+        break; // Stop if address exceeds FRAM bounds
+      }
+    }
+    textOut("\n"); // Move to the next line
+    address += bytesPerLine; // Increment the address for the next line
+    // Stop if we've reached the end of FRAM memory
+    if (address >= 0xFFFF) {
+      break;
+    }
   }
 }
 
