@@ -726,8 +726,8 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
       onePinAtATimeMode = true;
     }
     if(debug) {
-      Serial.print("Fram ordinal: ");
-      Serial.println(fRAMordinal);
+      //Serial.print("Fram ordinal: ");
+      //Serial.println(fRAMordinal);
     }
     if(fRAMordinal != 0xFFFF) {
       dumpMemoryStats(99);
@@ -1325,7 +1325,7 @@ void loop(){
   if(haveReconnected) {
     //try to send stored records to the backend
     if(fram_address > 0){
-      dumpMemoryStats(101);
+      //dumpMemoryStats(101);
       sendAStoredRecordToBackend();
     } else {
       haveReconnected = false;
