@@ -663,7 +663,6 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
         lastDataLogTime = millis();
         canSleep = true; //canSleep is a global and will not be set until all the tasks of the device are finished.
         //also we can switch outputMode to 0 and clear responseBuffer
-        Serial.println("output mode to zero-------------------------------------------------------------------------------------");
         outputMode = 0;
         responseBuffer = "";
         //responseBuffer.reserve(0);
@@ -1148,7 +1147,7 @@ void sendIr(String rawDataStr) {
 }
 
 void rebootEsp() {
-  Serial.println("Rebooting ESP");
+  textOut("Rebooting ESP\n");
   ESP.restart();
 }
 
@@ -1187,7 +1186,7 @@ void setup(void){
   Serial.setRxBufferSize(256);  
  
   Serial.setDebugOutput(false);
-  Serial.println("Just started up...");
+  textOut("Just started up...\n");
   Wire.begin();
   //Wire.setClock(50000); // Set I2C speed to 100kHz (default is 400kHz)
   
@@ -1197,7 +1196,7 @@ void setup(void){
   server.on("/weatherdata", handleWeatherData);
   server.on("/writeLocalData", localSetData);
   server.begin(); 
-  Serial.println("HTTP server started");
+  textOut("HTTP server started\n");
   startWeatherSensors(sensor_id,  sensor_sub_type, sensor_i2c, sensor_data_pin, sensor_power_pin);
   //initialize NTP client
   timeClient.begin();
@@ -1336,14 +1335,14 @@ void loop(){
   if(canSleep) {
     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
     if(deep_sleep_time_per_loop > 0) {
-      Serial.println("sleeping...");
+      textOut("sleeping...\n");
       ESP.deepSleep(deep_sleep_time_per_loop * 1e6); 
     }
      //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
     if(light_sleep_time_per_loop > 0) {
-      Serial.println("snoozing...");
+      textOut("snoozing...\n");
       sleepForSeconds(light_sleep_time_per_loop);
-      Serial.println("awakening...");
+      textOut("awakening...\n");
       wiFiConnect();
     }
   }
@@ -1357,8 +1356,10 @@ void doSerialCommands() {
   while(Serial.available()) {
     serialByte = Serial.read();
     if(serialByte == '\r' || serialByte == '\n') {
-      Serial.print("Serial command: ");
-      Serial.println(command);
+      if(debug) {
+        Serial.print("Serial command: ");
+        Serial.println(command);
+      }
       runCommandsFromNonJson((char *) command.c_str());
     } else {
       command = command + serialByte;
@@ -1388,21 +1389,21 @@ void localSetData() {
   for (int i = 0; i < server.args(); i++) {
     if(server.argName(i) == "id") {
       id = server.arg(i);
-      Serial.print(id);
-      Serial.print( " : ");
+      textOut(id);
+      textOut( " : ");
     } else if (server.argName(i) == "on") {
       onValue = (int)(server.arg(i) == "1");  
     } else if (server.argName(i) == "ipaddress") {
       ipAddressAffectingChange = (String)server.arg(i);  
     }
-    Serial.print(onValue);
-    Serial.println();
+    textOut(String(onValue));
+    textOut("\n");
   } 
   for (int i = 0; i < pinMap->size(); i++) {
     String key = pinList[i];
-    Serial.print(key);
-    Serial.print(" ?= ");
-    Serial.println(id);
+    textOut(key);
+    textOut(" ?= ");
+    textOut(String(id) + "\n");
     if(key == id) {
       pinMap->remove(key);
       pinMap->put(key, onValue);
@@ -1430,10 +1431,10 @@ void localShowData() {
 }
 
 void printHexBytes(uint32_t value) {
-    Serial.print(((value >> 24) & 0xFF), HEX);
-    Serial.print(((value >> 16) & 0xFF), HEX);
-    Serial.print(((value >> 8) & 0xFF), HEX);
-    Serial.println((value & 0xFF), HEX);
+    textOut(String(((value >> 24) & 0xFF), HEX));
+    textOut(String(((value >> 16) & 0xFF), HEX));
+    textOut(String(((value >> 8) & 0xFF), HEX));
+    textOut(String((value & 0xFF), HEX));
 }
 
 byte decToBcd(byte val){
@@ -1474,9 +1475,10 @@ void syncRTCWithNTP() {
   byte dayOfMonth  = timeInfo->tm_mday;
   byte month       = timeInfo->tm_mon + 1; // tm_mon is 0-based
   byte year        = timeInfo->tm_year - 100; // Convert from years since 1900
+  char buffer[120];
 
-  Serial.printf("Setting RTC: %02d:%02d:%02d %02d/%02d/%02d\n",
-                hour, minute, second,  month,  dayOfMonth, year + 2000);
+  sprintf(buffer, "Setting RTC: %02d:%02d:%02d %02d/%02d/%02d\n", hour, minute, second,  month,  dayOfMonth, year + 2000);
+  textOut(String(buffer));
 
   setDateDs1307(second, minute, hour, dayOfWeek, dayOfMonth, month, year);
 }
@@ -1513,7 +1515,6 @@ uint32_t getSecsSinceEpoch(uint16_t epoch, uint8_t month, uint8_t day, uint8_t y
         countleap++;
   }
   secs += (countleap * SECSPERDAY);
-  
   secs += second;
   secs += (hour * SECSPERHOUR);
   secs += (minute * SECSPERMIN);
@@ -1538,7 +1539,6 @@ uint32_t getSecsSinceEpoch(uint16_t epoch, uint8_t month, uint8_t day, uint8_t y
           secs += (_ytab[dayspermonth][i] * SECSPERDAY);
       }
   }
-  
   return secs;
 }
 
@@ -1646,7 +1646,7 @@ void cleanup(){
 //FRAM functions 
 
 void writeRecordToFRAM(const std::vector<std::tuple<uint8_t, uint8_t, double>>& record) {
-  Serial.println(currentRecordCount);
+  //Serial.println(currentRecordCount);
   if (currentRecordCount >= fram_index_size) {
     currentRecordCount = 0;
   }
@@ -1656,8 +1656,7 @@ void writeRecordToFRAM(const std::vector<std::tuple<uint8_t, uint8_t, double>>& 
 
   //Serial.println(record.size());
   uint16_t addr = recordStartAddress;
- 
-  Serial.println(addr);
+  //Serial.println(addr);
   lastRecordSize = 0;
   for (const auto& [ordinal, type, dbl] : record) {
     uint8_t ordinalTypeArray[2] = {ordinal, type};
@@ -1711,18 +1710,16 @@ void writeRecordToFRAM(const std::vector<std::tuple<uint8_t, uint8_t, double>>& 
       lastRecordSize += 8;
       addr += 8;
     }
-
     //ordinal++;
   }
-
   // Write a delimiter (0xFFFFFFFF) to mark the end of the record
   uint8_t delimiter = 0xFF;
   uint8_t delimiterArray[1] = {delimiter};
   fram.write(addr, delimiterArray, 1);
   //don't count the delimter in lastRecordSize;
   //addr +=  1;
-  Serial.print(" last record size: ");
-  Serial.println((int)lastRecordSize);
+  //Serial.print(" last record size: ");
+  //Serial.println((int)lastRecordSize);
   // Update the index table
   uint8_t indexBytes[2] = {uint8_t(recordStartAddress >> 8), uint8_t(recordStartAddress & 0xFF)};
   noInterrupts();
@@ -1801,9 +1798,7 @@ void writeRecordCountToFRAM(uint16_t recordCount) {
 //writes a single record to the backend and changes its delimiter so that it won't be sent again
 void sendAStoredRecordToBackend() {
   //first get the last FRAM record sent:
-  
-  Serial.print("Last FRAM record sent: ");
-  
+  //Serial.print("Last FRAM record sent: ");
   uint16_t positionInFram = readLastFramRecordSentIndex();
   uint32_t timestamp = 0;
   uint8_t delimiter;
@@ -1812,21 +1807,21 @@ void sendAStoredRecordToBackend() {
   if(positionInFram >= fram_index_size){ //it might be too big if it overflows or way off if it was never written
     positionInFram = 0;
   }
-  Serial.println(positionInFram);
+  //Serial.println(positionInFram);
   std::vector<std::tuple<uint8_t, uint8_t, double>> record;
   readRecordFromFRAM(positionInFram, record, delimiter);
   
   if(delimiter == 0xFF) { //we only send records to the backend if this is the delimiter.  after we send it, we update the delimiter to 0xFE
     if(debug) {
-      Serial.print("Sending FRAM Record at ");
-      Serial.println(positionInFram);
+      //Serial.print("Sending FRAM Record at ");
+      //Serial.println(positionInFram);
     }
     fRAMRecordsSkipped = 0;
     //we need to assemble a suitable string from the FRAM record
     //the string looks something like: 
     for (const auto& [ordinal, type, value] : record) {
-      Serial.print("ordinal being dealt with: ");
-      Serial.println(ordinal);
+      //Serial.print("ordinal being dealt with: ");
+      //Serial.println(ordinal);
       if(ordinal < 20) {  
         zerothDataRowString = replaceNthElement(zerothDataRowString, ordinal, String(value), '*');
       } else if (ordinal >= 40 && ordinal < 60) {
@@ -1851,8 +1846,6 @@ void sendAStoredRecordToBackend() {
 void changeDelimiterOnRecord(uint16_t index, uint8_t newDelimiter) {
   uint16_t indexAddress = framIndexAddress + (index * 2);
   uint16_t location = read16(indexAddress);
-
-  
   yield();
   uint8_t bytesPerLine = getRecordSizeFromFRAM(location);
   if(debug) {
@@ -1864,11 +1857,11 @@ void changeDelimiterOnRecord(uint16_t index, uint8_t newDelimiter) {
   //bytes per line should be 25
   
   uint8_t buffer[bytesPerLine];   // Buffer to hold data for one line
-  displayFramRecord(index);
-  hexDumpFRAM(location, bytesPerLine, 5);
+  //displayFramRecord(index);
+  //hexDumpFRAM(location, bytesPerLine, 5);
   fram.read(location, buffer, bytesPerLine); 
-  Serial.print("delimiter found: ");
-  Serial.println(buffer[bytesPerLine-1], HEX);
+  //Serial.print("delimiter found: ");
+  //Serial.println(buffer[bytesPerLine-1], HEX);
   buffer[bytesPerLine-1] = newDelimiter;
   noInterrupts();
   delay(5);
@@ -1883,10 +1876,7 @@ void changeDelimiterOnRecord(uint16_t index, uint8_t newDelimiter) {
 /*
 fram_log_top: number of FRAM records
 fram_log_top + 2: ordinal of last FRAM record sent to backend
-
-
 */
-
 
 uint16_t read16(uint16_t addr) {
   uint8_t bytes[2];
@@ -1914,17 +1904,13 @@ void readRecordFromFRAM(uint16_t recordIndex, std::vector<std::tuple<uint8_t, ui
     }
     cleanup();   
     delay(5);
-   
     if (type == 5) {
-    
       uint8_t valueBytes[4];
       fram.read(addr, valueBytes, 4);
       addr += 4;
       float dbl;
-
       //ESP.getMaxFreeBlockSize();
       memcpy(&dbl, valueBytes, 4);
-  
       record.emplace_back(std::make_tuple(ordinal, type, (double)dbl));
     } else if (type == 2) {
       uint8_t valueBytes[4];
@@ -1964,7 +1950,6 @@ uint16_t getRecordSizeFromFRAM(uint16_t recordStartAddress) {
     recordStartAddress = read16(indexAddress);
   }
   uint16_t size = 0;
-
   while (size + recordStartAddress < fram_log_top) {
     yield();
     uint8_t readBytes[2];
@@ -1975,10 +1960,8 @@ uint16_t getRecordSizeFromFRAM(uint16_t recordStartAddress) {
       return size;
       break;
     }
-    
     size += 2;
     uint8_t type = readBytes[1];
-
     if (type == 5 || type == 2) {
       // Float (4 bytes)
       size += 4;
@@ -1992,14 +1975,13 @@ uint16_t getRecordSizeFromFRAM(uint16_t recordStartAddress) {
   }
   //Serial.print("Last record size: ");
   //Serial.println(size);
-
   return size;
 }
 
 void clearFramLog(){
   currentRecordCount = 0;
   writeRecordCountToFRAM(currentRecordCount);
-  Serial.println("Current record cursor reset");
+  textOut("Current record cursor reset\n");
 }
 
 void displayFramRecord(uint16_t recordIndex) { //want to get rid of after testing!
@@ -2031,8 +2013,6 @@ void displayFramRecord(uint16_t recordIndex) { //want to get rid of after testin
     textOut("  Delimiter: ");
     textOut(String(delimiter, HEX));
     textOut("\n"); // Add spacing between records
-
-
     //hexDumpFRAM(read16(recordIndex), 28, 5);
 }
 
@@ -2086,11 +2066,8 @@ void hexDumpFRAM(uint16_t startAddress, uint8_t bytesPerLine, uint16_t maxLines)
         break; // Stop if address exceeds FRAM bounds
       }
     }
-    
     textOut("\n"); // Move to the next line
-    
     address += bytesPerLine; // Increment the address for the next line
-    
     // Stop if we've reached the end of FRAM memory
     if (address >= 0xFFFF) {
       break;
@@ -2100,7 +2077,7 @@ void hexDumpFRAM(uint16_t startAddress, uint8_t bytesPerLine, uint16_t maxLines)
 
 void swapFRAMContents(uint16_t location1, uint16_t location2, uint16_t length) {
   if (length == 0) {
-    Serial.println("Invalid length: 0");
+    textOut("Invalid length: 0\n");
     return;
   }
 
@@ -2116,7 +2093,7 @@ void swapFRAMContents(uint16_t location1, uint16_t location2, uint16_t length) {
   fram.write(location1, buffer2, length); // Write buffer2's data to location1
   fram.write(location2, buffer1, length); // Write buffer1's data to location2
 
-  Serial.println("Swap completed");
+  textOut("Swap completed\n");
 }
 
 void addOfflineRecord(std::vector<std::tuple<uint8_t, uint8_t, double>>& record, uint8_t ordinal, uint8_t type, double value) {
