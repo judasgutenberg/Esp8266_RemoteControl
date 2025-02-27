@@ -266,7 +266,8 @@ if ($user) {
         
       } else if ($action) {
  
-        if (!gvfa("form", $foundData)){
+        if (!gvfa("form", $foundData) && !gvfa("front_end_js", $foundData)){
+
           $out .= "<div class='issuesheader'>" .  gvfa("label", $foundData)  . "</div>";
           $out .= "<form method='post'><input name='run' type='submit' value='run'/></form>"; //make a quick and dirty form
         } else {

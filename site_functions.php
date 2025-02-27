@@ -2,10 +2,13 @@
 
 function utilityForm($user, $foundData) {
   $out = "";
+  $frontEndJs = gvfa("front_end_js", $foundData);
   if(array_key_exists("form", $foundData)){
     $out .= "<div class='issuesheader'>" . $foundData["label"]. "</div>";
     $out .= "<div>" . $foundData["description"] . "</div>";
     $mergedData =  $foundData["form"];
+    
+
     $form = genericForm($mergedData, "Run", "Running " . $foundData["label"], $user);
     $confirmJs = "";
     if(gvfa("skip_confirmation", $foundData) === false) {
@@ -19,6 +22,11 @@ function utilityForm($user, $foundData) {
     }
     
     $out .= $form;
+  } else if($frontEndJs) {
+      $out .= "\n<div id='utilityDiv'></div>\n";
+      $out .= "\n<script>\n";
+      $out .=  $frontEndJs . ";";
+      $out .= "\n</script>\n";
   }
   return $out;
 }

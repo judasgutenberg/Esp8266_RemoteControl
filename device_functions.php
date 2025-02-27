@@ -2145,34 +2145,11 @@ function utilities($user, $viewMode = "list") {
       'description' => "Download the latest database backup.",
       'key' => 'instantcommand',
       'role' => "super",
+      'front_end_js'=>"instantCommandFrontend()",
       'action' => "instantCommand(<device_id/>)",
       'run_override' => "instantCommand()",
-      'form'=>    [
-      [
-        'label' => 'Device',
-        'name' => 'device_id',
-        'value' => gvfa("device_id", gvfw("device_id")),
-        'type' => 'select',
-        'values' => 'SELECT name as text, device_id FROM device ORDER BY name'
-      ] ,
-      [
-        'label' => 'command',
-        'name' => 'command_text',
-        'type' => 'text',
-        'width' => 300,
-        'height'=> 100,
-        'value' => gvfa("command_text", gvfw("device_id")),
-      ] ,
-      [
-        'label' => 'response',
-        'name' => 'command_response',
-        'no_syntax_highlighting' => true,
-        'type' => 'text',
-        'width' => 680,
-        'height'=> 400,
-        'value' => gvfa("command_text", gvfw("device_id")),
-      ] 
-    ]
+
+      
     ]
   );
 

@@ -742,10 +742,44 @@ function managementConditionsAddTag() {
   }
 }
 
+function instantCommandFrontend() {
+	let xmlhttp = new XMLHttpRequest();
+	const div = document.getElementById('utilityDiv');
+	let out = "";
+	out += "<div>Command: <input id='command_text' style='width:300px'/></div>";
+	out += "<div>Device: <span id='deviceDropdown'/></div>";
+
+	out += "<div><button type='button' onclick='instantCommand()'>Run</button><button type='button' onclick='document.getElementById(\"command_response\").value=\"\"'>Clear Responses</button></div>";
+ 
+	out += "<div>Responses: <textarea id='command_response' style='width:680px;height:400px'/></textarea></div>";
+	div.innerHTML = out;
+	xmlhttp.onreadystatechange = function() {
+		console.log("did" + xmlhttp.readyState + " " +xmlhttp.status  );
+		if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+			const data = xmlhttp.responseText;
+			selectData = JSON.parse(data);
+			let selectedString = "\n<select name='device_id'>\n";
+			for(let item of selectData){
+				selectedString += '\n<option value="' + item["device_id"] + '">' + item["name"] + '</option>\n';
+			}
+			selectedString += '\n</select>\n'
+			document.getElementById("deviceDropdown").innerHTML = selectedString;
+		}
+	}
+	let url = "?action=getdevices";
+	xmlhttp.open("GET", url, true);
+	xmlhttp.send();
+	
+	console.log(url);
+ 
+}
+
+
+
 function instantCommand() {
 	let xmlhttp = new XMLHttpRequest();
 	const params = new URLSearchParams();
-	const commandTextInput = document.querySelector(`textarea[name="command_text"]`);
+	const commandTextInput = document.getElementById('command_text');//document.querySelector(`textarea[name="command_text"]`);
 	const commandText = commandTextInput.value;
 	const deviceDropdown = document.querySelector(`select[name="device_id"]`);
 	const deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
@@ -761,7 +795,7 @@ function instantCommand() {
 function updateInstantCommandResponse() {
 	console.log("update command");
 	let xmlhttp = new XMLHttpRequest();
-	const commandResponseTextArea = document.querySelector(`textarea[name="command_response"]`);
+	const commandResponseTextArea = document.getElementById('command_response'); //document.querySelector(`textarea[name="command_response"]`);
 	xmlhttp.onreadystatechange = function() {
 		console.log("did" + xmlhttp.readyState + " " +xmlhttp.status  );
 		if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
