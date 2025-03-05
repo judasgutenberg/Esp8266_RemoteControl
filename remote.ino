@@ -36,6 +36,7 @@
 
 #include <tuple>
 #include <cmath> 
+ 
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
@@ -1106,6 +1107,8 @@ void runCommandsFromNonJson(char * nonJsonLine){
                    
     } else if (command ==  "get date") {
       printRTCDate();
+    } else if (command ==  "get uptime") {
+      textOut("Last booted: " + timeAgo("") + "\n");
     } else if (command == "get memory") {
       dumpMemoryStats(0);
     } else if (command == "set debug") {
@@ -1447,6 +1450,73 @@ byte decToBcd(byte val){
 byte bcdToDec(byte val)
 {
   return ( (val/16*10) + (val%16) );
+}
+
+//time functions 
+ 
+ 
+// Convert a SQL-style datetime string ("YYYY-MM-DD HH:MM:SS") to a Unix timestamp
+time_t parseDateTime(String dateTime) {
+    int year, month, day, hour, minute, second;
+    
+    // Convert String to C-style char* for parsing
+    if (sscanf(dateTime.c_str(), "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second) != 6) {
+        return 0; // Return 0 if parsing fails
+    }
+
+    struct tm t = {};
+    t.tm_year = year - 1900;
+    t.tm_mon = month - 1;
+    t.tm_mday = day;
+    t.tm_hour = hour;
+    t.tm_min = minute;
+    t.tm_sec = second;
+    
+    return mktime(&t); // Convert struct tm to Unix timestamp
+}
+ 
+
+ 
+// Overloaded version: Uses NTP time as the default comparison
+String timeAgo(String sqlDateTime) {
+    return timeAgo(sqlDateTime, timeClient.getEpochTime());
+}
+
+// Returns a human-readable "time ago" string
+String timeAgo(String sqlDateTime, time_t compareTo) {
+    time_t past;
+    time_t nowTime;
+
+    if (sqlDateTime.length() == 0) {
+        // If an empty string is passed, use millis() for uptime
+        unsigned long uptimeSeconds = millis() / 1000;
+        nowTime = uptimeSeconds;
+        past = 0;
+    } else {
+        past = parseDateTime(sqlDateTime);
+        nowTime = compareTo;
+    }
+
+    if (past == -1 || past > nowTime) {
+        return "Invalid time";
+    }
+
+    time_t diffInSeconds = nowTime - past;
+    int seconds = diffInSeconds % 60;
+    int minutes = (diffInSeconds / 60) % 60;
+    int hours = (diffInSeconds / 3600) % 24;
+    int days = diffInSeconds / 86400;
+
+    if (days > 0) {
+        return String(days) + (days == 1 ? " day ago" : " days ago");
+    }
+    if (hours > 0) {
+        return String(hours) + (hours == 1 ? " hour ago" : " hours ago");
+    }
+    if (minutes > 0) {
+        return String(minutes) + (minutes == 1 ? " minute ago" : " minutes ago");
+    }
+    return String(seconds) + (seconds == 1 ? " second ago" : " seconds ago");
 }
 
 //RTC functions
