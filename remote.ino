@@ -2422,3 +2422,25 @@ String encryptStoragePassword(String datastring) {
   String encryptedStoragePassword = urlEncode(simpleEncrypt(simpleEncrypt((String)storage_password, timestampString.substring(1,9), salt), String((char)countSetBitsInString(datastring)), String((char)checksum)), false);
   return encryptedStoragePassword;
 }
+
+
+//let's define how a posible encryption_scheme might work:
+//a data_string is passed in as is the storage_password.  we want to be able to recreate the storage_password server-side, so no can be lossy on the storage_password
+//it's all based on nibbles. two operations are performed by byte from these two nibbles, upper nibble first, then lower nibble
+//00: do nothing (byte unchanged)
+//01: set_bits in data_string xored with storage_password at this position
+//02: xor between data_string at this position and timestampString at this position xored with storage_password at this position.
+//02: xor between data_string at this position and storage_password at this position.
+//04: ROL data_string at this position xored with storage_password at this position 
+//05: ROR of data_string at this position xored with storage_password at this position 
+//06: checksum of data_string xored with storage_password at this position
+//07: sum of embedded digit values in data_string xored with storage_password at this position
+//08: checksum of stringified timestampString xored with storage_password at this position
+//08: set_bits of stringified timestampString xored with storage_password at this position
+//09: count_of_zeroes of data_string xored with storage_password at this position
+//10: ROL this position of storage_password 
+//11: ROR this position of storage_password 
+//12: ROL this position of storage_password twice
+//13: ROR this position of storage_password twice
+//14: checksum of data_string xored with storage_password at this position
+//15: invert byte (zeroes become ones and ones become zeroes)
