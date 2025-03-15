@@ -5,6 +5,7 @@ $username = "remote";
 $database = "remote";
 $password = "your_awesome_password";
 $salt = "another random string";
+$encryptionScheme = 0x1234567890ABCDEF;
 
 $timezone = "America/New_York";
 $encryptionPassword = "your secret just for you";
