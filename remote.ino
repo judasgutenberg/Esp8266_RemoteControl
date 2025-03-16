@@ -1,4 +1,4 @@
-
+ 
 /*
  * ESP8266 Remote Control. Also sends weather data from multiple kinds of sensors (configured in config.c) 
  * originally built on the basis of something I found on https://circuits4you.com
@@ -7,7 +7,7 @@
  * since those do not include watchdog behaviors
  */
  
- 
+
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
@@ -572,7 +572,7 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
   }
 
   String encryptedStoragePassword = encryptStoragePassword(datastring);
-  url = (String)url_get + "?key=" + encryptedStoragePassword + "&device_id=" + device_id + "&mode=" + mode + "&data=" + urlEncode(datastring, true);
+  url = (String)url_get + "?key2=" + urlEncode(encryptedStoragePassword, true) + "&device_id=" + device_id + "&mode=" + mode + "&data=" + urlEncode(datastring, true);
  
   if(debug) {
     Serial.println("\r>>> Connecting to host: ");
@@ -2371,7 +2371,7 @@ String replaceNthElement(const String& input, int n, const String& replacement, 
   return result;
 }
 
-String simpleEncrypt(String plaintext, String key, String salt) {
+String oldSimpleEncrypt(String plaintext, String key, String salt) {
     String encrypted = "";
     int keyLength = key.length();
     int saltLength = salt.length();
@@ -2413,7 +2413,23 @@ byte countSetBitsInString(const String &input) {
     return bitCount;
 }
 
-String encryptStoragePassword(String datastring) {
+
+byte countZeroes(const String &input) {
+    byte zeroCount = 0;
+    // Iterate over each character in the string
+    for (size_t i = 0; i < input.length(); ++i) {
+        char c = input[i];
+        // Count the zeroes
+        if (c == 48) {
+            zeroCount++;
+        }
+   
+    }
+    return zeroCount;
+}
+
+/*
+String oldEncryptStoragePassword(String datastring) {
   int timeStamp = timeClient.getEpochTime();
   char buffer[10];
   itoa(timeStamp, buffer, 10);  // Base 10 conversion
@@ -2422,5 +2438,156 @@ String encryptStoragePassword(String datastring) {
   String encryptedStoragePassword = urlEncode(simpleEncrypt(simpleEncrypt((String)storage_password, timestampString.substring(1,9), salt), String((char)countSetBitsInString(datastring)), String((char)checksum)), false);
   return encryptedStoragePassword;
 }
+*/
 
+uint8_t rotateLeft(uint8_t value, uint8_t count) {
+    return (value << count) | (value >> (8 - count));
+}
 
+uint8_t rotateRight(uint8_t value, uint8_t count) {
+    return (value >> count) | (value << (8 - count));
+}
+
+//let's define how encryption_scheme works:
+//a data_string is passed in as is the storage_password.  we want to be able to recreate the storage_password server-side, so no can be lossy on the storage_password
+//it's all based on nibbles. two operations are performed by byte from these two nibbles, upper nibble first, then lower nibble
+//00: do nothing (byte unchanged)
+//01: xor storage_password at this position with count_of_zeroes in dataString
+//02: xor between storage_password at this position and timestampString at this position.
+//03: xor between storage_password at this position and data_string  at this position.
+//04: xor storage_password with ROL data_string at this position
+//05: xor storage_password with ROR data_string at this position
+//06: xor storage_password with checksum of entire data_string;
+//07: xor storage_password with checksum of entire stringified timestampString
+//08: xor storage_password with set_bits of entire data_string
+//09  xor storage_password with set_bits in entire timestampString
+//10: ROL this position of storage_password 
+//11: ROR this position of storage_password 
+//12: ROL this position of storage_password twice
+//13: ROR this position of storage_password twice
+//14: invert byte of storage_password at this position (zeroes become ones and ones become zeroes)
+//15: xor storage_password at this position with count_of_zeroes in full timestampString
+String encryptStoragePassword(String datastring) {
+    int timeStamp = timeClient.getEpochTime();
+    char buffer[10];
+    itoa(timeStamp, buffer, 10);  // Convert timestamp to string
+    String timestampStringInterim = String(buffer);
+    String timestampString = timestampStringInterim.substring(1,8); //second param is OFFSET
+    //Serial.print(timestampString);
+    //Serial.println("<=known to frontend");
+    //timestampString = "0123227";
+    // Convert encryption_scheme into an array of nibbles
+    uint8_t nibbles[16];  // 64-bit number has 16 nibbles
+    for (int i = 0; i < 16; i++) {
+        nibbles[i] = (encryption_scheme >> (4 * (15 - i))) & 0xF;  // Extract nibble
+    }
+    // Process nibbles
+    String processedString = "";
+    int counter = 0;
+    uint8_t thisByteResult;
+    uint8_t thisByteOfStoragePassword;
+    uint8_t thisByteOfDataString;
+    uint8_t thisByteOfTimestampString;
+    uint8_t dataStringChecksum = calculateChecksum(datastring);
+    uint8_t timestampStringChecksum = calculateChecksum(timestampString);
+    uint8_t dataStringSetBits = countSetBitsInString(datastring);
+    uint8_t timestampStringSetBits = countSetBitsInString(timestampString);
+    uint8_t dataStringZeroCount = countZeroes(datastring);
+    uint8_t timestampStringZeroCount = countZeroes(timestampString);
+    for (int i = 0; i < strlen(storage_password) * 2; i++) {
+  
+        thisByteOfDataString = datastring[counter % datastring.length()];
+        thisByteOfTimestampString = timestampString[counter % timestampString.length()];
+        /*
+        Serial.print(timestampString);
+        Serial.print(":");
+        Serial.print(timestampString[counter % timestampString.length()]);
+        Serial.print(":");
+        Serial.print(counter);
+        Serial.print(":");
+        Serial.println(counter % timestampString.length());
+        */
+        if(i % 2 == 0) {
+          thisByteOfStoragePassword = storage_password[counter];
+        } else {
+          thisByteOfStoragePassword = thisByteResult;
+        }
+        uint8_t nibble = nibbles[i % 16];
+        if(nibble == 0) {
+          //do nothing
+        } else if(nibble == 1) { 
+          thisByteResult = thisByteOfStoragePassword ^ dataStringZeroCount;
+        } else if(nibble == 2) { 
+          thisByteResult = thisByteOfStoragePassword ^ thisByteOfTimestampString;
+        } else if(nibble == 3) { 
+          thisByteResult = thisByteOfStoragePassword ^ thisByteOfDataString;
+        } else if(nibble == 4) { 
+          thisByteResult = thisByteOfStoragePassword ^ rotateLeft(thisByteOfDataString, 1);
+        } else if(nibble == 5) { 
+          thisByteResult = thisByteOfStoragePassword ^ rotateRight(thisByteOfDataString, 1);
+        } else if(nibble == 6) { 
+          thisByteResult = thisByteOfStoragePassword ^ dataStringChecksum;
+        } else if(nibble == 7) { 
+          thisByteResult = thisByteOfStoragePassword ^ timestampStringChecksum;
+        } else if(nibble == 8) { 
+          thisByteResult = thisByteOfStoragePassword ^ dataStringSetBits;
+        } else if(nibble == 9) { 
+          thisByteResult = thisByteOfStoragePassword ^ timestampStringSetBits;
+        } else if(nibble == 10) { 
+          thisByteResult = rotateLeft(thisByteOfStoragePassword, 1);
+        } else if(nibble == 11) { 
+          thisByteResult = rotateRight(thisByteOfStoragePassword, 1);
+        } else if(nibble == 12) { 
+          thisByteResult = rotateLeft(thisByteOfStoragePassword, 2);
+        } else if(nibble == 13) { 
+          thisByteResult = rotateRight(thisByteOfStoragePassword, 2);
+        } else if(nibble == 14) { 
+          thisByteResult = ~thisByteOfStoragePassword; //invert the byte
+        } else if(nibble == 15) { 
+          thisByteResult = thisByteOfStoragePassword ^ timestampStringZeroCount;
+        }
+        
+        // Advance the counter every other nibble
+        
+        if (i % 2 == 1) {
+            processedString += (char)thisByteResult;  // Append nibble as hex character
+            /*
+            Serial.print("%");
+            Serial.print(thisByteOfStoragePassword);
+            Serial.print(",");
+            Serial.print(thisByteOfDataString);
+            Serial.print("|");
+            Serial.print(thisByteOfTimestampString);
+            Serial.print("|");
+            Serial.print(dataStringZeroCount);
+            Serial.print("|");
+            Serial.print(timestampStringZeroCount);
+            Serial.print(" via: ");
+            Serial.print(nibbles[i]);
+            Serial.print("=>");
+            Serial.println(thisByteResult);
+            */
+            counter++;
+        } else {
+            /*
+            Serial.print("&");
+            Serial.print(thisByteOfStoragePassword);
+            Serial.print(",");
+            Serial.print(thisByteOfDataString);
+            Serial.print("|");
+            Serial.print(thisByteOfTimestampString);
+            Serial.print("|");
+            Serial.print(dataStringZeroCount);
+            Serial.print("|");
+            Serial.print(timestampStringZeroCount);
+            Serial.print(" via: ");
+            Serial.print(nibbles[i]);
+            Serial.print("=>");
+            Serial.println(thisByteResult);
+            */
+            
+        }
+        //Serial.print(":");
+    }
+    return processedString;
+}
