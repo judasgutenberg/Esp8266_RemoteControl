@@ -98,6 +98,7 @@ if($_REQUEST) {
 
 	$storagePassword  = gvfw("storage_password", gvfw("storagePassword"));
 	$encryptedKey = gvfw("key");
+	$encryptedKey2 = gvfw("key2"); //version 2
 	$data = gvfa("data", $_REQUEST);
 	//$x = gvfw("x");
 	if($encryptedKey){
@@ -105,6 +106,11 @@ if($_REQUEST) {
 		$partiallyDecryptedKey = simpleDecrypt(urldecode($encryptedKey), strval(chr(countSetBitsInString($data))), strval(chr($checksum)));
 		$storagePassword = simpleDecrypt($partiallyDecryptedKey, substr(strval(time() - ceil($averageLatency/1000) ), 1, 8) , $salt);
 		
+	} else if ($encryptedKey2) {
+		$timeString = substr(strval(time()) , 1, 7);//third param is LENGTH
+		//echo $timeString . "<=known to backend";
+		//$timeString = "0123227";
+		$storagePassword = simpleDecrypt2(urldecode($encryptedKey2), $data,  $timeString, $encryptionScheme);
 	}
 	//die($storagePassword . " : " . time() . " ; " . $checksum . "?=" . $x  . " : " . urlencode($data));
 	if($user && !$storagePassword) {
@@ -1278,6 +1284,24 @@ function calculateChecksum($in) {
     return $checksum % 256;
 }
 
+function countZeroes($input) {
+    $zeroCount = 0;
+    for ($i = 0; $i < strlen($input); $i++) {
+        if (ord($input[$i]) == 48) {  // ASCII code for '0'
+            $zeroCount++;
+        }
+    }
+    return $zeroCount % 256;
+}
+
+function rotateRight($value, $count) {
+    return (($value >> $count) | ($value << (8 - $count))) & 0xFF;
+}
+
+function rotateLeft($value, $count) {
+    return (($value << $count) | ($value >> (8 - $count))) & 0xFF;
+}
+
 function countSetBitsInString(string $input): int {
     $bitCount = 0;
     // Iterate over each character in the string
@@ -1310,6 +1334,109 @@ function simpleDecrypt($ciphertext, $key, $salt) {
     }
     
     return $decrypted;
+}
+
+
+function simpleDecrypt2($encryptedString, $dataString, $timestampString, $encryptionScheme){ //version 2!
+    $nibbles = [];
+    for ($i = 0; $i < 16; $i++) {
+        $nibbles[$i] = ($encryptionScheme >> (4 * (15 - $i))) & 0xF;
+    }
+
+    $dataStringChecksum = calculateChecksum($dataString);
+    $timestampStringChecksum = calculateChecksum($timestampString);
+    $dataStringSetBits = countSetBitsInString($dataString);
+    $timestampStringSetBits = countSetBitsInString($timestampString);
+    $dataStringZeroCount = countZeroes($dataString);
+    $timestampStringZeroCount = countZeroes($timestampString);
+
+    $counter = 0;
+    $decryptedString = '';
+
+    for ($i = 0; $i < strlen($encryptedString) * 2; $i+=2) {
+ 
+        $thisByteOfDataString = ord($dataString[$counter % strlen($dataString)]);
+ 
+		//echo $i  .  "==\n";
+
+        $thisByteOfStoragePassword = ord($encryptedString[$counter]);
+		$thisByteOfTimestamp  = ord($timestampString[$counter % strlen($timestampString)]);
+		//echo $timestampString . ":" .  $timestampString[$counter % strlen($timestampString)] . ":" . $counter . ":" . $counter % strlen($timestampString) . "\n";
+        // Reverse the encryption process based on nibbles
+		$thisNibble = $nibbles[($i + 1) % (count($nibbles) )];
+		//echo $i . ": " . $thisNibble . "=" . $thisByteOfStoragePassword . "\n";
+		$thisByteResult = generateDecryptedByte($counter, $thisNibble, $thisByteOfStoragePassword, $thisByteOfDataString, $thisByteOfTimestamp, $dataStringChecksum, $timestampStringChecksum, $dataStringSetBits, $timestampStringSetBits, $dataStringZeroCount, $timestampStringZeroCount);
+		
+		//echo "&" . $thisByteOfStoragePassword . "," . $thisByteOfDataString . "|" . $thisByteOfTimestamp . "|" . $dataStringZeroCount . "|" . $timestampStringZeroCount . " via: ". $thisNibble . "=>" . $thisByteResult . "\n";
+		$thisNibble = $nibbles[$i % (count($nibbles) )];
+		$oldThisByteResult = $thisByteResult;
+		$thisByteResult = generateDecryptedByte($counter, $thisNibble, $thisByteResult, $thisByteOfDataString, $thisByteOfTimestamp, $dataStringChecksum, $timestampStringChecksum, $dataStringSetBits, $timestampStringSetBits, $dataStringZeroCount, $timestampStringZeroCount);
+		//echo "%" . $oldThisByteResult . "," . $thisByteOfDataString . "|" . $thisByteOfTimestamp . "|" . $dataStringZeroCount . "|" . $timestampStringZeroCount . " via: ". $thisNibble . "=>" . $thisByteResult . "\n";
+        // Append the decrypted byte
+
+        $decryptedString .= chr($thisByteResult);  // Append decrypted byte as char
+        $counter++;
+        
+    }
+	//echo $decryptedString . "=\n";
+    return $decryptedString;
+
+
+}
+
+
+function generateDecryptedByte($counter, $thisNibble, $thisByteOfStoragePassword, $thisByteOfDataString, $thisByteOfTimestamp, $dataStringChecksum, $timestampStringChecksum, $dataStringSetBits, $timestampStringSetBits, $dataStringZeroCount, $timestampStringZeroCount) {
+	switch ($thisNibble) {
+		case 1:
+			$thisByteResult = $thisByteOfStoragePassword ^ $dataStringZeroCount;
+			break;
+		case 2:
+			$thisByteResult = $thisByteOfStoragePassword ^ $thisByteOfTimestamp;
+			break;
+		case 3:
+			$thisByteResult = $thisByteOfStoragePassword ^ $thisByteOfDataString;
+			break;
+		case 4:
+			$thisByteResult = $thisByteOfStoragePassword ^ rotateLeft($thisByteOfDataString, 1);
+			break;
+		case 5:
+			$thisByteResult = $thisByteOfStoragePassword ^  rotateRight($thisByteOfDataString, 1);
+			break;
+		case 6:
+			$thisByteResult = $thisByteOfStoragePassword ^ $dataStringChecksum;
+			break;
+		case 7:
+			$thisByteResult = $thisByteOfStoragePassword ^ $timestampStringChecksum;
+			break;
+		case 8:
+			$thisByteResult = $thisByteOfStoragePassword ^ $dataStringSetBits;
+			break;
+		case 9:
+			$thisByteResult = $thisByteOfStoragePassword ^ $timestampStringSetBits;
+			break;
+		case 10:
+			$thisByteResult = rotateRight($thisByteOfStoragePassword, 1);
+			break;
+		case 11:
+			$thisByteResult = rotateLeft($thisByteOfStoragePassword, 1);
+			break;
+		case 12:
+			$thisByteResult = rotateRight($thisByteOfStoragePassword, 2);
+			break;
+		case 13:
+			$thisByteResult = rotateLeft($thisByteOfStoragePassword, 2);
+			break;
+		case 14:
+			$thisByteResult = ~$thisByteOfStoragePassword;  // Invert the byte
+			break;
+		case 15:
+			$thisByteResult = $thisByteOfStoragePassword ^ $timestampStringZeroCount;
+			break;
+		default:
+			$thisByteResult = $thisByteOfStoragePassword;
+			break;
+	}
+	return $thisByteResult;
 }
 //some helpful sql examples for creating sql users:
 //CREATE USER 'weathertron'@'localhost' IDENTIFIED  BY 'your_password';
