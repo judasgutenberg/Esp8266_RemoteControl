@@ -572,7 +572,7 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
   }
 
   String encryptedStoragePassword = encryptStoragePassword(datastring);
-  url = (String)url_get + "?key2=" + urlEncode(encryptedStoragePassword, true) + "&device_id=" + device_id + "&mode=" + mode + "&data=" + urlEncode(datastring, true);
+  url = (String)url_get + "?k2=" + encryptedStoragePassword + "&device_id=" + device_id + "&mode=" + mode + "&data=" + urlEncode(datastring, true);
  
   if(debug) {
     Serial.println("\r>>> Connecting to host: ");
@@ -2550,7 +2550,10 @@ String encryptStoragePassword(String datastring) {
         // Advance the counter every other nibble
         
         if (i % 2 == 1) {
-            processedString += (char)thisByteResult;  // Append nibble as hex character
+            char hexStr[3];
+            sprintf(hexStr, "%02X", thisByteResult); 
+            String paddedHexStr = String(hexStr); 
+            processedString += paddedHexStr;  // Append nibble as hex character
             /*
             Serial.print("%");
             Serial.print(thisByteOfStoragePassword);
