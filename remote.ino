@@ -2563,7 +2563,7 @@ String encryptStoragePassword(String datastring) {
             Serial.print("|");
             Serial.print(timestampStringZeroCount);
             Serial.print(" via: ");
-            Serial.print(nibbles[i]);
+            Serial.print(nibble);
             Serial.print("=>");
             Serial.println(thisByteResult);
             */
@@ -2581,7 +2581,7 @@ String encryptStoragePassword(String datastring) {
             Serial.print("|");
             Serial.print(timestampStringZeroCount);
             Serial.print(" via: ");
-            Serial.print(nibbles[i]);
+            Serial.print(nibble);
             Serial.print("=>");
             Serial.println(thisByteResult);
             */
