@@ -98,7 +98,7 @@ if($_REQUEST) {
 
 	$storagePassword  = gvfw("storage_password", gvfw("storagePassword"));
 	$encryptedKey = gvfw("key");
-	$encryptedKey2 = gvfw("key2"); //version 2
+	$encryptedKey2 = gvfw("k2"); //version 2
 	$data = gvfa("data", $_REQUEST);
 	//$x = gvfw("x");
 	if($encryptedKey){
@@ -110,7 +110,7 @@ if($_REQUEST) {
 		$timeString = substr(strval(time()) , 1, 7);//third param is LENGTH
 		//echo $timeString . "<=known to backend";
 		//$timeString = "0123227";
-		$storagePassword = simpleDecrypt2(urldecode($encryptedKey2), $data,  $timeString, $encryptionScheme);
+		$storagePassword = simpleDecrypt2($encryptedKey2, $data,  $timeString, $encryptionScheme);
 	}
 	//die($storagePassword . " : " . time() . " ; " . $checksum . "?=" . $x  . " : " . urlencode($data));
 	if($user && !$storagePassword) {
@@ -1361,13 +1361,13 @@ function simpleDecrypt2($encryptedString, $dataString, $timestampString, $encryp
     $counter = 0;
     $decryptedString = '';
 
-    for ($i = 0; $i < strlen($encryptedString) * 2; $i+=2) {
+    for ($i = 0; $i < strlen($encryptedString); $i+=2) {
  
-        $thisByteOfDataString = ord($dataString[$counter % strlen($dataString)]);
- 
+		$thisByteOfDataString = ord($dataString[$counter % strlen($dataString)]);
+		//echo substr($encryptedString, $i, 2) . ":" . $thisByteOfDataString . "\n";
 		//echo $i  .  "==\n";
 
-        $thisByteOfStoragePassword = ord($encryptedString[$counter]);
+        $thisByteOfStoragePassword = hexdec(substr($encryptedString, $i, 2));
 		$thisByteOfTimestamp  = ord($timestampString[$counter % strlen($timestampString)]);
 		
 		//echo $timestampString . ":" .  $timestampString[$counter % strlen($timestampString)] . ":" . $counter . ":" . $counter % strlen($timestampString) . "\n";
@@ -1383,7 +1383,6 @@ function simpleDecrypt2($encryptedString, $dataString, $timestampString, $encryp
 		$thisByteResult = generateDecryptedByte($counter, $thisNibble, $thisByteResult, $thisByteOfDataString, $thisByteOfTimestamp, $dataStringChecksum, $timestampStringChecksum, $dataStringSetBits, $timestampStringSetBits, $dataStringZeroCount, $timestampStringZeroCount);
 		//echo "%" . $oldThisByteResult . "," . $thisByteOfDataString . "|" . $thisByteOfTimestamp . "|" . $dataStringZeroCount . "|" . $timestampStringZeroCount . " via: ". $thisNibble . "=>" . $thisByteResult . "\n";
         // Append the decrypted byte
-
         $decryptedString .= chr($thisByteResult);  // Append decrypted byte as char
         $counter++;
         
