@@ -1315,7 +1315,7 @@ function countSetBitsInString(string $input): int {
             $asciiValue >>= 1; // Right shift to process the next bit
         }
     }
-    return $bitCount;
+    return $bitCount % 256;
 }
 
 function simpleDecrypt($ciphertext, $key, $salt) {
@@ -1339,10 +1339,18 @@ function simpleDecrypt($ciphertext, $key, $salt) {
 
 function simpleDecrypt2($encryptedString, $dataString, $timestampString, $encryptionScheme){ //version 2!
     $nibbles = [];
+	/*
     for ($i = 0; $i < 16; $i++) {
         $nibbles[$i] = ($encryptionScheme >> (4 * (15 - $i))) & 0xF;
     }
-
+	*/
+	for ($i = 0; $i < strlen($encryptionScheme); $i++) {
+		// Get the i-th nibble (hex character)
+		$nibble = $encryptionScheme[$i]; 
+		// Convert the nibble (hex character) to an integer
+		$nibbleInt = hexdec($nibble);
+		$nibbles[$i] = $nibbleInt;
+	}
     $dataStringChecksum = calculateChecksum($dataString);
     $timestampStringChecksum = calculateChecksum($timestampString);
     $dataStringSetBits = countSetBitsInString($dataString);
@@ -1361,9 +1369,11 @@ function simpleDecrypt2($encryptedString, $dataString, $timestampString, $encryp
 
         $thisByteOfStoragePassword = ord($encryptedString[$counter]);
 		$thisByteOfTimestamp  = ord($timestampString[$counter % strlen($timestampString)]);
+		
 		//echo $timestampString . ":" .  $timestampString[$counter % strlen($timestampString)] . ":" . $counter . ":" . $counter % strlen($timestampString) . "\n";
         // Reverse the encryption process based on nibbles
 		$thisNibble = $nibbles[($i + 1) % (count($nibbles) )];
+		//echo  PHP_INT_MAX . ":" . $encryptionScheme  . ":" . $thisNibble . ":" .  intval($i + 1) . ":" . intval(($i + 1) % (count($nibbles))) . "\n";
 		//echo $i . ": " . $thisNibble . "=" . $thisByteOfStoragePassword . "\n";
 		$thisByteResult = generateDecryptedByte($counter, $thisNibble, $thisByteOfStoragePassword, $thisByteOfDataString, $thisByteOfTimestamp, $dataStringChecksum, $timestampStringChecksum, $dataStringSetBits, $timestampStringSetBits, $dataStringZeroCount, $timestampStringZeroCount);
 		
