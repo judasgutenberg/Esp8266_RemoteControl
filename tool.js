@@ -1895,6 +1895,7 @@ function pastStepper(periodScale, periodSize, ordinal){
 }
 
 function timeAgo(sqlDateTime, compareTo = null) {
+	sqlDateTime = sqlDateTime.replace(" ", "T"); // Fix for Safari 11
 	// Define the timezone globally or set a default
 	const timezone = window.timezone || "UTC";
   
