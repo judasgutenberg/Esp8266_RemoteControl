@@ -31,7 +31,7 @@ Another important philosophy is that I want to support older hardware with my co
 
 Finally, I prefer my code to be as straightforward as possible. I don't, for example, appreciate clever one-line solutions to programming challenges and prefer to use explicit loops where it is obvious to as many viewers as possible what precisely is going on.  Similarly, I prefer an imperative over a declarative coding style, and I've never been enamored with an object-oriented approach.  This is not to say this code contains none of those things, but I keep it to a minimum.
 
-Obviously, if one is insisting on making all their own database access and login methods, there is a huge possibility of security vulnerabilities creeping into the design. I'm well-versed in most of these, though it's possible I've overlooked something.  My reporting system gives immense powers to super users, for example, but that's something I personally demand. And it's easy enough not to give access to report writing (or even execution) to your users under this system.
+Obviously, if one is insisting on making all their own database access and login methods, there is a huge possibility of security vulnerabilities creeping into the design. I'm well-versed in most of these, though it's possible I've overlooked something.  My reporting system gives immense powers to super users, for example, but that's something I personally need and have gotten used to having. And it's easy enough not to give access to report writing (or even execution) to your users under this system.
 
 ![alt text](esp8266-remote-schematic.jpg?raw=true)
 ## Hardware Setup
