@@ -100,6 +100,7 @@ if($_REQUEST) {
 	$encryptedKey = gvfw("key");
 	$encryptedKey2 = gvfw("k2"); //version 2
 	$data = gvfa("data", $_REQUEST);
+	$hashedData =  hash('sha256', $data);
 	//$x = gvfw("x");
 	if($encryptedKey){
 		$checksum = calculateChecksum($data);
@@ -577,7 +578,7 @@ if($_REQUEST) {
 							wind_direction,  wind_speed, wind_increment, 
 							precipitation, 
 							reserved1, reserved2, reserved3, reserved4,
-							sensor_id, voltage, ampage, latitude, longitude, elevation, millis) 
+							sensor_id, voltage, ampage, latitude, longitude, elevation, millis, data_hash) 
 						VALUES (" . 
 						mysqli_real_escape_string($conn, $locationId) . "," .
 						mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
@@ -600,8 +601,9 @@ if($_REQUEST) {
 						mysqli_real_escape_string($conn, $latitude)  . "," .
 						mysqli_real_escape_string($conn, $longitude) . "," .
 						mysqli_real_escape_string($conn, $elevation) . "," .
-						mysqli_real_escape_string($conn, $millis) .
-						")";
+						mysqli_real_escape_string($conn, $millis)  . ",'" .
+						mysqli_real_escape_string($conn, $hashedData) .
+						"')";
 					}
 					for($datumCounter = 0; $datumCounter < 12; $datumCounter++){
 						if(count($arrWeatherData)> $datumCounter){
