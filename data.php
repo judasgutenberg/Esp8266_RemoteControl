@@ -597,7 +597,7 @@ if($_REQUEST) {
 						mysqli_real_escape_string($conn, $reserved4) . "," .  
 						mysqli_real_escape_string($conn, $sensorId) . "," .
 						mysqli_real_escape_string($conn, $measuredVoltage)  . "," .
-						mysqli_real_escape_string($conn, $measuredAmpage)  . "," .
+						mysqli_real_escape_string($conn, floatval($measuredAmpage))  . "," .
 						mysqli_real_escape_string($conn, $latitude)  . "," .
 						mysqli_real_escape_string($conn, $longitude) . "," .
 						mysqli_real_escape_string($conn, $elevation) . "," .
