@@ -1213,7 +1213,7 @@ void setup(void){
   // GMT -1 = -3600
   // GMT 0 = 0
   timeClient.setTimeOffset(0);
-  if(ina219_address > -1) {
+  if(ina219_address > 0) {
     ina219 = new Adafruit_INA219(ina219_address);
     if (!ina219->begin()) {
       Serial.println("Failed to find INA219 chip");
@@ -1227,14 +1227,15 @@ void setup(void){
     } else {
       Serial.println("FRAM or EEPROM found");
     }
+      currentRecordCount = readRecordCountFromFRAM();
+      if(lastRecordSize == 0) {
+        lastRecordSize = getRecordSizeFromFRAM(0xFFFF);
+      }
   }
   if(ir_pin > -1) {
     //irsend.begin(); //do this elsewhere?
   }
-  currentRecordCount = readRecordCountFromFRAM();
-  if(lastRecordSize == 0) {
-    lastRecordSize = getRecordSizeFromFRAM(0xFFFF);
-  }
+
   //clearFramLog();
  //displayAllFramRecords();
   
