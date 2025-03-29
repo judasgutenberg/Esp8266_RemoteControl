@@ -834,7 +834,9 @@ void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
       //Serial.println("!ABOUT TO TURN OFF localsource: " + (String)localSource +  " serverSAVED: " + (String)serverSaved);
       if(!localSource || serverSaved == 1){
         if(serverSaved == 1) {//confirmation of serverSaved, so localSource flag is no longer needed
-          Serial.println("SERVER SAVED==1!!");
+          if(debug) {
+            Serial.println("SERVER SAVED==1!!");
+          }
           localSource = false;
         } else {
           pinMap->remove(key);
@@ -2371,23 +2373,6 @@ String replaceNthElement(const String& input, int n, const String& replacement, 
   return result;
 }
 
-String oldSimpleEncrypt(String plaintext, String key, String salt) {
-    String encrypted = "";
-    int keyLength = key.length();
-    int saltLength = salt.length();
-    int plainLength = plaintext.length();
-
-    for (int i = 0; i < plainLength; i++) {
-        // Combine plaintext, key, and salt using positions
-        char mix = plaintext[i] 
-                   ^ key[i % keyLength] 
-                   ^ salt[i % saltLength];
-        // Further scramble by shifting based on position
-        mix = (mix << (i % 5)) | (mix >> (8 - (i % 5))); // Circular bit shift
-        encrypted += mix;
-    }
-    return encrypted;
-}
 
 byte calculateChecksum(String input) {
     byte checksum = 0;
