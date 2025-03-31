@@ -216,4 +216,6 @@ ESP8266s have limited memory, so I don't bother with making their polling happen
 
 The actual website with all the tools to view data and control ESP8266s should be hosted on https, since otherwise password and cookie data is sent to the server in plaintext, allowing someone with access to that data (very few people) to view or alter it (unlikely).  Personally, I am not particularly concerned about such issues.  But if you don't understand the risks, you should probably host this site in https (while also allowing the ESP8266 to communicate over http).
 
+I've been gradually changing the nature of the secrets sent from the ESP8266s, making them more and more secure over time and changing the name of the actual key sent depending on how it is encrypted.
+
 
