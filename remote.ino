@@ -332,25 +332,27 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
       if(millis() - lastOfflineLog > 1000 * offline_log_granularity) {
         long millisVal = millis();
         //store that data in the FRAM:
-        std::vector<std::tuple<uint8_t, uint8_t, double>> framWeatherRecord;
-        addOfflineRecord(framWeatherRecord, 0, 5, temperatureValue); 
-        addOfflineRecord(framWeatherRecord, 1, 5, pressureValue); 
-        addOfflineRecord(framWeatherRecord, 2, 5, humidityValue); 
-        //addOfflineRecord(framWeatherRecord, 28, 2, (double)millis()); 
-        if(rtc_address > 0) {
-          addOfflineRecord(framWeatherRecord, 40, 2, currentRTCTimestamp());
-          Serial.println(currentRTCTimestamp());
-        } else {
-          addOfflineRecord(framWeatherRecord, 40, 2, timeClient.getEpochTime());
-          
+        if(fram_address > 0) {
+          std::vector<std::tuple<uint8_t, uint8_t, double>> framWeatherRecord;
+          addOfflineRecord(framWeatherRecord, 0, 5, temperatureValue); 
+          addOfflineRecord(framWeatherRecord, 1, 5, pressureValue); 
+          addOfflineRecord(framWeatherRecord, 2, 5, humidityValue); 
+          //addOfflineRecord(framWeatherRecord, 28, 2, (double)millis()); 
+          if(rtc_address > 0) {
+            addOfflineRecord(framWeatherRecord, 40, 2, currentRTCTimestamp());
+            Serial.println(currentRTCTimestamp());
+          } else {
+            addOfflineRecord(framWeatherRecord, 40, 2, timeClient.getEpochTime());
+            
+          }
+          //addOfflineRecord(framWeatherRecord, 8, 6, 3.141592653872233); 
+          writeRecordToFRAM(framWeatherRecord);
+          Serial.println("Saved a record to FRAM.");
+          Serial.print(transmissionString);
+          Serial.println(millisVal);
+          //Serial.println("stored millis:");
+          //printHexBytes(millisVal);
         }
-        //addOfflineRecord(framWeatherRecord, 8, 6, 3.141592653872233); 
-        writeRecordToFRAM(framWeatherRecord);
-        Serial.println("Saved a record to FRAM.");
-        Serial.print(transmissionString);
-        Serial.println(millisVal);
-        //Serial.println("stored millis:");
-        //printHexBytes(millisVal);
         lastOfflineLog = millis();
       }
     } 
@@ -733,7 +735,9 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
     if(fRAMordinal != 0xFFFF) {
       dumpMemoryStats(99);
       yield();
-      changeDelimiterOnRecord(fRAMordinal, 0xFE);
+      if(fram_address > 0) {
+        changeDelimiterOnRecord(fRAMordinal, 0xFE);
+      }
     }
    
   } //if (attempts >= connection_retry_number)....else....    
@@ -1079,36 +1083,54 @@ void runCommandsFromNonJson(char * nonJsonLine){
     } else if(command == "ir") {
       sendIr(commandData); //ir data must be comma-delimited
     } else if(command == "clear fram") {
-      clearFramLog(); 
+      if(fram_address > 0) {
+        clearFramLog(); 
+      }
     } else if(command == "dump fram") {
-      displayAllFramRecords(); 
+      if(fram_address > 0) {
+        displayAllFramRecords(); 
+      }
     } else if(command == "dump fram hex") {
-      if(!commandData || commandData == "") {
-        hexDumpFRAM(2 * fram_index_size, lastRecordSize, 15);
-      } else {
-        hexDumpFRAM(commandData.toInt(), lastRecordSize, 15);
+      if(fram_address > 0) {
+        if(!commandData || commandData == "") {
+          hexDumpFRAM(2 * fram_index_size, lastRecordSize, 15);
+        } else {
+          hexDumpFRAM(commandData.toInt(), lastRecordSize, 15);
+        }
       }
     } else if(command == "dump fram hex#") {
+      if(fram_address > 0) {
         hexDumpFRAMAtIndex(commandData.toInt(), lastRecordSize, 15);
+      }
     } else if(command == "swap fram") {
-      swapFRAMContents(fram_index_size * 2, 554, lastRecordSize);
+      if(fram_address > 0) {
+        swapFRAMContents(fram_index_size * 2, 554, lastRecordSize);
+      }
     } else if(command == "dump fram record") {
-      displayFramRecord((uint16_t)commandData.toInt()); 
+      if(fram_address > 0) {
+        displayFramRecord((uint16_t)commandData.toInt()); 
+      }
     } else if(command == "dump fram index") {
-      dumpFramRecordIndexes();
+      if(fram_address > 0) {
+        dumpFramRecordIndexes();
+      }
     } else if (command == "set date") {
-      String dateArray[7];
-      splitString(commandData, ',', dateArray, 7);
-      setDateDs1307((byte) dateArray[0].toInt(), 
-                   (byte) dateArray[1].toInt(),     
-                   (byte) dateArray[2].toInt(),  
-                   (byte) dateArray[3].toInt(),  
-                   (byte) dateArray[4].toInt(),   
-                   (byte) dateArray[5].toInt(),      
-                   (byte) dateArray[6].toInt()); 
+      if(rtc_address > 0) {
+        String dateArray[7];
+        splitString(commandData, ',', dateArray, 7);
+        setDateDs1307((byte) dateArray[0].toInt(), 
+                     (byte) dateArray[1].toInt(),     
+                     (byte) dateArray[2].toInt(),  
+                     (byte) dateArray[3].toInt(),  
+                     (byte) dateArray[4].toInt(),   
+                     (byte) dateArray[5].toInt(),      
+                     (byte) dateArray[6].toInt()); 
+      }
                    
     } else if (command ==  "get date") {
-      printRTCDate();
+      if(rtc_address > 0) {
+        printRTCDate();
+      }
     } else if (command ==  "get uptime") {
       textOut("Last booted: " + timeAgo("") + "\n");
     } else if (command == "get memory") {
