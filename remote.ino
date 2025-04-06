@@ -133,7 +133,7 @@ void handleRoot() {
 }
 
 void lookupLocalPowerData() {//sets the globals with the current reading from the ina219
-  if(ina219_address < 0) { //if we don't have a ina219 then do not bother
+  if(ina219_address < 1) { //if we don't have a ina219 then do not bother
     return;
   }
   float shuntvoltage = 0;
@@ -395,9 +395,9 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
     }
   } else if(sensorIdLocal == 680) {
     Serial.print(F("Initializing BME680 sensor...\n"));
-    while (!BME680[objectCursor].begin(I2C_STANDARD_MODE, i2c)) {  // Start B DHTME680 using I2C, use first device found
+    if (!BME680[objectCursor].begin(I2C_STANDARD_MODE, i2c)) {  // Start B DHTME680 using I2C, use first device found
       Serial.print(F(" - Unable to find BME680.\n"));
-    }  // of loop until device is located
+    } 
     Serial.print(F("- Setting 16x oversampling for all sensors\n"));
     BME680[objectCursor].setOversampling(TemperatureSensor, Oversample16);  // Use enumerated type values
     BME680[objectCursor].setOversampling(HumiditySensor, Oversample16);     // Use enumerated type values
@@ -657,7 +657,7 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
       //device_features in one data object (assuming it's not too big). The ESP8266 still can respond to data in the
       //JSON format, which it will assume if the first character of the data is a '{' -- but if the first character
       //is a '|' then it assumes the data is non-JSON. Otherwise it assumes it's HTTP boilerplate and ignores it.
-      if(retLine.indexOf("\"error\":") < 0 && (mode == "saveData" || mode=="commandout") && (retLine.charAt(0)== '{' || retLine.charAt(0)== '*' || retLine.charAt(0)== '|' || retLine.charAt(0)== '|')) {
+      if(retLine.indexOf("\"error\":") < 0 && (mode == "saveData" || mode=="commandout") && (retLine.charAt(0)== '{' || retLine.charAt(0)== '*' || retLine.charAt(0)== '|')) {
         if(debug) {
           Serial.println("can sleep because: ");
           Serial.println(retLine);
