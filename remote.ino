@@ -1133,6 +1133,7 @@ void runCommandsFromNonJson(char * nonJsonLine){
       }
     } else if (command ==  "get uptime") {
       textOut("Last booted: " + timeAgo("") + "\n");
+      
     } else if (command == "get memory") {
       dumpMemoryStats(0);
     } else if (command == "set debug") {
@@ -1499,8 +1500,12 @@ time_t parseDateTime(String dateTime) {
     
     return mktime(&t); // Convert struct tm to Unix timestamp
 }
- 
 
+ /*
+String msTimeAgo(long millisFromPast) {
+  return timeAgo(
+}
+*/
  
 // Overloaded version: Uses NTP time as the default comparison
 String timeAgo(String sqlDateTime) {
