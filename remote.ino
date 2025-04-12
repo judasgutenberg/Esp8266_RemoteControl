@@ -1133,7 +1133,10 @@ void runCommandsFromNonJson(char * nonJsonLine){
       }
     } else if (command ==  "get uptime") {
       textOut("Last booted: " + timeAgo("") + "\n");
-      
+    } else if (command ==  "get lastpoll") {
+      textOut("Last poll: " + msTimeAgo(lastPoll) + "\n");
+    } else if (command ==  "get lastdatalog") {
+      textOut("Last data: " + msTimeAgo(lastDataLogTime) + "\n");
     } else if (command == "get memory") {
       dumpMemoryStats(0);
     } else if (command == "set debug") {
@@ -1501,11 +1504,10 @@ time_t parseDateTime(String dateTime) {
     return mktime(&t); // Convert struct tm to Unix timestamp
 }
 
- /*
+ 
 String msTimeAgo(long millisFromPast) {
-  return timeAgo(
+  humanReadableTimespan((uint32_t) (millis() - millisFromPast));
 }
-*/
  
 // Overloaded version: Uses NTP time as the default comparison
 String timeAgo(String sqlDateTime) {
@@ -1532,6 +1534,10 @@ String timeAgo(String sqlDateTime, time_t compareTo) {
     }
 
     time_t diffInSeconds = nowTime - past;
+    return humanReadableTimespan((uint32_t) diffInSeconds);
+}
+
+String humanReadableTimespan(uint32_t diffInSeconds) {
     int seconds = diffInSeconds % 60;
     int minutes = (diffInSeconds / 60) % 60;
     int hours = (diffInSeconds / 3600) % 24;
