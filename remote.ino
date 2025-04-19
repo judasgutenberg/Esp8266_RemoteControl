@@ -186,9 +186,9 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
     double value = NULL;
     if(i2c){
       //i forget how we read a pin on an i2c slave. lemme see:
-      sensorValue = (double)getPinValueOnSlave((char)i2c, (char)dataPin);
+      sensorValue = String(getPinValueOnSlave((char)i2c, (char)dataPin));
     } else {
-      sensorValue = (double)analogRead(dataPin);
+      sensorValue = String(analogRead(dataPin));
     }
     /*
     for(char i=0; i<12; i++){ //we have 12 separate possible sensor functions:
@@ -360,7 +360,9 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
   //using delimited data instead of JSON to keep things simple
   transmissionString = transmissionString + nullifyOrInt(sensor_id) + "*" + nullifyOrInt(deviceFeatureId) + "*" + sensorName + "*" + nullifyOrInt(consolidateAllSensorsToOneRecord); 
   if(ordinalOfOverwrite > -1) {
-    transmissionString = replaceNthElement(transmissionString, ordinalOfOverwrite, sensorValue, '*');
+    transmissionString = replaceNthElement(transmissionString, ordinalOfOverwrite, String(sensorValue), '*');
+    //Serial.println("ORDINAL OF OVERWRITE EFFECTS!");
+    //Serial.println(transmissionString);
   }
   return transmissionString;
 }
