@@ -1396,7 +1396,7 @@ function displayViewOption(canvasId, records, viewOptionInfo, reportId) {
 			{
 	            label: plot.label,
 	            backgroundColor: colorFix(colorToUse),
-	            borderColor: borderColor,
+	            borderColor: colorFix(colorToUse), //had been borderColor, which was so wrong
 	            data: narrowedData,
 	            borderWidth: defaultWeight,
 	            pointStyle : plotShape,
@@ -1595,7 +1595,7 @@ function plotOnMap(map, records, viewOptionInfo) {
 		var latColumn = plot.latColumn;
 		var lonColumn = plot.lonColumn;
 		var iconName = plot.iconName;
-   	  	var plotColor = defaultColor;
+   	var plotColor = defaultColor;
 		var plotOpacity = defaultOpacity;
 		var magnitudeColumn = plot.magnitudeColumn;
 		var labelTemplate = plot.labelTemplate;
@@ -1678,7 +1678,7 @@ function plotOnMap(map, records, viewOptionInfo) {
 	      			if(plot["shape"].type == "circle") {
 	      				circleConfig = {
 
-							strokeColor: colorFix(defaultColor),
+							strokeColor: colorFix(plotColor), //had been defaultColor
 							strokeOpacity: defaultOpacity,
 							strokeWeight: defaultWeight,
 
