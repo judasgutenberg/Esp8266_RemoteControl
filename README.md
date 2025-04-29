@@ -206,6 +206,75 @@ Here is the JSON for a report that can generate two different graphs ("good grap
 }
 </code>
 
+This report presents a dropdown for how many days into the past to show a graph of current temperature and hot water temperature proxy data (stored in reserved4 in device_log) coming from an ESP8266 with a thermistor running to a nearby hot water tank:
+<code>
+
+{
+  "output": [
+    {
+      "name": "Line Graph",
+      "labelColumn": "recorded",
+      "plots": [
+        {
+          "column": "reserved4",
+          "color": "orange",
+          "label": "hot water temperature proxy",
+          "lineWeight": 1,
+          "shape": {
+            "radius": 1.4,
+            "pointBackgroundColor": "black"
+          }
+        },
+        {
+          "column": "temperature",
+          "color": "red",
+          "label": "temperature",
+          "lineWeight": 1,
+          "shape": {
+            "radius": 1.4,
+            "color": "brown"
+          }
+        },
+        {
+          "column": "humidity",
+          "color": "blue",
+          "label": "humidity",
+          "lineWeight": 1,
+          "shape": {
+            "radius": 1.4
+          }
+        }
+      ]
+    }
+  ],
+  "form": [
+    {
+      "name": "days",
+      "label": "since __ days ago",
+      "type": "select",
+      "values": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ]
+    }
+  ]
+}
+
+</code>
+
 Note that for a parameter form to be produced for a report, there must be "form" node in the JSON in addition to the "output" node.
 
 Obviously there is a lot of power in such a system, since, depending on MySQL user permissions, a report-writer might be given access to any data on the database server;  only fully trusted users should get access to report creation and some reports are too powerful for anyone but users with the role 'super' to run.  Currently only 'super' users can create and edit reports, though, depending on the role given to a report, less-powerful users may be able to run it.  It's also possible to write reports that give enormous power to users, and such reports should be restricted (via role) to 'super.'
