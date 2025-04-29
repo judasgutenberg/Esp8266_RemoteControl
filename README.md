@@ -207,8 +207,8 @@ Here is the JSON for a report that can generate two different graphs ("good grap
 </code>
 
 This report presents a dropdown for how many days into the past to show a graph of current temperature and hot water temperature proxy data (stored in reserved4 in device_log) coming from an ESP8266 with a thermistor running to a nearby hot water tank:
-<code>
 
+<code>
 {
   "output": [
     {
@@ -272,7 +272,6 @@ This report presents a dropdown for how many days into the past to show a graph 
     }
   ]
 }
-
 </code>
 
 Note that for a parameter form to be produced for a report, there must be "form" node in the JSON in addition to the "output" node.
