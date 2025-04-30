@@ -285,12 +285,9 @@ This report presents a dropdown for how many days into the past to show a graph 
 The SQL for that report looks like this:
 
 <code>
-
-
 SELECT (reserved4 /40) -10 as reserved4, temperature, humidity, recorded
   FROM device_log
     WHERE device_id=<device_id/> AND recorded > DATE_SUB(NOW(), INTERVAL <days/> DAY) ORDER BY recorded ASC
-
 </code>
 
 Note that for a parameter form to be produced for a report, there must be "form" node in the JSON in addition to the "output" node.
