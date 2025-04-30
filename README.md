@@ -252,7 +252,7 @@ This report presents a dropdown for how many days into the past to show a graph 
     {
       "name": "device_id",
       "type": "select",
-      "values": "SELECT device_id, name as text FROM device WHERE tenant_id=<tenant_id/>  ORDER BY name",
+      "values": "SELECT device_id, name as text FROM device WHERE tenant_id=  &lt;tenant_id/&gt;  ORDER BY name",
       "value": 4
     },
     {
