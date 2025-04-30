@@ -206,7 +206,7 @@ Here is the JSON for a report that can generate two different graphs ("good grap
 }
 </code>
 
-This report presents a dropdown for how many days into the past to show a graph of current temperature and hot water temperature proxy data (stored in reserved4 in device_log) coming from an ESP8266 with a thermistor running to a nearby hot water tank:
+This report presents a dropdown for how many days into the past to show a graph of current temperature and hot water temperature proxy data (stored in reserved4 in device_log) coming from (by default) an ESP8266 with a thermistor running to a nearby hot water tank:
 
 <code>
 {
@@ -220,6 +220,7 @@ This report presents a dropdown for how many days into the past to show a graph 
           "color": "orange",
           "label": "hot water temperature proxy",
           "lineWeight": 1,
+          "value": 4,
           "shape": {
             "radius": 1.4,
             "pointBackgroundColor": "black"
@@ -249,9 +250,16 @@ This report presents a dropdown for how many days into the past to show a graph 
   ],
   "form": [
     {
+      "name": "device_id",
+      "type": "select",
+      "values": "SELECT device_id, name as text FROM device WHERE tenant_id=1  ORDER BY name",
+      "value": 4
+    },
+    {
       "name": "days",
       "label": "since __ days ago",
       "type": "select",
+      "value": 6,
       "values": [
         1,
         2,
@@ -272,6 +280,17 @@ This report presents a dropdown for how many days into the past to show a graph 
     }
   ]
 }
+</code>
+
+The SQL for that report looks like this:
+
+<code>
+
+
+SELECT (reserved4 /40) -10 as reserved4, temperature, humidity, recorded
+  FROM device_log
+    WHERE device_id=<device_id/> AND recorded > DATE_SUB(NOW(), INTERVAL <days/> DAY) ORDER BY recorded ASC
+
 </code>
 
 Note that for a parameter form to be produced for a report, there must be "form" node in the JSON in addition to the "output" node.
