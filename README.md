@@ -286,7 +286,7 @@ The SQL for that report looks like this:
 	
 SELECT (reserved4 /40) -10 as reserved4, temperature, humidity, recorded
   FROM device_log
-    WHERE device_id=<device_id/> AND recorded > DATE_SUB(NOW(), INTERVAL <days/> DAY) ORDER BY recorded ASC
+    WHERE device_id=&lt;device_id/&gt; AND recorded > DATE_SUB(NOW(), INTERVAL &lt;days/&gt; DAY) ORDER BY recorded ASC
     
 </code>
 
