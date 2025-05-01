@@ -222,8 +222,7 @@ This report presents a dropdown for how many days into the past to show a graph 
           "lineWeight": 1,
           "value": 4,
           "shape": {
-            "radius": 1.4,
-            "pointBackgroundColor": "black"
+            "radius": 1.4
           }
         },
         {
@@ -232,8 +231,7 @@ This report presents a dropdown for how many days into the past to show a graph 
           "label": "temperature",
           "lineWeight": 1,
           "shape": {
-            "radius": 1.4,
-            "color": "brown"
+            "radius": 1.4
           }
         },
         {
