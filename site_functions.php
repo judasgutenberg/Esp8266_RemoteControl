@@ -31,6 +31,44 @@ function utilityForm($user, $foundData) {
   return $out;
 }
 
+
+function forgotPassword() {
+  $out = "";
+  $formData = array(
+    [
+	    'label' => 'what is your email?',
+      'name' => 'email',
+      'type' => 'text'
+	  ],
+    [
+	    'label' => 'your email',
+      'name' => 'action',
+      'type' => 'hidden',
+      'value' => "forgotpassword"
+	  ]
+  );
+  $form = genericForm($formData, "Reset Password", "Resetting Password");
+ 
+  $out = "\n<div id='utilityDiv'>Forgot your password?</div>\n";
+  $out .= $form;
+  $out .= "\n<div id='utilityDiv'></div>\n";
+  return $out;
+}
+
+function sendPasswordResetEmail($email){
+  $token = sprintf("%08x", random_int(0, 0xFFFFFFFFFFFF));
+  $emailBody = "Follow this link to reset your password.\n\n";
+  $emailBody .= getCurrentUrl() . "?action=forgotpassword&token=" . $token;
+  echo $emailBody;
+}
+
+function getCurrentUrl() {
+  $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
+  $host     = $_SERVER['HTTP_HOST'];
+  $uri      = $_SERVER['REQUEST_URI'];
+  return "$protocol://$host$uri";
+}
+
 function doesUserHaveRole($user, $role) {
   if($role == "") {
     return true;

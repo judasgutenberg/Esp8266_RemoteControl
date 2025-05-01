@@ -46,8 +46,16 @@ $datatype = gvfw('datatype');
 $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
 $formatedDateTime =  $date->format('Y-m-d H:i:s');
 
-
-if ($action == "logout") {
+ 
+if($action == "forgotpassword" || $action == "reset password") {
+  $email = gvfw("email");
+  if($email){
+    sendPasswordResetEmail($email);
+    $out = "Reset email sent.";
+  } else {
+    $out = forgotPassword();
+  }
+} else if ($action == "logout") {
   logOut();
   header("Location: ?action=login");
   die();
@@ -400,7 +408,7 @@ if ($user) {
       $out .= "<div class='genericformerror'>The credentials you entered have failed.</div>";
     }
    }
-  if($action != "startcreate"){
+  if($action != "startcreate"  && $action != "forgotpassword"){
     if(!$tenantSelector) {
       $out .= loginForm();
     } else {
