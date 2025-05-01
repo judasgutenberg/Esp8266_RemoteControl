@@ -282,12 +282,10 @@ This report presents a dropdown for how many days into the past to show a graph 
 
 The SQL for that report looks like this:
 
-<code>
-	
+<code>	
 SELECT (reserved4 /40) -10 as reserved4, temperature, humidity, recorded
   FROM device_log
     WHERE device_id=&lt;device_id/&gt; AND recorded > DATE_SUB(NOW(), INTERVAL &lt;days/&gt; DAY) ORDER BY recorded ASC
-    
 </code>
 
 
