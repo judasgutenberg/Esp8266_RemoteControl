@@ -31,6 +31,28 @@ function utilityForm($user, $foundData) {
   return $out;
 }
 
+//useful if you can't get sendmail working on this server
+function remoteEmail($recipient, $message, $subject) {
+  global $remoteEmailPassword;
+  global $remoteEmailUrl;
+  $postData = [
+    "password" => $remoteEmailPassword, //used to make sure your email sender elsewhere isn't used by spammers
+    "email" => $recipient,
+    "subject" => $subject,
+    "body" => $message
+  ];
+  $url = $remoteEmailUrl;
+  $ch = curl_init();
+
+  curl_setopt($ch, CURLOPT_URL, $url);
+  curl_setopt($ch, CURLOPT_POST, true);
+  curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData)); // Convert data to query string
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); // Return the response
+  $response = curl_exec($ch);
+  curl_close($ch);
+  return $response;
+}
+
 
 function forgotPassword() {
   $out = "";
@@ -56,10 +78,46 @@ function forgotPassword() {
 }
 
 function sendPasswordResetEmail($email){
+  Global $conn;
   $token = sprintf("%08x", random_int(0, 0xFFFFFFFFFFFF));
-  $emailBody = "Follow this link to reset your password.\n\n";
-  $emailBody .= getCurrentUrl() . "?action=forgotpassword&token=" . $token;
-  echo $emailBody;
+  $sql = "UPDATE user  SET reset_password_token ='" . $token . "' WHERE email = '" . $email . "'";
+  $result = mysqli_query($conn, $sql);
+  $emailBody = "Follow this link to reset your password:\n\r\n\r ";
+  $emailBody .= getCurrentUrl() . "&token=" . $token;
+  return remoteEmail($email, $emailBody, "Reset Your Email on " . $_SERVER['SERVER_NAME']);
+  //echo $emailBody;
+}
+
+function changePasswordForm($email, $token, $errors){
+  $out = "";
+  $formData = array(
+    [
+	    'label' => 'password',
+      'name' => 'password',
+      'type' => 'password',
+      'error' => gvfa("password", $errors),
+	  ],
+    [
+      'label' => 'password (again)',
+      'name' => 'password2',
+      'type' => 'password'
+	  ],
+    [
+      'name' => 'token',
+      'type' => 'hidden',
+      'value' => $token
+	  ],
+    [
+      'name' => 'email',
+      'type' => 'hidden',
+      'value' => $email
+	  ]
+  );
+  $form = genericForm($formData, "Change Password", "Changing Password");
+  $out = "\n<div id='utilityDiv'>Change your password</div>\n";
+  $out .= $form;
+  $out .= "\n<div id='utilityDiv'></div>\n";
+  return $out;
 }
 
 function getCurrentUrl() {
@@ -203,7 +261,7 @@ function loginForm() {
   $out .= "password: <input name='password' type='password'>\n";
   $out .= "<input name='tenant_id' value='" . gvfa("tenant_id", $_GET). "' type='hidden'>\n";
   $out .= "<input name='action' value='login' type='submit'>\n";
-  $out .= "<div> or  <div class='basicbutton'><a href=\"tool.php?table=user&action=startcreate\">Create Account</a></div></div>\n";
+  $out .= "<div> or  <div class='basicbutton'><a href=\"tool.php?table=user&action=startcreate\">Create Account</a></div> (<a href=\"tool.php?action=forgotpassword\">forget password?</a>) </div>\n";
   $out .= "</form>\n";
   return $out;
 }
@@ -1637,6 +1695,14 @@ function createUser($encryptedTenantId = NULL){
   return false;
 }
 
+function updatePasswordOnUserWithToken($email, $userPassword, $token){
+  global $conn;
+  global $encryptionPassword;
+  $encryptedPassword = crypt($userPassword, $encryptionPassword);
+  $sql = "UPDATE user SET password = '" . $encryptedPassword . "', reset_password_token = NULL WHERE token='" . $token . "' AND email = '" .$email ."'";
+  mysqli_query($conn, $sql);
+}
+
 function userList(){
   Global $conn;
   $userSql = "SELECT * FROM user";
@@ -1972,7 +2038,11 @@ function isValidPHP($code) {
   }
 
   // Use linting to check if the code is valid
+
   $tempFile = tempnam(sys_get_temp_dir(), 'php');
+  if($tempFile == "") {
+    $tempFile = "testy";
+  }
   file_put_contents($tempFile, '<?php ' . $codeWithoutTags);
   $result = shell_exec('php -l ' . escapeshellarg($tempFile));
   unlink($tempFile);
@@ -2063,7 +2133,7 @@ function previousReportRuns($user, $reportId) {
   return $out;
 }
 
-function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html"){
+function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
   Global $conn;
   $tenantId = $user["tenant_id"];
   $historicDataObject = null;
@@ -2112,6 +2182,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
     }
     $sql = $reportData["sql"];
     $form = $reportData["form"];
+
     $decodedForm = "";
     $decodedFormToUse = "";
     $output = null;
@@ -2147,10 +2218,17 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = "html")
         if(array_key_exists("form", $decodedForm)){
           $decodedFormToUse = $decodedForm["form"];
         }
-        
+        if(array_key_exists("outputDefault", $decodedForm)){
+          if($outputFormat == ""){
+            $outputFormat = $decodedForm["outputDefault"];
+          }
+        }
       }
     } else {
       $decodedFormToUse = [];
+    }
+    if($outputFormat == ""){
+      $outputFormat = "html";
     }
     if(count($errors) == 0 && $decodedFormToUse != "" && gvfw("action") == "fetch" || gvfw("action") == "rerun") {
       $out .= "<div class='listtitle'>Prepare to Run Report  '" . $reportData["name"] . "' " . $editButton . "</div>";

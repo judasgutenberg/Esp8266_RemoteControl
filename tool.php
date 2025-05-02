@@ -50,10 +50,34 @@ $formatedDateTime =  $date->format('Y-m-d H:i:s');
 if($action == "forgotpassword" || $action == "reset password") {
   $email = gvfw("email");
   if($email){
-    sendPasswordResetEmail($email);
-    $out = "Reset email sent.";
+    if(sendPasswordResetEmail($email)) {
+      $out = "Reset email sent.  Check your email.";
+    } else {
+      $out = "Reset email could not be sent. Complain to the admin if you can somehow.";
+    }
+    
   } else {
-    $out = forgotPassword();
+    $token = gvfw("token");
+    if($token){
+      $userPassword = gvfw("password");
+      $userPassword2 = gvfw("password2");
+      if($userPassword) {
+        //update the password
+        if($userPassword != $userPassword2){
+          $errors = [];
+          $errors["password"] = "Your passwords must be identical.";
+        } else {
+          updatePasswordOnUserWithToken($email, $userPassword, $token);
+          header("Location: ?action=login");
+          die();
+        }
+      } 
+      if($errors || $userPassword =="") {
+        $out = changePasswordForm($email, $token, $errors);
+      }
+    } else {
+      $out = forgotPassword();
+    }
   }
 } else if ($action == "logout") {
   logOut();
@@ -408,7 +432,7 @@ if ($user) {
       $out .= "<div class='genericformerror'>The credentials you entered have failed.</div>";
     }
    }
-  if($action != "startcreate"  && $action != "forgotpassword"){
+  if($action != "startcreate"  && $action != "forgotpassword"  && $action != "reset password"){
     if(!$tenantSelector) {
       $out .= loginForm();
     } else {
