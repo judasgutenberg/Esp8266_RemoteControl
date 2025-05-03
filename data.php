@@ -8,7 +8,6 @@
 //ini_set('display_errors', 1);
 //ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
-//error_reporting(E_ALL ^ E_NOTICE);  
 ini_set('display_errors', 0);
 
 include("config.php");
@@ -1010,19 +1009,22 @@ if($_REQUEST) {
 		}
 		// Concatenate each item's values with "|" as the delimiter
 		$result = implode('|', $parsedValues);	
-	} else if($nonJsonPinData == '1' && array_key_exists("device_data", $out) && !array_key_exists("error", $out)) { //create a very bare-bones non-JSON delimited data object to speed up data propagation to device
+	} else if($nonJsonPinData == '1' && !array_key_exists("error", $out)) { //create a very bare-bones non-JSON delimited data object to speed up data propagation to device
 		$nonJsonOutString = "|";
-		foreach($out["device_data"] as $deviceDatum){
-			if($deviceDatum["enabled"]) {
-				if($deviceDatum["i2c"] > 0){
-					$pinName = $deviceDatum["i2c"] . "." . $deviceDatum["pin_number"];
-				} else {
-					$pinName = $deviceDatum["pin_number"];
-				}
-				$nonJsonOutString .=  removeDelimiters($deviceDatum["name"]) . "*" . $pinName . "*" . intval($deviceDatum["value"]) .  "*" . intval($deviceDatum["can_be_analog"]) . "*" . $deviceDatum["ss"] . "|";
-			}
+		if(array_key_exists("device_data", $out)){
+      foreach($out["device_data"] as $deviceDatum){
+        if($deviceDatum["enabled"]) {
+          if($deviceDatum["i2c"] > 0){
+            $pinName = $deviceDatum["i2c"] . "." . $deviceDatum["pin_number"];
+          } else {
+            $pinName = $deviceDatum["pin_number"];
+          }
+          $nonJsonOutString .=  removeDelimiters($deviceDatum["name"]) . "*" . $pinName . "*" . intval($deviceDatum["value"]) .  "*" . intval($deviceDatum["can_be_analog"]) . "*" . $deviceDatum["ss"] . "|";
+        }
+      }
+      $nonJsonOutString = substr($nonJsonOutString, 0, -1);
 		}
-		$nonJsonOutString = substr($nonJsonOutString, 0, -1);
+		
 		//new way to do it:
 		if($latestCommandData) {
 			$nonJsonOutString .= "!" . $latestCommandData["command_id"] . "|" . removeDelimiters($latestCommandData["command"]) . "|" . removeDelimiters($latestCommandData["value"]) . "|" . $latency;
