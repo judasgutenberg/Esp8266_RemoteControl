@@ -1988,7 +1988,7 @@ function utilities($user, $viewMode = "list") {
       'label' => 'Recent Visitor Log',
       'url' => '?table=utilities&action=recentvisitorlogs',
       'description' => "Beats having to use putty.",
-      'action' => 'visitorLog(<device_id/>, <number/>)',
+      'action' => 'visitorLog(<device_id/>, <number/>, "<type_of_records/>")',
       'key' => 'recentvisitorlogs',
       'role' => "super",
       'skip_confirmation' => true,
@@ -2007,6 +2007,13 @@ function utilities($user, $viewMode = "list") {
           'value' => gvfa("device_id", $_POST),
           'type' => 'select',
           'values' => "SELECT name as text, device_id FROM device WHERE tenant_id=<tenant_id/>"
+        ],
+        [
+          'label' => 'Type of records',
+          'name' => 'type_of_records',
+          'value' => gvfa("type_of_records", $_POST),
+          'type' => 'select',
+          'values' => ["all", "just esp"]
         ]
       ]
     ]
@@ -2267,14 +2274,22 @@ function instantCommand() {
   }
 }
 
-function visitorLog($deviceId, $number) {
+function visitorLog($deviceId, $number, $type) {
   $lines=array();
   $logFile = "/var/log/apache2/access.log";
+  $grepPreFilter = "";
+  $secondStageFile = $logFile;
+  if($type == "just esp") {
+    $grepPreFilter =" grep -F '?k2=' " . $logFile . " | ";
+    $secondStateFile = "";
+  }
   if($deviceId){
-    $strToExec = "grep -E \"device_id=" . $deviceId . "|locationId=" .   $deviceId . "\" " . $logFile . " | tail -n " . $number;
+    $strToExec = $grepPreFilter . "grep -E \"device_id=" . $deviceId . "|locationId=" .   $deviceId . "\" " . $secondStateFile . " | tail -n " . $number;
   } else {
     $strToExec = "cat " . $logFile . " | tail -n " . $number;
   }
+
+  //echo $strToExec;
   
   $output = shell_exec($strToExec);
   return $output;

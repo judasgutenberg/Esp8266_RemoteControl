@@ -269,7 +269,7 @@ if ($user) {
               } else {
                 try {
                   if($codeToRun) {
- 
+                    //echo $codeToRun;
                     eval('$result  =' . $codeToRun . ";");
                   }
                   if($outputFormat == "download") {
