@@ -2281,10 +2281,10 @@ function visitorLog($deviceId, $number, $type) {
   $secondStageFile = $logFile;
   if($type == "just esp") {
     $grepPreFilter =" grep -F '?k2=' " . $logFile . " | ";
-    $secondStateFile = "";
+    $secondStageFile = "";
   }
   if($deviceId){
-    $strToExec = $grepPreFilter . "grep -E \"device_id=" . $deviceId . "|locationId=" .   $deviceId . "\" " . $secondStateFile . " | tail -n " . $number;
+    $strToExec = $grepPreFilter . "grep -E \"device_id=" . $deviceId . "|locationId=" .   $deviceId . "\" " . $secondStageFile . " | tail -n " . $number;
   } else {
     $strToExec = "cat " . $logFile . " | tail -n " . $number;
   }
