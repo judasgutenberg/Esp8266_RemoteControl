@@ -51,7 +51,7 @@ if($action == "forgotpassword" || $action == "reset password") {
   $email = gvfw("email");
   if($email){
     if(sendPasswordResetEmail($email)) {
-      $out = "Reset email sent.  Check your email.";
+      $out = "A password reset email was sent.  Check your email.";
     } else {
       $out = "Reset email could not be sent. Complain to the admin if you can somehow.";
     }

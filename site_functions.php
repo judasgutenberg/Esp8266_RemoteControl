@@ -58,12 +58,12 @@ function forgotPassword() {
   $out = "";
   $formData = array(
     [
-	    'label' => 'what is your email?',
+	    'label' => 'What is your email?',
       'name' => 'email',
       'type' => 'text'
 	  ],
     [
-	    'label' => 'your email',
+	    'label' => 'Your email',
       'name' => 'action',
       'type' => 'hidden',
       'value' => "forgotpassword"
@@ -261,7 +261,7 @@ function loginForm() {
   $out .= "password: <input name='password' type='password'>\n";
   $out .= "<input name='tenant_id' value='" . gvfa("tenant_id", $_GET). "' type='hidden'>\n";
   $out .= "<input name='action' value='login' type='submit'>\n";
-  $out .= "<div> or  <div class='basicbutton'><a href=\"tool.php?table=user&action=startcreate\">Create Account</a></div> (<a href=\"tool.php?action=forgotpassword\">forget password?</a>) </div>\n";
+  $out .= "<div> or  <div class='basicbutton'><a href=\"tool.php?table=user&action=startcreate\">Create Account</a></div> (<a href=\"tool.php?action=forgotpassword\">Forgot password?</a>) </div>\n";
   $out .= "</form>\n";
   return $out;
 }
