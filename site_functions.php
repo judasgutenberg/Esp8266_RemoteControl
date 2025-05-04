@@ -2038,8 +2038,8 @@ function isValidPHP($code) {
   }
 
   // Use linting to check if the code is valid
-
   $tempFile = tempnam(sys_get_temp_dir(), 'php');
+  //echo "*" .  $tempFile . "^"; 
   if($tempFile == "") {
     $tempFile = "testy";
   }

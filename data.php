@@ -5,8 +5,8 @@
 //gus mueller, April 14 2024
 //////////////////////////////////////////////////////////////
 
-//ini_set('display_errors', 1);
-//ini_set('display_startup_errors', 1);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
 ini_set('display_errors', 0);
 
@@ -128,7 +128,7 @@ if($_REQUEST) {
 	}
 
 	$canAccessData = array_search($locationId, $deviceIds) !== false;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
-	if($canAccessData) {		
+	if($canAccessData) {	
 		$tenant = deriveTenantFromStoragePassword($storagePassword);
 		$tenantId = $tenant["tenant_id"];
 		if(!$conn) {
@@ -535,6 +535,7 @@ if($_REQUEST) {
 				$reserved3 = "NULL";
 				$reserved4 = "NULL";
 				//$twelveVoltBatteryVoltage = NULL;
+				
 				$consolidateAllSensorsToOneRecord = 0; //if this is set to one by the first weather record, all weather data is stored in a single device_log record
 				$weatherRecordCounter = 0;
 				$doNotSaveBecauseNoData = true;
@@ -606,6 +607,7 @@ if($_REQUEST) {
 						mysqli_real_escape_string($conn, $hashedData) .
 						"')";
 					}
+
 					for($datumCounter = 0; $datumCounter < 12; $datumCounter++){
 						if(count($arrWeatherData)> $datumCounter){
 							$testValue = $arrWeatherData[$datumCounter];
@@ -625,6 +627,7 @@ if($_REQUEST) {
 							$error = mysqli_error($conn);
 							if($error != ""){
 								$badSql = $weatherSql;
+								//echo "bad" . $weatherSql;
 								logSql("bad weather data save sql:" .  $weatherSql);
 							}
 						}
@@ -995,7 +998,7 @@ if($_REQUEST) {
 		$out = ["error"=>"you lack permissions"];
 		logSql("permission failed " . $formatedDateTime . ": " . $data);
 	}
-	
+	//var_dump($out);
 	if (endsWith(strtolower($mode), "nonjson")) {
 		//let's just double-delimit using pipes and stars
 		// Get the first item in the root level
@@ -1012,17 +1015,17 @@ if($_REQUEST) {
 	} else if($nonJsonPinData == '1' && !array_key_exists("error", $out)) { //create a very bare-bones non-JSON delimited data object to speed up data propagation to device
 		$nonJsonOutString = "|";
 		if(array_key_exists("device_data", $out)){
-      foreach($out["device_data"] as $deviceDatum){
-        if($deviceDatum["enabled"]) {
-          if($deviceDatum["i2c"] > 0){
-            $pinName = $deviceDatum["i2c"] . "." . $deviceDatum["pin_number"];
-          } else {
-            $pinName = $deviceDatum["pin_number"];
-          }
-          $nonJsonOutString .=  removeDelimiters($deviceDatum["name"]) . "*" . $pinName . "*" . intval($deviceDatum["value"]) .  "*" . intval($deviceDatum["can_be_analog"]) . "*" . $deviceDatum["ss"] . "|";
-        }
-      }
-      $nonJsonOutString = substr($nonJsonOutString, 0, -1);
+			foreach($out["device_data"] as $deviceDatum){
+				if($deviceDatum["enabled"]) {
+				if($deviceDatum["i2c"] > 0){
+					$pinName = $deviceDatum["i2c"] . "." . $deviceDatum["pin_number"];
+				} else {
+					$pinName = $deviceDatum["pin_number"];
+				}
+				$nonJsonOutString .=  removeDelimiters($deviceDatum["name"]) . "*" . $pinName . "*" . intval($deviceDatum["value"]) .  "*" . intval($deviceDatum["can_be_analog"]) . "*" . $deviceDatum["ss"] . "|";
+				}
+			}
+			$nonJsonOutString = substr($nonJsonOutString, 0, -1);
 		}
 		
 		//new way to do it:
@@ -1036,6 +1039,8 @@ if($_REQUEST) {
 		if($justGetDeviceInfo == '1' && array_key_exists("device_data", $out)) { //used to greatly limit sent back JSON data to a just-started ESP8266
 			unset($out["device_data"]);
 		}
+		//var_dump($out);
+		//hmm, does not always work if your text is garbled
 		echo json_encode($out);
 	}
 } else {
@@ -1084,14 +1089,14 @@ function deriveTenantFromStoragePassword($storagePassword) {
 function logPost($post){
 	//return; //for when you don't actually want to log
 	global $formatedDateTime;
-	$myfile = file_put_contents('post.txt', "\n\n" . $formatedDateTime . ": " . $post, FILE_APPEND | LOCK_EX);
+	//$myfile = file_put_contents('post.txt', "\n\n" . $formatedDateTime . ": " . $post, FILE_APPEND | LOCK_EX);
 }
 
 function logSql($sql){
 	//return;
 	//return; //for when you don't actually want to log
 	global $formatedDateTime;
-	$myfile = file_put_contents('sql.txt', "\n\n" . $formatedDateTime . ": " . $sql, FILE_APPEND | LOCK_EX);
+	//$myfile = file_put_contents('sql.txt', "\n\n" . $formatedDateTime . ": " . $sql, FILE_APPEND | LOCK_EX);
 }
 
 function mergeWeatherDatum($consolidateAllSensorsToOneRecord, $existingValue, $sourceArray, $keyName, $deviceId = null, $tenantId = null) {
@@ -1166,6 +1171,9 @@ function mergeWeatherDatum($consolidateAllSensorsToOneRecord, $existingValue, $s
 	}
 	if($out === ""){
 		$out = "NULL";
+	}
+	if(!is_numeric($out)) {
+		$out = $existingValue;
 	}
 	return $out;
 }
