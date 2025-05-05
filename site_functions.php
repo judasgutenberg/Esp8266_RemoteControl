@@ -80,10 +80,10 @@ function forgotPassword() {
 function sendPasswordResetEmail($email){
   Global $conn;
   $token = sprintf("%08x", random_int(0, 0xFFFFFFFFFFFF));
-  $sql = "UPDATE user  SET reset_password_token ='" . $token . "' WHERE email = '" . $email . "'";
+  $sql = "UPDATE user  SET reset_password_token ='" . mysqli_real_escape_string($conn, $token) . "' WHERE email = '" . mysqli_real_escape_string($conn, $email) . "'";
   $result = mysqli_query($conn, $sql);
   $emailBody = "Follow this link to reset your password:\n\r\n\r ";
-  $emailBody .= getCurrentUrl() . "&token=" . $token;
+  $emailBody .= getCurrentUrl() . "&token=" . $token . "&email=" . $email;
   return remoteEmail($email, $emailBody, "Reset Your Email on " . $_SERVER['SERVER_NAME']);
   //echo $emailBody;
 }
@@ -1699,7 +1699,7 @@ function updatePasswordOnUserWithToken($email, $userPassword, $token){
   global $conn;
   global $encryptionPassword;
   $encryptedPassword = crypt($userPassword, $encryptionPassword);
-  $sql = "UPDATE user SET password = '" . $encryptedPassword . "', reset_password_token = NULL WHERE token='" . $token . "' AND email = '" .$email ."'";
+  $sql = "UPDATE user SET password = '" . mysqli_real_escape_string($conn, $encryptedPassword) . "', reset_password_token = NULL WHERE reset_password_token='" . mysqli_real_escape_string($conn, $token) . "' AND email = '" . mysqli_real_escape_string($conn, $email) ."'";
   mysqli_query($conn, $sql);
 }
 

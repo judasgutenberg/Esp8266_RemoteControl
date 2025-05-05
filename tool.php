@@ -49,7 +49,8 @@ $formatedDateTime =  $date->format('Y-m-d H:i:s');
  
 if($action == "forgotpassword" || $action == "reset password") {
   $email = gvfw("email");
-  if($email){
+  $token = gvfw("token");
+  if($email  &&  $token == ""){
     if(sendPasswordResetEmail($email)) {
       $out = "A password reset email was sent.  Check your email.";
     } else {
@@ -57,7 +58,7 @@ if($action == "forgotpassword" || $action == "reset password") {
     }
     
   } else {
-    $token = gvfw("token");
+    
     if($token){
       $userPassword = gvfw("password");
       $userPassword2 = gvfw("password2");
