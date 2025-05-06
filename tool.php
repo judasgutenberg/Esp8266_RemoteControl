@@ -47,7 +47,7 @@ $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, y
 $formatedDateTime =  $date->format('Y-m-d H:i:s');
 
  
-if($action == "forgotpassword" || $action == "reset password") {
+if(strpos($action, "password") !== false) {
   $email = gvfw("email");
   $token = gvfw("token");
   if($email  &&  $token == ""){
@@ -433,7 +433,7 @@ if ($user) {
       $out .= "<div class='genericformerror'>The credentials you entered have failed.</div>";
     }
    }
-  if($action != "startcreate"  && $action != "forgotpassword"  && $action != "reset password"){
+  if($action != "startcreate"  && strpos($action, "password") === false){
     if(!$tenantSelector) {
       $out .= loginForm();
     } else {

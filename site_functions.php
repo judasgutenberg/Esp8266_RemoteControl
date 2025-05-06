@@ -35,21 +35,26 @@ function utilityForm($user, $foundData) {
 function remoteEmail($recipient, $message, $subject) {
   global $remoteEmailPassword;
   global $remoteEmailUrl;
-  $postData = [
-    "password" => $remoteEmailPassword, //used to make sure your email sender elsewhere isn't used by spammers
-    "email" => $recipient,
-    "subject" => $subject,
-    "body" => $message
-  ];
-  $url = $remoteEmailUrl;
-  $ch = curl_init();
+  if($remoteEmailUrl) {
+    $postData = [
+      "password" => $remoteEmailPassword, //used to make sure your email sender elsewhere isn't used by spammers
+      "email" => $recipient,
+      "subject" => $subject,
+      "body" => $message
+    ];
+    $url = $remoteEmailUrl;
+    $ch = curl_init();
 
-  curl_setopt($ch, CURLOPT_URL, $url);
-  curl_setopt($ch, CURLOPT_POST, true);
-  curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData)); // Convert data to query string
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); // Return the response
-  $response = curl_exec($ch);
-  curl_close($ch);
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData)); // Convert data to query string
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); // Return the response
+    $response = curl_exec($ch);
+    curl_close($ch);
+  } else {
+    //if we don't have remote email set up, just use regular PHP mail
+    $response = mail($recipient,  $subject, $message);
+  }
   return $response;
 }
 
