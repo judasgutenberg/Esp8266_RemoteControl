@@ -2043,9 +2043,13 @@ function isValidPHP($code) {
   }
 
   // Use linting to check if the code is valid
-  $tempFile = tempnam(sys_get_temp_dir(), 'php');
+  $tempFile = "gottaHaveSomething1";
+  $tempDir = sys_get_temp_dir();
+  if (is_writable($tempDir)) {
+    $tempFile = tempnam($tempDir, 'php');
+  }
   if($tempFile == "") {
-    $tempFile = "testy";
+    $tempFile = "gottaHaveSomething2";
   }
   file_put_contents($tempFile, '<?php ' . $codeWithoutTags);
   $result = shell_exec('php -l ' . escapeshellarg($tempFile));
