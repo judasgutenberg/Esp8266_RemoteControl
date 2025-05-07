@@ -2046,7 +2046,7 @@ function isValidPHP($code) {
   $tempFile = "gottaHaveSomething1";
   $tempDir = sys_get_temp_dir();
   if (is_writable($tempDir)) {
-    $tempFile = tempnam($tempDir, 'php');
+    $tempFile = @tempnam($tempDir, 'php');
   }
   if($tempFile == "") {
     $tempFile = "gottaHaveSomething2";
