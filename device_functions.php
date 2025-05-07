@@ -1770,6 +1770,10 @@ function currentSensorData($tenant){
       'name' => 'battery_voltage' 
     ],
     [
+      'label' => 'weather',
+      'name' => 'weather' 
+    ],
+    [
       'label' => 'recorded',
       'name' => 'recorded',
       'function' => 'timeAgo("<recorded/>")'
@@ -2013,7 +2017,7 @@ function utilities($user, $viewMode = "list") {
           'name' => 'type_of_records',
           'value' => gvfa("type_of_records", $_POST),
           'type' => 'select',
-          'values' => ["all", "just esp"]
+          'values' => ["all", "just microcontroller visits"]
         ]
       ]
     ]
@@ -2279,7 +2283,7 @@ function visitorLog($deviceId, $number, $type) {
   $logFile = "/var/log/apache2/access.log";
   $grepPreFilter = "";
   $secondStageFile = $logFile;
-  if($type == "just esp") {
+  if($type == "just microcontroller visits") {
     $grepPreFilter =" grep -F '?k2=' " . $logFile . " | ";
     $secondStageFile = "";
   }
