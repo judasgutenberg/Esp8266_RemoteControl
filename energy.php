@@ -156,8 +156,8 @@ function stringToColor(str) {
   const hue = Math.abs(hash) % 360; // Hue between 0 and 359
   const saturation = 70; // Fixed saturation
   const lightness = 60;  // Fixed lightness
-
-  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  const alpha = 0.3; // Adjust this value for desired transparency
+  return `hsl(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
 }
 
 const weatherPlugin = {
