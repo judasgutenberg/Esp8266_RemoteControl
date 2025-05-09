@@ -54,7 +54,9 @@ if(!$user) {
 <head>
   <title>Inverter Information</title>
   <!--For offline ESP graphs see this tutorial https://circuits4you.com/2018/03/10/esp8266-jquery-and-ajax-web-server/ -->
-  <script src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>  
+  <!--<script src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>--> 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <script>
 	let scaleConfig = JSON.parse('<?php echo json_encode(timeScales()); ?>');
 	window.timezone ='<?php echo $timezone ?>';
@@ -118,10 +120,12 @@ if(!$user) {
 <script>
 let glblChart = null;
 let graphDataObject = {};
-let columnsWeCareAbout = ["solar_power","load_power","battery_power","battery_percentage"]; //these are the inverter columns to be graphed from inverter_log. if you have more, you can include them
+let columnsWeCareAbout = ["solar_power","load_power","battery_power","battery_percentage", "weather"]; //these are the inverter columns to be graphed from inverter_log. if you have more, you can include them
 let yearsIntoThePastWeCareAbout = [0,1,2,3];
 //For graphs info, visit: https://www.chartjs.org
 let timeStamp = [];
+let weatherColorMap = [];
+const segmentRects = [];
 
 resetGraphData();
 
@@ -139,6 +143,63 @@ function resetGraphData(){
 		}
 	}
 }
+
+function stringToColor(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    // Simple hash function: shift and sum character codes
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    hash = hash & hash; // Convert to 32bit integer
+  }
+
+  // Generate HSL values
+  const hue = Math.abs(hash) % 360; // Hue between 0 and 359
+  const saturation = 70; // Fixed saturation
+  const lightness = 60;  // Fixed lightness
+
+  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+}
+
+const weatherPlugin = {
+  id: 'weatherSegments',
+  beforeDatasetsDraw(chart, args, options) {
+    const { ctx, chartArea: { bottom } } = chart;
+    const xScale = chart.scales['x']; // Access the x-axis scale by its ID
+    const segmentHeight = 20;
+    const segments = options.segments || [];
+
+    if (!xScale) {
+      console.warn('X-axis scale not found');
+      return;
+    }
+
+    segments.forEach(segment => {
+		if (!weatherColorMap[segment.weather]) {
+			weatherColorMap[segment.weather] = stringToColor(segment.weather);
+		}
+		const fillColor = weatherColorMap[segment.weather];
+		const xStart = xScale.getPixelForValue(new Date(segment.start).getTime());
+		const xEnd = xScale.getPixelForValue(new Date(segment.end).getTime());
+		const width = xEnd - xStart;
+
+
+		ctx.fillStyle = fillColor;
+		ctx.fillRect(xStart, bottom, width, segmentHeight);
+
+ 
+		// Store segment boundaries for interaction
+		segmentRects.push({
+			x: xStart,
+			y: bottom,
+			width: width,
+			height: segmentHeight,
+			weather: segment.weather
+		});
+
+    });
+  }
+};
+
 
 function showGraph(yearsAgo){
 	let colorSeries = ["#ff0000", "#00ff00", "#0000ff", "#009999", "#3300ff", "#ff0033", "#ff3300", "33ff00", "#0033ff", "#6600cc", "#ff0066", "#cc6600", "66cc00", "#0066cc"];
@@ -171,51 +232,119 @@ function showGraph(yearsAgo){
 		columnCount++;
 	}
 
-    let energyChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: timeStamp,  //Bottom Labeling
-            datasets: chartDataSet
-        },
-        options: {
-            hover: {mode: null},
-            title: {
-                    display: true,
-                    text: "Inverter data"
-                },
-            maintainAspectRatio: false,
-            elements: {
-				point:{
-                        radius: 0
-                    },
-				line: {
-						//tension: 0.2 //Smoothening (Curved) of data lines
-					}
-            },
-            scales: {
-			  yAxes: [
-			  	{
-			        id: 'A',
-			        type: 'linear',
-			        position: 'left'
-			      }, 
-				  {
-			        id: 'B',
-			        type: 'linear',
-			        position: 'right'
-			 
-	            	} 
- 
-				]
-            }
-        }
-    });
+	const energyChart = new Chart(ctx, {
+		type: 'line',
+		data: {
+			labels: timeStamp,
+			datasets: chartDataSet
+		},
+		options: {
+			responsive: true,
+			maintainAspectRatio: false,
+			plugins: {
+			weatherSegments: {
+				segments:  [  { start: '2025-05-09T12:00:00Z', end: '2025-05-09T18:00:00Z', weather: 'overcast clouds' },
+				{ start: '2025-05-09T18:00:00Z', end: '2025-05-09T23:59:59Z', weather: 'clear sky' }]
+			},
+			title: {
+				display: true,
+				text: 'Inverter data'
+			}
+			},
+			elements: {
+			point: {
+				radius: 0
+			},
+			line: {
+				 tension: 0.2 // Smoothening (Curved) of data lines
+			}
+			},
+			scales: {
+			x: {
+				type: 'time',
+				title: {
+				display: true,
+				text: 'Time'
+				}
+			},
+			A: {
+				type: 'linear',
+				position: 'left',
+				title: {
+				display: true,
+				text: 'Power (Watts)'
+				}
+			},
+			B: {
+				type: 'linear',
+				position: 'right',
+				title: {
+				display: true,
+				text: 'Percentage'
+				},
+				grid: {
+				drawOnChartArea: false
+				}
+			}
+			}
+		},
+		plugins: [weatherPlugin]
+	});
+	console.log(energyChart.options.plugins.weatherSegments.segments);
 	return energyChart;
+}
+
+const canvas = document.getElementById("Chart");
+
+
+canvas.addEventListener("mousemove", (event) => {
+  const rect = canvas.getBoundingClientRect();
+  const mouseX = event.clientX - rect.left;
+  const mouseY = event.clientY - rect.top;
+
+  // Check if mouse is over any segment
+  const hoveredSegment = segmentRects.find(seg =>
+    mouseX >= seg.x &&
+    mouseX <= seg.x + seg.width &&
+    mouseY >= seg.y &&
+    mouseY <= seg.y + seg.height
+  );
+
+  if (hoveredSegment) {
+    // Display tooltip or perform desired action
+    showTooltip(event.clientX, event.clientY, hoveredSegment.weather);
+  } else {
+    hideTooltip();
+  }
+});
+
+const tooltip = document.createElement("div");
+tooltip.style.position = "absolute";
+tooltip.style.background = "rgba(0, 0, 0, 0.7)";
+tooltip.style.color = "#fff";
+tooltip.style.padding = "5px 10px";
+tooltip.style.borderRadius = "4px";
+tooltip.style.pointerEvents = "none";
+tooltip.style.transition = "opacity 0.2s";
+tooltip.style.opacity = 0;
+document.body.appendChild(tooltip);
+
+function showTooltip(x, y, text) {
+  tooltip.textContent = text;
+  tooltip.style.left = `${x + 10}px`;
+  tooltip.style.top = `${y + 10}px`;
+  tooltip.style.opacity = 1;
+}
+
+function hideTooltip() {
+  tooltip.style.opacity = 0;
 }
 
 //On Page load show graphs
 window.onload = function() {
 	console.log(new Date().toLocaleTimeString());
+	Chart.register(weatherPlugin);
+	
 };
 
 let currentStartDate; //a global that needs to persist through HTTP sessions in the frontend
@@ -273,7 +402,12 @@ function getInverterData(yearsAgo) {
 	let xhttp = new XMLHttpRequest();
 	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getInverterData&absolute_timespan_cusps=" + absoluteTimespanCusps;
 	console.log(endpointUrl);
+
 	xhttp.onreadystatechange = function() {
+		let weatherSegmentsLocal = [];
+		let datumCount = 0;
+		let lastWeather = "";
+		let lastWeatherTime = "";
 	    if (this.readyState == 4 && this.status == 200) {
 			timeStamp = [];
 			let time = new Date().toLocaleTimeString();
@@ -282,26 +416,50 @@ function getInverterData(yearsAgo) {
 				if(dataObject[0]["sql"]){
 					console.log(dataObject[0]["sql"], dataObject[0]["error"]);
 				} else {
+					
+					
 					for(let datum of dataObject) {
+						datumCount++;
+            			//also show: weatherSegments 
 						let time = datum["recorded"];
 						for (let column of columnsWeCareAbout){
 								let value = datum[column];
-								graphDataObject[yearsAgo][column].push(parseInt(value)); //parseInt is important because smoothArray was thinking the values might be strings
+								if(column != "weather") {
+									graphDataObject[yearsAgo][column].push(parseInt(value)); //parseInt is important because smoothArray was thinking the values might be strings
+								} else {
+									if(lastWeather != value) {
+										if(lastWeather == "") { //we're at the very beginning
+										} else {
+											weatherSegmentsLocal.push({"start": lastWeatherTime, "end": time, "weather": lastWeather});
+										}
+										lastWeather = value;
+										lastWeatherTime = time;
+									}
+									if (datumCount == dataObject.length) { //get the last one too
+										weatherSegmentsLocal.push({"start": lastWeatherTime, "end": time, "weather": lastWeather});
+									}
+									
+								}
+									
 							}
 							timeStamp.push(time);
 							if(time> greatestTime) {
 								greatestTime = time;
 							}
 						}
+						
 					}
 			} else {
 				console.log("No data was found.");
 			}
+			console.log(weatherSegmentsLocal);
 			if(scale == "three-hour"  || scale == "day"){
 				let batteryPercents =  graphDataObject[yearsAgo]["battery_percentage"];
 				graphDataObject[yearsAgo]["battery_percentage"] = smoothArray(batteryPercents, 19, 1);
 			}
 			glblChart = showGraph();  //Update Graphs
+			glblChart.options.plugins.weatherSegments.segments = weatherSegmentsLocal;
+			glblChart.update();
 			document.getElementById('greatestTime').innerHTML = " Latest Data: " + timeAgo(greatestTime);
 	    }
 		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
