@@ -125,7 +125,7 @@ let yearsIntoThePastWeCareAbout = [0,1,2,3];
 //For graphs info, visit: https://www.chartjs.org
 let timeStamp = [];
 let weatherColorMap = [];
-const segmentRects = [];
+let segmentRects = [];
 
 resetGraphData();
 
@@ -398,6 +398,7 @@ function getInverterData(yearsAgo) {
 	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, periodAgo, scale, currentStartDate);
 	url.searchParams.set("period_ago", periodAgo);
 	resetGraphData();
+	segmentRects = [];
 	history.pushState({}, "", url);
 	let xhttp = new XMLHttpRequest();
 	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getInverterData&absolute_timespan_cusps=" + absoluteTimespanCusps;
