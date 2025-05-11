@@ -123,7 +123,6 @@ The ESP8266 is responsive to commands sent via the serial line (at this time, th
 The great thing about storing the data from your IoT devices in your own database is that you then have lots of ways to examine this data. If you're handy with SQL, then you can find data in any form you want it matching any criteria you can come up with.  With this in mind, I built an elaborate reporting system that allows me to save parameterized SQL queries and run them with forms to make entering the parameters easy.  Not only that, but every report you run is remembered in the report_history table, allowing you to re-run the report with the same parameters (or tweak the parameters as needed).  Reports are reached via the Reports tab, where the ones you've created (or that are created with your tenancy)  are listed. From there you can run or edit them. The core of every report is a SQL statement that is run to produce a table of data, a graph, or, in some cases, locations on a map.  They are defined as a form (using JSON and using the form description system used throughout the admin website), possibly an output configuration, and SQL. Simple reports can just be SQL, though if you need to send parameters to a report, you will need to define a form.  Perhaps forms definitions are best shown by example.
 
 This JSON defines a form with one parameter
-
 <code>
   [ {
 	"label": "Which changer",
