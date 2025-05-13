@@ -272,6 +272,8 @@ if($_REQUEST) {
 				file_put_contents("instant_response_" . gvfw("device_id") . ".txt", $data, FILE_APPEND | LOCK_EX);
 			} else if ($mode=="saveLocallyGatheredSolarData") { //used by the special inverter monitoring MCU to send fine-grain data promptly
 					if($canAccessData) {
+					
+            $deviceDigest = getDigestBitmask($tenantId);
 						///weather/data.php?storagePassword=xxxxxx&locationId=16&mode=saveLocallyGatheredSolarData&data=0*61*3336*3965*425*420*0*0*6359|||***192.168.1.200 
 						$multipleSensorArray = explode("!", $lines[0]);
 						//the first item will be energy data;  all subsequent items will be weather
@@ -299,6 +301,7 @@ if($_REQUEST) {
 						$energyInfo = saveSolarData($tenant, $gridPower, $batteryPercent,  
 							$batteryPower, $loadPower, $solarString1, $solarString2, 
 							$batteryVoltage, 
+							$deviceDigest,
 							$mysteryValue3,
 							$mysteryValue1,
 							$mysteryValue2,
@@ -1460,6 +1463,32 @@ function generateDecryptedByte($counter, $thisNibble, $thisByteOfStoragePassword
 			break;
 	}
 	return $thisByteResult;
+}
+
+function getDigestBitmask($tenantId) {
+    Global $conn;
+    // Prepare and execute query
+    $sql = "
+        SELECT digest_bit_position 
+        FROM device_feature 
+        WHERE tenant_id = " . intval($tenantId) . " 
+          AND value = 1 
+          AND digest_bit_position IS NOT NULL
+    ";
+    $bitmask = 0;
+    $result = mysqli_query($conn, $sql);
+    if($result) {
+      $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+      // Build 32-bit integer
+      foreach ($rows as $row) {
+        $bitPos = intval($row["digest_bit_position"]);
+ 
+          if ($bitPos >= 0 && $bitPos < 32) {
+              $bitmask |= (1 << $bitPos);
+          }
+      }
+    }
+    return $bitmask;
 }
 //some helpful sql examples for creating sql users:
 //CREATE USER 'weathertron'@'localhost' IDENTIFIED  BY 'your_password';

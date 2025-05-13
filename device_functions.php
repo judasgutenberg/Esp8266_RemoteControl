@@ -675,7 +675,14 @@ function editDeviceFeature($error,  $user) {
       'error' => gvfa('automation_disabled_when', $error)
 	  ],
  
- 
+     [
+	    'label' => 'digest bit position',
+      'name' => 'digest_bit_position',
+      'type' => 'select',
+	    'value' => gvfa("digest_bit_position", $source), 
+      'error' => gvfa("digest_bit_position", $error),
+      'range' => "0...31"
+	  ],
     [
 	    'label' => 'management rules',
       'name' => 'management_rule_id',
@@ -1567,6 +1574,7 @@ function getDevices($tenantId, $allDeviceColumnMaps = true){
 
 function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $loadPower, 
   $solarString1, $solarString2, $batteryVoltage, 
+  $deviceDigest,
   $mysteryValue3,
   $mysteryValue1,
   $mysteryValue2,
@@ -1597,7 +1605,9 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
   
   $loggingSql = "INSERT INTO inverter_log ( tenant_id, recorded, 
   solar_power, load_power, grid_power, battery_percentage, battery_power,
-  battery_voltage, mystery_value3,
+  battery_voltage,
+  digest,
+  mystery_value3,
   mystery_value1,
   mystery_value2,
   changer1,
@@ -1615,7 +1625,8 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
    $gridPower . "," . 
    $batteryPercent . "," . 
    $batteryPower . "," .  
-   $batteryVoltage . "," .  
+   $batteryVoltage . "," . 
+   $deviceDigest . "," . 
    $mysteryValue3 . "," .
    $mysteryValue1 . "," .
    $mysteryValue2 . "," .

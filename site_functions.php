@@ -576,6 +576,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
 		$name = gvfa("name", $datum); 
     $changeFunction = gvfa("change-function", $datum); 
 		$type = strtolower(gvfa("type", $datum)); 
+		$range = strtolower(gvfa("range", $datum)); 
     $accentColor = gvfa("accent_color", $datum, "#66eeee");
     //echo $name .  " " . $accentColor . "<BR>";
     $width = 200;
@@ -638,6 +639,15 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         }
       } else if($type == 'select') {
         //echo $values;
+        if($range  && strpos($range, "...") !== false) {
+          $rangeParts = explode("...", $range);
+          $bottomRangePart = $rangeParts[0];
+          $topRangePart = $rangeParts[1];
+          $values = [];
+          for($rangeCounter = intval($bottomRangePart); $rangeCounter <= $topRangePart; $rangeCounter++) {
+            $values[] = $rangeCounter;
+          }
+        }
         $onChangePart = "";
         if($changeFunction) {
           $onChangePart = " onchange=\"" . $changeFunction . "\" ";
@@ -662,7 +672,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
                 if(!$value){
                   $value = gvfw($name);
                 }
-                if($row[$name] == $value) {
+                if($row[$name] === $value) {
                   $selected = " selected='selected' ";
 
                 }
@@ -677,7 +687,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
           $out .= "<option value=''>none</option>";
           foreach($values as &$optionValue) {
             $selected = "";
-            if($value == $optionValue){
+            if($value == $optionValue  && $optionValue != ""){
               $selected = "selected";
 
             }
