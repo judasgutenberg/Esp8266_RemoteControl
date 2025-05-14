@@ -127,6 +127,7 @@ let timeStamp = [];
 let weatherColorMap = [];
 let segmentRects = [];
 const bitColorMap = {};
+let deviceFeatures = [];
 
 resetGraphData();
 
@@ -143,6 +144,21 @@ function resetGraphData(){
 			}
 		}
 	}
+}
+
+function hexToRgba(hex, alpha = 0.4) {
+  // Remove leading '#' if present
+  hex = hex.replace(/^#/, '');
+
+  // Handle shorthand hex colors like 'f80' -> 'ff8800'
+  if (hex.length === 3) {
+    hex = hex.split('').map(char => char + char).join('');
+  }
+  const bigint = parseInt(hex, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 function stringToColor(str) {
@@ -207,11 +223,10 @@ const digestPlugin = {
   beforeDatasetsDraw(chart, args, pluginOptions) {
     const { ctx, chartArea, scales: { x } } = chart;
     const segments = pluginOptions.segments || [];
-
     const totalBits = 32;
     const segmentHeight = 2;
     const spacing = 0;
-    const topY = chartArea.bottom - 72; //negative is higher
+    const topY = chartArea.bottom - 72;
 
     const sortedSegments = segments.slice().sort((a, b) =>
       new Date(a.start) - new Date(b.start)
@@ -254,23 +269,80 @@ const digestPlugin = {
       }
     });
 
+    // Clear previous segments
+    chart._digestSegments = [];
+
     bitStates.forEach((state, bit) => {
       const y = topY + bit * (segmentHeight + spacing);
-      ctx.fillStyle = `hsl(${bit * 47 % 360}, 70%, 50%, 0.4)`;
+      let label = `Bit ${bit}`;
+      let hexColor = `hsl(${bit * 47 % 360}, 70%, 50%)`;
+
+      const recordFound = findObjectByColumn(deviceFeatures, "digest_bit_position", String(bit));
+      if (recordFound) {
+        hexColor = recordFound.color || "#cccccc";
+        label = recordFound.name || label;
+      }
+
+      ctx.fillStyle = hexToRgba(hexColor, 0.4);
 
       state.ranges.forEach(([start, end]) => {
         const xStart = x.getPixelForValue(start);
         const xEnd = x.getPixelForValue(end);
         const width = xEnd - xStart;
-        //console.log(`Bit ${bit}: start=${start}, end=${end}, xStart=${xStart}, xEnd=${xEnd}, width=${width}`);
+
         if (width > 0) {
           ctx.fillRect(xStart, y, width, segmentHeight);
+          // Save for tooltip
+          chart._digestSegments.push({
+            x: xStart,
+            y,
+            width,
+            height: segmentHeight,
+            label
+          });
         }
       });
     });
+  },
+
+  afterEvent(chart, args) {
+    const { event } = args;
+    const segments = chart._digestSegments || [];
+
+    const hovered = segments.find(seg =>
+      event.x >= seg.x &&
+      event.x <= seg.x + seg.width &&
+      event.y >= seg.y &&
+      event.y <= seg.y + seg.height
+    );
+
+    if (hovered) {
+      chart.tooltip.setActiveElements(
+        [{ datasetIndex: 0, index: 0 }],
+        { x: hovered.x + hovered.width / 2, y: hovered.y }
+      );
+      chart.tooltip.update();
+      chart._digestTooltip = hovered;
+    } else {
+      chart._digestTooltip = null;
+      chart.tooltip.setActiveElements([], { x: 0, y: 0 });
+      chart.tooltip.update();
+    }
+  },
+
+  // Render tooltip text (optional: display custom label)
+  beforeDraw(chart) {
+    const hovered = chart._digestTooltip;
+    if (hovered) {
+      const { ctx } = chart;
+      ctx.save();
+      ctx.font = "12px sans-serif";
+      ctx.fillStyle = "#000";
+      ctx.fillText(hovered.label, hovered.x + 4, hovered.y - 4);
+      ctx.restore();
+    }
   }
 };
-
 
 function showGraph(yearsAgo){
 	let colorSeries = ["#ff0000", "#00ff00", "#0000ff", "#009999", "#3300ff", "#ff0033", "#ff3300", "33ff00", "#0033ff", "#6600cc", "#ff0066", "#cc6600", "66cc00", "#0066cc"];
@@ -495,56 +567,60 @@ function getInverterData(yearsAgo) {
 			timeStamp = [];
 			let time = new Date().toLocaleTimeString();
 			let dataObject = JSON.parse(this.responseText); 
-			if(dataObject && dataObject[0]) {
-				if(dataObject[0]["sql"]){
-					console.log(dataObject[0]["sql"], dataObject[0]["error"]);
+			 console.log(dataObject);
+			if(dataObject) {
+				if(dataObject["sql"]){
+					console.log(dataObject["sql"], dataObject["error"]);
 				} else {
-					
-					
-					for(let datum of dataObject) {
-						datumCount++;
-            //also show: weatherSegments 
-						let time = datum["recorded"];
-						for (let column of columnsWeCareAbout){
-								let value = datum[column];
-								if (column == "weather") {
-									if(lastWeather != value) {
-										if(lastWeather == "") { //we're at the very beginning
-										} else {
-											weatherSegmentsLocal.push({"start": lastWeatherTime, "end": time, "weather": lastWeather});
-										}
-										lastWeather = value;
-										lastWeatherTime = time;
-									}
-									if (datumCount == dataObject.length) { //get the last one too
-										weatherSegmentsLocal.push({"start": lastWeatherTime, "end": time, "weather": lastWeather});
-									}
-									
-								} else if (column == "digest") {
-									if(lastDigest != value) {
-										if(lastDigest == "") { //we're at the very beginning
-										} else {
-											digestSegmentsLocal.push({"start": lastDigestTime, "end": time, "digest": parseInt(lastDigest)});
-										}
-										lastDigest = value;
-										lastDigestTime = time;
-									}
-									if (datumCount == dataObject.length) { //get the last one too
-										digestSegmentsLocal.push({"start": lastDigestTime, "end": time, "digest": parseInt(lastDigest)});
-									}
-									
-								} else {
-									graphDataObject[yearsAgo][column].push(parseInt(value)); //parseInt is important because smoothArray was thinking the values might be strings
-								}
-								
-									
-							}
-							timeStamp.push(time);
-							if(time> greatestTime) {
-								greatestTime = time;
-							}
-						}
-						
+					if(dataObject["device_features"]) { //we need this to label device feature ons and offs on the graph
+            deviceFeatures = dataObject["device_features"]; //set the global deviceFeatures
+					}
+					if(dataObject["inverter_data"]) {
+            for(let datum of dataObject["inverter_data"]) {
+              datumCount++;
+              //also show: weatherSegments 
+              let time = datum["recorded"];
+              for (let column of columnsWeCareAbout){
+                  let value = datum[column];
+                  if (column == "weather") {
+                    if(lastWeather != value) {
+                      if(lastWeather == "") { //we're at the very beginning
+                      } else {
+                        weatherSegmentsLocal.push({"start": lastWeatherTime, "end": time, "weather": lastWeather});
+                      }
+                      lastWeather = value;
+                      lastWeatherTime = time;
+                    }
+                    if (datumCount == dataObject.length) { //get the last one too
+                      weatherSegmentsLocal.push({"start": lastWeatherTime, "end": time, "weather": lastWeather});
+                    }
+                    
+                  } else if (column == "digest") {
+                    if(lastDigest != value) {
+                      if(lastDigest == "") { //we're at the very beginning
+                      } else {
+                        digestSegmentsLocal.push({"start": lastDigestTime, "end": time, "digest": parseInt(lastDigest)});
+                      }
+                      lastDigest = value;
+                      lastDigestTime = time;
+                    }
+                    if (datumCount == dataObject.length) { //get the last one too
+                      digestSegmentsLocal.push({"start": lastDigestTime, "end": time, "digest": parseInt(lastDigest)});
+                    }
+                    
+                  } else {
+                    graphDataObject[yearsAgo][column].push(parseInt(value)); //parseInt is important because smoothArray was thinking the values might be strings
+                  }
+                  
+                    
+                }
+                timeStamp.push(time);
+                if(time> greatestTime) {
+                  greatestTime = time;
+                }
+              }
+              
+            }
 					}
 			} else {
 				console.log("No data was found.");
