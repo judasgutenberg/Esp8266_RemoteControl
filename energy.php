@@ -204,35 +204,69 @@ const weatherPlugin = {
 
 const digestPlugin = {
   id: 'digestSegments',
-  beforeDatasetsDraw(chart, args, options) {
-    const { ctx, chartArea: { bottom, top, left, right } } = chart;
-    const xScale = chart.scales['x'];
-    const segments = options.segments || [];
-    const bitHeight = 2; // Height per bit segment
-    const bitSpacing = 1; // Spacing between segments
-    const maxBits = 32;
+  beforeDatasetsDraw(chart, args, pluginOptions) {
+    const { ctx, chartArea, scales: { x } } = chart;
+    const segments = pluginOptions.segments || [];
 
-    if (!xScale) {
-      console.warn('X-axis scale not found');
-      return;
-    }
+    const totalBits = 32;
+    const segmentHeight = 2;
+    const spacing = 0;
+    const topY = chartArea.bottom - 72; //negative is higher
 
-    segments.forEach(segment => {
-      const digest = segment.digest >>> 0; // ensure unsigned 32-bit
+    const sortedSegments = segments.slice().sort((a, b) =>
+      new Date(a.start) - new Date(b.start)
+    );
 
-      const xStart = xScale.getPixelForValue(new Date(segment.start).getTime());
-      const xEnd = xScale.getPixelForValue(new Date(segment.end).getTime());
-      const width = xEnd - xStart;
+    const bitStates = Array.from({ length: totalBits }, () => ({
+      active: false,
+      currentStart: null,
+      ranges: []
+    }));
 
-      for (let bit = 0; bit < maxBits; bit++) {
-        if ((digest & (1 << bit)) !== 0) {
-          const color = bitColorMap[bit] || (bitColorMap[bit] = stringToColor(`bit${bit}`));
-          const y = bottom + 25 + bit * (bitHeight + bitSpacing);
+    sortedSegments.forEach(segment => {
+      const start = new Date(segment.start);
+      const end = new Date(segment.end);
+      const digest = segment.digest;
 
-          ctx.fillStyle = color;
-          ctx.fillRect(xStart, y, width, bitHeight);
+      for (let bit = 0; bit < totalBits; bit++) {
+        const state = bitStates[bit];
+        const bitOn = digest != null && ((digest >> bit) & 1) === 1;
+
+        if (bitOn) {
+          if (!state.active) {
+            state.currentStart = start;
+            state.active = true;
+          }
+        } else {
+          if (state.active) {
+            state.ranges.push([state.currentStart, start]);
+            state.currentStart = null;
+            state.active = false;
+          }
         }
       }
+    });
+
+    bitStates.forEach(state => {
+      if (state.active && state.currentStart != null) {
+        const lastEnd = new Date(sortedSegments[sortedSegments.length - 1].end);
+        state.ranges.push([state.currentStart, lastEnd]);
+      }
+    });
+
+    bitStates.forEach((state, bit) => {
+      const y = topY + bit * (segmentHeight + spacing);
+      ctx.fillStyle = `hsl(${bit * 47 % 360}, 70%, 50%, 0.4)`;
+
+      state.ranges.forEach(([start, end]) => {
+        const xStart = x.getPixelForValue(start);
+        const xEnd = x.getPixelForValue(end);
+        const width = xEnd - xStart;
+        //console.log(`Bit ${bit}: start=${start}, end=${end}, xStart=${xStart}, xEnd=${xEnd}, width=${width}`);
+        if (width > 0) {
+          ctx.fillRect(xStart, y, width, segmentHeight);
+        }
+      });
     });
   }
 };
@@ -363,15 +397,15 @@ canvas.addEventListener("mousemove", (event) => {
 });
 
 const tooltip = document.createElement("div");
-tooltip.style.position = "absolute";
-tooltip.style.background = "rgba(0, 0, 0, 0.7)";
-tooltip.style.color = "#fff";
-tooltip.style.padding = "5px 10px";
-tooltip.style.borderRadius = "4px";
-tooltip.style.pointerEvents = "none";
-tooltip.style.transition = "opacity 0.2s";
-tooltip.style.opacity = 0;
-document.body.appendChild(tooltip);
+  tooltip.style.position = "absolute";
+  tooltip.style.background = "rgba(0, 0, 0, 0.7)";
+  tooltip.style.color = "#fff";
+  tooltip.style.padding = "5px 10px";
+  tooltip.style.borderRadius = "4px";
+  tooltip.style.pointerEvents = "none";
+  tooltip.style.transition = "opacity 0.2s";
+  tooltip.style.opacity = 0;
+  document.body.appendChild(tooltip);
 
 function showTooltip(x, y, text) {
   tooltip.textContent = text;
