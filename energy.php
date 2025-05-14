@@ -564,78 +564,81 @@ function getInverterData(yearsAgo) {
 		let lastDigest = "";
 		let lastDigestTime = "";
 	    if (this.readyState == 4 && this.status == 200) {
-			timeStamp = [];
-			let time = new Date().toLocaleTimeString();
-			let dataObject = JSON.parse(this.responseText); 
-			 console.log(dataObject);
-			if(dataObject) {
-				if(dataObject["sql"]){
-					console.log(dataObject["sql"], dataObject["error"]);
-				} else {
-					if(dataObject["device_features"]) { //we need this to label device feature ons and offs on the graph
-            deviceFeatures = dataObject["device_features"]; //set the global deviceFeatures
-					}
-					if(dataObject["inverter_data"]) {
-            for(let datum of dataObject["inverter_data"]) {
-              datumCount++;
-              //also show: weatherSegments 
-              let time = datum["recorded"];
-              for (let column of columnsWeCareAbout){
-                  let value = datum[column];
-                  if (column == "weather") {
-                    if(lastWeather != value) {
-                      if(lastWeather == "") { //we're at the very beginning
-                      } else {
+        timeStamp = [];
+        //let time = new Date().toLocaleTimeString();
+        let dataObject = JSON.parse(this.responseText); 
+         console.log(dataObject);
+        if(dataObject) {
+          if(dataObject["sql"]){
+            console.log(dataObject["sql"], dataObject["error"]);
+          } else {
+            if(dataObject["device_features"]) { //we need this to label device feature ons and offs on the graph
+              deviceFeatures = dataObject["device_features"]; //set the global deviceFeatures
+            }
+            if(dataObject["inverter_data"]) {
+              for(let datum of dataObject["inverter_data"]) {
+                datumCount++;
+                //also show: weatherSegments 
+                let time = datum["recorded"];
+                for (let column of columnsWeCareAbout){
+                    let value = datum[column];
+                    if (column == "weather") {
+                      if(lastWeather != value) {
+                        if(lastWeather == "") { //we're at the very beginning
+                        } else {
+                          weatherSegmentsLocal.push({"start": lastWeatherTime, "end": time, "weather": lastWeather});
+                        }
+                        lastWeather = value;
+                        lastWeatherTime = time;
+                      }
+                      if (datumCount == dataObject["inverter_data"].length) { //get the last one too
+                        console.log("WSE!");
                         weatherSegmentsLocal.push({"start": lastWeatherTime, "end": time, "weather": lastWeather});
                       }
-                      lastWeather = value;
-                      lastWeatherTime = time;
-                    }
-                    if (datumCount == dataObject.length) { //get the last one too
-                      weatherSegmentsLocal.push({"start": lastWeatherTime, "end": time, "weather": lastWeather});
-                    }
+                      
+                    } else if (column == "digest") {
                     
-                  } else if (column == "digest") {
-                    if(lastDigest != value) {
-                      if(lastDigest == "") { //we're at the very beginning
-                      } else {
+                      if(lastDigest != value) {
+                        if(lastDigest == "") { //we're at the very beginning
+                        } else {
+                          digestSegmentsLocal.push({"start": lastDigestTime, "end": time, "digest": parseInt(lastDigest)});
+                        }
+                        lastDigest = value;
+                        lastDigestTime = time;
+                      }
+                      if (datumCount == dataObject["inverter_data"].length) { //get the last one too
                         digestSegmentsLocal.push({"start": lastDigestTime, "end": time, "digest": parseInt(lastDigest)});
                       }
-                      lastDigest = value;
-                      lastDigestTime = time;
-                    }
-                    if (datumCount == dataObject.length) { //get the last one too
-                      digestSegmentsLocal.push({"start": lastDigestTime, "end": time, "digest": parseInt(lastDigest)});
+                      
+                    } else {
+                      graphDataObject[yearsAgo][column].push(parseInt(value)); //parseInt is important because smoothArray was thinking the values might be strings
                     }
                     
-                  } else {
-                    graphDataObject[yearsAgo][column].push(parseInt(value)); //parseInt is important because smoothArray was thinking the values might be strings
+                      
                   }
-                  
-                    
+                  timeStamp.push(time);
+                  if(time> greatestTime) {
+                    greatestTime = time; //greatestTime is a global
+                  }
                 }
-                timeStamp.push(time);
-                if(time> greatestTime) {
-                  greatestTime = time;
-                }
+                
               }
-              
             }
-					}
-			} else {
-				console.log("No data was found.");
-			}
- 
-			if(scale == "three-hour"  || scale == "day"){
-				let batteryPercents =  graphDataObject[yearsAgo]["battery_percentage"];
-				graphDataObject[yearsAgo]["battery_percentage"] = smoothArray(batteryPercents, 19, 1);
-			}
-			console.log(digestSegmentsLocal);
-			glblChart = showGraph();  //Update Graphs
-			glblChart.options.plugins.weatherSegments.segments = weatherSegmentsLocal;
-			glblChart.options.plugins.digestSegments.segments = digestSegmentsLocal;
-			glblChart.update();
-			document.getElementById('greatestTime').innerHTML = " Latest Data: " + timeAgo(greatestTime);
+        } else {
+          console.log("No data was found.");
+        }
+   
+        if(scale == "three-hour"  || scale == "day"){
+          let batteryPercents =  graphDataObject[yearsAgo]["battery_percentage"];
+          graphDataObject[yearsAgo]["battery_percentage"] = smoothArray(batteryPercents, 19, 1);
+        }
+        console.log(weatherSegmentsLocal);
+        console.log(digestSegmentsLocal);
+        glblChart = showGraph();  //Update Graphs
+        glblChart.options.plugins.weatherSegments.segments = weatherSegmentsLocal;
+        glblChart.options.plugins.digestSegments.segments = digestSegmentsLocal;
+        glblChart.update();
+        document.getElementById('greatestTime').innerHTML = " Latest Data: " + timeAgo(greatestTime);
 	    }
 		document.getElementsByClassName("outercontent")[0].style.backgroundColor='#ffffff';
 		justLoaded = false;
