@@ -120,12 +120,13 @@ if(!$user) {
 <script>
 let glblChart = null;
 let graphDataObject = {};
-let columnsWeCareAbout = ["solar_power","load_power","battery_power","battery_percentage", "weather"]; //these are the inverter columns to be graphed from inverter_log. if you have more, you can include them
+let columnsWeCareAbout = ["solar_power","load_power","battery_power","battery_percentage", "weather", "digest"]; //these are the inverter columns to be graphed from inverter_log. if you have more, you can include them
 let yearsIntoThePastWeCareAbout = [0,1,2,3];
 //For graphs info, visit: https://www.chartjs.org
 let timeStamp = [];
 let weatherColorMap = [];
 let segmentRects = [];
+const bitColorMap = {};
 
 resetGraphData();
 
@@ -165,7 +166,7 @@ const weatherPlugin = {
   beforeDatasetsDraw(chart, args, options) {
     const { ctx, chartArea: { bottom } } = chart;
     const xScale = chart.scales['x']; // Access the x-axis scale by its ID
-    const segmentHeight = 20;
+    const segmentHeight = 5;
     const segments = options.segments || [];
 
     if (!xScale) {
@@ -201,6 +202,42 @@ const weatherPlugin = {
 };
 
 
+const digestPlugin = {
+  id: 'digestSegments',
+  beforeDatasetsDraw(chart, args, options) {
+    const { ctx, chartArea: { bottom, top, left, right } } = chart;
+    const xScale = chart.scales['x'];
+    const segments = options.segments || [];
+    const bitHeight = 2; // Height per bit segment
+    const bitSpacing = 1; // Spacing between segments
+    const maxBits = 32;
+
+    if (!xScale) {
+      console.warn('X-axis scale not found');
+      return;
+    }
+
+    segments.forEach(segment => {
+      const digest = segment.digest >>> 0; // ensure unsigned 32-bit
+
+      const xStart = xScale.getPixelForValue(new Date(segment.start).getTime());
+      const xEnd = xScale.getPixelForValue(new Date(segment.end).getTime());
+      const width = xEnd - xStart;
+
+      for (let bit = 0; bit < maxBits; bit++) {
+        if ((digest & (1 << bit)) !== 0) {
+          const color = bitColorMap[bit] || (bitColorMap[bit] = stringToColor(`bit${bit}`));
+          const y = bottom + 25 + bit * (bitHeight + bitSpacing);
+
+          ctx.fillStyle = color;
+          ctx.fillRect(xStart, y, width, bitHeight);
+        }
+      }
+    });
+  }
+};
+
+
 function showGraph(yearsAgo){
 	let colorSeries = ["#ff0000", "#00ff00", "#0000ff", "#009999", "#3300ff", "#ff0033", "#ff3300", "33ff00", "#0033ff", "#6600cc", "#ff0066", "#cc6600", "66cc00", "#0066cc"];
 	//console.log(timeStamp);
@@ -213,7 +250,11 @@ function showGraph(yearsAgo){
     let ctx = document.getElementById("Chart").getContext('2d');
 	let columnCount = 0;
 	let chartDataSet = [];
+	let noCaptionsColumns = ["weather", "digest"];
 	for (let column of columnsWeCareAbout){
+		if(noCaptionsColumns.indexOf(column) > -1) {
+			continue;
+		}
 		let yAxisId = "A";
 		if(column == "battery_percentage"){ //if you have a percentage instead of a kilowatt value, this is the scale you want
 			yAxisId = "B";
@@ -242,15 +283,18 @@ function showGraph(yearsAgo){
 			responsive: true,
 			maintainAspectRatio: false,
 			plugins: {
-			weatherSegments: {
-				segments:  [  { start: '2025-05-09T12:00:00Z', end: '2025-05-09T18:00:00Z', weather: 'overcast clouds' },
-				{ start: '2025-05-09T18:00:00Z', end: '2025-05-09T23:59:59Z', weather: 'clear sky' }]
+				weatherSegments: {
+					segments:  [ ]
+				},
+				digestSegments:{
+					segments: []
+				}
 			},
 			title: {
 				display: true,
 				text: 'Inverter data'
 			}
-			},
+			,
 			elements: {
 			point: {
 				radius: 0
@@ -288,9 +332,9 @@ function showGraph(yearsAgo){
 			}
 			}
 		},
-		plugins: [weatherPlugin]
+		plugins: [weatherPlugin, digestPlugin]
 	});
-	console.log(energyChart.options.plugins.weatherSegments.segments);
+ 
 	return energyChart;
 }
 
@@ -344,6 +388,7 @@ function hideTooltip() {
 window.onload = function() {
 	console.log(new Date().toLocaleTimeString());
 	Chart.register(weatherPlugin);
+	Chart.register(digestPlugin);
 	
 };
 
@@ -406,9 +451,12 @@ function getInverterData(yearsAgo) {
 
 	xhttp.onreadystatechange = function() {
 		let weatherSegmentsLocal = [];
+		let digestSegmentsLocal = [];
 		let datumCount = 0;
 		let lastWeather = "";
 		let lastWeatherTime = "";
+		let lastDigest = "";
+		let lastDigestTime = "";
 	    if (this.readyState == 4 && this.status == 200) {
 			timeStamp = [];
 			let time = new Date().toLocaleTimeString();
@@ -425,9 +473,7 @@ function getInverterData(yearsAgo) {
 						let time = datum["recorded"];
 						for (let column of columnsWeCareAbout){
 								let value = datum[column];
-								if(column != "weather") {
-									graphDataObject[yearsAgo][column].push(parseInt(value)); //parseInt is important because smoothArray was thinking the values might be strings
-								} else {
+								if (column == "weather") {
 									if(lastWeather != value) {
 										if(lastWeather == "") { //we're at the very beginning
 										} else {
@@ -440,7 +486,23 @@ function getInverterData(yearsAgo) {
 										weatherSegmentsLocal.push({"start": lastWeatherTime, "end": time, "weather": lastWeather});
 									}
 									
+								} else if (column == "digest") {
+									if(lastDigest != value) {
+										if(lastDigest == "") { //we're at the very beginning
+										} else {
+											digestSegmentsLocal.push({"start": lastDigestTime, "end": time, "digest": parseInt(lastDigest)});
+										}
+										lastDigest = value;
+										lastDigestTime = time;
+									}
+									if (datumCount == dataObject.length) { //get the last one too
+										digestSegmentsLocal.push({"start": lastDigestTime, "end": time, "digest": parseInt(lastDigest)});
+									}
+									
+								} else {
+									graphDataObject[yearsAgo][column].push(parseInt(value)); //parseInt is important because smoothArray was thinking the values might be strings
 								}
+								
 									
 							}
 							timeStamp.push(time);
@@ -453,13 +515,15 @@ function getInverterData(yearsAgo) {
 			} else {
 				console.log("No data was found.");
 			}
-			console.log(weatherSegmentsLocal);
+ 
 			if(scale == "three-hour"  || scale == "day"){
 				let batteryPercents =  graphDataObject[yearsAgo]["battery_percentage"];
 				graphDataObject[yearsAgo]["battery_percentage"] = smoothArray(batteryPercents, 19, 1);
 			}
+			console.log(digestSegmentsLocal);
 			glblChart = showGraph();  //Update Graphs
 			glblChart.options.plugins.weatherSegments.segments = weatherSegmentsLocal;
+			glblChart.options.plugins.digestSegments.segments = digestSegmentsLocal;
 			glblChart.update();
 			document.getElementById('greatestTime').innerHTML = " Latest Data: " + timeAgo(greatestTime);
 	    }
