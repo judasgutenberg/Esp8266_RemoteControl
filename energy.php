@@ -503,7 +503,7 @@ function getInverterData(yearsAgo) {
 					
 					for(let datum of dataObject) {
 						datumCount++;
-            			//also show: weatherSegments 
+            //also show: weatherSegments 
 						let time = datum["recorded"];
 						for (let column of columnsWeCareAbout){
 								let value = datum[column];

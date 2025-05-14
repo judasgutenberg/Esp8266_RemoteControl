@@ -2572,8 +2572,6 @@ function checkPhpFunctionCallIsBogus($str){
   return preg_match($pattern, $str) === 1;
 }
 
-
-
 function removeDelimiters($str, $replacement = "_") {
   $delimiters = "|*!";
   // Replace all delimiters with an empty string

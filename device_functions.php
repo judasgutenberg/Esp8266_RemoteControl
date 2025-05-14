@@ -1,11 +1,27 @@
 <?php 
 
-
+function allDeviceFeatures($tenantId) {
+    $sql = "SELECT df.name as name, pin_number, allow_automatic_management, 
+              df.enabled, df.device_type_feature_id, df.device_feature_id, df.created, 
+              last_known_device_value, 
+              last_known_device_modified, 
+              df.value,
+              digest_bit_position, 
+              color
+            FROM device_feature df 
+            JOIN device_type_feature dtf 
+              ON df.device_type_feature_id=dtf.device_type_feature_id AND df.tenant_id=dtf.tenant_id WHERE df.tenant_id=" . intval($tenantId);
+    $result = mysqli_query($conn, $sql);
+    if($result) {
+      $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+      return $rows;
+    }
+}
 
 function deviceFeatures($tenantId, $deviceId) {
   Global $conn;
   $table = "device_feature";
-  $sql = "SELECT df.name as name, pin_number, allow_automatic_management, df.enabled, df.device_type_feature_id, df.device_feature_id, df.created, last_known_device_value, last_known_device_modified, df.value  
+  $sql = "SELECT df.name as name, color, digest_bit_position, pin_number, allow_automatic_management, df.enabled, df.device_type_feature_id, df.device_feature_id, df.created, last_known_device_value, last_known_device_modified, df.value  
           FROM " . $table . " df 
           JOIN device_type_feature dtf 
             ON df.device_type_feature_id=dtf.device_type_feature_id AND df.tenant_id=dtf.tenant_id WHERE df.tenant_id=" . intval($tenantId);
@@ -53,6 +69,12 @@ function deviceFeatures($tenantId, $deviceId) {
       'accent_color' => "red",
       'type' => 'bool'
     ],
+    [
+	    'label' => 'color',
+      'changeable' => true,
+      'type' => 'color',
+      'name' => 'color'
+	  ],
     [
       'label' => 'power on',
       'name' => 'value',
@@ -575,7 +597,7 @@ function editDeviceFeature($error,  $user) {
     $submitLabel = "create device feature";
     $source = $_POST;
   } else {
-    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
+    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
     $result = mysqli_query($conn, $sql);
     if($result) {
       $source = mysqli_fetch_array($result);
@@ -617,6 +639,14 @@ function editDeviceFeature($error,  $user) {
       'height'=> 50,
 	    'value' => gvfa("description", $source), 
       'error' => gvfa('description', $error)
+	  ],
+	  [
+	    'label' => 'color',
+      'changeable' => true,
+      'type' => 'color',
+      'name' => 'color',
+      'value' => gvfa("color", $source), 
+      'error' => gvfa('color', $error)
 	  ],
     [
 	    'label' => 'device feature type',
