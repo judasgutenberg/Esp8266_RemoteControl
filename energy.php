@@ -227,14 +227,17 @@ const digestPlugin = {
     const segmentHeight = 2;
     const spacing = 0;
     const topY = chartArea.bottom - 72;
+
     const sortedSegments = segments.slice().sort((a, b) =>
       new Date(a.start) - new Date(b.start)
     );
+
     const bitStates = Array.from({ length: totalBits }, () => ({
       active: false,
       currentStart: null,
       ranges: []
     }));
+
     sortedSegments.forEach(segment => {
       const start = new Date(segment.start);
       const end = new Date(segment.end);
@@ -258,6 +261,7 @@ const digestPlugin = {
         }
       }
     });
+
     bitStates.forEach(state => {
       if (state.active && state.currentStart != null) {
         const lastEnd = new Date(sortedSegments[sortedSegments.length - 1].end);
@@ -267,16 +271,20 @@ const digestPlugin = {
 
     // Clear previous segments
     chart._digestSegments = [];
+
     bitStates.forEach((state, bit) => {
       const y = topY + bit * (segmentHeight + spacing);
       let label = `Bit ${bit}`;
-      let hexColor = `hsl(${bit * 47 % 360}, 70%, 70%)`;
+      let hexColor = `hsl(${bit * 47 % 360}, 70%, 50%)`;
+
       const recordFound = findObjectByColumn(deviceFeatures, "digest_bit_position", String(bit));
       if (recordFound) {
         hexColor = recordFound.color || "#cccccc";
         label = recordFound.name || label;
       }
-      ctx.fillStyle = hexToRgba(hexColor, 0.7);
+
+      ctx.fillStyle = hexToRgba(hexColor, 0.4);
+
       state.ranges.forEach(([start, end]) => {
         const xStart = x.getPixelForValue(start);
         const xEnd = x.getPixelForValue(end);
@@ -300,12 +308,14 @@ const digestPlugin = {
   afterEvent(chart, args) {
     const { event } = args;
     const segments = chart._digestSegments || [];
+
     const hovered = segments.find(seg =>
       event.x >= seg.x &&
       event.x <= seg.x + seg.width &&
       event.y >= seg.y &&
       event.y <= seg.y + seg.height
     );
+
     if (hovered) {
       chart.tooltip.setActiveElements(
         [{ datasetIndex: 0, index: 0 }],
@@ -582,7 +592,6 @@ function getInverterData(yearsAgo) {
                         lastWeatherTime = time;
                       }
                       if (datumCount == dataObject["inverter_data"].length) { //get the last one too
-                        console.log("WSE!");
                         weatherSegmentsLocal.push({"start": lastWeatherTime, "end": time, "weather": lastWeather});
                       }
                       
@@ -622,8 +631,8 @@ function getInverterData(yearsAgo) {
           let batteryPercents =  graphDataObject[yearsAgo]["battery_percentage"];
           graphDataObject[yearsAgo]["battery_percentage"] = smoothArray(batteryPercents, 19, 1);
         }
-        console.log(weatherSegmentsLocal);
-        console.log(digestSegmentsLocal);
+        //console.log(weatherSegmentsLocal);
+        //console.log(digestSegmentsLocal);
         glblChart = showGraph();  //Update Graphs
         glblChart.options.plugins.weatherSegments.segments = weatherSegmentsLocal;
         glblChart.options.plugins.digestSegments.segments = digestSegmentsLocal;
