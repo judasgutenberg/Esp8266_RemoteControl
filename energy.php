@@ -274,8 +274,8 @@ const digestPlugin = {
 
     bitStates.forEach((state, bit) => {
       const y = topY + bit * (segmentHeight + spacing);
-      let label = `Bit ${bit}`;
-      let hexColor = `hsl(${bit * 47 % 360}, 70%, 50%)`;
+      let label = `Unkown device feature`;
+      let hexColor = `hsl(${bit * 47 % 360}, 70%, 70%)`;
 
       const recordFound = findObjectByColumn(deviceFeatures, "digest_bit_position", String(bit));
       if (recordFound) {
@@ -283,7 +283,7 @@ const digestPlugin = {
         label = recordFound.name || label;
       }
 
-      ctx.fillStyle = hexToRgba(hexColor, 0.4);
+      ctx.fillStyle = hexToRgba(hexColor, 0.7);
 
       state.ranges.forEach(([start, end]) => {
         const xStart = x.getPixelForValue(start);
