@@ -230,12 +230,11 @@ const digestPlugin = {
     const segmentHeight = 4;
     const spacing = 0;
     const topY = chartArea.bottom - 62; //negative is higher
- 
+    let rowIndex = 0;
     const sortedSegments = segments.slice().sort((a, b) =>
       new Date(a.start) - new Date(b.start)
     );
  
-
     const bitStates = Array.from({ length: totalBits }, () => ({
       active: false,
       currentStart: null,
@@ -277,13 +276,12 @@ const digestPlugin = {
         state.active = false;
       }
     });
-    let rowIndex = 0;
+    
     const visibleMin = x.min;
     const visibleMax = x.max;
     bitStates.forEach((state, bit) => {
- 
       //bitStates.forEach((state, bit) => {
-        //const y = topY + bit * (segmentHeight + spacing);
+      //const y = topY + bit * (segmentHeight + spacing);
       //this part does not seem to work:
       const hasVisibleSegment = state.ranges.some(([start, end]) => {
         const startTime = start.getTime();
@@ -292,7 +290,6 @@ const digestPlugin = {
       });
       if (!hasVisibleSegment) return;
       //const y = topY + rowIndex * (segmentHeight + spacing);
-        
       //rowIndex++;
     });
     
@@ -303,7 +300,7 @@ const digestPlugin = {
       //const y = topY + bit * (segmentHeight + spacing);
       const y = topY + rowIndex * (segmentHeight + spacing);
       
-      let label = `Unkown device feature`;
+      let label = "Unkown device feature";
       let hexColor = `hsl(${bit * 47 % 360}, 70%, 70%)`;
 
       const recordFound = findObjectByColumn(deviceFeatures, "digest_bit_position", String(bit));
@@ -323,6 +320,7 @@ const digestPlugin = {
           //console.log( bit,  y,  xStart, xEnd, 'width:', xEnd - xStart);
         }
         if (width > 0) {
+          //console.log(bit, rowIndex);
           rowIndex++;
           ctx.fillRect(xStart, y, width, segmentHeight);
           // Save for tooltip
@@ -333,7 +331,7 @@ const digestPlugin = {
             height: segmentHeight,
             label: label
           });
-        }
+        }  
       });
     });
   },
@@ -369,9 +367,25 @@ const digestPlugin = {
     if (hovered) {
       const { ctx } = chart;
       ctx.save();
+      const padding = 4;
       ctx.font = "12px sans-serif";
+      const text = hovered.label;
+      const textWidth = ctx.measureText(text).width;
+
+      // Coordinates for background box
+      const boxX = hovered.x + 4;
+      const boxY = hovered.y - 18;
+      const boxWidth = textWidth + padding * 2;
+      const boxHeight = 16;
+
+      // Draw black background
       ctx.fillStyle = "#000";
-      ctx.fillText(hovered.label, hovered.x + 4, hovered.y - 4);
+      ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+      // Draw white text
+      ctx.fillStyle = "#fff";
+      ctx.fillText(text, boxX + padding, boxY + 12); // Adjust vertical placement as needed
+
       ctx.restore();
     }
   }
