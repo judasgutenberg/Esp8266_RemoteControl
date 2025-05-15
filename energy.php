@@ -365,7 +365,9 @@ const digestPlugin = {
   beforeDraw(chart) {
     const hovered = chart._digestTooltip;
     if (hovered) {
+      chart.tooltip.setActiveElements([], { x: 0, y: 0 });  // Clear any active tooltip
       const { ctx } = chart;
+      
       ctx.save();
       const padding = 4;
       ctx.font = "12px sans-serif";
@@ -435,6 +437,10 @@ function showGraph(yearsAgo){
 		options: {
 			responsive: true,
 			maintainAspectRatio: false,
+			interaction: {
+        mode: 'nearest',
+        intersect: false  // allows tooltips even if cursor isn't directly over a point
+      },
 			plugins: {
 				weatherSegments: {
 					segments:  [ ],
@@ -452,7 +458,9 @@ function showGraph(yearsAgo){
 			,
 			elements: {
 			point: {
-				radius: 0
+				radius: 0,
+				pointHoverRadius: 3,
+				hitRadius: 10
 			},
 			line: {
 				 tension: 0.2 // Smoothening (Curved) of data lines
