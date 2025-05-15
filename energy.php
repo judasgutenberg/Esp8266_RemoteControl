@@ -278,17 +278,24 @@ const digestPlugin = {
       }
     });
     let rowIndex = 0;
-
+    const visibleMin = x.min;
+    const visibleMax = x.max;
     bitStates.forEach((state, bit) => {
-      if (state.ranges.length === 0) return;
-      const y = topY + rowIndex * (segmentHeight + spacing);
+ 
       //bitStates.forEach((state, bit) => {
         //const y = topY + bit * (segmentHeight + spacing);
-
+      //this part does not seem to work:
+      const hasVisibleSegment = state.ranges.some(([start, end]) => {
+        const startTime = start.getTime();
+        const endTime = end.getTime();
+        return endTime >= visibleMin && startTime <= visibleMax;
+      });
+      if (!hasVisibleSegment) return;
+      //const y = topY + rowIndex * (segmentHeight + spacing);
         
       //rowIndex++;
     });
-
+    
     // Clear previous segments
     chart._digestSegments = [];
 
@@ -303,7 +310,6 @@ const digestPlugin = {
       if (recordFound) {
         hexColor = recordFound.color || "#cccccc";
         label = recordFound.name || label;
-        rowIndex++;
       }
 
       ctx.fillStyle = hexToRgba(hexColor, 0.7);
@@ -317,7 +323,7 @@ const digestPlugin = {
           //console.log( bit,  y,  xStart, xEnd, 'width:', xEnd - xStart);
         }
         if (width > 0) {
-          
+          rowIndex++;
           ctx.fillRect(xStart, y, width, segmentHeight);
           // Save for tooltip
           chart._digestSegments.push({
