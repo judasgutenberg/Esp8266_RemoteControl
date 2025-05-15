@@ -128,6 +128,7 @@ let weatherColorMap = [];
 let segmentRects = [];
 const bitColorMap = {};
 let deviceFeatures = [];
+ 
 
 resetGraphData();
 
@@ -180,6 +181,7 @@ function stringToColor(str) {
 const weatherPlugin = {
   id: 'weatherSegments',
   beforeDatasetsDraw(chart, args, options) {
+    if (!options.enabled) return;
     const { ctx, chartArea: { bottom } } = chart;
     const xScale = chart.scales['x']; // Access the x-axis scale by its ID
     const segmentHeight = 5;
@@ -220,17 +222,19 @@ const weatherPlugin = {
 
 const digestPlugin = {
   id: 'digestSegments',
-  beforeDatasetsDraw(chart, args, pluginOptions) {
+  beforeDatasetsDraw(chart, args, options) {
+    if (!options.enabled) return;
     const { ctx, chartArea, scales: { x } } = chart;
-    const segments = pluginOptions.segments || [];
+    const segments = options.segments || [];
     const totalBits = 32;
-    const segmentHeight = 2;
+    const segmentHeight = 4;
     const spacing = 0;
-    const topY = chartArea.bottom - 72;
-
+    const topY = chartArea.bottom - 132; //negative is higher
+ 
     const sortedSegments = segments.slice().sort((a, b) =>
       new Date(a.start) - new Date(b.start)
     );
+ 
 
     const bitStates = Array.from({ length: totalBits }, () => ({
       active: false,
@@ -262,11 +266,16 @@ const digestPlugin = {
       }
     });
 
-    bitStates.forEach(state => {
-      if (state.active && state.currentStart != null) {
-        const lastEnd = new Date(sortedSegments[sortedSegments.length - 1].end);
-        state.ranges.push([state.currentStart, lastEnd]);
-      }
+    let rowIndex = 0;
+
+	bitStates.forEach((state, bit) => {
+		if (state.ranges.length === 0) return;
+		const y = topY + rowIndex * (segmentHeight + spacing);
+		//bitStates.forEach((state, bit) => {
+			//const y = topY + bit * (segmentHeight + spacing);
+
+      
+		rowIndex++;
     });
 
     // Clear previous segments
@@ -274,6 +283,7 @@ const digestPlugin = {
 
     bitStates.forEach((state, bit) => {
       const y = topY + bit * (segmentHeight + spacing);
+ 
       let label = `Unkown device feature`;
       let hexColor = `hsl(${bit * 47 % 360}, 70%, 70%)`;
 
@@ -286,19 +296,20 @@ const digestPlugin = {
       ctx.fillStyle = hexToRgba(hexColor, 0.7);
 
       state.ranges.forEach(([start, end]) => {
+		//console.log(`Bit ${bit}:`, start, end, 'duration:', end - start);
         const xStart = x.getPixelForValue(start);
         const xEnd = x.getPixelForValue(end);
         const width = xEnd - xStart;
-
+		//console.log( bit,  y,  xStart, xEnd, 'width:', xEnd - xStart);
         if (width > 0) {
           ctx.fillRect(xStart, y, width, segmentHeight);
           // Save for tooltip
           chart._digestSegments.push({
             x: xStart,
-            y,
-            width,
+            y: y,
+            width: width,
             height: segmentHeight,
-            label
+            label: label
           });
         }
       });
@@ -366,16 +377,16 @@ function showGraph(yearsAgo){
 			yAxisId = "B";
 		}
 		//console.log(graphDataObject[0][column]);
-		chartDataSet.push(
-			{
-				label: column,
-				fill: false,  //Try with true
-				backgroundColor: colorSeries[columnCount],
-				borderColor: colorSeries[columnCount],
-				data: graphDataObject[0][column],
-				yAxisID: yAxisId
-			}
-		);
+		let legend = {
+            label: column,
+            fill: false,  //Try with true
+            backgroundColor: colorSeries[columnCount],
+            borderColor: colorSeries[columnCount],
+            data: graphDataObject[0][column],
+            yAxisID: yAxisId
+        };
+
+		chartDataSet.push(legend);
 		columnCount++;
 	}
 
@@ -390,10 +401,12 @@ function showGraph(yearsAgo){
 			maintainAspectRatio: false,
 			plugins: {
 				weatherSegments: {
-					segments:  [ ]
+					segments:  [ ],
+					enabled: true
 				},
 				digestSegments:{
-					segments: []
+					segments: [],
+					enabled: true
 				}
 			},
 			title: {
@@ -632,7 +645,7 @@ function getInverterData(yearsAgo) {
           graphDataObject[yearsAgo]["battery_percentage"] = smoothArray(batteryPercents, 19, 1);
         }
         //console.log(weatherSegmentsLocal);
-        //console.log(digestSegmentsLocal);
+        console.log(digestSegmentsLocal);
         glblChart = showGraph();  //Update Graphs
         glblChart.options.plugins.weatherSegments.segments = weatherSegmentsLocal;
         glblChart.options.plugins.digestSegments.segments = digestSegmentsLocal;
