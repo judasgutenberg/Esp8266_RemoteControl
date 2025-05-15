@@ -263,19 +263,30 @@ const digestPlugin = {
             state.active = false;
           }
         }
+
+        // Store the last seen end time for later flushing
+        state.lastSeenEnd = end;
       }
     });
 
+    // Flush only bits still active at the end
+    bitStates.forEach(state => {
+      if (state.active) {
+        state.ranges.push([state.currentStart, state.lastSeenEnd]);
+        state.currentStart = null;
+        state.active = false;
+      }
+    });
     let rowIndex = 0;
 
-	bitStates.forEach((state, bit) => {
-		if (state.ranges.length === 0) return;
-		const y = topY + rowIndex * (segmentHeight + spacing);
-		//bitStates.forEach((state, bit) => {
-			//const y = topY + bit * (segmentHeight + spacing);
+    bitStates.forEach((state, bit) => {
+      if (state.ranges.length === 0) return;
+      const y = topY + rowIndex * (segmentHeight + spacing);
+      //bitStates.forEach((state, bit) => {
+        //const y = topY + bit * (segmentHeight + spacing);
 
-      
-		rowIndex++;
+        
+      rowIndex++;
     });
 
     // Clear previous segments
@@ -283,6 +294,7 @@ const digestPlugin = {
 
     bitStates.forEach((state, bit) => {
       const y = topY + bit * (segmentHeight + spacing);
+      //const y = topY + rowIndex * (segmentHeight + spacing);
  
       let label = `Unkown device feature`;
       let hexColor = `hsl(${bit * 47 % 360}, 70%, 70%)`;
@@ -296,11 +308,13 @@ const digestPlugin = {
       ctx.fillStyle = hexToRgba(hexColor, 0.7);
 
       state.ranges.forEach(([start, end]) => {
-		//console.log(`Bit ${bit}:`, start, end, 'duration:', end - start);
+        //console.log(`Bit ${bit}:`, start, end, 'duration:', end - start);
         const xStart = x.getPixelForValue(start);
         const xEnd = x.getPixelForValue(end);
         const width = xEnd - xStart;
-		//console.log( bit,  y,  xStart, xEnd, 'width:', xEnd - xStart);
+        if(bit<9) {
+          //console.log( bit,  y,  xStart, xEnd, 'width:', xEnd - xStart);
+        }
         if (width > 0) {
           ctx.fillRect(xStart, y, width, segmentHeight);
           // Save for tooltip
