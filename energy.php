@@ -229,7 +229,7 @@ const digestPlugin = {
     const totalBits = 32;
     const segmentHeight = 4;
     const spacing = 0;
-    const topY = chartArea.bottom - 132; //negative is higher
+    const topY = chartArea.bottom - 62; //negative is higher
  
     const sortedSegments = segments.slice().sort((a, b) =>
       new Date(a.start) - new Date(b.start)
@@ -286,16 +286,16 @@ const digestPlugin = {
         //const y = topY + bit * (segmentHeight + spacing);
 
         
-      rowIndex++;
+      //rowIndex++;
     });
 
     // Clear previous segments
     chart._digestSegments = [];
 
     bitStates.forEach((state, bit) => {
-      const y = topY + bit * (segmentHeight + spacing);
-      //const y = topY + rowIndex * (segmentHeight + spacing);
- 
+      //const y = topY + bit * (segmentHeight + spacing);
+      const y = topY + rowIndex * (segmentHeight + spacing);
+      
       let label = `Unkown device feature`;
       let hexColor = `hsl(${bit * 47 % 360}, 70%, 70%)`;
 
@@ -303,6 +303,7 @@ const digestPlugin = {
       if (recordFound) {
         hexColor = recordFound.color || "#cccccc";
         label = recordFound.name || label;
+        rowIndex++;
       }
 
       ctx.fillStyle = hexToRgba(hexColor, 0.7);
@@ -316,6 +317,7 @@ const digestPlugin = {
           //console.log( bit,  y,  xStart, xEnd, 'width:', xEnd - xStart);
         }
         if (width > 0) {
+          
           ctx.fillRect(xStart, y, width, segmentHeight);
           // Save for tooltip
           chart._digestSegments.push({
