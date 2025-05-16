@@ -164,12 +164,14 @@ function hexToRgba(hex, alpha = 0.4) {
 
 function stringToColor(str) {
   let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    // Simple hash function: shift and sum character codes
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    hash = hash & hash; // Convert to 32bit integer
-  }
-
+  if(str){
+    for (let i = 0; i < str.length; i++) {
+      // Simple hash function: shift and sum character codes
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      hash = hash & hash; // Convert to 32bit integer
+    }
+  }   
+  
   // Generate HSL values
   const hue = Math.abs(hash) % 360; // Hue between 0 and 359
   const saturation = 70; // Fixed saturation
@@ -421,7 +423,8 @@ function showGraph(yearsAgo){
             backgroundColor: colorSeries[columnCount],
             borderColor: colorSeries[columnCount],
             data: graphDataObject[0][column],
-            yAxisID: yAxisId
+            yAxisID: yAxisId,
+            borderWidth: 1
         };
 
 		chartDataSet.push(legend);

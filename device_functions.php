@@ -1,6 +1,7 @@
 <?php 
 
 function allDeviceFeatures($tenantId) {
+    Global $conn;
     $sql = "SELECT df.name as name, pin_number, allow_automatic_management, 
               df.enabled, df.device_type_feature_id, df.device_feature_id, df.created, 
               last_known_device_value, 
@@ -120,6 +121,7 @@ function timeScales() {
     {"text":"day","value":"day", "period_size": 1, "period_scale": "day", "group_by": "YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded), MINUTE(recorded)"},
     {"text":"week","value":"week", "period_size": 7, "period_scale": "day", "group_by": "YEAR(recorded), DAYOFYEAR(recorded), HOUR(recorded)"},
     {"text":"month","value":"month", "period_size": 1, "period_scale": "month", "group_by": "YEAR(recorded), DAYOFYEAR(recorded), FLOOR(HOUR(recorded)/6)"},
+    {"text":"three-month","value":"three-month", "period_size": 3, "period_scale": "month", "group_by": "YEAR(recorded), DAYOFYEAR(recorded), FLOOR(HOUR(recorded)/12)"},
     {"text":"year","value":"year", "period_size": 1, "period_scale": "year", "group_by": "YEAR(recorded), DAYOFYEAR(recorded)" }
   ]', true);
   return $out;

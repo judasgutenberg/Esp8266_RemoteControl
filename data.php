@@ -413,7 +413,7 @@ if($_REQUEST) {
 				} else {
 					//i have a hardcoded config for all the different time scales in device_functions.php at or around
 					//line 94 and it is used by both Javascript and PHP
-					$scaleRecord = findRecordByKey(timeScales(), "text", $scale);
+					$scaleRecord = findRecordByKey(timeScales(), "value", $scale);
 					$periodSize = $scaleRecord["period_size"];
 					$periodScale = $scaleRecord["period_scale"];
 					$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
@@ -446,7 +446,8 @@ if($_REQUEST) {
 						$result = mysqli_query($conn, $sql);
 						$error = mysqli_error($conn);
 						if($result && $canAccessData) {
-							$out = mysqli_fetch_all($result, MYSQLI_ASSOC);
+              $out["device_features"] = allDeviceFeatures($tenantId);
+							$out["inverter_data"] = mysqli_fetch_all($result, MYSQLI_ASSOC);
 						}
 						if(count($out) <1){
 							array_push($out, ["sql" => $sql, "error"=>$error]);
@@ -462,7 +463,7 @@ if($_REQUEST) {
 				} else {
 					//i have a hardcoded config for all the different time scales in device_functions.php at or around
 					//line 94 and it is used by both Javascript and PHP
-					$scaleRecord = findRecordByKey(timeScales(), "text", $scale);
+					$scaleRecord = findRecordByKey(timeScales(), "value", $scale);
 					$periodSize = $scaleRecord["period_size"];
 					$periodScale = $scaleRecord["period_scale"];
 					$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
