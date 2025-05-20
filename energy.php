@@ -281,6 +281,7 @@ const digestPlugin = {
     
     const visibleMin = x.min;
     const visibleMax = x.max;
+    const visibleBits = [];
     bitStates.forEach((state, bit) => {
       //bitStates.forEach((state, bit) => {
       //const y = topY + bit * (segmentHeight + spacing);
@@ -290,19 +291,21 @@ const digestPlugin = {
         const endTime = end.getTime();
         return endTime >= visibleMin && startTime <= visibleMax;
       });
-      if (!hasVisibleSegment) return;
-      //const y = topY + rowIndex * (segmentHeight + spacing);
-      //rowIndex++;
+      if (hasVisibleSegment) {
+        visibleBits.push({ bit, state });
+      }
     });
     
     // Clear previous segments
     chart._digestSegments = [];
 
-    bitStates.forEach((state, bit) => {
-      //const y = topY + bit * (segmentHeight + spacing);
+
+
+
+    visibleBits.forEach(({ bit, state }, rowIndex) => {
       const y = topY + rowIndex * (segmentHeight + spacing);
-      
-      let label = "Unkown device feature";
+
+      let label = "Unknown device feature";
       let hexColor = `hsl(${bit * 47 % 360}, 70%, 70%)`;
 
       const recordFound = findObjectByColumn(deviceFeatures, "digest_bit_position", String(bit));
@@ -314,18 +317,12 @@ const digestPlugin = {
       ctx.fillStyle = hexToRgba(hexColor, 0.7);
 
       state.ranges.forEach(([start, end]) => {
-        //console.log(`Bit ${bit}:`, start, end, 'duration:', end - start);
         const xStart = x.getPixelForValue(start);
         const xEnd = x.getPixelForValue(end);
         const width = xEnd - xStart;
-        if(bit<9) {
-          //console.log( bit,  y,  xStart, xEnd, 'width:', xEnd - xStart);
-        }
+
         if (width > 0) {
-          //console.log(bit, rowIndex);
-          rowIndex++;
           ctx.fillRect(xStart, y, width, segmentHeight);
-          // Save for tooltip
           chart._digestSegments.push({
             x: xStart,
             y: y,
@@ -333,9 +330,11 @@ const digestPlugin = {
             height: segmentHeight,
             label: label
           });
-        }  
+        }
       });
     });
+
+
   },
 
   afterEvent(chart, args) {
