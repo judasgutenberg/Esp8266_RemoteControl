@@ -210,69 +210,19 @@ const digestPlugin = {
             height: segmentHeight,
             label: label
           });
+          
+          segmentRects.push({
+            x: xStart,
+            y: y,
+            width: width,
+            height: segmentHeight,
+            weather: label
+          });
         }
       });
     });
 
 
-  },
-
-  afterEvent(chart, args) {
-    const { event } = args;
-    const segments = chart._digestSegments || [];
-
-    const hovered = segments.find(seg =>
-      event.x >= seg.x &&
-      event.x <= seg.x + seg.width &&
-      event.y >= seg.y &&
-      event.y <= seg.y + seg.height
-    );
-
-    if (hovered) {
-      chart.tooltip.setActiveElements([], { x: 0, y: 0 }); // Clear default tooltips
-      chart.tooltip.update();
-
-      chart._digestTooltip = {
-        ...hovered,
-        mouseX: event.x,
-        mouseY: event.y
-      };
-    } else {
-      chart._digestTooltip = null;
-      chart.tooltip.setActiveElements([], { x: 0, y: 0 });
-      chart.tooltip.update();
-    }
-  },
-
-  // Render tooltip text (optional: display custom label)
-  afterDraw(chart) {
-    const hovered = chart._digestTooltip;
-    if (hovered) {
-      chart.tooltip.setActiveElements([], { x: 0, y: 0 });  // Clear any active tooltip
-      const { ctx } = chart;
-      
-      ctx.save();
-      const padding = 4;
-      ctx.font = "12px sans-serif";
-      const text = hovered.label;
-      const textWidth = ctx.measureText(text).width;
-
-      // Coordinates for background box
-      const boxX = hovered.mouseX + 10;
-      const boxY = hovered.mouseY - 30;
-      const boxWidth = textWidth + padding * 2;
-      const boxHeight = 16;
-
-      // Draw black background
-      ctx.fillStyle = "#000";
-      ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-
-      // Draw white text
-      ctx.fillStyle = "#fff";
-      ctx.fillText(text, boxX + padding, boxY + 12); // Adjust vertical placement as needed
-
-      ctx.restore();
-    }
   }
 };
 
@@ -425,9 +375,13 @@ function showTooltip(x, y, text) {
   tooltip.style.left = `${x + 10}px`;
   tooltip.style.top = `${y + 10}px`;
   tooltip.style.opacity = 1;
+  glblChart.options.plugins.tooltip.enabled = false;
+  glblChart.update();
 }
 
 function hideTooltip() {
+  glblChart.options.plugins.tooltip.enabled = true;
+  glblChart.update();
   tooltip.style.opacity = 0;
 }
 
