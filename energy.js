@@ -175,13 +175,6 @@ const digestPlugin = {
         visibleBits.push({ bit, state });
       }
     });
-    
-    // Clear previous segments
-    chart._digestSegments = [];
-
-
-
-
     visibleBits.forEach(({ bit, state }, rowIndex) => {
       const y = topY + rowIndex * (segmentHeight + spacing);
 
@@ -203,15 +196,7 @@ const digestPlugin = {
 
         if (width > 0) {
           ctx.fillRect(xStart, y, width, segmentHeight);
-          chart._digestSegments.push({
-            x: xStart,
-            y: y,
-            width: width,
-            height: segmentHeight,
-            label: label
-          });
-          
-          segmentRects.push({
+           segmentRects.push({
             x: xStart,
             y: y,
             width: width,
@@ -375,13 +360,17 @@ function showTooltip(x, y, text) {
   tooltip.style.left = `${x + 10}px`;
   tooltip.style.top = `${y + 10}px`;
   tooltip.style.opacity = 1;
-  glblChart.options.plugins.tooltip.enabled = false;
-  glblChart.update();
+  if(glblChart) {
+    glblChart.options.plugins.tooltip.enabled = false;
+    glblChart.update();
+  }
 }
 
 function hideTooltip() {
-  glblChart.options.plugins.tooltip.enabled = true;
-  glblChart.update();
+  if(glblChart) {
+    glblChart.options.plugins.tooltip.enabled = true;
+    glblChart.update();
+  }
   tooltip.style.opacity = 0;
 }
 
