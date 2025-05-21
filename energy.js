@@ -229,12 +229,14 @@ const digestPlugin = {
     );
 
     if (hovered) {
-      chart.tooltip.setActiveElements(
-        [{ datasetIndex: 0, index: 0 }],
-        { x: hovered.x + hovered.width / 2, y: hovered.y }
-      );
+      chart.tooltip.setActiveElements([], { x: 0, y: 0 }); // Clear default tooltips
       chart.tooltip.update();
-      chart._digestTooltip = hovered;
+
+      chart._digestTooltip = {
+        ...hovered,
+        mouseX: event.x,
+        mouseY: event.y
+      };
     } else {
       chart._digestTooltip = null;
       chart.tooltip.setActiveElements([], { x: 0, y: 0 });
@@ -243,7 +245,7 @@ const digestPlugin = {
   },
 
   // Render tooltip text (optional: display custom label)
-  beforeDraw(chart) {
+  afterDraw(chart) {
     const hovered = chart._digestTooltip;
     if (hovered) {
       chart.tooltip.setActiveElements([], { x: 0, y: 0 });  // Clear any active tooltip
@@ -256,8 +258,8 @@ const digestPlugin = {
       const textWidth = ctx.measureText(text).width;
 
       // Coordinates for background box
-      const boxX = hovered.x + 4;
-      const boxY = hovered.y - 18;
+      const boxX = hovered.mouseX + 10;
+      const boxY = hovered.mouseY - 30;
       const boxWidth = textWidth + padding * 2;
       const boxHeight = 16;
 
