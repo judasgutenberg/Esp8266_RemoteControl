@@ -438,7 +438,7 @@ if($_REQUEST) {
 						$sql .= " AND recorded < DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo) + $initialOffset)) . " " . $periodScale . ") ";
 					}
 					if($groupBy){
-						$sql .= " GROUP BY " . $groupBy . " ";
+						$sql .= " GROUP BY " . $groupBy . " "; //contrary to what you might think, this is never passed in from the frontend.
 					}
 					$sql .= " ORDER BY inverter_log_id ASC";
 					//die($sql);
@@ -493,7 +493,7 @@ if($_REQUEST) {
 						$sql .= " AND recorded < DATE_ADD(DATE_ADD('" . $formatedDateTime . "', INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
 					}
 					if($groupBy){
-						$sql .= " GROUP BY " . $groupBy . " ";
+						$sql .= " GROUP BY " . $groupBy . " ";//contrary to what you might think, this is never passed in from the frontend.
 					}
 					$sql .= " ORDER BY device_log_id ASC";
 					//die($sql);
