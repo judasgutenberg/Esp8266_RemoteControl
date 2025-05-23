@@ -42,13 +42,10 @@ if(!$user) {
 	} else {
 		$content .= $tenantSelector;
 	}
-	
 	echo bodyWrap($content, $user, "", null);
 	die();
 }
 
- 
- 
 ?>
 <html>
 <head>
@@ -98,19 +95,12 @@ if(!$user) {
 		<div>
 			<table id="dataTable">
 			<?php 
-			//lol, it's easier to specify an object in json and decode it than it is just specify it in PHP
-			//$selectData = json_decode('[{"text":"Outside Cabin","value":1},{"text":"Cabin Downstairs","value":2},{"text":"Cabin Watchdog","value":3}]');
-			//var_dump($selectData);
-			//echo  json_last_error_msg();
 			$handler = "getInverterData(0)";
-
-			//$scaleConfig = json_decode('[{"text":"ultra-fine","value":"ultra-fine"},{"text":"fine","value":"fine"},{"text":"hourly","value":"hour"}, {"text":"daily","value":"day"}]', true);
 			echo "<tr><td>Time Scale:</td><td>";
 			echo genericSelect("scaleDropdown", "scale",  defaultFailDown(gvfw("scale"), "day"), $scaleConfig, "onchange", $handler);
 			echo "</td></tr>";
 			echo "<tr><td>Date/Time Begin:</td><td id='placeforscaledropdown'></td></tr>";
 			echo "<tr><td>Use Absolute Timespan Cusps</td><td><input type='checkbox' value='absolute_timespan_cusps' id='atc_id' onchange='" . $handler . "'/></td></tr>";
-			//echo "<script>createTimescalePeriodDropdown(scaleConfig, 31, 'fine', 'change', 'getInverterData()');</script>";
 			?>
 			</table>
 		</div>
