@@ -150,7 +150,7 @@ if ($user) {
 
     $name = filterStringForSqlEntities(gvfw('name'));
     $value = gvfw('value');
-    $primaryKeyName = filterStringForSqlEntities(gvfw('primary_key_name'));
+    $primaryKeyName = filterStringForSqlEntities(gvfw('primary_key_name'), true);
     $primaryKeyValue = gvfw('primary_key_value');
     $hashedEntities = gvfw('hashed_entities');
     $whatHashedEntitiesShouldBe =  crypt($name . $table .$primaryKeyName  . $primaryKeyValue , $encryptionPassword);
@@ -171,7 +171,7 @@ if ($user) {
     if(in_array($table, tablesThatRequireModified())){
       $userClause = ", modified='" . $formatedDateTime . "'";
     }
-    $sql = "UPDATE ". filterStringForSqlEntities($table) . " SET " . filterStringForSqlEntities($name) . "='" .  mysqli_real_escape_string($conn, $value) . "' " . $userClause . " WHERE tenant_id=" . intval($tenantId) . " AND " . filterStringForSqlEntities($primaryKeyName) . "='" . intval($primaryKeyValue) . "'";
+    $sql = "UPDATE ". filterStringForSqlEntities($table, true) . " SET " . filterStringForSqlEntities($name, true) . "='" .  mysqli_real_escape_string($conn, $value) . "' " . $userClause . " WHERE tenant_id=" . intval($tenantId) . " AND " . filterStringForSqlEntities($primaryKeyName, true) . "='" . intval($primaryKeyValue) . "'";
 
     if($user["role"] != "viewer" && ($table != "user"  &&  $table != "report") || $user["role"] == "super") { //can't have just anybody do this
       $result = mysqli_query($conn, $sql); 

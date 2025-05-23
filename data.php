@@ -392,7 +392,7 @@ if($_REQUEST) {
 					$out["official_weather"] = getWeatherDataByCoordinates($latitudeForApi, $longitudeForApi, $apiKey);
 				}
 			} else if ($mode==="getEarliestRecorded") {
-				$tableName = filterStringForSqlEntities(gvfw("table"));
+				$tableName = filterStringForSqlEntities(gvfw("table"), true);
 				$sql = "SELECT MIN(recorded) AS recorded FROM " . $tableName . " WHERE 1=1 ";
 				if($tenant && $tableName != 'device_log') {
 					$sql .= " AND tenant_id=" . $tenantId;
@@ -470,7 +470,7 @@ if($_REQUEST) {
 					$groupBy = gvfa("group_by", $scaleRecord, "");
 					if($specificColumn) {
 						//to revisit:  need to figure out a way to keep users without a device_id from seeing someone else's devices
-						$sql = "SELECT " . filterStringForSqlEntities($specificColumn)  . ", device_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE  device_id IN (" . filterCommasAndDigits($locationIds) . ") ";
+						$sql = "SELECT " . filterStringForSqlEntities($specificColumn, true)  . ", device_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE  device_id IN (" . filterCommasAndDigits($locationIds) . ") ";
 					} else {
 						$weatherColumns = getGraphColumns($user["tenant_id"], $locationId);
 						$sql = "SELECT " . implode(",", $weatherColumns) . ", device_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE device_id=" . $locationId;

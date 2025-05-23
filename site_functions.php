@@ -215,10 +215,12 @@ function filterCommasAndDigits($input) {
   return preg_replace('/[^,\d]/', '', $input);
 }
 
-function filterStringForSqlEntities($input) {
+function filterStringForSqlEntities($input, $strict = false) {
   // Replace characters that are not letters, numbers, dashes, underscores, commas, or parentheses with an empty string
-  $filtered = preg_replace('/[^a-zA-Z0-9\-_(),]/', '', $input);
-
+  $filtered = preg_replace('/[^a-zA-Z0-9\_]/', '', $input);
+  if(!$strict){
+    $filtered = preg_replace('/[^a-zA-Z0-9\-_(),]/', '', $input);
+  }
   return $filtered;
 }
 
