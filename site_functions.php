@@ -216,8 +216,8 @@ function filterCommasAndDigits($input) {
 }
 
 function filterStringForSqlEntities($input) {
-  // Replace characters that are not letters, numbers, dashes, or underscores with an empty string
-  $filtered = preg_replace('/[^a-zA-Z0-9-_]/', '', $input);
+  // Replace characters that are not letters, numbers, dashes, underscores, commas, or parentheses with an empty string
+  $filtered = preg_replace('/[^a-zA-Z0-9\-_(),]/', '', $input);
 
   return $filtered;
 }
@@ -2571,6 +2571,8 @@ function checkPhpFunctionCallIsBogus($str){
   $pattern = '/\(\s*,|,\s*\)/';
   return preg_match($pattern, $str) === 1;
 }
+
+
 
 function removeDelimiters($str, $replacement = "_") {
   $delimiters = "|*!";
