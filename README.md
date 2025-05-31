@@ -74,7 +74,7 @@ From there, here's an overview of how to set up control for a particular system 
 2. Add a record to the device_type table describing your particular type of device (in this case, ESP8266).  Values for most of the fields don't matter much.
 3. Add a record to the device_type_feature table describing the pin (mostly the pin number and, if it is on an Arduino slave, the I2C address).
 4. Add a record to the device_feature table describing the specific pin (here a human readable name would be useful).
-5. You can change the state of a particular ESP8266's pin by changing the state of the value column in the device_feature record.  Make sure to set enabled to 1 as well.  Depending on the speed of your network and how frequently you set polling, the change should manifest within a minute or so.
+5. You can change the state of a particular ESP8266's pin by changing the state of the value column in the device_feature record.  Make sure to set enabled to 1 as well.  Depending on the speed of your network and how frequently you set polling, the change should manifest within 20 seconds or so.
 
 Here is the user interface, which allows you to turn items on and off in the list by checking the "power on" column. (You do it all from the device_feature list view.)
 
