@@ -1417,10 +1417,10 @@ function genericTableViaJs($rows, $headerData = NULL, $toolsTemplate = NULL, $se
         }
 
         if(($type == "color"  || $type == "text"  || $type == "number" || $type == "string") &&  $primaryKeyName != $name){
-          $hashedEntities =  crypt($name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
+          $hashedEntities = hash_hmac('sha256', $name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
           $out .= "<input style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",  this.value ,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\")' value='" . $value . "'  name='" . $name . "' type='" . $type . "' />\n";
         } else if(($type == "checkbox" || $type == "bool")  &&  $primaryKeyName != $name) {
-          $hashedEntities =  crypt($name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
+          $hashedEntities =  hash_hmac('sha256', $name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
           $out .= "<input style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",this.checked,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\")' name='" . $name . "' type='checkbox' value='1' " . $checkedString . "/>\n";
         } else {
           $out .= $row[$name];
@@ -1541,10 +1541,10 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
         }
 
         if(($type == "color"  || $type == "text"  || $type == "number" || $type == "string") &&  $primaryKeyName != $name){
-          $hashedEntities =  crypt($name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
+          $hashedEntities =  hash_hmac('sha256', $name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
           $out .= "<input style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",  this.value ,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\")' value='" . $value . "'  name='" . $name . "' type='" . $type . "' />\n";
         } else if(($type == "checkbox" || $type == "bool")  &&  $primaryKeyName != $name) {
-          $hashedEntities =  crypt($name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
+          $hashedEntities =  hash_hmac('sha256', $name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
           $out .= "<input style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",this.checked,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\")' name='" . $name . "' type='checkbox' value='1' " . $checkedString . "/>\n";
         } else {
           $out .= $row[$name];
@@ -1589,7 +1589,7 @@ function tokenReplace($template, $data,  $tableName = "", $strDelimiterBegin = "
     }
   }
   if($tableName!= "") {
-    $hashedEntities = crypt($tableName . $tableName . "_id" . $data[$tableName . "_id"], $encryptionPassword);
+    $hashedEntities = hash_hmac('sha256', $tableName . $tableName . "_id" . $data[$tableName . "_id"], $encryptionPassword);
     $template = str_replace($strDelimiterBegin . "hashed_entities" . $strDelimiterEnd, $hashedEntities, $template);
   }
   return $template;

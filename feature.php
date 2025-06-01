@@ -13,13 +13,6 @@ include("device_functions.php");
 //ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
 
-if(array_key_exists( "locationId", $_REQUEST)) {
-	$locationId = $_REQUEST["locationId"];
-} else {
-	$locationId = 1;
-}
-$poser = null;
-$poserString = "";
 $out = "";
 $conn = mysqli_connect($servername, $username, $password, $database);
 $user = autoLogin();
@@ -61,11 +54,11 @@ if(!$user) {
 
 <body>
 <script>
-  function toggleDeviceFeature(deviceFeatureId, actuallySetState) {
+  function toggleDeviceFeature(deviceFeatureId, hashedEntries,  actuallySetState) {
   
       state = !state;
       const value = state ? 'true' : 'false';
-      let url = 'tool.php?action=genericFormSave&table=device_feature&primary_key_name=device_feature_id&primary_key_value=' + deviceFeatureId + '&value=' + value + '&name=value&hashed_entities=neeueWZRf95X6';
+      let url = 'tool.php?action=genericFormSave&table=device_feature&primary_key_name=device_feature_id&primary_key_value=' + deviceFeatureId + '&value=' + value + '&name=value&hashed_entities=' + hashedEntries;
       if(!actuallySetState) {
         url = "data:application/json,{}";
         state = !state;  //oh, we didn't send a change state, so flip it back to the way things were
@@ -111,18 +104,23 @@ if(!$user) {
 		$deviceFeatureIdArray = explode(",", $deviceFeatureIds);
 		for($i = 0; $i< count($deviceFeatureIdArray); $i++) {
       $deviceFeatureId = $deviceFeatureIdArray[$i];
-       
+      $table = "device_feature";
+      $primaryKeyName = $table . "_id";
+      $primaryKeyValue = $deviceFeatureId;
+      $name  = "value";
+      //echo $name . $table . $primaryKeyName  . $primaryKeyValue . "<br/>\n";
+      $hashedEntries =  hash_hmac('sha256', $name . $table . $primaryKeyName . $primaryKeyValue, $encryptionPassword);
   ?>
 
   <div style='margin: 15px'><button id="toggleButton_<?php echo $deviceFeatureId;?>">Toggle Light</button><div id='statedisplay_<?php echo $deviceFeatureId;?>'></div></div>
 
   <script>
     var state = false; // start as OFF
-    toggleDeviceFeature(<?php echo $deviceFeatureId?>, false);
+    toggleDeviceFeature(<?php echo $deviceFeatureId?>,  '<?php echo $hashedEntries;?>', false);
     
 
     document.getElementById('toggleButton_<?php echo $deviceFeatureId;?>').addEventListener('click', () => {
-      toggleDeviceFeature(<?php echo $deviceFeatureId;?>, true);
+      toggleDeviceFeature(<?php echo $deviceFeatureId;?>, '<?php echo $hashedEntries;?>', true);
     });
   </script>
    <?php

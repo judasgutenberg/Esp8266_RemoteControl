@@ -153,7 +153,7 @@ if ($user) {
     $primaryKeyName = filterStringForSqlEntities(gvfw('primary_key_name'), true);
     $primaryKeyValue = gvfw('primary_key_value');
     $hashedEntities = gvfw('hashed_entities');
-    $whatHashedEntitiesShouldBe =  crypt($name . $table . $primaryKeyName . $primaryKeyValue, $encryptionPassword);
+    $whatHashedEntitiesShouldBe =  hash_hmac('sha256', $name . $table . $primaryKeyName . $primaryKeyValue, $encryptionPassword);
     if($hashedEntities != $whatHashedEntitiesShouldBe){
       echo $hashedEntities. " " . $whatHashedEntitiesShouldBe . "\n";
       die("Data appears to have been tampered with.");
@@ -323,7 +323,7 @@ if ($user) {
     }
     //die($sql);
     $hashedEntities = gvfw('hashed_entities');
-    $whatHashedEntitiesShouldBe =  crypt($table .$table . "_id"  . intval(gvfw( $table . "_id")) , $encryptionPassword);
+    $whatHashedEntitiesShouldBe =  hash_hmac('sha256', $table .$table . "_id"  . intval(gvfw( $table . "_id")) , $encryptionPassword);
     if($hashedEntities != $whatHashedEntitiesShouldBe){
       die("Data appears to have been tampered with.");
     }
