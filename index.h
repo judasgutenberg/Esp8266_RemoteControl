@@ -202,7 +202,7 @@ function showPinValues(){
    xhttp.send();
    setTimeout(function(){
       updateWeatherDisplay(); 
-      }, Math.random()* 4000); //i make this a little non-deterministic so the DHT sensors won't get stuck in a pattern where they are read to frequently
+      }, Math.random()* 4000); //i make this a little non-deterministic so the DHT sensors won't get stuck in a pattern where they are read too frequently
 }
 </script>
 </body>
