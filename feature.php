@@ -26,7 +26,7 @@ $user = autoLogin();
 $tenantSelector = "";
 $content = "";
 $action = gvfw("action");
-$deviceFeatureId = gvfw("device_feature_id");
+$deviceFeatureIds = gvfw("device_feature_id");
 if ($action == "login") {
 	$tenantId = gvfa("tenant_id", $_GET);
 	$tenantSelector = loginUser($tenantId);
@@ -84,31 +84,22 @@ if(!$user) {
 		$out .= "</div>";
 		//$out .= "<div class='innercontent'>";
 		echo $out; 
-  ?>
-
-  <button id="toggleButton">Toggle Light</button><div id='statedisplay'></div>
-
-  <script>
-    let state = false; // start as OFF
-    toggleLight(false);
-    
-
-    document.getElementById('toggleButton').addEventListener('click', () => {
-      toggleLight(true);
-    });
-    
-    
-    
-  function toggleLight(actuallySetState) {
+		
+		?>
+		
+		 <script>
+  function toggleLight(deviceFeatureId, actuallySetState) {
   
       state = !state;
       const value = state ? 'true' : 'false';
-      let url = 'tool.php?action=genericFormSave&table=device_feature&primary_key_name=device_feature_id&primary_key_value=<?php echo $deviceFeatureId;?>&value=' + value + '&name=value&hashed_entities=neeueWZRf95X6';
+      let url = 'tool.php?action=genericFormSave&table=device_feature&primary_key_name=device_feature_id&primary_key_value=' + deviceFeatureId + '&value=' + value + '&name=value&hashed_entities=neeueWZRf95X6';
       if(!actuallySetState) {
         url = "data:application/json,{}";
         state = !state;  //oh, we didn't send a change state, so flip it back to the way things were
       }
-      const urlGet = 'tool.php?action=json&table=device_feature&device_feature_id=<?php echo $deviceFeatureId;?>';
+      let bgColor = "#ccccff";
+      const urlGet = 'tool.php?action=json&table=device_feature&device_feature_id=' + deviceFeatureId;
+      console.log(urlGet);
       fetch(url)
         .then(response => {
           if (response.ok) {
@@ -123,13 +114,15 @@ if(!$user) {
                 if(data["value"] == 1) {
                   state = true;
                   stateDisplay = "Currently ON";
+                  bgColor = "#ffffcc"
                 } else {
                   state = false;
                   stateDisplay = "Currently OFF";
+                  
                 }
-                document.getElementById("statedisplay").innerHTML = stateDisplay;
-                document.getElementById("toggleButton").innerHTML = data["name"];
-                //alert(`Light turned ${state ? 'ON' : 'OFF'}`);
+                document.getElementById("statedisplay_" + deviceFeatureId).innerHTML = stateDisplay;
+                document.getElementById("toggleButton_" + deviceFeatureId).style.backgroundColor  = bgColor;
+                document.getElementById("toggleButton_" + deviceFeatureId).innerHTML = data["name"];
             });
           } else {
             //alert('Failed to send command');
@@ -140,6 +133,31 @@ if(!$user) {
  }
   </script>
 
+		
+<?php
+		
+		
+		$deviceFeatureIdArray = explode(",", $deviceFeatureIds);
+		for($i = 0; $i< count($deviceFeatureIdArray); $i++) {
+      $deviceFeatureId = $deviceFeatureIdArray[$i];
+       
+  ?>
+
+  <div style='margin: 15px'><button id="toggleButton_<?php echo $deviceFeatureId;?>">Toggle Light</button><div id='statedisplay_<?php echo $deviceFeatureId;?>'></div></div>
+
+  <script>
+    var state = false; // start as OFF
+    toggleLight(<?php echo $deviceFeatureId?>, false);
+    
+
+    document.getElementById('toggleButton_<?php echo $deviceFeatureId;?>').addEventListener('click', () => {
+      toggleLight(<?php echo $deviceFeatureId;?>, true);
+    });
+  </script>
+   <?php
+  }
+  ?> 
+  
 
 
 
