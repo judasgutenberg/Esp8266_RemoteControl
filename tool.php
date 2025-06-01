@@ -153,7 +153,7 @@ if ($user) {
     $primaryKeyName = filterStringForSqlEntities(gvfw('primary_key_name'), true);
     $primaryKeyValue = gvfw('primary_key_value');
     $hashedEntities = gvfw('hashed_entities');
-    $whatHashedEntitiesShouldBe =  crypt($name . $table .$primaryKeyName  . $primaryKeyValue , $encryptionPassword);
+    $whatHashedEntitiesShouldBe =  crypt($name . $table . $primaryKeyName . $primaryKeyValue, $encryptionPassword);
     if($hashedEntities != $whatHashedEntitiesShouldBe){
       echo $hashedEntities. " " . $whatHashedEntitiesShouldBe . "\n";
       die("Data appears to have been tampered with.");
@@ -184,7 +184,6 @@ if ($user) {
     } else {
       var_dump($result);
     }
-     
     die();
   
   } else if ($action == "runencryptedsql") { //this is secure because the sql is very hard to decrypt if you don't know the encryption key
@@ -332,7 +331,11 @@ if ($user) {
     header('Location: '.$_SERVER['PHP_SELF'] . "?table=" . $table . "&device_id=" . $deviceId);
   } elseif($action == "json"){
     if($table!= "user" || $user["role"]  == "super") {
-      $sql = "SELECT * FROM " .  $table  . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "'";
+      $name = filterStringForSqlEntities(gvfw('name')); 
+      if($name == "") {
+        $name = "*";
+      }
+      $sql = "SELECT " . $name . " FROM " .  $table  . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "'";
       if($table != "tenant" && $table != "user"){
         $sql .= " AND tenant_id='" . $tenantId . "'";
       } 
