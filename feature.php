@@ -54,41 +54,14 @@ if(!$user) {
 <html>
 <head>
   <title>Device Feature Toggle</title>
-  <!--For offline ESP graphs see this tutorial https://circuits4you.com/2018/03/10/esp8266-jquery-and-ajax-web-server/ -->
-  <!--<script src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>--> 
   <link rel='stylesheet' href='tool.css?version=1711570359'>
   <script src='tool.js'></script>
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
 </head>
 
 <body>
-<?php
-	//$out .= topmostNav();
-	//$out .= "<div class='logo'>Inverter Data</div>\n";
-	if($user) {
-		//$out .= "<div class='outercontent'>";
-		if($poser) {
-			$poserString = " posing as <span class='poserindication'>" . $poser["email"] . "</span> (<a href='?action=disimpersonate'>unpose</a>)";
-
-		}
-		//$out .= "<div class='loggedin'>You are logged in as <b>" . $user["email"] . "</b>" .  $poserString . "  on " . $user["name"] . " <div class='basicbutton'><a href=\"?action=logout\">logout</a></div></div>\n";
-		}
-		else
-		{
-		//$out .= "<div class='loggedin'>You are logged out.  </div>\n";
-		} 
-		$out .= "<div>\n";
-		$out .= "<div class='documentdescription'>";
-		
- 
-		$out .= "</div>";
-		//$out .= "<div class='innercontent'>";
-		echo $out; 
-		
-		?>
-		
-		 <script>
-  function toggleLight(deviceFeatureId, actuallySetState) {
+<script>
+  function toggleDeviceFeature(deviceFeatureId, actuallySetState) {
   
       state = !state;
       const value = state ? 'true' : 'false';
@@ -135,8 +108,6 @@ if(!$user) {
 
 		
 <?php
-		
-		
 		$deviceFeatureIdArray = explode(",", $deviceFeatureIds);
 		for($i = 0; $i< count($deviceFeatureIdArray); $i++) {
       $deviceFeatureId = $deviceFeatureIdArray[$i];
@@ -147,11 +118,11 @@ if(!$user) {
 
   <script>
     var state = false; // start as OFF
-    toggleLight(<?php echo $deviceFeatureId?>, false);
+    toggleDeviceFeature(<?php echo $deviceFeatureId?>, false);
     
 
     document.getElementById('toggleButton_<?php echo $deviceFeatureId;?>').addEventListener('click', () => {
-      toggleLight(<?php echo $deviceFeatureId;?>, true);
+      toggleDeviceFeature(<?php echo $deviceFeatureId;?>, true);
     });
   </script>
    <?php
