@@ -105,8 +105,8 @@ if(!$user) {
       const value = state ? 'true' : 'false';
       let url = 'tool.php?action=genericFormSave&table=device_feature&primary_key_name=device_feature_id&primary_key_value=<?php echo $deviceFeatureId;?>&value=' + value + '&name=value&hashed_entities=neeueWZRf95X6';
       if(!actuallySetState) {
-        url = "tool.php";
-        state = !state;
+        url = "data:application/json,{}";
+        state = !state;  //oh, we didn't send a change state, so flip it back to the way things were
       }
       const urlGet = 'tool.php?action=json&table=device_feature&device_feature_id=<?php echo $deviceFeatureId;?>';
       fetch(url)
