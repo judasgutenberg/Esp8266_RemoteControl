@@ -101,18 +101,20 @@ if(!$user) {
     stateDisplay = "Unknown or non-existent";
     if(data["value"] === "1") {
       state = true;
-      stateDisplay = "Currently ON";
+      stateDisplay = "Just Switched ON";
       bgColor = "#ffe7cc"
     } else if (data["value"] === "0"){
       state = false;
-      stateDisplay = "Currently OFF";
+      stateDisplay = "Just Switched OFF";
       bgColor = "#e7e7ff"
     }
     if(data["last_known_device_value"] === "1" && data["value"] === "1") {
       bgColor = "#ffffcc"
+      stateDisplay = "Confirmed ON";
     }
     if(data["last_known_device_value"] === "0" && data["value"] === "0") {
       bgColor = "#ccccff"
+      stateDisplay = "Confirmed OFF";
     }
     let deviceFeatureId = data["device_feature_id"];
     if(document.getElementById("statedisplay_" + deviceFeatureId)) {
@@ -147,7 +149,7 @@ function updateButtons() {
       $hashedEntries =  hash_hmac('sha256', $name . $table . $primaryKeyName . $primaryKeyValue, $encryptionPassword);
   ?>
 
-  <div style='margin: 15px'><button id="toggleButton_<?php echo $deviceFeatureId;?>">Toggle Feature</button><div id='statedisplay_<?php echo $deviceFeatureId;?>'></div></div>
+  <div style='margin: 15px'><button id="toggleButton_<?php echo $deviceFeatureId;?>">Toggle Feature</button><div style='font-size:10px;color:#999999' id='statedisplay_<?php echo $deviceFeatureId;?>'></div></div>
 
   <script>
     var state = false; // start as OFF
