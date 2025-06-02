@@ -97,11 +97,13 @@ if(!$user) {
  }
  
  function changeButton(data) {
-    if(data["value"] == 1) {
+    bgColor = '#cccccc';
+    stateDisplay = "Unknown or non-existent";
+    if(data["value"] === "1") {
       state = true;
       stateDisplay = "Currently ON";
       bgColor = "#ffe7cc"
-    } else {
+    } else if (data["value"] === "0"){
       state = false;
       stateDisplay = "Currently OFF";
       bgColor = "#e7e7ff"
