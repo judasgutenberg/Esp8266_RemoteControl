@@ -55,7 +55,6 @@ if(!$user) {
 <body>
 <script>
   function toggleDeviceFeature(deviceFeatureId, hashedEntries,  actuallySetState) {
-  
       state = !state;
       const value = state ? 'true' : 'false';
       let url = 'tool.php?action=genericFormSave&table=device_feature&primary_key_name=device_feature_id&primary_key_value=' + deviceFeatureId + '&value=' + value + '&name=value&hashed_entities=' + hashedEntries;
@@ -64,7 +63,11 @@ if(!$user) {
         state = !state;  //oh, we didn't send a change state, so flip it back to the way things were
       }
       let bgColor = "#ccccff";
-      const urlGet = 'tool.php?action=json&table=device_feature&device_feature_id=' + deviceFeatureId;
+      
+      let urlGet = 'tool.php?action=json&table=device_feature';
+      if(deviceFeatureId) {
+        urlGet += '&device_feature_id=' + deviceFeatureId;
+      }
       console.log(urlGet);
       fetch(url)
         .then(response => {
@@ -77,18 +80,13 @@ if(!$user) {
               }
             }).then(data => {
                 console.log(data);
-                if(data["value"] == 1) {
-                  state = true;
-                  stateDisplay = "Currently ON";
-                  bgColor = "#ffffcc"
+                if("value" in data) {
+                  state = changeButton(data)
                 } else {
-                  state = false;
-                  stateDisplay = "Currently OFF";
-                  
+                  Object.keys(data).forEach(key => {
+                    state = changeButton(data[key])
+                  });
                 }
-                document.getElementById("statedisplay_" + deviceFeatureId).innerHTML = stateDisplay;
-                document.getElementById("toggleButton_" + deviceFeatureId).style.backgroundColor  = bgColor;
-                document.getElementById("toggleButton_" + deviceFeatureId).innerHTML = data["name"];
             });
           } else {
             //alert('Failed to send command');
@@ -97,6 +95,41 @@ if(!$user) {
         .catch(err => alert('Error: ' + err));
   
  }
+ 
+ function changeButton(data) {
+    if(data["value"] == 1) {
+      state = true;
+      stateDisplay = "Currently ON";
+      bgColor = "#ffe7cc"
+    } else {
+      state = false;
+      stateDisplay = "Currently OFF";
+      bgColor = "#e7e7ff"
+    }
+    if(data["last_known_device_value"] === "1" && data["value"] === "1") {
+      bgColor = "#ffffcc"
+    }
+    if(data["last_known_device_value"] === "0" && data["value"] === "0") {
+      bgColor = "#ccccff"
+    }
+    let deviceFeatureId = data["device_feature_id"];
+    if(document.getElementById("statedisplay_" + deviceFeatureId)) {
+      document.getElementById("statedisplay_" + deviceFeatureId).innerHTML = stateDisplay;
+      document.getElementById("toggleButton_" + deviceFeatureId).style.backgroundColor  = bgColor;
+      document.getElementById("toggleButton_" + deviceFeatureId).innerHTML = data["name"];
+    }
+    return state
+ }
+ 
+function updateButtons() {
+  setTimeout(()=>{
+  toggleDeviceFeature(null, null,  false);
+  updateButtons();
+  },
+  5000);
+}
+
+
   </script>
 
 		
@@ -112,7 +145,7 @@ if(!$user) {
       $hashedEntries =  hash_hmac('sha256', $name . $table . $primaryKeyName . $primaryKeyValue, $encryptionPassword);
   ?>
 
-  <div style='margin: 15px'><button id="toggleButton_<?php echo $deviceFeatureId;?>">Toggle Light</button><div id='statedisplay_<?php echo $deviceFeatureId;?>'></div></div>
+  <div style='margin: 15px'><button id="toggleButton_<?php echo $deviceFeatureId;?>">Toggle Feature</button><div id='statedisplay_<?php echo $deviceFeatureId;?>'></div></div>
 
   <script>
     var state = false; // start as OFF
@@ -122,6 +155,8 @@ if(!$user) {
     document.getElementById('toggleButton_<?php echo $deviceFeatureId;?>').addEventListener('click', () => {
       toggleDeviceFeature(<?php echo $deviceFeatureId;?>, '<?php echo $hashedEntries;?>', true);
     });
+    
+     updateButtons();
   </script>
    <?php
   }

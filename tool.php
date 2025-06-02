@@ -335,13 +335,26 @@ if ($user) {
       if($name == "") {
         $name = "*";
       }
-      $sql = "SELECT " . $name . " FROM " .  $table  . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "'";
+      $pkPhrase = "";
+      $pkValue =  gvfw($table . "_id");
+      if($pkValue) {
+        $pkPhrase =  $table . "_id='" . intval(gvfw($table . "_id")) . "'";
+      }
+      $sql = "SELECT " . $name . " FROM " .  $table  . " WHERE " . $pkPhrase;
+      if($pkPhrase != "") {
+        $sql .= " AND ";
+      }
       if($table != "tenant" && $table != "user"){
-        $sql .= " AND tenant_id='" . $tenantId . "'";
+        $sql .= " tenant_id='" . $tenantId . "'";
       } 
       //echo $sql;
       $result = mysqli_query($conn, $sql);
-      $valueArray = mysqli_fetch_assoc($result);
+      if($result) {
+        $valueArray = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        if($pkValue && $valueArray) {
+          $valueArray = $valueArray[0];
+        }
+      }
       die(json_encode($valueArray, JSON_FORCE_OBJECT));
     }
   } elseif($action == "log") {
