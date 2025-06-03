@@ -72,12 +72,14 @@ $version = 1711570359;
     var state = false; // start as OFF
     toggleDeviceFeature(<?php echo $deviceFeatureId?>,  '<?php echo $hashedEntries;?>', false);
     document.getElementById('toggleButton_<?php echo $deviceFeatureId;?>').addEventListener('click', () => {
+      console.log(this);
       toggleDeviceFeature(<?php echo $deviceFeatureId;?>, '<?php echo $hashedEntries;?>', true);
     });
-    updateFeatureDetailButtons();
+   
   </script>
 <?php
     }
 ?> 
+<script> updateFeatureDetailButtons();</script>
 </body>
 </html>
