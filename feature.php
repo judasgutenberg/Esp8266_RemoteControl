@@ -2,7 +2,7 @@
 <?php 
 //simple feature app page
 //displays buttons showing the state of device_features that can be toggled off and on
-//all you need to do is pass this page the correct device_feature_id and it handles all the details
+//all you need to do is pass this page the correct device_feature_ids, separated by commas, and it handles all the details
 //of presenting the interface.
 //Gus Mueller
 //May 31 2025
@@ -12,6 +12,7 @@ include("device_functions.php");
 //ini_set('display_errors', 1);
 //ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
+$version = 1.711570360;
 
 $out = "";
 $conn = mysqli_connect($servername, $username, $password, $database);
@@ -42,7 +43,7 @@ if(!$user) {
 	echo bodyWrap($content, $user, "", null);
 	die();
 }
-$version = 1711570359;
+
 ?>
 <html>
 <head>
@@ -79,8 +80,8 @@ $version = 1711570359;
 <?php
     }
 ?> 
-<script> 
-updateFeatureDetailButtons();
-</script>
+  <script> 
+    updateFeatureDetailButtons();
+  </script>
 </body>
 </html>
