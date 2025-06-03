@@ -69,7 +69,6 @@ $version = 1711570359;
     <div style='font-size:10px;color:#999999' id='statedisplay_<?php echo $deviceFeatureId;?>'></div>
   </div>
   <script>
-    var state = false; // start as OFF
     toggleDeviceFeature(<?php echo $deviceFeatureId?>,  '<?php echo $hashedEntries;?>', false);
     document.getElementById('toggleButton_<?php echo $deviceFeatureId;?>').addEventListener('click', () => {
       console.log(this);
@@ -80,6 +79,8 @@ $version = 1711570359;
 <?php
     }
 ?> 
-<script> updateFeatureDetailButtons();</script>
+<script> 
+updateFeatureDetailButtons();
+</script>
 </body>
 </html>

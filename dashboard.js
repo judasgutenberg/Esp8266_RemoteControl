@@ -1,10 +1,9 @@
+const values = new Array();
+
 function toggleDeviceFeature(deviceFeatureId, hashedEntries,  actuallySetState) { //used to set state or to just retrieve existing state
-  state = !state;
-  const value = state ? 'true' : 'false';
-  let url = 'tool.php?action=genericFormSave&table=device_feature&primary_key_name=device_feature_id&primary_key_value=' + deviceFeatureId + '&value=' + value + '&name=value&hashed_entities=' + hashedEntries;
+  let url = 'tool.php?action=genericFormSave&table=device_feature&primary_key_name=device_feature_id&primary_key_value=' + deviceFeatureId + '&value=' + !values[deviceFeatureId] + '&name=value&hashed_entities=' + hashedEntries;
   if(!actuallySetState) {
     url = "data:application/json,{}";
-    state = !state;  //oh, we didn't send a change state, so flip it back to the way things were
   }
   let bgColor = "#ccccff";
   
@@ -25,15 +24,15 @@ function toggleDeviceFeature(deviceFeatureId, hashedEntries,  actuallySetState) 
         }).then(data => {
             //console.log(data);
             if("value" in data) {
-              state = changeButton(data)
+              changeButton(data)
             } else {
               Object.keys(data).forEach(key => {
-                state = changeButton(data[key])
+                changeButton(data[key])
               });
             }
         });
       } else {
-        //alert('Failed to send command');
+        alert('Failed to send command');
       }
     })
     .catch(err => alert('Error: ' + err));
@@ -42,6 +41,7 @@ function toggleDeviceFeature(deviceFeatureId, hashedEntries,  actuallySetState) 
 
 function changeButton(data) {
   bgColor = '#cccccc';
+  let state = false;
   stateDisplay = "Unknown or non-existent";
   if(data["value"] === "1") {
     state = true;
@@ -66,6 +66,7 @@ function changeButton(data) {
     document.getElementById("toggleButton_" + deviceFeatureId).style.backgroundColor  = bgColor;
     document.getElementById("toggleButton_" + deviceFeatureId).innerHTML = data["name"];
   }
+  values[deviceFeatureId] = state;
   return state
 }
 
