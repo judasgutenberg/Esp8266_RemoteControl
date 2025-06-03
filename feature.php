@@ -1,7 +1,7 @@
 <!doctype html>
 <?php 
 //simple feature app page
-//displays a button showing the state of a device_feature that can be toggled off and on
+//displays buttons showing the state of device_features that can be toggled off and on
 //all you need to do is pass this page the correct device_feature_id and it handles all the details
 //of presenting the interface.
 //Gus Mueller
@@ -19,7 +19,7 @@ $user = autoLogin();
 $tenantSelector = "";
 $content = "";
 $action = gvfw("action");
-$deviceFeatureIds = gvfw("device_feature_id");
+$deviceFeatureIds = gvfw("device_feature_id"); //can be muliple, separated by commas
 if ($action == "login") {
 	$tenantId = gvfa("tenant_id", $_GET);
 	$tenantSelector = loginUser($tenantId);
@@ -70,12 +70,9 @@ if(!$user) {
   <script>
     var state = false; // start as OFF
     toggleDeviceFeature(<?php echo $deviceFeatureId?>,  '<?php echo $hashedEntries;?>', false);
-    
-
     document.getElementById('toggleButton_<?php echo $deviceFeatureId;?>').addEventListener('click', () => {
       toggleDeviceFeature(<?php echo $deviceFeatureId;?>, '<?php echo $hashedEntries;?>', true);
     });
-    
     updateFeatureDetailButtons();
   </script>
    <?php
