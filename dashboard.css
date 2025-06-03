@@ -1,0 +1,24 @@
+.smart-button {
+	display: inline-block;
+	padding: 1rem 1.5rem;
+	font-size: 1.1rem;
+	font-weight: 600;
+	color: #000000;
+	background-color: #999999; /* iOS-style blue */
+	border: 1px solid #000000; /* <-- One-pixel black border */
+	border-radius: 12px;
+	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+	cursor: pointer;
+	transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+	touch-action: manipulation;
+  }
+  
+  .smart-button:hover {
+ 
+	box-shadow: 0 0 12px 4px rgba(255, 123, 0, 0.6); /* X, Y, blur, spread */
+  }
+  
+  .smart-button:active {
+	transform: scale(0.96);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
