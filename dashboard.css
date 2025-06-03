@@ -4,7 +4,7 @@
 	font-size: 1.1rem;
 	font-weight: 600;
 	color: #000000;
-	background-color: #999999; /* iOS-style blue */
+	background-color: #999999; 
 	border: 1px solid #000000; /* <-- One-pixel black border */
 	border-radius: 12px;
 	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
