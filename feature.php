@@ -42,14 +42,14 @@ if(!$user) {
 	echo bodyWrap($content, $user, "", null);
 	die();
 }
-
+$version = 1711570359;
 ?>
 <html>
 <head>
   <title>Device Feature Toggle</title>
-  <link rel='stylesheet' href='dashboard.css?version=1711570359'>
-  <script src='tool.js'></script>
-  <script src='dashboard.js'></script>
+  <link rel='stylesheet' href='dashboard.css?version=<?php echo $version;?>'>
+  <script src='tool.js?version=<?php echo $version;?>'></script>
+  <script src='dashboard.js?version=<?php echo $version;?>'></script>
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
 </head>
 <body>
@@ -63,10 +63,11 @@ if(!$user) {
       $name  = "value";
       //echo $name . $table . $primaryKeyName  . $primaryKeyValue . "<br/>\n";
       $hashedEntries =  hash_hmac('sha256', $name . $table . $primaryKeyName . $primaryKeyValue, $encryptionPassword);
-  ?>
-
-  <div style='margin: 15px'><button class="smart-button" id="toggleButton_<?php echo $deviceFeatureId;?>">Toggle Feature</button><div style='font-size:10px;color:#999999' id='statedisplay_<?php echo $deviceFeatureId;?>'></div></div>
-
+?>
+  <div style='margin: 15px'>
+    <button class="smart-button" id="toggleButton_<?php echo $deviceFeatureId;?>">Toggle Feature</button>
+    <div style='font-size:10px;color:#999999' id='statedisplay_<?php echo $deviceFeatureId;?>'></div>
+  </div>
   <script>
     var state = false; // start as OFF
     toggleDeviceFeature(<?php echo $deviceFeatureId?>,  '<?php echo $hashedEntries;?>', false);
@@ -75,12 +76,8 @@ if(!$user) {
     });
     updateFeatureDetailButtons();
   </script>
-   <?php
-  }
-  ?> 
- 
+<?php
+    }
+?> 
 </body>
 </html>
- 
-
- 
