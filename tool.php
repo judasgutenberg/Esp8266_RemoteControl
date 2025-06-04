@@ -4,8 +4,6 @@
 //////////////////////////////////////////////////////////////
 //troubleURLs:  
  
- 
-
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -13,9 +11,7 @@ error_reporting(E_ALL);
 include("config.php");
 include("site_functions.php");
 include("device_functions.php");
-//var_dump($_POST);
  
-
 $conn = mysqli_connect($servername, $username, $password, $database);
 
 $table = strtolower(filterStringForSqlEntities(gvfw('table', "device"))); //make sure this table name doesn't contain injected SQL
@@ -39,14 +35,12 @@ $out = "";
 $errors = NULL;
 $tenantSelector = "";
  
- 
 $page = gvfw('page');
 $datatype = gvfw('datatype'); 
 //echo $table  . "*" . $action. "*" .  $datatype;
 $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
 $formatedDateTime =  $date->format('Y-m-d H:i:s');
 
- 
 if(strpos($action, "password") !== false) {
   $email = gvfw("email");
   $token = gvfw("token");
@@ -56,7 +50,6 @@ if(strpos($action, "password") !== false) {
     } else {
       $out = "Reset email could not be sent. Complain to the admin if you can somehow.";
     }
-    
   } else {
     
     if($token){
@@ -92,10 +85,7 @@ if(strpos($action, "password") !== false) {
   die();
 }
 
-
 if($_POST || gvfw("table")) { //gvfw("table") 
-
-
 	if ($action == "login") {
     $tenantId = gvfa("tenant_id", $_GET);
 		$tenantSelector = loginUser(NULL, $tenantId);
@@ -197,7 +187,6 @@ if ($user) {
       $direction = gvfw('direction');
       if($direction == "true"){
         $sortAddendum .= " DESC";
-
       }
     }
  
@@ -233,15 +222,10 @@ if ($user) {
         $out .= "<div class='issuesheader'>" .  gvfa("label", $foundData)  . "</div>";
         //dealing with a utility that has a form
         $role = gvfa("role", $foundData);
-        
         if (canUserDoThing($user, $role) && ($action || $outputFormat)) { //don't actually need to do this here any more
-          
           if (array_key_exists("sql", $foundData)) { //allows the guts of a report to work as a utility
-
             $sql = $foundData["sql"];
             $sql =  tokenReplace($sql, $_POST);
-            
-            
             $reportResult = mysqli_query($conn, $sql);
             $error = mysqli_error($conn);
             $affectedRows = mysqli_affected_rows($conn);
@@ -255,13 +239,11 @@ if ($user) {
               $out .= genericTable($rows, null, null, null);
             }
           } else if(array_key_exists("action", $foundData) || $outputFormat) {
-            
               $redirect = true;
               $codeToRun = "";
               if($foundData["action"]) {
                 $codeToRun = tokenReplace($foundData["action"], $_GET);
                 $codeToRun = tokenReplace($codeToRun, $_POST) . ";";
-
               }
               if(strpos($codeToRun, ">") !== false || checkPhpFunctionCallIsBogus($codeToRun)){
                 $errors["generic"] = "You must enter all the necessary data in the utility form.";
@@ -279,8 +261,7 @@ if ($user) {
                     die();
                   } else {
                     $out .= "<pre>" . $result . "</pre>";
-                  }
-                  
+                  } 
                 }
                 catch(ParseError $error) { //this shit does not work. does try/catch ever work in PHP?
                   //var_dump($error);
@@ -294,8 +275,6 @@ if ($user) {
               }
           }
         }
- 
-        
       } else if ($action) {
  
         if (!gvfa("form", $foundData) && !gvfa("front_end_js", $foundData)){
@@ -307,10 +286,8 @@ if ($user) {
         }
       }
    }  
-   
-    
-   if(!$action) {
 
+   if(!$action) {
     $out .= utilities($user, "list");
    } else if(!$foundData && false) {
     $out .= "<div class='generalerror'>Utility not yet developed.</div>";
@@ -416,7 +393,6 @@ if ($user) {
       }
     }
 	} else if($table == "tenant") {
-    
     if ($action == "startcreate" || gvfw("tenant_id") != "") {
       $out .=  editTenant($errors, $user);
     } else {
@@ -457,6 +433,5 @@ if ($user) {
     }
   }
 }
-
 
 echo bodyWrap($out, $user, $deviceId, $poser);

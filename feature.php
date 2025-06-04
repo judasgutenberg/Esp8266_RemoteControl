@@ -43,7 +43,6 @@ if(!$user) {
 	echo bodyWrap($content, $user, "", null);
 	die();
 }
-
 ?>
 <html>
 <head>
@@ -51,6 +50,7 @@ if(!$user) {
   <link rel='stylesheet' href='dashboard.css?version=<?php echo $version;?>'>
   <script src='tool.js?version=<?php echo $version;?>'></script>
   <script src='dashboard.js?version=<?php echo $version;?>'></script>
+  <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
 </head>
 <body>
@@ -70,12 +70,10 @@ if(!$user) {
     <div style='font-size:10px;color:#999999' id='statedisplay_<?php echo $deviceFeatureId;?>'></div>
   </div>
   <script>
-    toggleDeviceFeature(<?php echo $deviceFeatureId?>,  '<?php echo $hashedEntries;?>', false);
+    toggleDeviceFeature(<?php echo $deviceFeatureId?>,  null, false);
     document.getElementById('toggleButton_<?php echo $deviceFeatureId;?>').addEventListener('click', () => {
-      console.log(this);
       toggleDeviceFeature(<?php echo $deviceFeatureId;?>, '<?php echo $hashedEntries;?>', true);
     });
-   
   </script>
 <?php
     }

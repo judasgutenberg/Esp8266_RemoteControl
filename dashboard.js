@@ -11,7 +11,7 @@ function toggleDeviceFeature(deviceFeatureId, hashedEntries,  actuallySetState) 
   if(deviceFeatureId) {
     urlGet += '&device_feature_id=' + deviceFeatureId;
   }
-  console.log(urlGet);
+  //console.log(urlGet);
   fetch(url)
     .then(response => {
       if (response.ok) {
