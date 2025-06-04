@@ -1,0 +1,20 @@
+{
+  "name": "ESP8266 Remote Control",
+  "short_name": "ESPRemote",
+  "start_url": "/weather/feature.php?device_feature_id=36,2,3,4,9,15,16,25",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2196f3",
+  "icons": [
+    {
+      "src": "lightbulb.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "lightbulb.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
