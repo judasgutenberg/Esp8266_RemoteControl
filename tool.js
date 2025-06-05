@@ -114,8 +114,10 @@ function checkSqlSyntax(formElementName) {
 }
 
 function gvfa(name, source, fail){ //get value from associative
-  if(source.name != null) {
-    return source[name];
+  if(source && source[name]) {
+    if(source[name] != null) {
+      return source[name];
+    }
   }
   return fail;
 }

@@ -80,16 +80,12 @@ function addPastYearToGraph(locationIdArray, locationId, yearsAgo, plotType){
 						mapToUse = map;
 					}
 				}
-				if(gvfa(mapToUse, "include_in_graph") == 1 || gvfa(mapToUse, "include_in_graph") == null) {
+				if(gvfa("include_in_graph", mapToUse) == 1 || gvfa("include_in_graph", mapToUse) == null) {
 					let color = colorSeries[columnCount];
 					let label = column;
-					if(gvfa(mapToUse, "color")){
-						color = mapToUse["color"];
-						color = tinycolor(color).lighten(26);
-					}
-					if(gvfa(mapToUse, "color")){
-						label = mapToUse["display_name"];
-					}
+					color = gvfa("color", mapToUse, color);
+					color = tinycolor(color).lighten(26);
+					label = gvfa("color", mapToUse, label);
 					label = label + " " + parseInt(parseInt(new Date().getFullYear()) - yearsAgo);
 					//console.log(graphDataObject);
 					let yAxisId = "A";
@@ -136,16 +132,12 @@ function showGraph(locationId, plotType){
 					mapToUse = map;
 				}
 			}
-			if(gvfa(mapToUse, "include_in_graph")  == 1 || gvfa(mapToUse, "include_in_graph") == null) {
+			if(gvfa("include_in_graph", mapToUse) == 1 || gvfa("include_in_graph", mapToUse) == null) {
 				let graphSubtitle;
 				let color = colorSeries[columnCount];
 				let label = column;
-				if(gvfa(mapToUse, "color")){
-					color = mapToUse["color"];
-				}
-				if(gvfa(mapToUse, "display_name")){
-					label = mapToUse["display_name"];
-				}
+				color = gvfa("color", mapToUse, color);
+				label = gvfa("display_name", mapToUse, label);
 				let yAxisId = "A";
 				if(column == "pressure"){
 					yAxisId = "B";
