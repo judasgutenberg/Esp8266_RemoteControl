@@ -1,6 +1,7 @@
 <!doctype html>
 <?php 
-//simple feature app page
+//simple dashboard page, targeting phones
+//this can do what feature.php does, or, if not passed any values, it will look for an entry in the dashboard table, either the oldest one or one referred to by dashboard_id
 //displays buttons showing the state of device_features that can be toggled off and on
 //all you need to do is pass this page the correct device_feature_ids, separated by commas, and it handles all the details
 //of presenting the interface.
@@ -21,6 +22,8 @@ $tenantSelector = "";
 $content = "";
 $action = gvfw("action");
 $deviceFeatureIds = gvfw("device_feature_id"); //can be muliple, separated by commas
+$dashboardId = gvfw("dashboard_id");
+
 if ($action == "login") {
 	$tenantId = gvfa("tenant_id", $_GET);
 	$tenantSelector = loginUser($tenantId);
@@ -31,6 +34,8 @@ if ($action == "login") {
 	header("Location: ?action=login");
 	die();
 }
+
+
 if(!$user) {
 	if(gvfa("password", $_POST) != "" && $tenantSelector == "") {
 		$content .= "<div class='genericformerror'>The credentials you entered have failed.</div>";
@@ -42,7 +47,12 @@ if(!$user) {
 	}
 	echo bodyWrap($content, $user, "", null);
 	die();
+} else {
+  if(!$deviceFeatureIds  && !$dashboardId) {
+    $dashboardId = getOldestDashboardId($user["tenant_id"]);
+  }
 }
+
 ?>
 <html>
 <head>

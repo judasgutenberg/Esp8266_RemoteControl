@@ -83,6 +83,15 @@ if(strpos($action, "password") !== false) {
   disImpersonate();
   header("Location: .");
   die();
+} else if ($action == "manifest") {
+  $startUrl = gvfw("url");
+  $icon = gvfw("icon");
+  $bgColor = gvfw("bgcolor");
+  $themeColor = gvfw("themecolor");
+  $name = gvfw("name");
+  $shortName = gvfw("shortname");
+  manifestJson($name, $shortName, $startUrl, $icon, $bgColor, $themeColor);
+  die();
 }
 
 if($_POST || gvfw("table")) { //gvfw("table") 

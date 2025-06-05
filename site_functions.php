@@ -246,6 +246,37 @@ function autoLogin() {
    }
   }
 }
+
+//generate manifest JSON dynamically based on the location we are at, with the ability to subsitute in other icons, etc.
+function manifestJson($name = "", $shortName = "", $startUrl = "dashoard.php", $icon = "lightbulb.png", $bgColor = "#ffffff", $themeColor = "#2196f3") {
+  // Determine the current page URL path and query string
+  // $startUrl = $_SERVER['REQUEST_URI'];
+  // Build the manifest array
+  $manifest = [
+      "name" => $name,
+      "short_name" => $shortName,
+      "start_url" => $startUrl,
+      "display" => "standalone",
+      "background_color" => $bgColor,
+      "theme_color" => $themeColor,
+      "icons" => [
+          [
+              "src" => $icon,
+              "sizes" => "192x192",
+              "type" => "image/png"
+          ],
+          [
+              "src" => $icon,
+              "sizes" => "512x512",
+              "type" => "image/png"
+          ]
+      ]
+  ];
+  // Set appropriate headers and output JSON
+  header('Content-Type: application/json');
+  echo json_encode($manifest, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+  die();
+}
  
 function disImpersonate() {
 	Global $poserCookieName;
