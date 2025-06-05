@@ -83,11 +83,11 @@ function addPastYearToGraph(locationIdArray, locationId, yearsAgo, plotType){
 				if(gvfa(mapToUse, "include_in_graph") == 1 || gvfa(mapToUse, "include_in_graph") == null) {
 					let color = colorSeries[columnCount];
 					let label = column;
-					if(mapToUse["color"]){
+					if(gvfa(mapToUse, "color")){
 						color = mapToUse["color"];
 						color = tinycolor(color).lighten(26);
 					}
-					if(mapToUse["display_name"]){
+					if(gvfa(mapToUse, "color")){
 						label = mapToUse["display_name"];
 					}
 					label = label + " " + parseInt(parseInt(new Date().getFullYear()) - yearsAgo);
@@ -140,10 +140,10 @@ function showGraph(locationId, plotType){
 				let graphSubtitle;
 				let color = colorSeries[columnCount];
 				let label = column;
-				if(mapToUse["color"]){
+				if(gvfa(mapToUse, "color")){
 					color = mapToUse["color"];
 				}
-				if(mapToUse["display_name"]){
+				if(gvfa(mapToUse, "display_name")){
 					label = mapToUse["display_name"];
 				}
 				let yAxisId = "A";
