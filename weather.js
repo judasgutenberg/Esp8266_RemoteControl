@@ -80,7 +80,7 @@ function addPastYearToGraph(locationIdArray, locationId, yearsAgo, plotType){
 						mapToUse = map;
 					}
 				}
-				if(mapToUse["include_in_graph"] == 1) {
+				if(gvfa(mapToUse, "include_in_graph") == 1 || gvfa(mapToUse, "include_in_graph") == null) {
 					let color = colorSeries[columnCount];
 					let label = column;
 					if(mapToUse["color"]){
@@ -136,7 +136,7 @@ function showGraph(locationId, plotType){
 					mapToUse = map;
 				}
 			}
-			if(mapToUse["include_in_graph"] == 1) {
+			if(gvfa(mapToUse, "include_in_graph")  == 1 || gvfa(mapToUse, "include_in_graph") == null) {
 				let graphSubtitle;
 				let color = colorSeries[columnCount];
 				let label = column;

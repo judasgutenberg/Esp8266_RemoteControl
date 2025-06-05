@@ -113,6 +113,14 @@ function checkSqlSyntax(formElementName) {
 	}
 }
 
+function gvfa(name, source, fail){ //get value from associative
+  if(source.name != null) {
+    return source[name];
+  }
+  return fail;
+}
+
+
 function replaceXMLTagsWithOne(input) {
 	return input.replace(/<[^>]*>/g, '1');
   }
