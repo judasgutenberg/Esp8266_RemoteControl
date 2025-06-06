@@ -233,7 +233,131 @@ function reports($tenantId, $user) {
 
 }
 
+function weatherConditions($tenantId, $user) {
+  Global $conn;
+  $table = "weather_condition";
+  $sql = "SELECT *  FROM " . $table . "  WHERE tenant_id=" . intval($tenantId);
+  //echo $sql;
+  $result = mysqli_query($conn, $sql);
+  $out = "";
+  $out .= "<div class='listtitle'>Your " . $table . "s</div>\n";
+  $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a new " . $table  . "</div>\n";
+  
+  //$out .= "<hr style='width:100px;margin:0'/>\n";
+  $headerData = array(
+    [
+	    'label' => 'id',
+      'name' => $table . "_id"
+	  ],
+    [
+      'label' => 'name',
+      'name' => 'name' 
+    ],
+    [
+      'label' => 'relative brightness',
+      'name' => 'relative_brightness' 
+    ],
+    [
+      'label' => 'relative_precipitation brightness',
+      'name' => 'relative_precipitation' 
+    ],
+    [
+      'label' => 'color',
+      'name' => 'color',      
+      'changeable' => true,
+      'type' => 'color'
+    ],
+    );
+    $toolsTemplate = "";
+ 
+    $toolsTemplate .= "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
+    $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
+ 
+    if($result) {
+      $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+      
+      if($rows) {
+        $out .= genericTable($rows, $headerData, $toolsTemplate, null,  $table, $table . "_id", $sql);
+      }
+    }
+    return $out;
+}
 
+function editWeatherCondition($error,  $tenantId) {
+  Global $conn;
+  $table = "weather_condition";
+  $pk = gvfw($table . "_id");
+  
+  $submitLabel = "save weather condition";
+  if($pk  == ""  && $_POST) {
+ 
+    $submitLabel = "create weather condition";
+    $source = $_POST;
+  } else {
+    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
+    $result = mysqli_query($conn, $sql);
+    if($result) {
+      $source = mysqli_fetch_array($result);
+    }
+  }
+  if(!$pk){
+    $pk = "NULL";
+  }
+  $formData = array(
+    [
+	    'label' => 'created',
+      'name' => 'created',
+      'type' => 'read_only',
+	    'value' => gvfa("created", $source), 
+      'error' => gvfa('created', $error)
+	  ],
+    [
+	    'label' => 'id',
+      'name' => $table . "_id",
+      'type' => 'read_only',
+	    'value' => gvfa($table . "_id", $source)
+	  ],
+		[
+	    'label' => 'name',
+      'name' => 'name',
+      'width' => 200,
+	    'value' => gvfa("name", $source), 
+      'error' => gvfa('name', $error)
+	  ],
+		[
+	    'label' => 'description',
+      'name' => 'description',
+      'width' => 400,
+	    'value' => gvfa("description", $source), 
+      'error' => gvfa('description', $error)
+	  ],
+		[
+	    'label' => 'relative brightness',
+      'name' => 'relative_brightness',
+      "type" => "number",
+      'width' => 100,
+	    'value' => gvfa("relative_brightness", $source), 
+      'error' => gvfa('relative_brightness', $error)
+	  ],
+		[
+	    'label' => 'relative precipitation',
+      'name' => 'relative_precipitation',
+      "type" => "number",
+      'width' => 100,
+	    'value' => gvfa("relative_precipitation", $source), 
+      'error' => gvfa('relative_precipitation', $error)
+	  ],
+		[
+	    'label' => 'color',
+      'name' => 'color',
+      "type" => "color",
+	    'value' => gvfa("color", $source), 
+      'error' => gvfa('color', $error)
+	  ]
+    );
+  $form = genericForm($formData, $submitLabel);
+  return $form;
+}
 
 function mergeValues($dataArray, $valuesArray) {
   foreach ($dataArray as &$item) {
@@ -1190,7 +1314,7 @@ function editReport($error,  $tenantId) {
   $submitLabel = "save report";
   if($pk  == ""  && $_POST) {
  
-    $submitLabel = "create device";
+    $submitLabel = "create report";
     $source = $_POST;
   } else {
     $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
@@ -1634,6 +1758,7 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
   if($weatherDescription == "") {
     $weatherDescription = "none";
   }
+  $weatherConditionId = weatherConditionIdLookup($weatherDescription, $tenant["tenant_id"]);
   
   $loggingSql = "INSERT INTO inverter_log ( tenant_id, recorded, 
   solar_power, load_power, grid_power, battery_percentage, battery_power,
@@ -1649,7 +1774,8 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
   changer5,
   changer6,
   changer7,
-  weather
+  weather,
+  weather_condition_id
   ) VALUES (";
   $loggingSql .= $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," .
    intval(intval($solarString1) + intval($solarString2)) . "," . 
@@ -1669,8 +1795,9 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
    $changer5 . "," .
    $changer6 . "," .
    $changer7 . ",'" .
-   $weatherDescription .
-   "')";
+   $weatherDescription . "'," .
+   $weatherConditionId .
+   ")";
   $loggingResult = mysqli_query($conn, $loggingSql);
 
 }
@@ -2400,3 +2527,8 @@ function getGraphColumns($tenantId, $deviceId = NULL) {
   return $weatherColumns;
 }
  
+function weatherConditionIdLookup($name, $tenantId) {
+  $table = "weather_condition";
+  $id = getOrInsertNameRecord($table,  $tenantId, $table . "_id", "name", $name);
+  return $id;
+};

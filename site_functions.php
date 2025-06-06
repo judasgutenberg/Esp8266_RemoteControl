@@ -1217,7 +1217,7 @@ function topmostNav() {
 }
 
 function tabNav($user) {
-  $etcTables = array("device_type", "feature_type", "device_type_feature", "management_rule", "ir_pulse_sequence","command","command_type","tenant", "user");
+  $etcTables = array("device_type", "feature_type", "device_type_feature", "management_rule", "weather_condition", "ir_pulse_sequence","command","command_type","tenant", "user");
 	$tabData = array(
  
   [
@@ -1302,6 +1302,11 @@ function etcTabNav($user) {
     [
       'label' => 'Management Rules',
       'table' => 'management_rule' 
+    ]
+    ,
+    [
+      'label' => 'Weather Conditions',
+      'table' => 'weather_condition' 
     ]
     );
     if($user && ($user["role"] == "super" || $user["role"] == "admin")){
@@ -1837,6 +1842,31 @@ function eliminateExtraLinefeeds($input) {
   // Replace consecutive linefeeds with a maximum of two in a row
   $input = preg_replace("/\n{3,}/", "\n\n", $input);
   return $input;
+}
+
+function getOrInsertNameRecord($tableName,  $tenantId,  $primaryKeyColumn,  $nameColumn,  $name) {
+  global $conn;
+  global $timezone;
+  $date = new DateTime("now", new DateTimeZone($timezone));//set the $timezone global in config.php
+  $formatedDateTime =  $date->format('Y-m-d H:i:s');
+  // Check for existing record
+  $tableName = filterStringForSqlEntities($tableName, true);
+  $primaryKeyColumn = filterStringForSqlEntities($primaryKeyColumn, true);
+  $nameColumn = filterStringForSqlEntities($nameColumn, true);
+  $selectSql = "SELECT  " . $primaryKeyColumn . " FROM " . $tableName  . " WHERE tenant_id = " . intval($tenantId) . " AND " . $nameColumn . "='" . mysqli_real_escape_string($conn, $name)  . "' LIMIT 1";
+  $result = mysqli_query($conn, $selectSql);
+  if($result) {
+    $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    if(count($rows) > 0) {
+      $row = $rows[0];
+      return $row[$primaryKeyColumn];
+    }
+  }
+  // Insert new record
+  $insertSql = "INSERT INTO " . $tableName ." (tenant_id,  " . $nameColumn . ", created) VALUES (" . intval($tenantId) . ",'" . mysqli_real_escape_string($conn, $name)  . "','" . $formatedDateTime . "')";
+  $result = mysqli_query($conn, $insertSql);
+  $id = mysqli_insert_id($conn);
+  return $id;
 }
 
 function insertUpdateSql($conn, $tableName, $primaryKey, $data) {

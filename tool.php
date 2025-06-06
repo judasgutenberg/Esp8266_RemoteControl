@@ -393,6 +393,12 @@ if ($user) {
     } else {
       $out .= commandTypes($tenantId, $deviceId);
     }
+  } else if($table == "weather_condition") {
+    if ($action == "startcreate" || gvfw("weather_condition_id") != "") {
+      $out .=  editWeatherCondition($errors,  $tenantId);
+    } else {
+      $out .= weatherConditions($tenantId,  $user);
+    }
 	} else if($table == "user") {
     if ($action == "startcreate" || gvfw("user_id") != "") {
       $out .=  editUser($errors);
@@ -444,3 +450,5 @@ if ($user) {
 }
 
 echo bodyWrap($out, $user, $deviceId, $poser);
+
+ 
