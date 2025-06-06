@@ -19,6 +19,18 @@ function allDeviceFeatures($tenantId) {
     }
 }
 
+function allWeatherConditions($tenantId) {
+  Global $conn;
+  $sql = "SELECT *
+          FROM weather_condition
+          WHERE tenant_id=" . intval($tenantId);
+  $result = mysqli_query($conn, $sql);
+  if($result) {
+    $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    return $rows;
+  }
+}
+
 function deviceFeatures($tenantId, $deviceId) {
   Global $conn;
   $table = "device_feature";
@@ -258,7 +270,7 @@ function weatherConditions($tenantId, $user) {
       'name' => 'relative_brightness' 
     ],
     [
-      'label' => 'relative_precipitation brightness',
+      'label' => 'relative precipitation',
       'name' => 'relative_precipitation' 
     ],
     [
