@@ -296,7 +296,7 @@ Note that for a parameter form to be produced for a report, there must be "form"
 
 Obviously there is a lot of power in such a system, since, depending on MySQL user permissions, a report-writer might be given access to any data on the database server;  only fully trusted users should get access to report creation and some reports are too powerful for anyone but users with the role 'super' to run.  Currently only 'super' users can create and edit reports, though, depending on the role given to a report, less-powerful users may be able to run it.  It's also possible to write reports that give enormous power to users, and such reports should be restricted (via role) to 'super.'
 
-I asked ChatGPT to compare my reporting system with Crystal Reports (which I am unfortunately having to work with) and it came out with this handy comparison:
+I asked ChatGPT to compare my reporting system with Crystal Reports (which I am unfortunately having to work with at a new job) and it came out with this handy comparison:
 
 ![alt text](reports.png?raw=true)
 
