@@ -359,6 +359,30 @@ function editWeatherCondition($error,  $tenantId) {
 	    'value' => gvfa("relative_precipitation", $source), 
       'error' => gvfa('relative_precipitation', $error)
 	  ],
+    [
+	    'label' => 'average temperature',
+      'name' => 'average_temperature',
+      "type" => "number",
+      'width' => 100,
+	    'value' => gvfa("average_temperature", $source), 
+      'error' => gvfa('average_temperature', $error)
+	  ],
+    [
+	    'label' => 'average pressure',
+      'name' => 'average_pressure',
+      "type" => "number",
+      'width' => 100,
+	    'value' => gvfa("average_pressure", $source), 
+      'error' => gvfa('average_pressure', $error)
+	  ],
+    [
+	    'label' => 'average humidity',
+      'name' => 'average_humidity',
+      "type" => "number",
+      'width' => 100,
+	    'value' => gvfa("average_humidity", $source), 
+      'error' => gvfa('average_humidity', $error)
+	  ],
 		[
 	    'label' => 'color',
       'name' => 'color',
@@ -744,6 +768,11 @@ function editDeviceFeature($error,  $user) {
   if(!$pk){
     $pk = "NULL";
   }
+  
+  if(valueExistsElsewhere($table, $source, "digest_bit_position", $table . "_id", $pk, $tenantId)) {
+    $error["digest_bit_position"] = $source["digest_bit_position"] . " is used elsewhere.";
+  }
+  
   $formData = array(
     [
 	    'label' => 'id',
@@ -884,8 +913,6 @@ function editDeviceFeature($error,  $user) {
   $form = genericForm($formData, $submitLabel);
   return $form;
 }
-
-
 
 function editCommandType($error,  $user) {
   Global $conn;

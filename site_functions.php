@@ -1844,6 +1844,19 @@ function eliminateExtraLinefeeds($input) {
   return $input;
 }
 
+function valueExistsElsewhere($table, $source, $columnName, $pkName, $pk, $tenantId) {
+    Global $conn;
+    $table = filterStringForSqlEntities($table, true);
+    $columnName = filterStringForSqlEntities($columnName, true);
+    $escapedValue = mysqli_real_escape_string($conn, $source[$columnName]);
+    $escapedPk = mysqli_real_escape_string($conn, $pk);
+    $sql = "SELECT COUNT(*) AS count FROM " . $table . " WHERE " . $columnName  . " = '" . $escapedValue . "' AND !(" . $pkName . "  = '" . $escapedPk . "' AND tenant_id='" . $tenantId . "')";
+    $result = mysqli_query($conn, $sql);
+    $row =  mysqli_fetch_all($result, MYSQLI_ASSOC);
+    $countRecord = $row[0];
+    return $countRecord["count"] > 0;
+}
+
 function getOrInsertNameRecord($tableName,  $tenantId,  $primaryKeyColumn,  $nameColumn,  $name) {
   global $conn;
   global $timezone;
