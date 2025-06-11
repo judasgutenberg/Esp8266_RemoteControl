@@ -769,8 +769,8 @@ function editDeviceFeature($error,  $user) {
     $pk = "NULL";
   }
   
-  if(valueExistsElsewhere($table, $source, "digest_bit_position", $table . "_id", $pk, $tenantId)) {
-    $error["digest_bit_position"] = $source["digest_bit_position"] . " is used elsewhere.";
+  if($record = valueExistsElsewhere($table, $source["digest_bit_position"], "digest_bit_position", $table . "_id", $pk, $tenantId)) {
+    $error["digest_bit_position"] = $source["digest_bit_position"] . " is used in " .  $record["name"] . ".";
   }
   
   $formData = array(
@@ -878,6 +878,8 @@ function editDeviceFeature($error,  $user) {
       'type' => 'select',
 	    'value' => gvfa("digest_bit_position", $source), 
       'error' => gvfa("digest_bit_position", $error),
+      //if(valueExistsElsewhere($table, $source, "digest_bit_position", $table . "_id", $pk, $tenantId)) {
+      'frontend_validation' => "valueExistsElsewhere('" . $table . "','" . 'digest_bit_position' . "','" . $table . "_id','" . $source[$table . "_id"] . "','name')",
       'range' => "0...31"
 	  ],
     [
@@ -1426,6 +1428,15 @@ function editReport($error,  $tenantId) {
 	    'value' => gvfa("sql", $source), 
       'error' => gvfa('sql', $error),
       'frontend_validation' => "checkSqlSyntax('sql')"
+	  ],
+    [
+	    'label' => 'output template',
+      'name' => 'output_template',
+      'code_language' => 'html',
+      'width' => 500,
+      'height'=> 200,
+	    'value' => gvfa("output_template", $source), 
+      'error' => gvfa('output_template', $error)
 	  ]
     );
   $form = genericForm($formData, $submitLabel);
@@ -1533,34 +1544,6 @@ function editDevice($error,  $tenantId) {
       'width' => 200,
 	    'value' => gvfa("sensor_id", $source), 
       'error' => gvfa('sensor_id', $error)
-	  ],
-    [
-	    'label' => 'reserved 1 name',
-      'name' => 'reserved1_name',
-      'width' => 400,
-	    'value' => gvfa("reserved1_name", $source), 
-      'error' => gvfa('reserved1_name', $error)
-	  ],
-    [
-	    'label' => 'reserved 2 name',
-      'name' => 'reserved2_name',
-      'width' => 400,
-	    'value' => gvfa("reserved2_name", $source), 
-      'error' => gvfa('reserved2_name', $error)
-	  ],
-    [
-	    'label' => 'reserved 3 name',
-      'name' => 'reserved3_name',
-      'width' => 400,
-	    'value' => gvfa("reserved3_name", $source), 
-      'error' => gvfa('reserved3_name', $error)
-	  ],
-    [
-	    'label' => 'reserved 4 name',
-      'name' => 'reserved4_name',
-      'width' => 400,
-	    'value' => gvfa("reserved4_name", $source), 
-      'error' => gvfa('reserved4_name', $error)
 	  ],
     );
   $form = genericForm($formData, $submitLabel);

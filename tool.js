@@ -58,11 +58,71 @@ function formSubmitTasks() {
   
 }
 
+function valueExistsElsewhere(table, formElementName, pkName, pkValue, nameColumnName) {
+  // Generalize the selector to handle input, select, and textarea
+  const inputElement = document.querySelector(`input[name="${formElementName}"], select[name="${formElementName}"], textarea[name="${formElementName}"]`);
+  
+  if (!inputElement) {
+    console.warn(`Form element with name "${formElementName}" not found.`);
+    return;
+  }
+  const value = inputElement.value;
+  const params = new URLSearchParams();
+  params.append("table", table);
+  params.append("value", value);
+  params.append("column_name", formElementName);
+  params.append("name_column_name", nameColumnName);
+  params.append("pk_name", pkName);
+  params.append("pk_value", pkValue);
+  params.append("action", "valueexistselsewhere");
+
+  const xmlhttp = new XMLHttpRequest();
+  xmlhttp.onreadystatechange = function() {
+    if (xmlhttp.readyState === XMLHttpRequest.DONE) {
+      if (xmlhttp.status === 200) {
+        const data = JSON.parse(xmlhttp.responseText.trim());
+        console.log(data);
+
+        // Look for error div above the input
+        let currentElement = inputElement.previousElementSibling;
+        let errorDiv = null;
+        while (currentElement) {
+          if (currentElement.classList && currentElement.classList.contains('genericformerror')) {
+            errorDiv = currentElement;
+            break;
+          }
+          currentElement = currentElement.previousElementSibling;
+        }
+        let error = null;
+        if(data) {
+			if(!nameColumnName){
+				nameColumnName  = "name";
+			}
+          error = formElementName + " of " + data[formElementName] + " is used in " + data[nameColumnName] + ".";
+        }
+        if (errorDiv) {
+          if(error) {
+            errorDiv.textContent = error;
+          } else {
+            console.log("bleep");
+            errorDiv.textContent = "";
+          }
+        } else {
+          console.log('Error div with class "genericformerror" not found.');
+        }
+      }
+    }
+  };
+
+  xmlhttp.open("POST", "tool.php", true);
+  xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+  xmlhttp.send(params);
+}
+
 
 function checkSqlSyntax(formElementName) {
 	const inputElement = document.querySelector(`textarea[name="${formElementName}"]`);
-	
-	var xmlhttp = new XMLHttpRequest();
+	let xmlhttp = new XMLHttpRequest();
 	if (inputElement) {
 		xmlhttp.onreadystatechange = function() {
 			if (xmlhttp.readyState === XMLHttpRequest.DONE) {
@@ -78,7 +138,6 @@ function checkSqlSyntax(formElementName) {
 						}
 						currentElement = currentElement.previousElementSibling;
 					}
-				
 					if (errorDiv) {
 						if(data["errors"].length > 0) {
 							errorDiv.textContent = data["errors"][0];

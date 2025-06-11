@@ -535,8 +535,8 @@ function genericEntitySave($user, $table) {
   }
  
   $sql = insertUpdateSql($conn, $table, array($pk => gvfw($table . '_id')), $data);
-  //echo $sql;
-  //die();
+  echo $sql;
+  $error = mysqli_error($conn);
 
 
   if (mysqli_multi_query($conn, $sql)) {
@@ -563,6 +563,11 @@ function genericEntitySave($user, $table) {
   if($deviceId && $table != "device"){
     $url .=  "&device_id=" . $deviceId;
   }
+  /*
+  echo "<P>";
+  echo $error;
+  die();
+  */
   header("Location: " . $url);
 }
 
@@ -602,7 +607,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
     $frontendValidation = gvfa("frontend_validation", $datum);
     $validationString = "";
     if($frontendValidation){
-      $validationString = ' onblur=\" . $frontendValidation . "\"';
+      $validationString = ' onblur="' . $frontendValidation . '"';
     }
 		$value = str_replace("\\\\", "\\", gvfa("value", $datum)); 
     //var_dump($datum);
@@ -685,7 +690,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         if($changeFunction) {
           $onChangePart = " onchange=\"" . $changeFunction . "\" ";
         }
-        $out .= "<select " . $onChangePart. " name='" . $name . "' />";
+        $out .= "<select " . str_replace("onblur=", "onchange=", $validationString) . " " . $onChangePart. " name='" . $name . "' />";
         if(is_string($values)) {
           $out .= "<option value='0'>none</option>";
           //var_dump($user);
@@ -745,7 +750,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         if($height == ""){
           $height = 5;
         }
-        $out .= "<select style='accent-color:" .  $accentColor . "'  multiple='multiple' name='" . $name . "[]' id='dest_" . $name . "' size='" . intval($height) . "'/>";
+        $out .= "<select " . str_replace("onblur=", "onchange=", $validationString) . " style='accent-color:" .  $accentColor . "'  multiple='multiple' name='" . $name . "[]' id='dest_" . $name . "' size='" . intval($height) . "'/>";
         if($rows) {
           foreach($rows as $row){
             $selected = "";
@@ -772,7 +777,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         $out .= "</div>\n"; 
         $out .= "<div class='sourceitems'>\n";
         $out .= "available:<br/>";
-        $out .= "<select style='accent-color:" . $accentColor . "' name='source_" . $name . "' id='source_" . $name . "' size='" . intval($height) . "'/>";
+        $out .= "<select " . str_replace("onblur=", "onchange=", $validationString)  . " style='accent-color:" . $accentColor . "' name='source_" . $name . "' id='source_" . $name . "' size='" . intval($height) . "'/>";
         if($rows) {
           foreach($rows as $row){
             $selected = "";
@@ -1844,17 +1849,21 @@ function eliminateExtraLinefeeds($input) {
   return $input;
 }
 
-function valueExistsElsewhere($table, $source, $columnName, $pkName, $pk, $tenantId) {
+function valueExistsElsewhere($table, $value, $columnName, $pkName, $pk, $tenantId) {
     Global $conn;
     $table = filterStringForSqlEntities($table, true);
     $columnName = filterStringForSqlEntities($columnName, true);
-    $escapedValue = mysqli_real_escape_string($conn, $source[$columnName]);
+    $escapedValue = mysqli_real_escape_string($conn, $value);
     $escapedPk = mysqli_real_escape_string($conn, $pk);
-    $sql = "SELECT COUNT(*) AS count FROM " . $table . " WHERE " . $columnName  . " = '" . $escapedValue . "' AND !(" . $pkName . "  = '" . $escapedPk . "' AND tenant_id='" . $tenantId . "')";
+    $sql = "SELECT * FROM " . $table . " WHERE " . $columnName  . " = '" . $escapedValue . "' AND !(" . $pkName . "  = '" . $escapedPk . "' AND tenant_id='" . $tenantId . "')";
     $result = mysqli_query($conn, $sql);
-    $row =  mysqli_fetch_all($result, MYSQLI_ASSOC);
-    $countRecord = $row[0];
-    return $countRecord["count"] > 0;
+    if($result) {
+      $rows =  mysqli_fetch_all($result, MYSQLI_ASSOC);
+      if($rows) {
+        $record = $rows[0];
+        return $record;
+      }
+    }
 }
 
 function getOrInsertNameRecord($tableName,  $tenantId,  $primaryKeyColumn,  $nameColumn,  $name) {

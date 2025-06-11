@@ -1,6 +1,6 @@
 let glblChart = null;
 let graphDataObject = {};
-let columnsWeCareAbout = ["solar_power","load_power","battery_power","battery_percentage", "weather", "digest"]; //these are the inverter columns to be graphed from inverter_log. if you have more, you can include them
+let columnsWeCareAbout = ["solar_power","load_power","battery_power","battery_percentage", "weather_condition_id", "digest"]; //these are the inverter columns to be graphed from inverter_log. if you have more, you can include them
 let yearsIntoThePastWeCareAbout = [0,1,2,3];
 //For graphs info, visit: https://www.chartjs.org
 let timeStamp = [];
@@ -8,7 +8,7 @@ let weatherColorMap = [];
 let segmentRects = [];
 const bitColorMap = {};
 let deviceFeatures = [];
- 
+let weatherConditions = [];
 
 resetGraphData();
 
@@ -77,8 +77,17 @@ const weatherPlugin = {
     segments.forEach(segment => {
 		if (!weatherColorMap[segment.weather]) {
 			weatherColorMap[segment.weather] = stringToColor(segment.weather);
+
 		}
-		const fillColor = weatherColorMap[segment.weather];
+    let fillColor = weatherColorMap[segment.weather];
+    let label = "";
+    const weatherRecordFound = findObjectByColumn(weatherConditions, "weather_condition_id", segment.weather);
+    
+    //console.log(segment.weather_condition_id, weatherRecordFound);
+    if(weatherRecordFound) {
+      fillColor = weatherRecordFound["color"];
+      label = weatherRecordFound["name"];
+    }
 		const xStart = xScale.getPixelForValue(new Date(segment.start).getTime());
 		const xEnd = xScale.getPixelForValue(new Date(segment.end).getTime());
 		const width = xEnd - xStart;
@@ -94,7 +103,7 @@ const weatherPlugin = {
 			y: bottom,
 			width: width,
 			height: segmentHeight,
-			weather: segment.weather
+			weather: label
 		});
 
     });
@@ -223,7 +232,7 @@ function showGraph(yearsAgo){
     let ctx = document.getElementById("Chart").getContext('2d');
 	let columnCount = 0;
 	let chartDataSet = [];
-	let noCaptionsColumns = ["weather", "digest"];
+	let noCaptionsColumns = ["weather_condition_id", "digest"];
 	for (let column of columnsWeCareAbout){
 		if(noCaptionsColumns.indexOf(column) > -1) {
 			continue;
@@ -459,6 +468,9 @@ function getInverterData(yearsAgo) {
             if(dataObject["device_features"]) { //we need this to label device feature ons and offs on the graph
               deviceFeatures = dataObject["device_features"]; //set the global deviceFeatures
             }
+            if(dataObject["weather_conditions"]) { //we need this to label device feature ons and offs on the graph
+              weatherConditions = dataObject["weather_conditions"]; //set the global deviceFeatures
+            }
             if(dataObject["inverter_data"]) {
               for(let datum of dataObject["inverter_data"]) {
                 datumCount++;
@@ -466,7 +478,7 @@ function getInverterData(yearsAgo) {
                 let time = datum["recorded"];
                 for (let column of columnsWeCareAbout){
                     let value = datum[column];
-                    if (column == "weather") {
+                    if (column == "weather_condition_id") {
                       if(lastWeather != value) {
                         if(lastWeather == "") { //we're at the very beginning
                         } else {
@@ -474,6 +486,7 @@ function getInverterData(yearsAgo) {
                         }
                         lastWeather = value;
                         lastWeatherTime = time;
+  
                       }
                       if (datumCount == dataObject["inverter_data"].length) { //get the last one too
                         weatherSegmentsLocal.push({"start": lastWeatherTime, "end": time, "weather": lastWeather});

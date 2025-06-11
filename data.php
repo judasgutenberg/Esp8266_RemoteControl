@@ -446,7 +446,8 @@ if($_REQUEST) {
 						$result = mysqli_query($conn, $sql);
 						$error = mysqli_error($conn);
 						if($result && $canAccessData) {
-              $out["device_features"] = allDeviceFeatures($tenantId);
+              				$out["device_features"] = allDeviceFeatures($tenantId);
+							$out["weather_conditions"] = allWeatherConditions($tenantId);
 							$out["inverter_data"] = mysqli_fetch_all($result, MYSQLI_ASSOC);
 						}
 						if(count($out) <1){
