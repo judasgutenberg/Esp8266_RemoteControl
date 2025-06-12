@@ -690,7 +690,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         if($changeFunction) {
           $onChangePart = " onchange=\"" . $changeFunction . "\" ";
         }
-        $out .= "<select " . str_replace("onblur=", "onchange=", $validationString) . " " . $onChangePart. " name='" . $name . "' />";
+        $out .= "<select " . $validationString . " " . $onChangePart. " name='" . $name . "' />";
         if(is_string($values)) {
           $out .= "<option value='0'>none</option>";
           //var_dump($user);
@@ -750,7 +750,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         if($height == ""){
           $height = 5;
         }
-        $out .= "<select " . str_replace("onblur=", "onchange=", $validationString) . " style='accent-color:" .  $accentColor . "'  multiple='multiple' name='" . $name . "[]' id='dest_" . $name . "' size='" . intval($height) . "'/>";
+        $out .= "<select " . $validationString . " style='accent-color:" .  $accentColor . "'  multiple='multiple' name='" . $name . "[]' id='dest_" . $name . "' size='" . intval($height) . "'/>";
         if($rows) {
           foreach($rows as $row){
             $selected = "";
@@ -777,7 +777,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         $out .= "</div>\n"; 
         $out .= "<div class='sourceitems'>\n";
         $out .= "available:<br/>";
-        $out .= "<select " . str_replace("onblur=", "onchange=", $validationString)  . " style='accent-color:" . $accentColor . "' name='source_" . $name . "' id='source_" . $name . "' size='" . intval($height) . "'/>";
+        $out .= "<select " . $validationString . " style='accent-color:" . $accentColor . "' name='source_" . $name . "' id='source_" . $name . "' size='" . intval($height) . "'/>";
         if($rows) {
           foreach($rows as $row){
             $selected = "";
@@ -1866,6 +1866,7 @@ function valueExistsElsewhere($table, $value, $columnName, $pkName, $pk, $tenant
     }
 }
 
+
 function getOrInsertNameRecord($tableName,  $tenantId,  $primaryKeyColumn,  $nameColumn,  $name) {
   global $conn;
   global $timezone;
@@ -2278,14 +2279,13 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
 
   if($result) {
-    
     $reportData = mysqli_fetch_array($result);
     if(!canUserDoThing($user, $reportData["role"])) {
       return "You lack permissions to run this report.";
     }
     $sql = $reportData["sql"];
     $form = $reportData["form"];
-
+    $outputTemplate = $reportData["output_template"];
     $decodedForm = "";
     $decodedFormToUse = "";
     $output = null;
@@ -2294,10 +2294,8 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
       $decodedForm = json_decode($form, true);
       if(!$decodedForm && $form!=""){
         $errors[] ="There was malformed JSON in the Form.</div>";
-
       } else if ($decodedForm){
         if(array_key_exists("output", $decodedForm)) {
-          
           $output = $decodedForm["output"];
           if(is_array($output)){
             if(array_is_list($output)){
@@ -2335,15 +2333,16 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
     }
     if(count($errors) == 0 && $decodedFormToUse != "" && gvfw("action") == "fetch" || gvfw("action") == "rerun") {
       $out .= "<div class='listtitle'>Prepare to Run Report  '" . $reportData["name"] . "' " . $editButton . "</div>";
- 
       if($historicDataObject  && $decodedFormToUse){
-
         $decodedFormToUse = copyValuesFromSourceToDest($decodedFormToUse, $historicDataObject);
       }
  
       $outputDropdownValues = ['web', 'CSV'];
       if($outputs){
         $outputDropdownValues = array_merge($outputDropdownValues, $outputs);
+      }
+      if($outputTemplate && trim($outputTemplate) != "") {
+        array_push($outputDropdownValues, 'Output Template');
       }
 
       $decodedFormToUse[] =      [
@@ -2404,6 +2403,11 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
             download("", str_replace(" ", "_", $reportData["name"]) . ".csv", $content);
             $url = "?table=report&report_id=" . $reportId . "&report_log_id=" . $reportLogId . "&action=fetch";
             header("Location: " . $url);
+          } else if(strtolower($outputFormat) == "output template") {
+            $content = renderTemplate([$rows], $outputTemplate);
+            download("", str_replace(" ", "_", $reportData["name"]) . ".html", $content);
+            $url = "?table=report&report_id=" . $reportId . "&report_log_id=" . $reportLogId . "&action=fetch";
+            header("Location: " . $url);
           } else {
             //$tableTools 
             //function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools) { //aka genericList
@@ -2431,6 +2435,35 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
   }
   $out .= $data;
   return $out;
+}
+
+function renderTemplate($dataSets, $template){
+    // Handle loops
+    $template = preg_replace_callback('/{{#each (\w+)}}(.*?){{\/each}}/s', function ($matches) use ($dataSets) {
+        $setName = $matches[1];
+        $loopContent = $matches[2];
+        $output = '';
+        if (!isset($dataSets[$setName]) || !is_array($dataSets[$setName])) {
+            return '';
+        }
+        foreach ($dataSets[$setName] as $row) {
+            $output .= preg_replace_callback('/{{(\w+)}}/', function ($m) use ($row) {
+                return htmlspecialchars($row[$m[1]] ?? '', ENT_QUOTES);
+            }, $loopContent);
+        }
+        return $output;
+    }, $template);
+
+    // Handle simple top-level tokens (non-loop variables)
+    $template = preg_replace_callback('/{{(\w+)}}/', function ($m) use ($dataSets) {
+        foreach ($dataSets as $set) {
+            if (is_array($set) && array_key_exists($m[1], $set)) {
+                return htmlspecialchars($set[$m[1]], ENT_QUOTES);
+            }
+        }
+        return '';
+    }, $template);
+    return $template;
 }
 
 function timeAgo($sqlDateTime, $compareTo = null) {
