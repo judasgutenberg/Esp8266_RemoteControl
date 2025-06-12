@@ -457,7 +457,7 @@ function startWaiting(message){
         // Get the "output_format" select element within the form
         const outputFormatSelect = form.elements['output_format'];
         // Check if the select element exists and its value is "csv"
-        if (outputFormatSelect && outputFormatSelect.value.toLowerCase() === 'csv') {
+        if (outputFormatSelect && (outputFormatSelect.value.toLowerCase() === 'csv' || outputFormatSelect.value.toLowerCase() === 'output template')) {
             showWaiting = false; // Found a match, return true
         }
     }
