@@ -135,12 +135,16 @@ if ($user) {
     $pkName = gvfw('pk_name');
     $pkValue = gvfw('pk_value');
     $columnName = gvfw('column_name');
+    $nameColumnName = gvfw('name_column_name');
+    if(!$nameColumnName){
+      $nameColumnName = "name";
+    }
     //valueExistsElsewhere($table, $value, "digest_bit_position", $table . "_id", $pk, $tenantId)
     $record = valueExistsElsewhere($table, $value, $columnName, $table . "_id", $pkValue, $tenantId);
     die(json_encode($record));
     if($record) {
       //var_dump($record);
-      $error[$columnName] = "Value already used in " . $record["name"] . ".";//revisit!  name not always correct!
+      $error[$columnName] = "Value already used in " . $record[$nameColumnName] . ".";//revisit!  name not always correct!
     }
   } else if($action == "checkjsonsyntax") {
       $sql = gvfw('json');

@@ -690,7 +690,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         if($changeFunction) {
           $onChangePart = " onchange=\"" . $changeFunction . "\" ";
         }
-        $out .= "<select " . $validationString . " " . $onChangePart. " name='" . $name . "' />";
+        $out .= "<select " . str_replace("onblur=", "onchange=", $validationString) . " " . $onChangePart. " name='" . $name . "' />";
         if(is_string($values)) {
           $out .= "<option value='0'>none</option>";
           //var_dump($user);
@@ -750,7 +750,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         if($height == ""){
           $height = 5;
         }
-        $out .= "<select " . $validationString . " style='accent-color:" .  $accentColor . "'  multiple='multiple' name='" . $name . "[]' id='dest_" . $name . "' size='" . intval($height) . "'/>";
+        $out .= "<select " . str_replace("onblur=", "onchange=", $validationString) . " style='accent-color:" .  $accentColor . "'  multiple='multiple' name='" . $name . "[]' id='dest_" . $name . "' size='" . intval($height) . "'/>";
         if($rows) {
           foreach($rows as $row){
             $selected = "";
@@ -777,7 +777,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         $out .= "</div>\n"; 
         $out .= "<div class='sourceitems'>\n";
         $out .= "available:<br/>";
-        $out .= "<select " . $validationString . " style='accent-color:" . $accentColor . "' name='source_" . $name . "' id='source_" . $name . "' size='" . intval($height) . "'/>";
+        $out .= "<select " . str_replace("onblur=", "onchange=", $validationString)  . " style='accent-color:" . $accentColor . "' name='source_" . $name . "' id='source_" . $name . "' size='" . intval($height) . "'/>";
         if($rows) {
           foreach($rows as $row){
             $selected = "";
@@ -1866,7 +1866,6 @@ function valueExistsElsewhere($table, $value, $columnName, $pkName, $pk, $tenant
     }
 }
 
-
 function getOrInsertNameRecord($tableName,  $tenantId,  $primaryKeyColumn,  $nameColumn,  $name) {
   global $conn;
   global $timezone;
@@ -2465,6 +2464,7 @@ function renderTemplate($dataSets, $template){
     }, $template);
     return $template;
 }
+
 
 function timeAgo($sqlDateTime, $compareTo = null) {
   global $timezone;

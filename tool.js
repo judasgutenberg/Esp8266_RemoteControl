@@ -58,7 +58,7 @@ function formSubmitTasks() {
   
 }
 
-function valueExistsElsewhere(table, formElementName, pkName, pkValue) {
+function valueExistsElsewhere(table, formElementName, pkName, pkValue, nameColumnName) {
   // Generalize the selector to handle input, select, and textarea
   const inputElement = document.querySelector(`input[name="${formElementName}"], select[name="${formElementName}"], textarea[name="${formElementName}"]`);
   
@@ -71,6 +71,7 @@ function valueExistsElsewhere(table, formElementName, pkName, pkValue) {
   params.append("table", table);
   params.append("value", value);
   params.append("column_name", formElementName);
+  params.append("name_column_name", nameColumnName);
   params.append("pk_name", pkName);
   params.append("pk_value", pkValue);
   params.append("action", "valueexistselsewhere");
@@ -94,7 +95,10 @@ function valueExistsElsewhere(table, formElementName, pkName, pkValue) {
         }
         let error = null;
         if(data) {
-          error = formElementName + " of " + data[formElementName] + " is used in " + data["name"] + ".";
+			if(!nameColumnName){
+				nameColumnName  = "name";
+			}
+          error = formElementName + " of " + data[formElementName] + " is used in " + data[nameColumnName] + ".";
         }
         if (errorDiv) {
           if(error) {
