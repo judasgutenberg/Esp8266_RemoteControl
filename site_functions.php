@@ -2403,7 +2403,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
             $url = "?table=report&report_id=" . $reportId . "&report_log_id=" . $reportLogId . "&action=fetch";
             header("Location: " . $url);
           } else if(strtolower($outputFormat) == "output template") {
-            $content = renderTemplate([$rows], $outputTemplate);
+            $content = renderTemplate($rows, $outputTemplate);
             download("", str_replace(" ", "_", $reportData["name"]) . ".html", $content);
             $url = "?table=report&report_id=" . $reportId . "&report_log_id=" . $reportLogId . "&action=fetch";
             header("Location: " . $url);
@@ -2436,32 +2436,41 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
   return $out;
 }
 
-function renderTemplate($dataSets, $template){
-    // Handle loops
-    $template = preg_replace_callback('/{{#each (\w+)}}(.*?){{\/each}}/s', function ($matches) use ($dataSets) {
+function renderTemplate($dataSet, $template) {
+    // If it's an unnamed recordset (an array of rows), wrap it under a default name
+    if (isset($dataSet[0]) && is_array($dataSet[0])) {
+        $dataSet = ['_' => $dataSet];
+    }
+
+    // Handle loops like {{#each _}}...{{/each}}
+    $template = preg_replace_callback('/{{#each (\w+)}}(.*?){{\/each}}/s', function ($matches) use ($dataSet) {
         $setName = $matches[1];
         $loopContent = $matches[2];
         $output = '';
-        if (!isset($dataSets[$setName]) || !is_array($dataSets[$setName])) {
+
+        if (!isset($dataSet[$setName]) || !is_array($dataSet[$setName])) {
             return '';
         }
-        foreach ($dataSets[$setName] as $row) {
+
+        foreach ($dataSet[$setName] as $row) {
             $output .= preg_replace_callback('/{{(\w+)}}/', function ($m) use ($row) {
                 return htmlspecialchars($row[$m[1]] ?? '', ENT_QUOTES);
             }, $loopContent);
         }
+
         return $output;
     }, $template);
 
-    // Handle simple top-level tokens (non-loop variables)
-    $template = preg_replace_callback('/{{(\w+)}}/', function ($m) use ($dataSets) {
-        foreach ($dataSets as $set) {
+    // Handle top-level {{var}} replacements (non-loop)
+    $template = preg_replace_callback('/{{(\w+)}}/', function ($m) use ($dataSet) {
+        foreach ($dataSet as $set) {
             if (is_array($set) && array_key_exists($m[1], $set)) {
                 return htmlspecialchars($set[$m[1]], ENT_QUOTES);
             }
         }
         return '';
     }, $template);
+
     return $template;
 }
 
