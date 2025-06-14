@@ -3,7 +3,7 @@
 extern const char* wifi_ssid; //mine was Moxee Hotspot83_2.4G
 extern const char* wifi_password;
 extern const char* storage_password; //to ensure someone doesn't store bogus data on your server. should match value in config.php
-extern const unsigned long long encryption_scheme; //needs sixteen characters of hexadecimal 
+extern const unsigned long long encryption_scheme;
 //data posted to remote server so we can keep a historical record
 //url will be in the form: http://your-server.com:80/weather/data.php?data=
 extern const char* url_get;
@@ -24,7 +24,8 @@ extern const int fram_log_top;
 extern const int connection_failure_retry_seconds;
 extern const int connection_retry_number;
 
-extern const int granularity_when_in_connection_failure_mode; //40 was too little time for everything to come up and start working reliably, at least with my sketchy cellular connection
+extern const int granularity_when_in_moxee_phase_0; //phase 0 is when it's just showing battery levels and is useless. reboot immediately!
+extern const int granularity_when_in_moxee_phase_1; //phase 1 is operational.  let it linger when failed
 extern const int number_of_hotspot_reboots_over_limited_timeframe_before_esp_reboot; //reboots moxee four times in 340 seconds (number below) and then reboots itself
 extern const int hotspot_limited_time_frame; //seconds
 
