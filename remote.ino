@@ -1,10 +1,10 @@
  
 /*
  * ESP8266 Remote Control. Also sends weather data from multiple kinds of sensors (configured in config.c) 
- * originally built on the basis of something I found on https://circuits4you.com
- * reorganized and extended by Gus Mueller, April 24 2022 - June 22 2024
+ * originally an extension of something I found on https://circuits4you.com
+ * reorganized and extended by Gus Mueller, April 24 2022 - June 14 2025
  * Also resets a Moxee Cellular hotspot if there are network problems
- * since those do not include watchdog behaviors
+ * since those do not include watchdog behaviors because of teh sux
  */
  
 
@@ -123,6 +123,8 @@ bool onePinAtATimeMode = false; //used when the server starts gzipping data and 
 char requestNonJsonPinInfo = 1; //use to get much more compressed data double-delimited data from data.php if 1, otherwise if 0 it requests JSON
 int pinCursor = -1;
 bool connectionFailureMode = true;  //when we're in connectionFailureMode, we check connection much more than polling_granularity. otherwise, we check it every polling_granularity
+
+int knownMoxeePhase = -1;  //-1 is unknown. 0 is stupid "show battery level", 1 is operational
 
 ESP8266WebServer server(80); //Server on port 80
 
@@ -550,6 +552,7 @@ void wiFiConnect() {
   if(offlineMode){
     haveReconnected = true;
   }
+  knownMoxeePhase = 1;
   offlineMode = false;
   Serial.println("");
   Serial.print("Connected to ");
@@ -1192,6 +1195,11 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
     delay(7000);
     digitalWrite(moxee_power_switch, HIGH);
   }
+  if(knownMoxeePhase == 0) {
+    knownMoxeePhase = 1;
+  } else if (knownMoxeePhase == 1) {
+    knownMoxeePhase = 0;
+  }
   //only do one reboot!  it usually takes two, but this thing can be made to cycle so fast that this same function can handle both reboots, which is important if the reboot happens to 
   //be out of phase with the cellular hotspot
   shiftArrayUp(moxeeRebootTimes,  timeClient.getEpochTime(), 10);
@@ -1316,7 +1324,11 @@ void loop(){
   long nowTime = millis() + timeOffset;
   int granularityToUse = polling_granularity;
   if(connectionFailureMode) {
-    granularityToUse = granularity_when_in_connection_failure_mode;
+    if(knownMoxeePhase == 0) {
+      granularityToUse = granularity_when_in_moxee_phase_0;// used to be granularity_when_in_connection_failure_mode;
+    } else { //if unknown or operational, let's go slowly!
+      granularityToUse = granularity_when_in_moxee_phase_1;
+    }
   }
   //if we've been up for a week or there have been lots of moxee reboots in a short period of time, reboot esp8266
   if(nowTime > 1000 * 86400 * 7 || nowTime < hotspot_limited_time_frame * 1000  && moxeeRebootCount >= number_of_hotspot_reboots_over_limited_timeframe_before_esp_reboot) {
