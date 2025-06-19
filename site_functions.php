@@ -2494,6 +2494,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
       }
       //var_dump($individualSqlLines);
       $multiOutOrdinal = 1;
+      $multiRecordsetArray = [];
       foreach($individualSqlLines as $individualSqlLine) {
         $comment = $individualSqlLine["comment"];
         $reportResult = mysqli_query($conn, $individualSqlLine["sql"]);
@@ -2516,8 +2517,6 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
             $rows = mysqli_fetch_all($reportResult, MYSQLI_ASSOC);
             $count = count($rows);
           }
-
-          
           //var_dump($rows);
           if($rows) {
             if(strtolower($outputFormat) == "csv") {
@@ -2530,10 +2529,12 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
                 header("Location: " . $url);
               }
             } else if(strtolower($outputFormat) == "output template") {
-              $content = renderTemplate($comment, $rows, $outputTemplate);
-              download("", str_replace(" ", "_", $reportData["name"]) . ".html", $content);
-              $url = "?table=report&report_id=" . $reportId . "&report_log_id=" . $reportLogId . "&action=fetch";
-              header("Location: " . $url);
+              if($comment == "") {
+                $multiRecordsetArray["_"] = $rows;
+              } else {
+                $multiRecordsetArray[$comment] = $rows;
+              }
+              //need to do the rest outside the loop
             } else {
               //$tableTools 
               //function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools) { //aka genericList
@@ -2557,9 +2558,14 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
               }
             }
           }
-          
         }
         $multiOutOrdinal++;
+      }
+      if(strtolower($outputFormat) == "output template") { //there is only one output template, so all the data from a multi-sql report needs to be handled here
+        $content = renderTemplate($comment, $multiRecordsetArray, $outputTemplate);
+        download("", str_replace(" ", "_", $reportData["name"]) . ".html", $content);
+        $url = "?table=report&report_id=" . $reportId . "&report_log_id=" . $reportLogId . "&action=fetch";
+        header("Location: " . $url);
       }
       $timeElapsedSecs = microtime(true) - $start;
       $reportLogSql = "INSERT INTO report_log (tenant_id, user_id, report_id, run, records_returned, runtime, `data`, `sql`) VALUES (" . intval($tenantId) . "," . intval($user["user_id"]) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . $count  . "," .  intval($timeElapsedSecs * 1000) . ",'" . mysqli_real_escape_string($conn, json_encode($decodedFormToUse)) . "','" . mysqli_real_escape_string($conn, $sql) . "');";
@@ -2593,7 +2599,8 @@ function renderTemplate($comment, $dataSet, $template) {
         $dataSet = [$comment => $dataSet];
       }
     }
-
+    //var_dump($dataSet);
+    //die();
     // Handle loops like {{#each _}}...{{/each}}
     while (preg_match('/{{#each (\w+)}}(.*?){{\/each}}/s', $template)) {
         $template = preg_replace_callback('/{{#each (\w+)}}(.*?){{\/each}}/s', function ($matches) use ($dataSet) {

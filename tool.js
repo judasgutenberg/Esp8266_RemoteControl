@@ -1067,8 +1067,8 @@ function formatSQL(sql) {
   let formatted = '';
   let indentLevel = 0;
 
-  // Split by spaces while preserving quoted strings and comments
-  const tokens = sql.match(/(--.*?$)|('[^']*'|"[^"]*")|[\w.*]+|[(),=<>!+\-;]/gms) || [];
+  // Updated tokenizer to preserve <tokens>
+  const tokens = sql.match(/(--.*?$)|('[^']*'|"[^"]*")|<[^>\s]+>|[\w.*]+|[(),=<>!+\-;]/gms) || [];
 
   function addNewline(level = indentLevel) {
     formatted += '\n' + '  '.repeat(level);
@@ -1079,7 +1079,6 @@ function formatSQL(sql) {
     let upperToken = token.toUpperCase().trim();
 
     if (token.startsWith('--')) {
-      // Comment line: reset indent, line break
       addNewline(0);
       formatted += token.trim();
     } else if (newlineKeywords.has(upperToken)) {
@@ -1095,15 +1094,11 @@ function formatSQL(sql) {
     } else if (token === ';') {
       formatted += ';';
       addNewline();
-      addNewline();
+      addNewline(); // double spacing between statements
     } else if (token === ')') {
-      indentLevel = Math.max(0, indentLevel - 1);
-      addNewline();
       formatted += token;
     } else if (token === '(') {
       formatted += token;
-      indentLevel++;
-      addNewline();
     } else {
       formatted += ' ' + token.trim();
     }
@@ -1111,6 +1106,7 @@ function formatSQL(sql) {
 
   return formatted.trim();
 }
+
 
 
 //the result of a productive back-and-forth with ChatGPT:
