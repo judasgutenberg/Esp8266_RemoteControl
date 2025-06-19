@@ -1068,7 +1068,7 @@ function formatSQL(sql) {
   let indentLevel = 0;
 
   // Split by spaces while preserving quoted strings and comments
-  const tokens = sql.match(/(--.*?$)|('[^']*'|"[^"]*"|\b\w+\b|[(),])/gms) || [];
+  const tokens = sql.match(/(--.*?$)|('[^']*'|"[^"]*")|[\w.*]+|[(),=<>!+\-;]/gms) || [];
 
   function addNewline(level = indentLevel) {
     formatted += '\n' + '  '.repeat(level);
@@ -1091,6 +1091,10 @@ function formatSQL(sql) {
       }
     } else if (token === ',') {
       formatted += ',';
+      addNewline();
+    } else if (token === ';') {
+      formatted += ';';
+      addNewline();
       addNewline();
     } else if (token === ')') {
       indentLevel = Math.max(0, indentLevel - 1);

@@ -2530,7 +2530,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
                 header("Location: " . $url);
               }
             } else if(strtolower($outputFormat) == "output template") {
-              $content = renderTemplate($rows, $outputTemplate);
+              $content = renderTemplate($comment, $rows, $outputTemplate);
               download("", str_replace(" ", "_", $reportData["name"]) . ".html", $content);
               $url = "?table=report&report_id=" . $reportId . "&report_log_id=" . $reportLogId . "&action=fetch";
               header("Location: " . $url);
@@ -2538,8 +2538,12 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
               //$tableTools 
               //function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools) { //aka genericList
               //echo "'" . $outputFormat . "'<BR>";
+
               $outputIfThereIsOne = getOutputIfThereIsOne($outputFormat, $output, $unfoundName);
               //var_dump($outputIfThereIsOne);
+              if($comment != "") {
+                $data .= "<div class='issuesheader'>" . $comment . "</div>";
+              }
               if($outputIfThereIsOne == null) {
                 $data .= genericTable($rows, null, null, null, "", "", null, "");
               } else {
@@ -2580,10 +2584,14 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
   return $out;
 }
 
-function renderTemplate($dataSet, $template) {
-    // If it's an unnamed recordset (an array of rows), wrap it under a default name
+function renderTemplate($comment, $dataSet, $template) {
     if (isset($dataSet[0]) && is_array($dataSet[0])) {
+      // If it's an unnamed recordset (an array of rows), wrap it under a default name
+      if($comment == "") {
         $dataSet = ['_' => $dataSet];
+      } else { //otherwise use the comment as the name of the dataset
+        $dataSet = [$comment => $dataSet];
+      }
     }
 
     // Handle loops like {{#each _}}...{{/each}}
@@ -2829,13 +2837,17 @@ function xxxxcheckMySqlSyntax($query) {
 
 function checkJsonSyntax($json) {
   // Decode the JSON string
-  json_decode($json);
-  // Check for JSON parsing errors
-  $lastError = json_last_error();
-  if($lastError == 0) {
+  if(trim($json) == "") {
     $error = "";
   } else {
-    $error = getJsonErrorMessage(json_last_error());
+    json_decode($json);
+    // Check for JSON parsing errors
+    $lastError = json_last_error();
+    if($lastError == 0) {
+      $error = "";
+    } else {
+      $error = getJsonErrorMessage(json_last_error());
+    }
   }
   return ["errors"=>$error];  
 }
