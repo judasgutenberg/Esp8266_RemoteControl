@@ -2345,7 +2345,7 @@ function utilities($user, $viewMode = "list") {
     [
       'label' => 'Instant Command',
       'url' => '?table=utilities&action=instantcommand',
-      'description' => "Download the latest database backup.",
+      'description' => "Run a command on a remote microcontroller.",
       'key' => 'instantcommand',
       'role' => "super",
       'front_end_js'=>"instantCommandFrontend()",
