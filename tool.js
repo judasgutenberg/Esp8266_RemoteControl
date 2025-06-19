@@ -1060,56 +1060,54 @@ function formatJSON(jsonString, indent = 2) {
 }
 
 function formatSQL(sql) {
-	// Define SQL keywords and keywords that cause a new line
-	const keywords = ['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'OUTER JOIN', 'JOIN', 'ON', 'HAVING'];
-	const newlineKeywords = new Set(['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT', 'JOIN', 'ON', 'HAVING']);
-	const indentKeywords = new Set(['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT']);
-	
-	let formatted = '';
-	let indentLevel = 0;
-	let lines = sql.replace(/\s+/g, ' ').trim().split(' ');
-	
-	function addNewline() {
-	  formatted += '\n' + '  '.repeat(indentLevel);
-	}
-  
-	function increaseIndent() {
-	  indentLevel++;
-	}
-  
-	function decreaseIndent() {
-	  if (indentLevel > 0) {
-		indentLevel--;
-	  }
-	}
-	
-	for (let i = 0; i < lines.length; i++) {
-	  let word = lines[i].toUpperCase();
-	  let originalWord = lines[i];
-  
-	  if (newlineKeywords.has(word)) {
-		addNewline();
-		if (indentKeywords.has(word)) {
-		  increaseIndent();
-		}
-		formatted += word;
-	  } else if (word === ',') {
-		formatted += ',';
-		addNewline();
-	  } else if (word === ')') {
-		decreaseIndent();
-		addNewline();
-		formatted += word;
-	  } else if (word === '(') {
-		formatted += word;
-		increaseIndent();
-		addNewline();
-	  } else {
-		formatted += ' ' + originalWord;
-	  }
-	}
-	return formatted;
+  const keywords = ['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'OUTER JOIN', 'JOIN', 'ON', 'HAVING'];
+  const newlineKeywords = new Set(['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT', 'JOIN', 'ON', 'HAVING']);
+  const indentKeywords = new Set(['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT']);
+
+  let formatted = '';
+  let indentLevel = 0;
+
+  // Split by spaces while preserving quoted strings and comments
+  const tokens = sql.match(/(--.*?$)|('[^']*'|"[^"]*"|\b\w+\b|[(),])/gms) || [];
+
+  function addNewline(level = indentLevel) {
+    formatted += '\n' + '  '.repeat(level);
+  }
+
+  for (let i = 0; i < tokens.length; i++) {
+    let token = tokens[i];
+    let upperToken = token.toUpperCase().trim();
+
+    if (token.startsWith('--')) {
+      // Comment line: reset indent, line break
+      addNewline(0);
+      formatted += token.trim();
+    } else if (newlineKeywords.has(upperToken)) {
+      indentLevel = 0;
+      addNewline();
+      formatted += upperToken;
+      if (indentKeywords.has(upperToken)) {
+        indentLevel = 1;
+      }
+    } else if (token === ',') {
+      formatted += ',';
+      addNewline();
+    } else if (token === ')') {
+      indentLevel = Math.max(0, indentLevel - 1);
+      addNewline();
+      formatted += token;
+    } else if (token === '(') {
+      formatted += token;
+      indentLevel++;
+      addNewline();
+    } else {
+      formatted += ' ' + token.trim();
+    }
+  }
+
+  return formatted.trim();
 }
+
 
 //the result of a productive back-and-forth with ChatGPT:
 function xsmoothArray(intArray, windowSize, weightFactor) {

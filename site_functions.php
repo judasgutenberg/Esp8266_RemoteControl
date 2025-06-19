@@ -2544,7 +2544,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
                 $data .= genericTable($rows, null, null, null, "", "", null, "");
               } else {
                 $outputIfThereIsOne =  tokenReplace($outputIfThereIsOne, $_POST); //there could be tokens in the output config
-                $canvasId = "statsCanvas";
+                $canvasId = "statsCanvas" . $multiOutOrdinal;
                 $data .= "\n<script src = \"./tinycolor.js\"></script>\n";
                 $data .= "\n<script src = \"https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js\"></script>\n";
                 $data .= "\n<script>let reportData = " . json_encode($rows) . ";\nlet reportOutput = " . json_encode($outputIfThereIsOne) . "\n;document.addEventListener('DOMContentLoaded', async () => {displayReport(" . $reportId . ",'" . $canvasId . "');});\n</script>\n";
@@ -2729,7 +2729,49 @@ function getJsonErrorMessage($errorCode) {
   }
 }
 
+function stripCommentsForMySQL($sql) {
+    // Remove /* … */ blocks
+    $sql = preg_replace('@/\*.*?\*/@s', ' ', $sql);
+    // Remove -- … and # … to end of line
+    $sql = preg_replace('/(--.*?$|#[^\n\r]*?$)/m', ' ', $sql);
+    return trim($sql);
+}
+
+
 function checkMySqlSyntax($query) {
+    global $conn;
+    $errors = [];
+    $statements = splitSqlCommands($query);
+
+    foreach ($statements as $stmt) {
+        // Skip empty or SET @var=...; style statements
+        $stmt = stripCommentsForMySQL($stmt);
+        if (preg_match('/^\s*SET\s+\@/i', $stmt)) {
+            continue;
+        }
+
+        // Only EXPLAIN statements that allow it
+        if (preg_match('/^\s*(SELECT|INSERT|UPDATE|DELETE|REPLACE)\b/i', $stmt)) {
+            $sqlToCheck = "EXPLAIN $stmt";
+        } else {
+            $sqlToCheck = $stmt; // Don't add EXPLAIN
+        }
+
+        try {
+            $result = $conn->query($sqlToCheck);
+            if (!$result) {
+                $errors[] = mysqli_error($conn);
+            }
+        } catch (Exception $e) {
+            $errors[] = $e->getMessage();
+        }
+    }
+
+    return ['errors' => array_filter($errors)];
+}
+
+
+function xxxxcheckMySqlSyntax($query) {
   global $conn;
   $errors = [];
 
