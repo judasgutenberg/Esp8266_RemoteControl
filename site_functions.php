@@ -2592,16 +2592,10 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
 
 function renderTemplate($comment, $dataSet, $template) {
     if (isset($dataSet[0]) && is_array($dataSet[0])) {
-      // If it's an unnamed recordset (an array of rows), wrap it under a default name
-      if($comment == "" || !$comment) {
-        $dataSet = ['_' => $dataSet];
-      } else { //otherwise use the comment as the name of the dataset
-        $dataSet = [$comment => $dataSet];
-      }
+        $dataSet = [$comment === "" ? '_' : $comment => $dataSet];
     }
-    //var_dump($dataSet);
-    //die();
-    // Handle loops like {{#each _}}...{{/each}}
+
+    // Evaluate each loop
     while (preg_match('/{{#each (\w+)}}(.*?){{\/each}}/s', $template)) {
         $template = preg_replace_callback('/{{#each (\w+)}}(.*?){{\/each}}/s', function ($matches) use ($dataSet) {
             $setName = $matches[1];
@@ -2613,8 +2607,8 @@ function renderTemplate($comment, $dataSet, $template) {
             }
 
             foreach ($dataSet[$setName] as $row) {
-                $output .= preg_replace_callback('/{{(\w+)}}/', function ($m) use ($row) {
-                    return htmlspecialchars($row[$m[1]] ?? '', ENT_QUOTES);
+                $output .= preg_replace_callback('/{{([\w.]+(?:\s*\|\|\s*[^{}]+)?)}}/', function ($m) use ($row) {
+                    return resolveTemplateVar($m[1], $row);
                 }, $loopContent);
             }
 
@@ -2622,19 +2616,45 @@ function renderTemplate($comment, $dataSet, $template) {
         }, $template);
     }
 
-    // Handle top-level {{var}} replacements (non-loop)
-    $template = preg_replace_callback('/{{(\w+)}}/', function ($m) use ($dataSet) {
-        foreach ($dataSet as $set) {
-            if (is_array($set) && array_key_exists($m[1], $set)) {
-                return htmlspecialchars($set[$m[1]], ENT_QUOTES);
-            }
-        }
-        return '';
+    // Evaluate conditionals: {{#if path}}...{{/if}}
+    $template = preg_replace_callback('/{{#if ([^}]+)}}(.*?){{\/if}}/s', function ($m) use ($dataSet) {
+        $value = resolveTemplateVar($m[1], $dataSet, false);
+        return $value ? $m[2] : '';
+    }, $template);
+
+    // Final variable replacements outside loops
+    $template = preg_replace_callback('/{{([\w.]+(?:\s*\|\|\s*[^{}]+)?)}}/', function ($m) use ($dataSet) {
+        return resolveTemplateVar($m[1], $dataSet);
     }, $template);
 
     return $template;
 }
 
+function resolveTemplateVar($expression, $scope, $escape = true) {
+    $parts = explode('||', $expression, 2);
+    $path = trim($parts[0]);
+    $fallback = isset($parts[1]) ? trim($parts[1], " '\"\t") : '';
+
+    $segments = explode('.', $path);
+    $value = $scope;
+
+    foreach ($segments as $segment) {
+        if (is_array($value)) {
+            $key = ctype_digit($segment) ? (int)$segment : $segment;
+            if (!array_key_exists($key, $value)) {
+                $value = null;
+                break;
+            }
+            $value = $value[$key];
+        } else {
+            $value = null;
+            break;
+        }
+    }
+
+    $result = ($value !== null && $value !== '') ? $value : $fallback;
+    return $escape ? htmlspecialchars($result, ENT_QUOTES) : $result;
+}
 
 function timeAgo($sqlDateTime, $compareTo = null) {
   global $timezone;
