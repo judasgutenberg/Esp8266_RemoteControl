@@ -2587,7 +2587,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
 function renderTemplate($comment, $dataSet, $template) {
     if (isset($dataSet[0]) && is_array($dataSet[0])) {
       // If it's an unnamed recordset (an array of rows), wrap it under a default name
-      if($comment == "") {
+      if($comment == "" || !$comment) {
         $dataSet = ['_' => $dataSet];
       } else { //otherwise use the comment as the name of the dataset
         $dataSet = [$comment => $dataSet];
@@ -2595,23 +2595,25 @@ function renderTemplate($comment, $dataSet, $template) {
     }
 
     // Handle loops like {{#each _}}...{{/each}}
-    $template = preg_replace_callback('/{{#each (\w+)}}(.*?){{\/each}}/s', function ($matches) use ($dataSet) {
-        $setName = $matches[1];
-        $loopContent = $matches[2];
-        $output = '';
+    while (preg_match('/{{#each (\w+)}}(.*?){{\/each}}/s', $template)) {
+        $template = preg_replace_callback('/{{#each (\w+)}}(.*?){{\/each}}/s', function ($matches) use ($dataSet) {
+            $setName = $matches[1];
+            $loopContent = $matches[2];
+            $output = '';
 
-        if (!isset($dataSet[$setName]) || !is_array($dataSet[$setName])) {
-            return '';
-        }
+            if (!isset($dataSet[$setName]) || !is_array($dataSet[$setName])) {
+                return '';
+            }
 
-        foreach ($dataSet[$setName] as $row) {
-            $output .= preg_replace_callback('/{{(\w+)}}/', function ($m) use ($row) {
-                return htmlspecialchars($row[$m[1]] ?? '', ENT_QUOTES);
-            }, $loopContent);
-        }
+            foreach ($dataSet[$setName] as $row) {
+                $output .= preg_replace_callback('/{{(\w+)}}/', function ($m) use ($row) {
+                    return htmlspecialchars($row[$m[1]] ?? '', ENT_QUOTES);
+                }, $loopContent);
+            }
 
-        return $output;
-    }, $template);
+            return $output;
+        }, $template);
+    }
 
     // Handle top-level {{var}} replacements (non-loop)
     $template = preg_replace_callback('/{{(\w+)}}/', function ($m) use ($dataSet) {
