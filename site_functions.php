@@ -2319,6 +2319,32 @@ function splitSqlCommands($sql) {
 }
 
 
+function splitSqlCommandsWithComments($sql){
+    // 1) Re-use your proven splitter
+    $chunks = splitSqlCommands($sql);
+    // 2) Inspect each chunk for a leading "--" comment
+    $out = [];
+
+    foreach ($chunks as $chunk) {
+        $chunk   = ltrim($chunk);        // ignore leading blanks/newlines
+        $comment = '';
+        $stmt    = $chunk;
+        if (preg_match('/^--[^\r\n]*/', $chunk, $m)) {
+            $commentLine = $m[0];                    // “-- something…”
+            $comment     = trim(substr($commentLine, 2));   // strip “--”
+            $stmt        = trim(substr($chunk, strlen($commentLine)), "\r\n");
+        }
+        if($stmt != "") {
+          $out[] = [
+              'comment' => $comment,
+              'sql'     => $stmt
+          ];
+        }
+    }
+
+    return $out;
+}
+
 function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
   Global $conn;
   $tenantId = $user["tenant_id"];
@@ -2454,7 +2480,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
       //delete from report_log where report_log_id=149;
       //echo $sql;
       $start = microtime(true);
-      $individualSqlLines  = splitSqlCommands($sql);
+      $individualSqlLines  = splitSqlCommandsWithComments($sql);
       $sqlLineCount = count($individualSqlLines);
       $zip = null;
       if($sqlLineCount > 1 && strtolower($outputFormat) == "csv") {
@@ -2469,65 +2495,65 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
       //var_dump($individualSqlLines);
       $multiOutOrdinal = 1;
       foreach($individualSqlLines as $individualSqlLine) {
-        if(trim($individualSqlLine) != "") {
-          $reportResult = mysqli_query($conn, $individualSqlLine);
-          $error = mysqli_error($conn);
-          $affectedRows = mysqli_affected_rows($conn);
-          $count = 0;
-          $rows = false;
-          //echo $reportResult . "-" . $error  . "=" . $affectedRows;
-          if($reportResult || $error || $affectedRows) {
-            if($decodedFormToUse != "") {
-              $decodedFormToUse = mergeValues($decodedFormToUse, $_POST);
-            }
-            if($error) {
-              $rows = [["error" => $error]];
-              $count = 0;
-            } else if($affectedRows &&  $reportResult===true) {
-              $rows = [["Affected records" => $affectedRows]];
-              $count = count($rows);
-            } else if($reportResult !== false  && $reportResult !== true){
-              $rows = mysqli_fetch_all($reportResult, MYSQLI_ASSOC);
-              $count = count($rows);
-            }
+        $comment = $individualSqlLine["comment"];
+        $reportResult = mysqli_query($conn, $individualSqlLine["sql"]);
+        $error = mysqli_error($conn);
+        $affectedRows = mysqli_affected_rows($conn);
+        $count = 0;
+        $rows = false;
+        //echo $reportResult . "-" . $error  . "=" . $affectedRows;
+        if($reportResult || $error || $affectedRows) {
+          if($decodedFormToUse != "") {
+            $decodedFormToUse = mergeValues($decodedFormToUse, $_POST);
+          }
+          if($error) {
+            $rows = [["error" => $error]];
+            $count = 0;
+          } else if($affectedRows &&  $reportResult===true) {
+            $rows = [["Affected records" => $affectedRows]];
+            $count = count($rows);
+          } else if($reportResult !== false  && $reportResult !== true){
+            $rows = mysqli_fetch_all($reportResult, MYSQLI_ASSOC);
+            $count = count($rows);
+          }
 
-            
-            //var_dump($rows);
-            if($rows) {
-              if(strtolower($outputFormat) == "csv") {
-                $content = generateCsvContent($rows);
-                if($zip) {
-                  $zip->addFromString($multiOutOrdinal . ".csv", $content);
-                } else {
-                  download("", str_replace(" ", "_", $reportData["name"]) . ".csv", $content);
-                  $url = "?table=report&report_id=" . $reportId . "&report_log_id=" . $reportLogId . "&action=fetch";
-                  header("Location: " . $url);
-                }
-              } else if(strtolower($outputFormat) == "output template") {
-                $content = renderTemplate($rows, $outputTemplate);
-                download("", str_replace(" ", "_", $reportData["name"]) . ".html", $content);
+          
+          //var_dump($rows);
+          if($rows) {
+            if(strtolower($outputFormat) == "csv") {
+              $content = generateCsvContent($rows);
+              if($zip) {
+                $zip->addFromString(str_replace(" ", "_", $comment) . ".csv", $content);
+              } else {
+                download("", str_replace(" ", "_", $reportData["name"]) . ".csv", $content);
                 $url = "?table=report&report_id=" . $reportId . "&report_log_id=" . $reportLogId . "&action=fetch";
                 header("Location: " . $url);
+              }
+            } else if(strtolower($outputFormat) == "output template") {
+              $content = renderTemplate($rows, $outputTemplate);
+              download("", str_replace(" ", "_", $reportData["name"]) . ".html", $content);
+              $url = "?table=report&report_id=" . $reportId . "&report_log_id=" . $reportLogId . "&action=fetch";
+              header("Location: " . $url);
+            } else {
+              //$tableTools 
+              //function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools) { //aka genericList
+              //echo "'" . $outputFormat . "'<BR>";
+              $outputIfThereIsOne = getOutputIfThereIsOne($outputFormat, $output, $unfoundName);
+              //var_dump($outputIfThereIsOne);
+              if($outputIfThereIsOne == null) {
+                $data .= genericTable($rows, null, null, null, "", "", null, "");
               } else {
-                //$tableTools 
-                //function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools) { //aka genericList
-                //echo "'" . $outputFormat . "'<BR>";
-                $outputIfThereIsOne = getOutputIfThereIsOne($outputFormat, $output, $unfoundName);
-                //var_dump($outputIfThereIsOne);
-                if($outputIfThereIsOne == null) {
-                  $data .= genericTable($rows, null, null, null, "", "", null, "");
-                } else {
-                  $outputIfThereIsOne =  tokenReplace($outputIfThereIsOne, $_POST); //there could be tokens in the output config
-                  $canvasId = "statsCanvas";
-                  $data .= "\n<script src = \"./tinycolor.js\"></script>\n";
-                  $data .= "\n<script src = \"https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js\"></script>\n";
-                  $data .= "\n<script>let reportData = " . json_encode($rows) . ";\nlet reportOutput = " . json_encode($outputIfThereIsOne) . "\n;document.addEventListener('DOMContentLoaded', async () => {displayReport(" . $reportId . ",'" . $canvasId . "');});\n</script>\n";
-                  $data .= "\n<canvas id=\"" . $canvasId . "\" style='display:block;'></canvas>\n";
-                  $data .= "\n<div id='visualizationCaption' style='padding:10px'></div>";
-                }
+                $outputIfThereIsOne =  tokenReplace($outputIfThereIsOne, $_POST); //there could be tokens in the output config
+                $canvasId = "statsCanvas";
+                $data .= "\n<script src = \"./tinycolor.js\"></script>\n";
+                $data .= "\n<script src = \"https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js\"></script>\n";
+                $data .= "\n<script>let reportData = " . json_encode($rows) . ";\nlet reportOutput = " . json_encode($outputIfThereIsOne) . "\n;document.addEventListener('DOMContentLoaded', async () => {displayReport(" . $reportId . ",'" . $canvasId . "');});\n</script>\n";
+                $data .= "\n<canvas id=\"" . $canvasId . "\" style='display:block;'></canvas>\n";
+                $data .= "\n<div id='visualizationCaption' style='padding:10px'></div>";
               }
             }
           }
+          
         }
         $multiOutOrdinal++;
       }
