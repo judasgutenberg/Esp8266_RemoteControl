@@ -2167,7 +2167,7 @@ function tablesThatRequireModified(){
 
 //all the tables that implement templating
 function templateableTables() {
-  return ["feature_type", "device_type", "device_type_feature", "management_rule", "report"];
+  return ["feature_type", "device_type", "device_type_feature", "management_rule", "report", "weather_condition "];
 }
 
 //all the tables of this system

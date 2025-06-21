@@ -2330,8 +2330,8 @@ function splitSqlCommandsWithComments($sql){
         $comment = '';
         $stmt    = $chunk;
         if (preg_match('/^--[^\r\n]*/', $chunk, $m)) {
-            $commentLine = $m[0];                    // “-- something…”
-            $comment     = trim(substr($commentLine, 2));   // strip “--”
+            $commentLine = $m[0];                    // Â“-- somethingÂ…Â”
+            $comment     = trim(substr($commentLine, 2));   // strip Â“--Â”
             $stmt        = trim(substr($chunk, strlen($commentLine)), "\r\n");
         }
         if($stmt != "") {
@@ -2552,7 +2552,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
                 $canvasId = "statsCanvas" . $multiOutOrdinal;
                 $data .= "\n<script src = \"./tinycolor.js\"></script>\n";
                 $data .= "\n<script src = \"https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js\"></script>\n";
-                $data .= "\n<script>let reportData = " . json_encode($rows) . ";\nlet reportOutput = " . json_encode($outputIfThereIsOne) . "\n;document.addEventListener('DOMContentLoaded', async () => {displayReport(" . $reportId . ",'" . $canvasId . "');});\n</script>\n";
+                $data .= "\n<script>{let reportData = " . json_encode($rows) . ";\nlet reportOutput = " . json_encode($outputIfThereIsOne) . "\n;document.addEventListener('DOMContentLoaded', async () => {displayReport(" . $reportId . ",'" . $canvasId . "',reportData , reportOutput);});\n}</script>\n";
                 $data .= "\n<canvas id=\"" . $canvasId . "\" style='display:block;'></canvas>\n";
                 $data .= "\n<div id='visualizationCaption' style='padding:10px'></div>";
               }
@@ -2767,9 +2767,9 @@ function getJsonErrorMessage($errorCode) {
 }
 
 function stripCommentsForMySQL($sql) {
-    // Remove /* … */ blocks
+    // Remove /* Â… */ blocks
     $sql = preg_replace('@/\*.*?\*/@s', ' ', $sql);
-    // Remove -- … and # … to end of line
+    // Remove -- Â… and # Â… to end of line
     $sql = preg_replace('/(--.*?$|#[^\n\r]*?$)/m', ' ', $sql);
     return trim($sql);
 }
