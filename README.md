@@ -66,8 +66,6 @@ To get this installed, first create an initial database by running remote_contro
 
 Now you need to create a new account with the web front end. The first user in the database is automatically given the role of super, which can edit the user table, create reports, and administer other tenants in the database, among other privileges.  That user also automatically gets a tenant, connected to the user via the tenant_user table.  Superusers can manage the connection of tenants to users via the user or tenant editors.  Users who need tenants can either ask the superuser to connect them to their tenant or new users can be invited to join their tenant by using a specially-crafted link (which can be produced by one of the utilities in the Utilities tab).  
 
-This is another advancement from my Moxee Hotspot Watchdog system, which was itself an advance from my ESP8266-Micro-Weather system.  This system still logs weather data using a variety of common weather sensors and can, if configured correctly, reboot a Moxee cellular hotspot when it craps out and needs a reboot (which is essential for reliably connecting to my off-grid cabin, which is a pre-requisite for all the features I am about to describe).
-
 From there, here's an overview of how to set up control for a particular system controlled by a pin on your ESP8266:
 
 1. Add a record to the device table to represent your particular ESP8266.  In the code, device_id and location_id refer to the same entity. Your ESP8266 will send that id as device_id to the server whenever it polls it to get updates on what values the device with its pins should have.  You will need to set device_id to this value in config.c before compiling the code for you ESP8266.
