@@ -67,7 +67,7 @@ function addPastYearToGraph(locationIdArray, locationId, yearsAgo, plotType){
 			//console.log(multiGraphDataObject[yearsAgo][locationId]);
 		}
 
-	} else {
+	} else {  //not multi
 		columnCount = 0;
 		//console.log(graphDataObject);
 		if(graphDataObject[yearsAgo]){
@@ -85,7 +85,7 @@ function addPastYearToGraph(locationIdArray, locationId, yearsAgo, plotType){
 					let label = column;
 					color = gvfa("color", mapToUse, color);
 					color = tinycolor(color).lighten(26);
-					label = gvfa("color", mapToUse, label);
+					label = gvfa("column_name", mapToUse, label);
 					label = label + " " + parseInt(parseInt(new Date().getFullYear()) - yearsAgo);
 					//console.log(graphDataObject);
 					let yAxisId = "A";
