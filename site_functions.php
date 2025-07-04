@@ -2550,8 +2550,9 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
               } else {
                 $outputIfThereIsOne =  tokenReplace($outputIfThereIsOne, $_POST); //there could be tokens in the output config
                 $canvasId = "statsCanvas" . $multiOutOrdinal;
-                $data .= "\n<script src = \"./tinycolor.js\"></script>\n";
-                $data .= "\n<script src = \"https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js\"></script>\n";
+                //$data .= "\n<script src = \"./tinycolor.js\"></script>\n";
+                $data .= "\n<script src=\"https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js\"></script>";
+                $data .= "\n<script src=\"https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js\"></script>";
                 $data .= "\n<script>{let reportData = " . json_encode($rows) . ";\nlet reportOutput = " . json_encode($outputIfThereIsOne) . "\n;document.addEventListener('DOMContentLoaded', async () => {displayReport(" . $reportId . ",'" . $canvasId . "',reportData , reportOutput);});\n}</script>\n";
                 $data .= "\n<canvas id=\"" . $canvasId . "\" style='display:block;'></canvas>\n";
                 $data .= "\n<div id='visualizationCaption' style='padding:10px'></div>";
