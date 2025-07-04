@@ -160,20 +160,34 @@ function showGraph(locationId, plotType){
 		}
 	}
 	let scales = {
-			  yAxes: [
-			  	{
-			        id: 'A',
-			        type: 'linear',
-			        position: 'left'
-			      }, 
-				  {
-			        id: 'B',
-			        type: 'linear',
-			        position: 'right'
-			 
-	            }
-				]
-            }
+				x: {
+          type: 'time',
+          title: {
+            display: true,
+            text: 'Time'
+          }
+        },
+        
+        A: {
+          type: 'linear',
+          position: 'left',
+          title: {
+          display: true,
+          text: 'temperature/humidity'
+          }
+        },
+        B: {
+          type: 'linear',
+          position: 'right',
+          title: {
+          display: true,
+          text: 'pressure'
+				},
+				grid: {
+          drawOnChartArea: false
+				}
+      }
+   }
 	timeStampLabels = timeStamp;
 	let graphSubtitle = "Weather Data";
 	//console.log(devices);
@@ -220,15 +234,22 @@ function showGraph(locationId, plotType){
 			colorCursor++;
 		}
 		scales =  {
-			  yAxes: [
-					{
-						id: 'A',
-						type: 'linear',
-						position: 'left' 
-	 
-					}
-				]
-            }
+				x: {
+          type: 'time',
+          title: {
+            display: true,
+            text: 'Time'
+          }
+        },
+        A: {
+          type: 'linear',
+          position: 'left',
+          title: {
+          display: true,
+          text: ''
+          }
+       }
+    }
 		//console.log(timeStampLabels);
 		graphSubtitle = document.getElementById("specific_column")[document.getElementById("specific_column").selectedIndex].value + " data";
 
