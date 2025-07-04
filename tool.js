@@ -25,7 +25,6 @@ function managementRuleTool(item) {
 	  let url = "?table=tenant&action=json&tenant_id=" + item.value;
 	  xmlhttp.open("GET", url, true);
 	  xmlhttp.send();
-  
   }
   
   function userTool(item) {
@@ -40,7 +39,6 @@ function managementRuleTool(item) {
 	  let url = "?table=user&action=json&user_id=" + item.value;
 	  xmlhttp.open("GET", url, true);
 	  xmlhttp.send();
-  
   }
   
   function formSubmitTasks() {
@@ -1476,22 +1474,31 @@ function managementRuleTool(item) {
 	  if (noAxes.indexOf(type) > -1) {
 			 scaleDisplay = false;
 		 }
-  
+    let xScaleType = "time";
+    if(viewOptionInfo.x_scale_type) {
+      xScaleType = viewOptionInfo.x_scale_type;
+    }
+    yAxisLabel = "";
+    if(viewOptionInfo.y_axis_label) {
+      yAxisLabel = viewOptionInfo.y_axis_label;
+    }
 	  var scales = {
-		  xAxes: [{
-			  display: scaleDisplay,
-			  scaleLabel: {
-				  display: true,
-				  labelString: viewOptionInfo.labelColumn
-			  }
-		  }],
-		  yAxes: [{
-			  display: scaleDisplay,
-			  scaleLabel: {
-				  display: true,
-				  labelString: 'Value'
-			  }
-		  }]
+		  
+		  x: {
+				type: xScaleType,
+				title: {
+				display: scaleDisplay,
+				text: viewOptionInfo.labelColumn
+				}
+			},
+			y: {
+				type: 'linear',
+				position: 'left',
+				title: {
+				display: scaleDisplay,
+				text: yAxisLabel
+				}
+			}
 	  }
   
 	  var config = {
