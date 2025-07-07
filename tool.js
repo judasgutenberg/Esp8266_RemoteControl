@@ -1475,12 +1475,12 @@ function managementRuleTool(item) {
 			 scaleDisplay = false;
 		 }
     let xScaleType = "time";
-    if(viewOptionInfo.x_scale_type) {
-      xScaleType = viewOptionInfo.x_scale_type;
+    if(viewOptionInfo.xScaleType) {
+      xScaleType = viewOptionInfo.xScaleType;
     }
     yAxisLabel = "";
-    if(viewOptionInfo.y_axis_label) {
-      yAxisLabel = viewOptionInfo.y_axis_label;
+    if(viewOptionInfo.yAxisLabel) {
+      yAxisLabel = viewOptionInfo.yAxisLabel;
     }
 	  var scales = {
 		  

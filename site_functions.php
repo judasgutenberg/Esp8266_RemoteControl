@@ -2411,8 +2411,10 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
               $outputs = [];
               foreach($output as $specificOutput){
                 $outputName = gvfa("name", $specificOutput, $unfoundName . " " . $outputCount);
-                $outputCount++;
-                $outputs[] = $outputName;
+                if(array_search($outputName, $outputs) === false) { //makes sure if we have multiple outputs for different sqlcaptions, only displays the one kind
+                  $outputCount++;
+                  $outputs[] = $outputName;
+                }
               }
             } else {
               $outputName = gvfa("name", $output, "graph");
@@ -2529,10 +2531,12 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
                 header("Location: " . $url);
               }
             } else if(strtolower($outputFormat) == "output template") {
-              if($comment == "") {
+              if($comment == ""  && $sqlLineCount == 1) {
                 $multiRecordsetArray["_"] = $rows;
-              } else {
+              } else if($comment) {
                 $multiRecordsetArray[$comment] = $rows;
+              } else if($sqlLineCount > 1) {
+                $multiRecordsetArray[$multiOutOrdinal - 1] = $rows;
               }
               //need to do the rest outside the loop
             } else {
@@ -2540,7 +2544,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
               //function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools) { //aka genericList
               //echo "'" . $outputFormat . "'<BR>";
 
-              $outputIfThereIsOne = getOutputIfThereIsOne($outputFormat, $output, $unfoundName);
+              $outputIfThereIsOne = getOutputIfThereIsOne($outputFormat, $output, $unfoundName, $comment);
               //var_dump($outputIfThereIsOne);
               if($comment != "") {
                 $data .= "<div class='issuesheader'>" . $comment . "</div>";
@@ -2688,20 +2692,22 @@ function timeAgo($sqlDateTime, $compareTo = null) {
 }
 
 
-function getOutputIfThereIsOne($outputFormat, $output, $unfoundName = "custom") {
+function getOutputIfThereIsOne($outputFormat, $output, $unfoundName = "custom", $sqlComment = "") {
   $outputCount = 1;
   if(is_array($output)){
     if(array_is_list($output)){
       foreach($output as $specificOutput){
         $outputName = gvfa("name", $specificOutput, $unfoundName . " " . $outputCount);
+        $thisSqlComment = gvfa("sqlComment", $specificOutput);
         $outputCount++;
-        if($outputFormat == $outputName){
+        if($outputFormat == $outputName  && ($sqlComment == ""  || $sqlComment == $thisSqlComment)){
           return $specificOutput;
         }
       }
     } else {
       $outputName = gvfa("name", $output, $unfoundName);
-      if($outputFormat == $outputName){
+      $thisSqlComment = gvfa("sqlComment", $specificOutput);
+      if($outputFormat == $outputName  && ($sqlComment == ""  || $sqlComment == $thisSqlComment)){
         return $output;
       }
     }
