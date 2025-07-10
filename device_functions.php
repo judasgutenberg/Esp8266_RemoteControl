@@ -31,19 +31,18 @@ function allWeatherConditions($tenantId) {
   }
 }
 
-function deviceFeatures($tenantId, $deviceId) {
-  Global $conn;
+function deviceFeatures($user, $deviceId) {
   $table = "device_feature";
   $sql = "SELECT df.name as name, color, digest_bit_position, pin_number, allow_automatic_management, df.enabled, df.device_type_feature_id, df.device_feature_id, df.created, last_known_device_value, last_known_device_modified, df.value  
           FROM " . $table . " df 
           JOIN device_type_feature dtf 
-            ON df.device_type_feature_id=dtf.device_type_feature_id AND df.tenant_id=dtf.tenant_id WHERE df.tenant_id=" . intval($tenantId);
+            ON df.device_type_feature_id=dtf.device_type_feature_id AND df.tenant_id=dtf.tenant_id WHERE df.tenant_id=<tenant_id/>";
   //echo $sql;
   if($deviceId){
     $sql .= " AND df.device_id=" . intval($deviceId);
 
   }
-  $result = mysqli_query($conn, $sql);
+  $result = replaceTokensAndQuery($sql, $user);
   $out = "";
   $out .= "<div class='listtitle'>Your " . $table . "s</div>\n";
   $additionalValueQueryString = "";
@@ -139,12 +138,11 @@ function timeScales() {
   return $out;
 }
 
-function devices($tenantId) {
-  Global $conn;
+function devices($user) {
   $table = "device";
-  $sql = "SELECT *  FROM " . $table . "  WHERE tenant_id=" . intval($tenantId);
+  $sql = "SELECT *  FROM " . $table . "  WHERE tenant_id=<tenant_id/>";
   //echo $sql;
-  $result = mysqli_query($conn, $sql);
+  $result = replaceTokensAndQuery($sql, $user);
   $out = "";
   $out .= "<div class='listtitle'>Your " . $table . "s</div>\n";
   $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a new " . $table  . "</div>\n";
@@ -196,12 +194,11 @@ function devices($tenantId) {
 
 }
 
-function reports($tenantId, $user) {
-  Global $conn;
+function reports($user) {
   $table = "report";
-  $sql = "SELECT *  FROM " . $table . "  WHERE tenant_id=" . intval($tenantId);
+  $sql = "SELECT *  FROM " . $table . "  WHERE tenant_id=<tenant_id/>";
   //echo $sql;
-  $result = mysqli_query($conn, $sql);
+  $result = replaceTokensAndQuery($sql, $user);
   $out = "";
   $out .= "<div class='listtitle'>Your " . $table . "s</div>\n";
   $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a new " . $table  . "</div>\n";
@@ -245,12 +242,11 @@ function reports($tenantId, $user) {
 
 }
 
-function weatherConditions($tenantId, $user) {
-  Global $conn;
+function weatherConditions($user) {
   $table = "weather_condition";
-  $sql = "SELECT *  FROM " . $table . "  WHERE tenant_id=" . intval($tenantId);
+  $sql = "SELECT *  FROM " . $table . "  WHERE tenant_id=<tenant_id/>";
   //echo $sql;
-  $result = mysqli_query($conn, $sql);
+  $result = replaceTokensAndQuery($sql, $user);
   $out = "";
   $out .= "<div class='listtitle'>Your " . $table . "s</div>\n";
   $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a new " . $table  . "</div>\n";
@@ -295,8 +291,7 @@ function weatherConditions($tenantId, $user) {
     return $out;
 }
 
-function editWeatherCondition($error,  $tenantId) {
-  Global $conn;
+function editWeatherCondition($error,  $user) {
   $table = "weather_condition";
   $pk = gvfw($table . "_id");
   
@@ -306,8 +301,8 @@ function editWeatherCondition($error,  $tenantId) {
     $submitLabel = "create weather condition";
     $source = $_POST;
   } else {
-    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
-    $result = mysqli_query($conn, $sql);
+    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=<tenant_id/>";
+    $result = replaceTokensAndQuery($sql, $user);
     if($result) {
       $source = mysqli_fetch_array($result);
     }
@@ -749,7 +744,6 @@ function editTenant($error, $user){
 }
 
 function editDeviceFeature($error,  $user) {
-  Global $conn;
   $tenantId = $user["tenant_id"];
   $table = "device_feature";
   $pk = gvfw($table . "_id");
@@ -759,8 +753,8 @@ function editDeviceFeature($error,  $user) {
     $submitLabel = "create device feature";
     $source = $_POST;
   } else {
-    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
-    $result = mysqli_query($conn, $sql);
+    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=<tenant_id/>";
+    $result = replaceTokensAndQuery($sql, $user);
     if($result) {
       $source = mysqli_fetch_array($result);
     }
@@ -917,7 +911,6 @@ function editDeviceFeature($error,  $user) {
 }
 
 function editCommandType($error,  $user) {
-  Global $conn;
   $tenantId = $user["tenant_id"];
   $table = "command_type";
   $pk = gvfw($table . "_id");
@@ -927,8 +920,8 @@ function editCommandType($error,  $user) {
     $submitLabel = "create command type";
     $source = $_POST;
   } else {
-    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
-    $result = mysqli_query($conn, $sql);
+    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=<tenant_id/>";
+    $result = replaceTokensAndQuery($sql, $user);
     if($result) {
       $source = mysqli_fetch_array($result);
     }
@@ -987,8 +980,7 @@ function editCommandType($error,  $user) {
   return $form;
 }
 
-function commandTypes($tenantId, $deviceId){
-  Global $conn;
+function commandTypes($user, $deviceId){
   $table = "command_type";
   $out = "<div class='listheader'>Command Types</div>";
   $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a command</div>\n";
@@ -1014,10 +1006,10 @@ function commandTypes($tenantId, $deviceId){
       'name' => 'created'
 	  ] ,
     );
-    $sql = "SELECT * from command_type WHERE tenant_id =" . intval($tenantId) . " ORDER BY name DESC";
+    $sql = "SELECT * from command_type WHERE tenant_id =<tenant_id/> ORDER BY name DESC";
     $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
     $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
-    $result = mysqli_query($conn, $sql);
+    $result = replaceTokensAndQuery($sql, $user);
    
     if($result) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
@@ -1032,7 +1024,6 @@ function commandTypes($tenantId, $deviceId){
 
 
 function editCommand($error,  $user) {
-  Global $conn;
   $tenantId = $user["tenant_id"];
   $table = "command";
   $pk = gvfw($table . "_id");
@@ -1042,8 +1033,8 @@ function editCommand($error,  $user) {
     $submitLabel = "create command";
     $source = $_POST;
   } else {
-    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
-    $result = mysqli_query($conn, $sql);
+    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=<tenant_id/>";
+    $result = replaceTokensAndQuery($sql, $user);
     if($result) {
       $source = mysqli_fetch_array($result);
     }
@@ -1107,7 +1098,6 @@ function editCommand($error,  $user) {
 }
 
 function commands($tenantId, $deviceId){
-  Global $conn;
   $table = "command";
   $out = "<div class='listheader'>Commands</div>";
   $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a command</div>\n";
@@ -1148,10 +1138,10 @@ function commands($tenantId, $deviceId){
   $sql = "SELECT c.name AS command, d.name AS device, t.command_id, t.done, t.created, performed, command_value, associated_table, value_column FROM " . $table . " t 
   LEFT JOIN command_type c ON t.command_type_id = c.command_type_id  AND t.tenant_id = c.tenant_id 
   LEFT JOIN device d ON t.device_id = d.device_id  AND t.tenant_id = d.tenant_id
-  WHERE t.tenant_id =" . intval($tenantId) . " ORDER BY t.created DESC";
+  WHERE t.tenant_id =<tenant_id/> ORDER BY t.created DESC";
   $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
   $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
-  $result = mysqli_query($conn, $sql);
+  $result = replaceTokensAndQuery($sql, $user);
  
   if($result) {
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
@@ -1165,7 +1155,6 @@ function commands($tenantId, $deviceId){
 }
 
 function deviceColumnMaps($deviceId, $tenantId){
-  Global $conn;
   $table = "device_column_map";
   $out = "<div class='listheader'>Device Column Maps</div>";
   $out .= "<div class='listtools'>";
@@ -1211,7 +1200,7 @@ function deviceColumnMaps($deviceId, $tenantId){
 	  ] 
     );
  
-  $sql = "SELECT * FROM " . $table . "    WHERE tenant_id =" . intval($tenantId);
+  $sql = "SELECT * FROM " . $table . "    WHERE tenant_id =<tenant_id/>";
   if($deviceId) {
     $sql .= " AND device_id = " . intval($deviceId);  
   }
@@ -1219,7 +1208,7 @@ function deviceColumnMaps($deviceId, $tenantId){
   //echo $sql;
   $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
   $toolsTemplate .= " | " . deleteLink($table, $table. "_id", "device_id=" . $deviceId); 
-  $result = mysqli_query($conn, $sql);
+  $result = replaceTokensAndQuery($sql, $user);
  
   if($result) {
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
@@ -1233,8 +1222,7 @@ function deviceColumnMaps($deviceId, $tenantId){
   return $out;
 }
 
-function editDeviceColumnMap($error, $deviceId, $tenantId) {
-  Global $conn;
+function editDeviceColumnMap($error, $deviceId, $user) {
   $table = "device_column_map";
   $pk = gvfw($table . "_id");
   
@@ -1243,12 +1231,12 @@ function editDeviceColumnMap($error, $deviceId, $tenantId) {
     $submitLabel = "create device column map";
     $source = $_POST;
   } else {
-    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
+    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=<tenant_id/>";
  
     if($deviceId != ""){
       $sql .= " AND device_id=" . intval($deviceId);
     }
-    $result = mysqli_query($conn, $sql);
+    $result = replaceTokensAndQuery($sql, $user);
     if($result) {
       $source = mysqli_fetch_array($result);
     }
@@ -1347,8 +1335,7 @@ function editDeviceColumnMap($error, $deviceId, $tenantId) {
 }
 
 
-function editReport($error,  $tenantId) {
-  Global $conn;
+function editReport($error,  $user) {
   $table = "report";
   $pk = gvfw($table . "_id");
   
@@ -1358,8 +1345,8 @@ function editReport($error,  $tenantId) {
     $submitLabel = "create report";
     $source = $_POST;
   } else {
-    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
-    $result = mysqli_query($conn, $sql);
+    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=<tenant_id/>";
+    $result = replaceTokensAndQuery($sql, $user);
     if($result) {
       $source = mysqli_fetch_array($result);
     }
@@ -1443,8 +1430,7 @@ function editReport($error,  $tenantId) {
   return $form;
 }
 
-function editDevice($error,  $tenantId) {
-  Global $conn;
+function editDevice($error,  $user) {
   $table = "device";
   $pk = gvfw($table . "_id");
   
@@ -1454,8 +1440,8 @@ function editDevice($error,  $tenantId) {
     $submitLabel = "create device";
     $source = $_POST;
   } else {
-    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
-    $result = mysqli_query($conn, $sql);
+    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=<tenant_id/>";
+    $result = replaceTokensAndQuery($sql, $user);
     if($result) {
       $source = mysqli_fetch_array($result);
     }
@@ -1550,8 +1536,7 @@ function editDevice($error,  $tenantId) {
   return $form;
 }
 
-function editManagementRule($error,  $tenantId) {
-  Global $conn;
+function editManagementRule($error,  $user) {
   $table = "management_rule";
   $pk = gvfw($table . "_id");
   
@@ -1560,8 +1545,8 @@ function editManagementRule($error,  $tenantId) {
     $submitLabel = "create management rule";
     $source = $_POST;
   } else {
-    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=" . intval($tenantId);
-    $result = mysqli_query($conn, $sql);
+    $sql = "SELECT * from " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=<tenant_id/>";
+    $result = replaceTokensAndQuery($sql, $user);
     if($result) {
       $source = mysqli_fetch_array($result);
     }
@@ -1633,8 +1618,7 @@ function editManagementRule($error,  $tenantId) {
   return $form;
 }
 
-function managementRules($tenantId, $deviceId){
-  Global $conn;
+function managementRules($user, $deviceId){
   $table = "management_rule";
   $out = "<div class='listheader'>Management Rules</div>";
   $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a management rule</div>\n";
@@ -1653,10 +1637,10 @@ function managementRules($tenantId, $deviceId){
 	  ] 
     );
  
-  $sql = "SELECT * FROM " . $table . " WHERE tenant_id =" . intval($tenantId) . " ORDER BY created DESC";
+  $sql = "SELECT * FROM " . $table . " WHERE tenant_id =<tenant_id/> ORDER BY created DESC";
   $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
   $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
-  $result = mysqli_query($conn, $sql);
+  $result = replaceTokensAndQuery($sql, $user);
  
   if($result) {
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
@@ -1670,7 +1654,6 @@ function managementRules($tenantId, $deviceId){
 }
 
 function deviceFeatureLog($deviceFeatureId, $tenantId){
-  Global $conn;
   $headerData = array(
     [
 	    'label' => 'recorded',
@@ -1698,9 +1681,9 @@ function deviceFeatureLog($deviceFeatureId, $tenantId){
     ]
     );
   $deviceFeatureName = getDeviceFeature($deviceFeatureId, $tenantId)["name"];
-  $sql = "SELECT recorded, beginning_state, end_state, mechanism, m.name AS rule_name , email, u.user_id  FROM device_feature_log f LEFT JOIN management_rule m ON m.management_rule_id=f.management_rule_id  AND m.tenant_id=f.tenant_id LEFT JOIN user u ON f.user_id = u.user_id WHERE f.tenant_id =" . intval($tenantId) . " AND device_feature_id=" . intval($deviceFeatureId) . " ORDER BY recorded DESC LIMIT 0,500";
+  $sql = "SELECT recorded, beginning_state, end_state, mechanism, m.name AS rule_name , email, u.user_id  FROM device_feature_log f LEFT JOIN management_rule m ON m.management_rule_id=f.management_rule_id  AND m.tenant_id=f.tenant_id LEFT JOIN user u ON f.user_id = u.user_id WHERE f.tenant_id =<tenant_id/> AND device_feature_id=" . intval($deviceFeatureId) . " ORDER BY recorded DESC LIMIT 0,500";
   //die($sql);
-  $result = mysqli_query($conn, $sql);
+  $result = replaceTokensAndQuery($sql, $user);
   $out = "<div class='listheader'>Device Feature Log: " . $deviceFeatureName . "</div>";
   if($result) {
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
@@ -1714,13 +1697,12 @@ function deviceFeatureLog($deviceFeatureId, $tenantId){
 }
 
 function getDeviceFeature($deviceFeatureId, $tenantId){
-  return getGeneric("device_feature", $deviceFeatureId, $tenantId);
+  return getGeneric("device_feature", $deviceFeatureId, ["tenant_id"=>$tenantId]);
 }
 
-function getGeneric($table, $pk, $tenantId){
-  Global $conn;
-  $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id='" . mysqli_real_escape_string($conn, $pk)  . "' AND tenant_id=" . intval($tenantId);
-	$result = mysqli_query($conn, $sql);
+function getGeneric($table, $pk, $user){
+  $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id='" . mysqli_real_escape_string($conn, $pk)  . "' AND tenant_id=<tenant_id/>";
+	$result = replaceTokensAndQuery($sql, $user);
 	if($result) {
 		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
 		return $row;
@@ -1931,10 +1913,9 @@ function getMostRecentInverterRecord($tenant){
 }
 
 function currentSensorData($tenant){
-  Global $conn;
   $out = "";
-  $sql = "SELECT * FROM inverter_log WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE tenant_id=" . $tenant["tenant_id"] . ") ";
-  $result = mysqli_query($conn, $sql);
+  $sql = "SELECT * FROM inverter_log WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE tenant_id=<tenant_id/>) ";
+  $result = replaceTokensAndQuery($sql, $tenant);
   $out .= "<div class='listheader'>Inverter </div>";
   $energyInfo = array(
     [
@@ -2000,8 +1981,8 @@ function currentSensorData($tenant){
       GROUP BY
           device_id
     ) latest ON wd.device_id = latest.device_id AND wd.recorded = latest.max_recorded
-    WHERE d.tenant_id = " . $tenant["tenant_id"];
-  $result = mysqli_query($conn, $sql);
+    WHERE d.tenant_id = <tenant_id/>";
+  $result = replaceTokensAndQuery($sql, $tenant);
   $out .= "<div class='listheader'>Weather </div>";
 
   $weatherInfo = array(

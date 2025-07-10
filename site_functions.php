@@ -1616,6 +1616,13 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
   return $out;
 }
 
+function replaceTokensAndQuery($sql, $data) {
+  global $conn;
+  $sql = tokenReplace($sql, $data);
+  $result = mysqli_query($conn, $sql);
+  return $result;
+}
+
 function tokenReplace($template, $data,  $tableName = "", $strDelimiterBegin = "<", $strDelimiterEnd = "/>"){
   Global $encryptionPassword;
   //var_dump($data);

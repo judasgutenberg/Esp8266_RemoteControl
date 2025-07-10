@@ -219,7 +219,7 @@ if ($user) {
     $sql .= $sortAddendum  ;
     //echo $sql . "\n\n";
     //die();
-    $result = mysqli_query($conn, $sql);
+    $result = replaceTokensAndQuery($sql, $user);
     if($result) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
       echo json_encode($rows);
@@ -369,19 +369,19 @@ if ($user) {
       $out .= doReport($user, gvfw("report_id"), gvfw("report_log_id"), $outputFormat);
     
     } else if ($action == "startcreate" || gvfw("report_id") != "") {
-      $out .=  editReport($errors,  $tenantId);
+      $out .=  editReport($errors,  $user);
     } else {
-      $out .= reports($tenantId, $user);
+      $out .= reports($user);
     }
 	} else if($table == "device") {
     if ($action == "startcreate" || gvfw("device_id") != "") {
-      $out .=  editDevice($errors,  $tenantId);
+      $out .=  editDevice($errors,  $user);
     } else {
-     $out .= devices($tenantId);
+     $out .= devices($user);
     }
 	} else if($table == "device_column_map") {
     if ($action == "startcreate" || gvfw("device_column_map_id") != "") {
-      $out .=  editDeviceColumnMap($errors, $deviceId, $tenantId);
+      $out .=  editDeviceColumnMap($errors, $user, $tenantId);
     } else {
      $out .= deviceColumnMaps($deviceId, $tenantId);
     }
@@ -389,13 +389,13 @@ if ($user) {
     if ($action == "startcreate" || gvfw("device_feature_id") != "") {
       $out .=  editDeviceFeature($errors,  $user);
     } else {
-      $out .= deviceFeatures($tenantId, $deviceId);
+      $out .= deviceFeatures($user, $deviceId);
     }
 	} else if($table == "management_rule") {
     if ($action == "startcreate" || gvfw("management_rule_id") != "") {
-      $out .=  editManagementRule($errors,  $tenantId);
+      $out .=  editManagementRule($errors,  $user);
     } else {
-      $out .= managementRules($tenantId, $deviceId);
+      $out .= managementRules($user, $deviceId);
     }
 	} else if($table == "command") {
     if ($action == "startcreate" || gvfw("command_id") != "") {
@@ -407,13 +407,13 @@ if ($user) {
     if ($action == "startcreate" || gvfw("command_type_id") != "") {
       $out .=  editCommandType($errors,  $user);
     } else {
-      $out .= commandTypes($tenantId, $deviceId);
+      $out .= commandTypes($user, $deviceId);
     }
   } else if($table == "weather_condition") {
     if ($action == "startcreate" || gvfw("weather_condition_id") != "") {
-      $out .=  editWeatherCondition($errors,  $tenantId);
+      $out .=  editWeatherCondition($errors,  $user);
     } else {
-      $out .= weatherConditions($tenantId,  $user);
+      $out .= weatherConditions($user);
     }
 	} else if($table == "user") {
     if ($action == "startcreate" || gvfw("user_id") != "") {
