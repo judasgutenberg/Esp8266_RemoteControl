@@ -18,7 +18,7 @@ $table = strtolower(filterStringForSqlEntities(gvfw('table', "device"))); //make
 if($table == "etc"){
   $table = "device_type_feature";
 }
-echo file_get_contents('php://input');
+
 $jsonPostData = json_decode(file_get_contents('php://input'), true);
 $action = strtolower(gvfw('action', gvfa("action", $jsonPostData)));
 if(!$action){
@@ -180,11 +180,13 @@ if ($user) {
       echo $hashedEntities. " " . $whatHashedEntitiesShouldBe . "\n";
       die("Data appears to have been tampered with.");
     }
-    if($value == "false"){
-      $value = 0;
-    } else if($value == "true"){
-      $value = 1;
+    //echo $value . "\n";
+    if($value === false){
+      $value = "0";
+    } else if($value === true){
+      $value = "1";
     }
+    //echo $value . "\n";
     //a little safer only because it allows a user to screw up records connected to their tenantId but mabe revisit!!!
     $userClause = "";
     if(in_array($table, tablesThatRequireUser())){
@@ -200,11 +202,12 @@ if ($user) {
     } else {
       echo "You lack permissions.<br/>";
     }
+    //echo $sql;
     if(!$result)
     {
       echo $sql;
     } else {
-      var_dump($result);
+      //var_dump($result);
     }
     die();
   
