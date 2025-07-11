@@ -18,7 +18,12 @@ $table = strtolower(filterStringForSqlEntities(gvfw('table', "device"))); //make
 if($table == "etc"){
   $table = "device_type_feature";
 }
-$action = strtolower(gvfw('action', "list"));
+echo file_get_contents('php://input');
+$jsonPostData = json_decode(file_get_contents('php://input'), true);
+$action = strtolower(gvfw('action', gvfa("action", $jsonPostData)));
+if(!$action){
+  $action = "list";
+}
 $user = autoLogin();
 $tenantId = gvfa("tenant_id", $user);
  
@@ -40,6 +45,7 @@ $datatype = gvfw('datatype');
 //echo $table  . "*" . $action. "*" .  $datatype;
 $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
 $formatedDateTime =  $date->format('Y-m-d H:i:s');
+
 
 if(strpos($action, "password") !== false) {
   $email = gvfw("email");
@@ -163,11 +169,12 @@ if ($user) {
   } else if($action == "genericformsave") { //this should be pretty secure now that i am hashing all the descriptive information to make sure it isn't tampered with
     //mostly works for numbers, colors, and checkboxes
 
-    $name = filterStringForSqlEntities(gvfw('name'));
-    $value = gvfw('value');
-    $primaryKeyName = filterStringForSqlEntities(gvfw('primary_key_name'), true);
-    $primaryKeyValue = gvfw('primary_key_value');
-    $hashedEntities = gvfw('hashed_entities');
+    $name = filterStringForSqlEntities($jsonPostData['name']);
+    $value = $jsonPostData['value'];
+    $primaryKeyName = filterStringForSqlEntities($jsonPostData['primary_key_name'], true);
+    $primaryKeyValue = $jsonPostData['primary_key_value'];
+    $hashedEntities = $jsonPostData['hashed_entities'];
+    $table = $jsonPostData['table'];
     $whatHashedEntitiesShouldBe =  hash_hmac('sha256', $name . $table . $primaryKeyName . $primaryKeyValue, $encryptionPassword);
     if($hashedEntities != $whatHashedEntitiesShouldBe){
       echo $hashedEntities. " " . $whatHashedEntitiesShouldBe . "\n";
@@ -434,6 +441,7 @@ if ($user) {
   } else if ($action == "startcreate") {
     $out .= genericEntityForm($tenantId, $table, $errors);
   } else if($table!= "user" || $user["role"]  == "super") {
+   
     if(gvfw($table . '_id')) {
       $out .= genericEntityForm($tenantId, $table, $errors);
     } else if($table) {

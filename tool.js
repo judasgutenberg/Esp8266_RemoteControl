@@ -507,19 +507,57 @@ function managementRuleTool(item) {
 	//window.location.reload(); //meh let's not
   });
   
-  function genericListActionBackend(name, value, tableName, primaryKeyName, primaryKeyValue, hashedEntities){ //this is a security nightmare;  need to improve!!
-	var xmlhttp = new XMLHttpRequest();
-	xmlhttp.onreadystatechange = function() {
-	  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
-		//alert(xmlhttp.responseText);
-		//var data = JSON.parse(xmlhttp.responseText);
-   
-	  }
-	};
-	let url = "?action=genericFormSave&table=" + encodeURIComponent(tableName) + "&primary_key_name=" + encodeURIComponent(primaryKeyName) + "&primary_key_value=" + encodeURIComponent(primaryKeyValue) + "&value=" + encodeURIComponent(value) + "&name=" + encodeURIComponent(name) + "&hashed_entities="  + encodeURIComponent(hashedEntities); 
-	xmlhttp.open("GET", url, true);
-	xmlhttp.send();
-  }
+function genericListActionBackend(
+  name,
+  value,
+  tableName,
+  primaryKeyName,
+  primaryKeyValue,
+  hashedEntities
+) {
+  // -------------------------------
+  // 1.  Build the JSON payload
+  // -------------------------------
+  const payload = {
+    action: "genericFormSave",
+    table: tableName,
+    primary_key_name: primaryKeyName,
+    primary_key_value: primaryKeyValue,
+    name,
+    value,
+    hashed_entities: hashedEntities
+  };
+
+  // -------------------------------
+  // 2.  Send it with XMLHttpRequest
+  // -------------------------------
+  const xhr = new XMLHttpRequest();
+
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState === 4) {
+      if (xhr.status === 200) {
+        // If your PHP returns JSON:
+        // const data = JSON.parse(xhr.responseText);
+        console.log("Server replied:", xhr.responseText);
+      } else {
+        console.error("Request failed:", xhr.status, xhr.statusText);
+      }
+    }
+  };
+
+  xhr.open("POST", "tool.php", true);
+
+  // Tell the server we’re sending JSON
+  xhr.setRequestHeader("Content-Type", "application/json");
+
+  // ?? Cookies:
+  // Same-origin: they’re sent automatically — nothing to do.
+  // Cross-origin: uncomment the next line and make sure your
+  //               server’s CORS headers allow credentials.
+  // xhr.withCredentials = true;
+
+  xhr.send(JSON.stringify(payload));
+}
   
   function genericSelect(id, name, defaultValue, data, event = "", handler = "") {
 	let out = "";
