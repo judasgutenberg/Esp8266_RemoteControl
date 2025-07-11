@@ -2031,7 +2031,6 @@ function currentSensorData($tenant){
 }
 
 function managementRuleTools() {
-  Global $conn;
   $out = "";
   $tables = array("inverter_log", "device_log");
   //genericSelect($id, $name, $defaultValue, $data, $event = "", $handler= "")
