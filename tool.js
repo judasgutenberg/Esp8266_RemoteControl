@@ -547,13 +547,13 @@ function genericListActionBackend(
 
   xhr.open("POST", "tool.php", true);
 
-  // Tell the server we’re sending JSON
+  // Tell the server weï¿½re sending JSON
   xhr.setRequestHeader("Content-Type", "application/json");
 
   // ?? Cookies:
-  // Same-origin: they’re sent automatically — nothing to do.
+  // Same-origin: theyï¿½re sent automatically ï¿½ nothing to do.
   // Cross-origin: uncomment the next line and make sure your
-  //               server’s CORS headers allow credentials.
+  //               serverï¿½s CORS headers allow credentials.
   // xhr.withCredentials = true;
 
   xhr.send(JSON.stringify(payload));
@@ -2075,6 +2075,20 @@ function genericListActionBackend(
     var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
     return time;
   }
+
+  //be sure to include our submit button in the data
+  form.addEventListener("submit", function (e) {
+	e.preventDefault();
+  
+	// ðŸ‘‰ the button (or <input type="submit">) that fired the event
+	const submitter = e.submitter;
+  
+	// Include it when building FormData
+	const formData = new FormData(form, submitter);
+  
+	// â€¦ everything else stays exactly the same â€¦
+  });
+
   
   document.addEventListener("DOMContentLoaded", function () {
   // Intercept all forms with a specific class (e.g., class="json-post")
