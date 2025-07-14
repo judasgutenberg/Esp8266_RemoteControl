@@ -2064,14 +2064,60 @@ function genericListActionBackend(
   }
   
   function timeConverter(UNIX_timestamp){
-	var a = new Date(UNIX_timestamp * 1000);
-	var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-	var year = a.getFullYear();
-	var month = months[a.getMonth()];
-	var date = a.getDate();
-	var hour = a.getHours();
-	var min = a.getMinutes();
-	var sec = a.getSeconds();
-	var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
-	return time;
+    var a = new Date(UNIX_timestamp * 1000);
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var year = a.getFullYear();
+    var month = months[a.getMonth()];
+    var date = a.getDate();
+    var hour = a.getHours();
+    var min = a.getMinutes();
+    var sec = a.getSeconds();
+    var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
+    return time;
   }
+  
+  document.addEventListener("DOMContentLoaded", function () {
+  // Intercept all forms with a specific class (e.g., class="json-post")
+  document.querySelectorAll("form").forEach(form => {
+    form.addEventListener("submit", function (e) {
+      e.preventDefault(); // stop regular form submission
+
+      const formData = new FormData(form);
+      const jsonObject = {};
+
+      for (const [key, value] of formData.entries()) {
+        // If multiple fields have the same name, store as array
+        if (jsonObject.hasOwnProperty(key)) {
+          if (!Array.isArray(jsonObject[key])) {
+            jsonObject[key] = [jsonObject[key]];
+          }
+          jsonObject[key].push(value);
+        } else {
+          jsonObject[key] = value;
+        }
+      }
+
+      const targetUrl = form.action || window.location.href;
+
+      fetch(targetUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "same-origin", // send cookies if on same origin
+        body: JSON.stringify(jsonObject)
+      })
+      .then(resp => {
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return resp.json(); // or .text() depending on your backend
+      })
+      .then(data => {
+        console.log("Success:", data);
+        // Optional: show success UI or redirect
+      })
+      .catch(err => {
+        console.error("Submission failed:", err);
+      });
+    });
+  });
+});

@@ -12,6 +12,8 @@ include("config.php");
 include("site_functions.php");
 include("device_functions.php");
  
+normalizePostData();
+
 $conn = mysqli_connect($servername, $username, $password, $database);
 
 $table = strtolower(filterStringForSqlEntities(gvfw('table', "device"))); //make sure this table name doesn't contain injected SQL
@@ -19,11 +21,8 @@ if($table == "etc"){
   $table = "device_type_feature";
 }
 
-$jsonPostData = json_decode(file_get_contents('php://input'), true);
-$action = strtolower(gvfw('action', gvfa("action", $jsonPostData)));
-if(!$action){
-  $action = "list";
-}
+$action = strtolower(gvfa("action", $_POST, gvfw('action', "list")));
+//echo $action;
 $user = autoLogin();
 $tenantId = gvfa("tenant_id", $user);
  
@@ -43,7 +42,7 @@ $tenantSelector = "";
 $page = gvfw('page');
 $datatype = gvfw('datatype'); 
 //echo $table  . "*" . $action. "*" .  $datatype;
-$date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
+$date = new DateTime("now", new DateTimeZone($timezone));//$timezone is set in config.php
 $formatedDateTime =  $date->format('Y-m-d H:i:s');
 
 
@@ -169,12 +168,12 @@ if ($user) {
   } else if($action == "genericformsave") { //this should be pretty secure now that i am hashing all the descriptive information to make sure it isn't tampered with
     //mostly works for numbers, colors, and checkboxes
 
-    $name = filterStringForSqlEntities($jsonPostData['name']);
-    $value = $jsonPostData['value'];
-    $primaryKeyName = filterStringForSqlEntities($jsonPostData['primary_key_name'], true);
-    $primaryKeyValue = $jsonPostData['primary_key_value'];
-    $hashedEntities = $jsonPostData['hashed_entities'];
-    $table = $jsonPostData['table'];
+    $name = filterStringForSqlEntities(gvfa('name', $_POST));
+    $value = gvfa('value', $_POST);
+    $primaryKeyName = filterStringForSqlEntities(gvfa('primary_key_name', $_POST), true);
+    $primaryKeyValue = gvfa('primary_key_value', $_POST);
+    $hashedEntities = gvfa('hashed_entities', $_POST);
+    $table = gvfa('table', $_POST);
     $whatHashedEntitiesShouldBe =  hash_hmac('sha256', $name . $table . $primaryKeyName . $primaryKeyValue, $encryptionPassword);
     if($hashedEntities != $whatHashedEntitiesShouldBe){
       echo $hashedEntities. " " . $whatHashedEntitiesShouldBe . "\n";

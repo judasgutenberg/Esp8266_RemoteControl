@@ -407,6 +407,7 @@ function schemaArrayFromSchema($table, &$pk){
   Global $conn;
   $sql = "EXPLAIN " . $table;
   $result = mysqli_query($conn, $sql);
+  //var_dump($result);
   $headerData = [];
   if($result) {
  
@@ -496,10 +497,12 @@ function genericEntityForm($tenantId, $table, $errors){
   $data = schemaArrayFromSchema($table, $pk);
   $pkValue =  gvfa($pk, $_GET);
   $thisDataSql = "SELECT * FROM " . $table . " WHERE " . $pk . " = '" . $pkValue . "'";
-   
+  //echo $table;
+  //var_dump($data);
   if($table != "user"  && $table != "tenant") {
     $thisDataSql .= " AND tenant_id=" . intval($tenantId);
   }
+  //echo $thisDataSql;
   $thisDataResult = mysqli_query($conn, $thisDataSql);
   if($thisDataResult) {
     $thisDataRows = mysqli_fetch_all($thisDataResult, MYSQLI_ASSOC);
@@ -2911,6 +2914,16 @@ function writeMemoryCache($key, $value) {
   apcu_store($key . "_value", $value);
 }
 
+function normalizePostData() {
+    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+    if (stripos($contentType, 'application/json') !== false) {
+        $raw = file_get_contents('php://input');
+        $json = json_decode($raw, true);
+        if (is_array($json)) {
+            $_POST = $json;
+        }
+    }
+}
 
 function findRecordByKey($records, $keyName, $value) {
   foreach ($records as $record) {
@@ -2939,8 +2952,6 @@ function checkPhpFunctionCallIsBogus($str){
   $pattern = '/\(\s*,|,\s*\)/';
   return preg_match($pattern, $str) === 1;
 }
-
-
 
 function removeDelimiters($str, $replacement = "_") {
   $delimiters = "|*!";
