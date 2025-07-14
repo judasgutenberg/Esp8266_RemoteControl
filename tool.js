@@ -2080,13 +2080,53 @@ function genericListActionBackend(
   form.addEventListener("submit", function (e) {
 	e.preventDefault();
   
-	// 👉 the button (or <input type="submit">) that fired the event
 	const submitter = e.submitter;
   
-	// Include it when building FormData
-	const formData = new FormData(form, submitter);
+	let formData;
   
-	// … everything else stays exactly the same …
+	// Feature-detect support for the 2-argument FormData constructor
+	try {
+	  formData = new FormData(form, submitter);
+	} catch (err) {
+	  formData = new FormData(form);
+	  if (submitter && submitter.name) {
+		formData.append(submitter.name, submitter.value);
+	  }
+	}
+  
+	const jsonObject = {};
+  
+	for (const [key, value] of formData.entries()) {
+	  if (jsonObject.hasOwnProperty(key)) {
+		if (!Array.isArray(jsonObject[key])) {
+		  jsonObject[key] = [jsonObject[key]];
+		}
+		jsonObject[key].push(value);
+	  } else {
+		jsonObject[key] = value;
+	  }
+	}
+  
+	const targetUrl = form.action || window.location.href;
+  
+	fetch(targetUrl, {
+	  method: "POST",
+	  headers: {
+		"Content-Type": "application/json"
+	  },
+	  credentials: "same-origin",
+	  body: JSON.stringify(jsonObject)
+	})
+	.then(resp => {
+	  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+	  return resp.json();
+	})
+	.then(data => {
+	  console.log("Success:", data);
+	})
+	.catch(err => {
+	  console.error("Submission failed:", err);
+	});
   });
 
   
