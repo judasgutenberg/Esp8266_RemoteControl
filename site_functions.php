@@ -1640,6 +1640,7 @@ function tokenReplace($template, $data,  $tableName = "", $strDelimiterBegin = "
     }
   }
   if($tableName!= "") {
+    //echo $tableName . "+" . $tableName . "_id" . "+" . $data[$tableName . "_id"] . "<BR>";
     $hashedEntities = hash_hmac('sha256', $tableName . $tableName . "_id" . $data[$tableName . "_id"], $encryptionPassword);
     $template = str_replace($strDelimiterBegin . "hashed_entities" . $strDelimiterEnd, $hashedEntities, $template);
   }
@@ -2210,7 +2211,8 @@ function deleteLink($table, $pkName, $extraData = "") {
   if($extraData  && !beginsWith($extraData, "&")){
     $extraData = "&" . $extraData;
   }
-  $out = "<a onclick='return confirm(\"Are you sure you want to delete this " . $table . "?\")' href='?table=" . $table . "&action=delete&" . $pkName . "=<" . $pkName . "/>&hashed_entities=<hashed_entities/>" . $extraData ."'>Delete</a>";
+  $out = "<a href='#' onclick='deleteEntity(\"" . $table . "\",\"" . $pkName . "\",\"<" . $pkName . "/>\",\"<hashed_entities/>\",\"" . $extraData . "\")'>Delete</a>";
+  //$out = "<a onclick='return confirm(\"Are you sure you want to delete this " . $table . "?\")' href='?table=" . $table . "&action=delete&" . $pkName . "=<" . $pkName . "/>&hashed_entities=<hashed_entities/>" . $extraData ."'>Delete</a>";
   return $out;
 }
 

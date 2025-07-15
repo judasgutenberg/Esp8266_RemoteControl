@@ -326,20 +326,25 @@ if ($user) {
    } else if(!$foundData && false) {
     $out .= "<div class='generalerror'>Utility not yet developed.</div>";
    }
-  } else if ($action == "delete") {
-
-    $sql = "DELETE FROM " . $table . " WHERE " . $table . "_id='" . intval(gvfw( $table . "_id")) . "'";
+  } else if ($action == "delete") { //this version hardened against CSCRF
+    $pkName = $_POST["primary_key_name"];
+    $pkValue = $_POST["primary_key_value"];
+    $table = $_POST["table"];
+    $sql = "DELETE FROM " . $table . " WHERE " . $pkName  . "='" . intval($pkValue) . "'";
     if($table != "user") {
       $sql .= " AND tenant_id='" . $tenantId . "'";
     }
-    //die($sql);
+    
     $hashedEntities = gvfw('hashed_entities');
-    $whatHashedEntitiesShouldBe =  hash_hmac('sha256', $table .$table . "_id"  . intval(gvfw( $table . "_id")) , $encryptionPassword);
+    $whatHashedEntitiesShouldBe =  hash_hmac('sha256', $table . $pkName . $pkValue, $encryptionPassword);
+    //die( $table . $pkName . $pkValue . "*" . $hashedEntities . "*" . $whatHashedEntitiesShouldBe);
     if($hashedEntities != $whatHashedEntitiesShouldBe){
       die("Data appears to have been tampered with.");
     }
+    //echo "SUCCESS";
+    //die($sql);
     $result = mysqli_query($conn, $sql);
-    header('Location: '.$_SERVER['PHP_SELF'] . "?table=" . $table . "&device_id=" . $deviceId);
+    //header('Location: '.$_SERVER['PHP_SELF'] . "?table=" . $table . "&device_id=" . $deviceId);
   } elseif($action == "json"){
     if($table!= "user" || $user["role"]  == "super") {
       $name = filterStringForSqlEntities(gvfw('name')); 

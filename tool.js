@@ -473,6 +473,39 @@ function managementRuleTool(item) {
 	
   }
   
+  
+  //<a onclick="deleteEntity(&quot;device&quot;,&quot;device_id&quot;,&quot;11&quot;,&quot;c50da501b429d8052954c8c87e699f4391833dca8016c7b971d66958cef182d6&quot;,&quot;&quot;)">Delete</a>
+  function deleteEntity(table, pkName, pkValue, hashedEntities) {
+    if(confirm("Are you sure you want to delete this " + table + "?")) {
+      const payload = {
+        action: "delete",
+        table: table,
+        primary_key_name: pkName,
+        primary_key_value: pkValue,
+        //pre_entity: table + "+" + pkName + "+" + pkValue,
+        hashed_entities: hashedEntities
+      };
+      
+      const xhr = new XMLHttpRequest();
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            // If your PHP returns JSON:
+            // const data = JSON.parse(xhr.responseText);
+            console.log("Server replied:", xhr.responseText);
+            window.location.reload();
+          } else {
+            console.error("Request failed:", xhr.status, xhr.statusText);
+          }
+        }
+      };
+      xhr.open("POST", "tool.php", true);
+      // Tell the server we�re sending JSON
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.send(JSON.stringify(payload));
+    }
+  }
+  
   function deleteListRows(idOfParent, classToKill) { //thanks chatgpt!
 	var parentDiv = document.getElementById(idOfParent); 
 	var listRows = parentDiv.getElementsByClassName(classToKill);
