@@ -1432,6 +1432,7 @@ function editReport($error,  $user) {
 
 function editDevice($error,  $user) {
   $table = "device";
+  $tenantId = $user["tenant_id"];
   $pk = gvfw($table . "_id");
   
   $submitLabel = "save device";
@@ -1536,7 +1537,7 @@ function editDevice($error,  $user) {
   return $form;
 }
 
-function editManagementRule($error,  $user) {
+function editManagementRule($error, $user) {
   $table = "management_rule";
   $pk = gvfw($table . "_id");
   
