@@ -1115,17 +1115,17 @@ function genericListActionBackend(
   }
   
   function formatJSON(jsonString, indent = 2) {
-	try {
-		// Parse the JSON string into an object
-		const jsonObj = JSON.parse(jsonString);
-		
-		// Convert the object back into a formatted JSON string
-		return JSON.stringify(jsonObj, null, indent);
-	} catch (error) {
-		// Handle errors in case of invalid JSON
-		console.error("Invalid JSON string:", error);
-		return jsonString; //but then just return whatever it was, because we don't want to just throw out the baby with the bathwater
-	}
+    try {
+      // Parse the JSON string into an object
+      const jsonObj = JSON.parse(jsonString);
+      
+      // Convert the object back into a formatted JSON string
+      return JSON.stringify(jsonObj, null, indent);
+    } catch (error) {
+      // Handle errors in case of invalid JSON
+      //console.error("Invalid JSON string:", error);
+      return jsonString; //but then just return whatever it was, because we don't want to just throw out the baby with the bathwater
+    }
   }
   
   function formatSQL(sql) {
@@ -2110,101 +2110,60 @@ function genericListActionBackend(
   }
 
   //be sure to include our submit button in the data
+
+// Be sure to include our submit button in the data
+let form = document.querySelector("form");
+
+if (form) {
   form.addEventListener("submit", function (e) {
-	e.preventDefault();
-  
-	const submitter = e.submitter;
-  
-	let formData;
-  
-	// Feature-detect support for the 2-argument FormData constructor
-	try {
-	  formData = new FormData(form, submitter);
-	} catch (err) {
-	  formData = new FormData(form);
-	  if (submitter && submitter.name) {
-		formData.append(submitter.name, submitter.value);
-	  }
-	}
-  
-	const jsonObject = {};
-  
-	for (const [key, value] of formData.entries()) {
-	  if (jsonObject.hasOwnProperty(key)) {
-		if (!Array.isArray(jsonObject[key])) {
-		  jsonObject[key] = [jsonObject[key]];
-		}
-		jsonObject[key].push(value);
-	  } else {
-		jsonObject[key] = value;
-	  }
-	}
-  
-	const targetUrl = form.action || window.location.href;
-  
-	fetch(targetUrl, {
-	  method: "POST",
-	  headers: {
-		"Content-Type": "application/json"
-	  },
-	  credentials: "same-origin",
-	  body: JSON.stringify(jsonObject)
-	})
-	.then(resp => {
-	  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-	  return resp.json();
-	})
-	.then(data => {
-	  console.log("Success:", data);
-	})
-	.catch(err => {
-	  console.error("Submission failed:", err);
-	});
-  });
+    e.preventDefault();
 
-  
-  document.addEventListener("DOMContentLoaded", function () {
-  // Intercept all forms with a specific class (e.g., class="json-post")
-  document.querySelectorAll("form").forEach(form => {
-    form.addEventListener("submit", function (e) {
-      e.preventDefault(); // stop regular form submission
+    const submitter = e.submitter;
 
-      const formData = new FormData(form);
-      const jsonObject = {};
+    let formData;
 
-      for (const [key, value] of formData.entries()) {
-        // If multiple fields have the same name, store as array
-        if (jsonObject.hasOwnProperty(key)) {
-          if (!Array.isArray(jsonObject[key])) {
-            jsonObject[key] = [jsonObject[key]];
-          }
-          jsonObject[key].push(value);
-        } else {
-          jsonObject[key] = value;
-        }
+    // Feature-detect support for the 2-argument FormData constructor
+    try {
+      formData = new FormData(form, submitter);
+    } catch (err) {
+      formData = new FormData(form);
+      if (submitter && submitter.name) {
+        formData.append(submitter.name, submitter.value);
       }
+    }
 
-      const targetUrl = form.action || window.location.href;
+    const jsonObject = {};
 
-      fetch(targetUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        credentials: "same-origin", // send cookies if on same origin
-        body: JSON.stringify(jsonObject)
-      })
+    for (const [key, value] of formData.entries()) {
+      if (jsonObject.hasOwnProperty(key)) {
+        if (!Array.isArray(jsonObject[key])) {
+          jsonObject[key] = [jsonObject[key]];
+        }
+        jsonObject[key].push(value);
+      } else {
+        jsonObject[key] = value;
+      }
+    }
+
+    const targetUrl = form.action || window.location.href;
+
+    fetch(targetUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      credentials: "same-origin",
+      body: JSON.stringify(jsonObject)
+    })
       .then(resp => {
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        return resp.json(); // or .text() depending on your backend
+        return resp.json();
       })
       .then(data => {
         console.log("Success:", data);
-        // Optional: show success UI or redirect
       })
       .catch(err => {
         console.error("Submission failed:", err);
       });
-    });
   });
-});
+}
