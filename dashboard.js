@@ -40,7 +40,7 @@ function toggleDeviceFeature(deviceFeatureId, hashedEntries,  actuallySetState) 
 }
 
 function changeButton(data) {
-  bgColor = '#cccccc';
+  let bgColor = '#cccccc';
   let state = false;
   stateDisplay = "Unknown or non-existent";
   if(data["value"] === "1") {
