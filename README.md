@@ -3,10 +3,10 @@
 If you need complete control of all the code of a robust multi-user/multi-tenant remote-control, automation and weather data logging system without infuriating compilation and dependency headaches (in Javascript or PHP), you might be interested in this system. I developed it to more efficiently use solar energy at my off-grid Adirondack cabin while also keeping the internet accessible and the pipes from freezing.  This started out as a simple multi-probe weather monitoring system (<a href=https://github.com/judasgutenberg/ESP8266-Micro-Weather target=esp>ESP8266 MicroWeather</a>) to which I first added reliability automation (<a href=https://github.com/judasgutenberg/Hotspot-Watchdog  target=hot>Hotspot-Watchdog</a>), then remote control, then solar inverter monitoring, then cabin automation, and finally a multi-tenant security model (so others could use the same server installation as a backend).  
 
 For monitoring multiple weather sensors (placed, say, in various places inside and outside a building), there's a multi-plot graph.
-![alt text](weathergraph.jpg?raw=true)
+![alt text](weathergraph.png?raw=true)
 
 There's also a page to show data from your solar inverter if you happen to be using the one I know about (SolArk):
-![alt text](invertergraph.jpg?raw=true)
+![alt text](invertergraph.png?raw=true)
 
 But the main feature in this system is that it allows you to remotely control devices across the internet and also supports automation based on the values of sensors known to the central database.  It does this using a server reachable via the internet running PHP/MySQL.  There is no server-side or Javascript compilation and relatively few dependencies:  PHP, MySQL, APCu, the Chart.js 3.7 graphing library, and a variety of Arduino sensor libraries, so this is not much trouble to get working on just about any server where you have a reasonable amount of control.
 
