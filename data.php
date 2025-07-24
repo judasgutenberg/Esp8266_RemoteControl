@@ -131,6 +131,18 @@ if($_REQUEST) {
 	if($canAccessData) {	
 		$tenant = deriveTenantFromStoragePassword($storagePassword);
 		$tenantId = $tenant["tenant_id"];
+		$mostRecentInverterRecord = getMostRecentInverterRecord($tenant);
+		$lastInverterRecorded = new DateTime($mostRecentInverterRecord["recorded"]);
+		//var_dump($mostRecentInverterRecord );
+		//echo "<BR>" . $mostRecentInverterRecord  . "***<BR>";
+		$ageOfInverterRecord = $date->getTimestamp() -$lastInverterRecorded->getTimestamp();
+		$useCloudInverterData = false;
+		//die($ageOfInverterRecord  . "XX" . $date->getTimestamp() . "YY" . $lastInverterRecorded->getTimestamp());
+		if($ageOfInverterRecord > 600) { //it's been five minutes since we last had an inverter record, so maybe use the API then to get it from the SolArk cloud.
+      $useCloudInverterData = true;
+      
+      getCurrentSolarDataFromCloud($tenant);
+    }
 		if(!$conn) {
 			$out = ["error"=>"bad database connection"];
 		} else {
@@ -358,7 +370,7 @@ if($_REQUEST) {
 					$out["devices"] = $rows;
 				}
 			} else if ($mode=="getEnergyInfo"){ //this gets critical SolArk data for possible use automating certain things
-				$energyInfo = getCurrentSolarData($tenant);
+				$energyInfo = null; //getCurrentSolarDataFromCloud($tenant);
 				$out["energy_info"] = [];
 				if($energyInfo){
 					if(gvfa("errors", $energyInfo)){

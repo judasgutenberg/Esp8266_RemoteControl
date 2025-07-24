@@ -1809,9 +1809,9 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
 
 
 //reads data from the cloud about our particular solar installation
-function getCurrentSolarData($tenant) {
+function getCurrentSolarDataFromCloud($tenant) {
   Global $conn;
-  $baseUrl = "https://www.solarkcloud.com";
+  $baseUrl = "https://api.solarkcloud.com";
   $mostRecentInverterRecord = getMostRecentInverterRecord($tenant);
   $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
@@ -1825,37 +1825,44 @@ function getCurrentSolarData($tenant) {
   //var_dump($mostRecentInverterRecord);
   //echo $minutesSinceLastRecord;
   
-  if(false && $minutesSinceLastRecord > 5) { //we don't need to get data from SolArk any more, but this is how you would
+  if($minutesSinceLastRecord > 5) { //we don't need to get data from SolArk any more, but this is how you would
     $plantId = $tenant["energy_api_plant_id"];
     $url = $baseUrl . '/oauth/token';
     $headers = [
-            'Content-Type: application/json;charset=UTF-8', // Set Content-Type header to application/json
-          
+        'Content-Type: application/json;charset=UTF-8',
+        'Origin: https://www.mysolark.com',
+        'Referer: https://www.mysolark.com',
+        'Accept: application/json',
+        'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36'
     ];
     $params = [
             'client_id' => 'csp-web',
             'grant_type' => 'password',
             'password' => $tenant["energy_api_password"],
-            'username' => $tenant["energy_api_username"],
+            'username' => $tenant["energy_api_username"]
  
     ];
 
     $ch = curl_init();
     // Set cURL options
+    //echo $url . "<P>";
+    //var_dump($params);
+    //var_dump($headers);
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); // Set custom headers
+ 
 
     $response = curl_exec($ch);
-
+    //var_dump($response);
     if(curl_errno($ch)){
         echo 'Curl error: ' . curl_error($ch);
     }
 
     curl_close($ch);
-
+    //echo $response;
     $bodyData = json_decode($response, true);
     $data = $bodyData["data"];
     $access_token = $data['access_token'];
@@ -1886,7 +1893,7 @@ function getCurrentSolarData($tenant) {
     curl_close($ch);
 
     $dataBody = json_decode($dataResponse, true);
-
+    //var_dump($dataBody );
     $data = $dataBody["data"];
     //var_dump($data);
     //if ($data["pvTo"] == true) { //this indicates we have real data!
@@ -1905,8 +1912,8 @@ function getCurrentSolarData($tenant) {
 
 function getMostRecentInverterRecord($tenant){
   Global $conn;
-  $sql = "SELECT * FROM inverter_log WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE tenant_id=" . $tenant["tenant_id"] . ") LIMIT 0,1";
-	$result = mysqli_query($conn, $sql);
+  $sql = "SELECT * FROM inverter_log WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE tenant_id=<tenant_id/>) LIMIT 0,1";
+  $result = replaceTokensAndQuery($sql, $tenant);
 	if($result) {
 		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
 		return $row;
