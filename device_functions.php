@@ -1808,7 +1808,7 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
 }
 
 
-//reads data from the cloud about our particular solar installation
+//reads data from the cloud about our particular solar installation, which is great if you don't have a solark copilot
 function getCurrentSolarDataFromCloud($tenant) {
   global $conn, $timezone;
   $baseUrl = "https://api.solarkcloud.com";
