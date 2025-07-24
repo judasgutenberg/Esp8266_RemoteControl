@@ -1747,12 +1747,12 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
   $changer6,
   $changer7
 ) {
-  Global $conn;
-  $date = new DateTime("now", new DateTimeZone('America/New_York'));
+  global $conn, $timezone;
+  $date = new DateTime("now", new DateTimeZone($timezone));
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
   $nowTime = strtotime($formatedDateTime);
 
-  $weatherDescriptionKey = "weather_description";
+  $weatherDescriptionKey = "weather_description" . $tenant["tenant_id"];
   $weatherDescription = readMemoryCache($weatherDescriptionKey, 10);
   if(!$weatherDescription) {
     $weatherData = getWeatherDataByCoordinates($tenant["latitude"], $tenant["longitude"], $tenant["open_weather_api_key"]);
@@ -1810,10 +1810,10 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
 
 //reads data from the cloud about our particular solar installation
 function getCurrentSolarDataFromCloud($tenant) {
-  Global $conn;
+  global $conn, $timezone;
   $baseUrl = "https://api.solarkcloud.com";
   $mostRecentInverterRecord = getMostRecentInverterRecord($tenant);
-  $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
+  $date = new DateTime("now", new DateTimeZone($timezone));//obviously, you would use your timezone, not necessarily mine
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
   $nowTime = strtotime($formatedDateTime);
   $minutesSinceLastRecord = 10000;
@@ -1866,9 +1866,9 @@ function getCurrentSolarDataFromCloud($tenant) {
     $bodyData = json_decode($response, true);
     $data = $bodyData["data"];
     $access_token = $data['access_token'];
-    $currentDateTime = new DateTime('now', new DateTimeZone('America/New_York')); 
+ 
     //echo $currentDateTime->format('Y-m-d h:i:s');
-    $currentDate =  $currentDateTime->format('Y-m-d');
+    $currentDate =  $date->format('Y-m-d');
     $actionUrl = $baseUrl . '/api/v1/plant/energy/' . $plantId  . '/day?date=' . $currentDate . "&id=" . $plantId . "&lan=en";
     $actionUrl = $baseUrl .'/api/v1/plant/energy/' . $plantId  . '/flow?date=' . $currentDate . "&id=" . $plantId . "&lan=en"; 
     $actionUrl = $baseUrl . '/api/v1/plant/energy/' . $plantId  . '/flow';
@@ -1897,8 +1897,24 @@ function getCurrentSolarDataFromCloud($tenant) {
     $data = $dataBody["data"];
     //var_dump($data);
     //if ($data["pvTo"] == true) { //this indicates we have real data!
-      $loggingSql = "INSERT INTO inverter_log ( tenant_id, recorded, solar_power, load_power, grid_power, battery_percentage, battery_power) VALUES (";
-      $loggingSql .= $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . $data["pvPower"] . "," . $data["loadOrEpsPower"] . "," . $data["gridOrMeterPower"] . "," . $data["soc"] . "," . $data["battPower"]    . ")";
+    
+    
+    
+    $weatherDescriptionKey = "weather_description" . $tenant["tenant_id"];
+    $weatherDescription = readMemoryCache($weatherDescriptionKey, 10);
+    if(!$weatherDescription) {
+      $weatherData = getWeatherDataByCoordinates($tenant["latitude"], $tenant["longitude"], $tenant["open_weather_api_key"]);
+      //var_dump($weatherData);
+      $weatherDescription = $weatherData["weather"][0]["description"];
+      writeMemoryCache($weatherDescriptionKey, $weatherDescription);
+    }
+    if($weatherDescription == "") {
+      $weatherDescription = "none";
+    }
+    $weatherConditionId = weatherConditionIdLookup($weatherDescription, $tenant["tenant_id"]);
+    
+      $loggingSql = "INSERT INTO inverter_log ( tenant_id, recorded, solar_power, load_power, grid_power, battery_percentage, battery_power, weather_condition_id, weather) VALUES (";
+      $loggingSql .= $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . $data["pvPower"] . "," . $data["loadOrEpsPower"] . "," . $data["gridOrMeterPower"] . "," . $data["soc"] . "," . $data["battPower"]    . "," . $weatherConditionId .",'" . $weatherDescription . "')";
       $loggingResult = mysqli_query($conn, $loggingSql);
     //}
     //echo $loggingSql;
@@ -2370,9 +2386,10 @@ function utilities($user, $viewMode = "list") {
 
 //tables is a comma-delimited string
 function copyTenantToTemplates($tenantId, $tablesString){
-  Global $conn;
-  Global $database;
-  $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
+  global $conn;
+  global $database;
+  global $timezone;
+  $date = new DateTime("now", new DateTimeZone($timezone));//obviously, you would use your timezone, not necessarily mine
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
   $tables = explode(",", $tablesString);
   foreach($tables as $currentTableName) {

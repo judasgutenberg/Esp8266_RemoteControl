@@ -310,7 +310,7 @@ if($_REQUEST) {
 							$changer5 = $arrEnergyData[15];
 							$changer6 = $arrEnergyData[16];
 							$changer7 = $arrEnergyData[17];
-						$energyInfo = saveSolarData($tenant, $gridPower, $batteryPercent,  
+              $energyInfo = saveSolarData($tenant, $gridPower, $batteryPercent,  
 							$batteryPower, $loadPower, $solarString1, $solarString2, 
 							$batteryVoltage, 
 							$deviceDigest,
