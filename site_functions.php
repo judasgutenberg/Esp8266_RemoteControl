@@ -2459,7 +2459,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
         $decodedFormToUse = copyValuesFromSourceToDest($decodedFormToUse, $historicDataObject);
       }
  
-      $outputDropdownValues = ['web', 'CSV'];
+      $outputDropdownValues = ['web', 'CSV', 'SQL'];
       if($outputs){
         $outputDropdownValues = array_merge($outputDropdownValues, $outputs);
       }
@@ -2490,120 +2490,136 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
       $out = "<div class='listtitle'>Running Report  '" . $reportData["name"] . "' " . $editButton . " " . $reRunButton  . " " . "</div>";
       //gotta merge form values in here:
       $sql =  tokenReplace($sql, $_POST);
-      //die($sql);
-      //delete from report_log where report_log_id=149;
-      //echo $sql;
-      $start = microtime(true);
-      $individualSqlLines  = splitSqlCommandsWithComments($sql);
-      $sqlLineCount = count($individualSqlLines);
-      $zip = null;
-      if($sqlLineCount > 1 && strtolower($outputFormat) == "csv") {
-        $zip = new ZipArchive();
-        $tmpZipFile = tempnam(sys_get_temp_dir(), 'zip');
-        // Create the ZIP in a temp file
-        if ($zip->open($tmpZipFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
-            die("Could not create zip archive");
+      if(strtolower($outputFormat) == "sql") {
+        $out .= "<pre id='sql'>".  $sql . "</pre>";
+        $out .= "\n<script>
+            let sqlContent = document.getElementById('sql');
+            if (sqlContent && typeof formatSQL === 'function') {
+              try {
+                sqlContent.textContent = formatSQL(sqlContent.textContent);
+              } catch (err) {
+                console.error(\"formatSQL error:\", err);
+              }
+            }
+    
+          </script>\n";
+      } else {
+        //die($sql);
+        //delete from report_log where report_log_id=149;
+        //echo $sql;
+        $start = microtime(true);
+        $individualSqlLines  = splitSqlCommandsWithComments($sql);
+        $sqlLineCount = count($individualSqlLines);
+        $zip = null;
+        if($sqlLineCount > 1 && strtolower($outputFormat) == "csv") {
+          $zip = new ZipArchive();
+          $tmpZipFile = tempnam(sys_get_temp_dir(), 'zip');
+          // Create the ZIP in a temp file
+          if ($zip->open($tmpZipFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
+              die("Could not create zip archive");
+          }
+          $zipFile = 'multi_sheet_data.zip';
         }
-        $zipFile = 'multi_sheet_data.zip';
-      }
-      //var_dump($individualSqlLines);
-      $multiOutOrdinal = 1;
-      $multiRecordsetArray = [];
-      foreach($individualSqlLines as $individualSqlLine) {
-        $comment = $individualSqlLine["comment"];
-        $reportResult = mysqli_query($conn, $individualSqlLine["sql"]);
-        $error = mysqli_error($conn);
-        $affectedRows = mysqli_affected_rows($conn);
-        $count = 0;
-        $rows = false;
-        //echo $reportResult . "-" . $error  . "=" . $affectedRows;
-        if($reportResult || $error || $affectedRows) {
-          if($decodedFormToUse != "") {
-            $decodedFormToUse = mergeValues($decodedFormToUse, $_POST);
-          }
-          if($error) {
-            $rows = [["error" => $error]];
-            $count = 0;
-          } else if($affectedRows &&  $reportResult===true) {
-            $rows = [["Affected records" => $affectedRows]];
-            $count = count($rows);
-          } else if($reportResult !== false  && $reportResult !== true){
-            $rows = mysqli_fetch_all($reportResult, MYSQLI_ASSOC);
-            $count = count($rows);
-          }
-          //var_dump($rows);
-          if($rows) {
-            if(strtolower($outputFormat) == "csv") {
-              $content = generateCsvContent($rows);
-              if($zip) {
-                $zip->addFromString(str_replace(" ", "_", $comment) . ".csv", $content);
+        //var_dump($individualSqlLines);
+        $multiOutOrdinal = 1;
+        $multiRecordsetArray = [];
+        foreach($individualSqlLines as $individualSqlLine) {
+          $comment = $individualSqlLine["comment"];
+          $reportResult = mysqli_query($conn, $individualSqlLine["sql"]);
+          $error = mysqli_error($conn);
+          $affectedRows = mysqli_affected_rows($conn);
+          $count = 0;
+          $rows = false;
+          //echo $reportResult . "-" . $error  . "=" . $affectedRows;
+          if($reportResult || $error || $affectedRows) {
+            if($decodedFormToUse != "") {
+              $decodedFormToUse = mergeValues($decodedFormToUse, $_POST);
+            }
+            if($error) {
+              $rows = [["error" => $error]];
+              $count = 0;
+            } else if($affectedRows &&  $reportResult===true) {
+              $rows = [["Affected records" => $affectedRows]];
+              $count = count($rows);
+            } else if($reportResult !== false  && $reportResult !== true){
+              $rows = mysqli_fetch_all($reportResult, MYSQLI_ASSOC);
+              $count = count($rows);
+            }
+            //var_dump($rows);
+            if($rows) {
+              if(strtolower($outputFormat) == "csv") {
+                $content = generateCsvContent($rows);
+                if($zip) {
+                  $zip->addFromString(str_replace(" ", "_", $comment) . ".csv", $content);
+                } else {
+                  download("", str_replace(" ", "_", $reportData["name"]) . ".csv", $content);
+                  $url = "?table=report&report_id=" . $reportId . "&report_log_id=" . $reportLogId . "&action=fetch";
+                  header("Location: " . $url);
+                }
+              } else if(strtolower($outputFormat) == "output template") {
+                if($comment == ""  && $sqlLineCount == 1) {
+                  $multiRecordsetArray["_"] = $rows;
+                } else if($comment) {
+                  $multiRecordsetArray[$comment] = $rows;
+                } else if($sqlLineCount > 1) {
+                  $multiRecordsetArray[$multiOutOrdinal - 1] = $rows;
+                }
+                //need to do the rest outside the loop
               } else {
-                download("", str_replace(" ", "_", $reportData["name"]) . ".csv", $content);
-                $url = "?table=report&report_id=" . $reportId . "&report_log_id=" . $reportLogId . "&action=fetch";
-                header("Location: " . $url);
-              }
-            } else if(strtolower($outputFormat) == "output template") {
-              if($comment == ""  && $sqlLineCount == 1) {
-                $multiRecordsetArray["_"] = $rows;
-              } else if($comment) {
-                $multiRecordsetArray[$comment] = $rows;
-              } else if($sqlLineCount > 1) {
-                $multiRecordsetArray[$multiOutOrdinal - 1] = $rows;
-              }
-              //need to do the rest outside the loop
-            } else {
-              //$tableTools 
-              //function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools) { //aka genericList
-              //echo "'" . $outputFormat . "'<BR>";
+                //$tableTools 
+                //function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools) { //aka genericList
+                //echo "'" . $outputFormat . "'<BR>";
 
-              $outputIfThereIsOne = getOutputIfThereIsOne($outputFormat, $output, $unfoundName, $comment);
-              //var_dump($outputIfThereIsOne);
-              if($comment != "") {
-                $data .= "<div class='issuesheader'>" . $comment . "</div>";
-              }
-              if($outputIfThereIsOne == null) {
-                $data .= genericTable($rows, null, null, null, "", "", null, "");
-              } else {
-                $outputIfThereIsOne =  tokenReplace($outputIfThereIsOne, $_POST); //there could be tokens in the output config
-                $canvasId = "statsCanvas" . $multiOutOrdinal;
-                //$data .= "\n<script src = \"./tinycolor.js\"></script>\n";
-                $data .= "\n<script src=\"https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js\"></script>";
-                $data .= "\n<script src=\"https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js\"></script>";
-                $data .= "\n<script>{let reportData = " . json_encode($rows) . ";\nlet reportOutput = " . json_encode($outputIfThereIsOne) . "\n;document.addEventListener('DOMContentLoaded', async () => {displayReport(" . $reportId . ",'" . $canvasId . "',reportData , reportOutput);});\n}</script>\n";
-                $data .= "\n<canvas id=\"" . $canvasId . "\" style='display:block;'></canvas>\n";
-                $data .= "\n<div id='visualizationCaption' style='padding:10px'></div>";
+                $outputIfThereIsOne = getOutputIfThereIsOne($outputFormat, $output, $unfoundName, $comment);
+                //var_dump($outputIfThereIsOne);
+                if($comment != "") {
+                  $data .= "<div class='issuesheader'>" . $comment . "</div>";
+                }
+                if($outputIfThereIsOne == null) {
+                  $data .= genericTable($rows, null, null, null, "", "", null, "");
+                } else {
+                  $outputIfThereIsOne =  tokenReplace($outputIfThereIsOne, $_POST); //there could be tokens in the output config
+                  $canvasId = "statsCanvas" . $multiOutOrdinal;
+                  //$data .= "\n<script src = \"./tinycolor.js\"></script>\n";
+                  $data .= "\n<script src=\"https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js\"></script>";
+                  $data .= "\n<script src=\"https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js\"></script>";
+                  $data .= "\n<script>{let reportData = " . json_encode($rows) . ";\nlet reportOutput = " . json_encode($outputIfThereIsOne) . "\n;document.addEventListener('DOMContentLoaded', async () => {displayReport(" . $reportId . ",'" . $canvasId . "',reportData , reportOutput);});\n}</script>\n";
+                  $data .= "\n<canvas id=\"" . $canvasId . "\" style='display:block;'></canvas>\n";
+                  $data .= "\n<div id='visualizationCaption' style='padding:10px'></div>";
+                }
               }
             }
           }
+          $multiOutOrdinal++;
         }
-        $multiOutOrdinal++;
+        if(strtolower($outputFormat) == "output template") { //there is only one output template, so all the data from a multi-sql report needs to be handled here
+          $content = renderTemplate($comment, $multiRecordsetArray, $outputTemplate);
+          download("", str_replace(" ", "_", $reportData["name"]) . ".html", $content);
+          $url = "?table=report&report_id=" . $reportId . "&report_log_id=" . $reportLogId . "&action=fetch";
+          header("Location: " . $url);
+        }
+        $timeElapsedSecs = microtime(true) - $start;
+        $reportLogSql = "INSERT INTO report_log (tenant_id, user_id, report_id, run, records_returned, runtime, `data`, `sql`) VALUES (" . intval($tenantId) . "," . intval($user["user_id"]) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . $count  . "," .  intval($timeElapsedSecs * 1000) . ",'" . mysqli_real_escape_string($conn, json_encode($decodedFormToUse)) . "','" . mysqli_real_escape_string($conn, $sql) . "');";
+        $reportLogResult = mysqli_query($conn, $reportLogSql);
+        if($zip) {
+          $zip->close();
+          //move this functionality to downloads()
+          header('Content-Type: application/zip');
+          header('Content-Disposition: attachment; filename="' . str_replace(" ", "_", $reportData["name"]) . '.zip"');
+          header('Content-Length: ' . filesize($tmpZipFile));
+          readfile($tmpZipFile);
+          unlink($tmpZipFile);
+          exit;
+        }
+        //echo $reportLogSql;
       }
-      if(strtolower($outputFormat) == "output template") { //there is only one output template, so all the data from a multi-sql report needs to be handled here
-        $content = renderTemplate($comment, $multiRecordsetArray, $outputTemplate);
-        download("", str_replace(" ", "_", $reportData["name"]) . ".html", $content);
-        $url = "?table=report&report_id=" . $reportId . "&report_log_id=" . $reportLogId . "&action=fetch";
-        header("Location: " . $url);
-      }
-      $timeElapsedSecs = microtime(true) - $start;
-      $reportLogSql = "INSERT INTO report_log (tenant_id, user_id, report_id, run, records_returned, runtime, `data`, `sql`) VALUES (" . intval($tenantId) . "," . intval($user["user_id"]) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . $count  . "," .  intval($timeElapsedSecs * 1000) . ",'" . mysqli_real_escape_string($conn, json_encode($decodedFormToUse)) . "','" . mysqli_real_escape_string($conn, $sql) . "');";
-      $reportLogResult = mysqli_query($conn, $reportLogSql);
-      if($zip) {
-        $zip->close();
-        //move this functionality to downloads()
-        header('Content-Type: application/zip');
-        header('Content-Disposition: attachment; filename="' . str_replace(" ", "_", $reportData["name"]) . '.zip"');
-        header('Content-Length: ' . filesize($tmpZipFile));
-        readfile($tmpZipFile);
-        unlink($tmpZipFile);
-        exit;
-      }
-      //echo $reportLogSql;
     }
   }
-  if($data == ""  && $ran){
+  if($data == ""  && $ran && strtolower($outputFormat) != "sql"){
     $data = "No results";
   }
   $out .= $data;
+
   return $out;
 }
 
