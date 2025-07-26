@@ -525,27 +525,39 @@ void wiFiConnect() {
   WiFi.setSleep(false);
   WiFi.setAutoReconnect(false);
   WiFi.persistent(false); //hopefully keeps my flash from being corrupted, see: https://rayshobby.net/wordpress/esp8266-reboot-cycled-caused-by-flash-memory-corruption-fixed/
-  WiFi.begin(wifi_ssid, wifi_password);    
+  if (WiFi.status() != WL_CONNECTED) {
+    WiFi.begin(wifi_ssid, wifi_password);
+  }    
   Serial.println();
   // Wait for connection
   int wiFiSeconds = 0;
   bool initialAttemptPhase = true;
+  int beganWifiAttempt = millis();
   while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
+    if (WiFi.status() == WL_NO_SSID_AVAIL) {
+      Serial.println("SSID not found.");
+      if(fram_address > 0) {
+        offlineMode = true;
+      }
+      return;
+    }
     if(wiFiSeconds % 25 == 0) {
       //Serial.println("");
     }
-    Serial.print(".");
-    wiFiSeconds++;
-    if(wiFiSeconds > wifi_timeout) {
+    if((millis() - beganWifiAttempt) % 1000 == 0) { 
+      Serial.print(".");
+      wiFiSeconds++;
+    }
+    if((millis() - beganWifiAttempt)/1000  > wifi_timeout) {
       Serial.println("");
       Serial.println("WiFi taking too long, rebooting Moxee");
       rebootMoxee();
-      WiFi.begin(wifi_ssid, wifi_password);  
+      //WiFi.begin(wifi_ssid, wifi_password);  //meh, don't bother
       wiFiSeconds = 0; //if you don't do this, you'll be stuck in a rebooting loop if WiFi fails once
+      beganWifiAttempt = millis();
       initialAttemptPhase = false;
     }
-    if(!initialAttemptPhase && wiFiSeconds > (wifi_timeout/2)  && fram_address > 0) {
+    if(!initialAttemptPhase && ((millis() - beganWifiAttempt)/1000  > wifi_timeout/2)  && fram_address > 0) {
       //give up for the time being
       offlineMode = true;
       haveReconnected = false;
@@ -1363,10 +1375,12 @@ void loop(){
 
   lookupLocalPowerData();
 
-  if(offlineMode){
+  if(offlineMode || fram_address < 1){
     if(millis() - lastOfflineReconnectAttemptTime > 1000 * offline_reconnect_interval) {
       //time to attempt a reconnection
+     if(WiFi.status() != WL_CONNECTED) {
       wiFiConnect();
+     }
       
     }
   } else {
