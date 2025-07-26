@@ -1,10 +1,10 @@
  
 /*
  * ESP8266 Remote Control. Also sends weather data from multiple kinds of sensors (configured in config.c) 
- * originally an extension of something I found on https://circuits4you.com
- * reorganized and extended by Gus Mueller, April 24 2022 - June 14 2025
+ * originally built on the basis of something I found on https://circuits4you.com
+ * reorganized and extended by Gus Mueller, April 24 2022 - June 22 2024
  * Also resets a Moxee Cellular hotspot if there are network problems
- * since those do not include watchdog behaviors because of teh sux
+ * since those do not include watchdog behaviors
  */
  
 
@@ -532,15 +532,20 @@ void wiFiConnect() {
   bool initialAttemptPhase = true;
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
+    if(wiFiSeconds % 25 == 0) {
+      //Serial.println("");
+    }
     Serial.print(".");
     wiFiSeconds++;
     if(wiFiSeconds > wifi_timeout) {
+      Serial.println("");
       Serial.println("WiFi taking too long, rebooting Moxee");
       rebootMoxee();
+      WiFi.begin(wifi_ssid, wifi_password);  
       wiFiSeconds = 0; //if you don't do this, you'll be stuck in a rebooting loop if WiFi fails once
       initialAttemptPhase = false;
     }
-    if(!initialAttemptPhase && wiFiSeconds > (wifi_timeout/2)) {
+    if(!initialAttemptPhase && wiFiSeconds > (wifi_timeout/2)  && fram_address > 0) {
       //give up for the time being
       offlineMode = true;
       haveReconnected = false;
@@ -1195,6 +1200,7 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
     delay(7000);
     digitalWrite(moxee_power_switch, HIGH);
   }
+  delay(5000);
   if(knownMoxeePhase == 0) {
     knownMoxeePhase = 1;
   } else if (knownMoxeePhase == 1) {
@@ -1204,7 +1210,7 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
   //be out of phase with the cellular hotspot
   shiftArrayUp(moxeeRebootTimes,  timeClient.getEpochTime(), 10);
   moxeeRebootCount++;
-  if(moxeeRebootCount > 9) {
+  if(moxeeRebootCount > 9 && fram_address > 0) { //don't bother with offline mode if we can't log data
     offlineMode = true;
     moxeeRebootCount = 0;
   }
@@ -1278,8 +1284,9 @@ void setup(void){
 }
 //LOOP----------------------------------------------------
 void loop(){
-
-  
+  Serial.println("");
+  Serial.print("KNOWN MOXEE PHASE: ");
+  Serial.println(knownMoxeePhase);
   /*
   uint8_t testHi = 0;//(millis() >> 8) & 0xFF;
   uint8_t testLow = 4;// millis() & 0xFF;
