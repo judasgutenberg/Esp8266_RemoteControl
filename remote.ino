@@ -71,10 +71,10 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
 bool localSource = false; //turns true when a local edit to the data is done. at that point we have to send local upstream to the server
 byte justDeviceJson = 1;
-long connectionFailureTime = 0;
-long lastDataLogTime = 0;
-long localChangeTime = 0;
-long lastPoll = 0;
+unsigned long connectionFailureTime = 0;
+unsigned long lastDataLogTime = 0;
+unsigned long localChangeTime = 0;
+unsigned long lastPoll = 0;
  
 int pinTotal = 12;
 String pinList[12]; //just a list of pins
@@ -90,10 +90,10 @@ bool canSleep = false;
 long latencySum = 0;
 long latencyCount = 0;
 bool offlineMode = false;
-long lastOfflineLog = 0;
+unsigned long lastOfflineLog = 0;
 uint8_t lastRecordSize = 0;
 
-long lastOfflineReconnectAttemptTime = 0;
+unsigned long lastOfflineReconnectAttemptTime = 0;
 bool haveReconnected = true; //we need to start reconnected in case we reboot and there are stored FRAM records
 uint16_t fRAMRecordsSkipped = 0;
 uint32_t lastRtcSyncTime = 0;
@@ -125,6 +125,7 @@ int pinCursor = -1;
 bool connectionFailureMode = true;  //when we're in connectionFailureMode, we check connection much more than polling_granularity. otherwise, we check it every polling_granularity
 
 int knownMoxeePhase = -1;  //-1 is unknown. 0 is stupid "show battery level", 1 is operational
+int moxeePhaseChangeCount = 0;
 
 ESP8266WebServer server(80); //Server on port 80
 
@@ -332,7 +333,7 @@ String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int po
 
     if(offlineMode) {
       if(millis() - lastOfflineLog > 1000 * offline_log_granularity) {
-        long millisVal = millis();
+        unsigned long millisVal = millis();
         //store that data in the FRAM:
         if(fram_address > 0) {
           std::vector<std::tuple<uint8_t, uint8_t, double>> framWeatherRecord;
@@ -570,6 +571,7 @@ void wiFiConnect() {
     haveReconnected = true;
   }
   knownMoxeePhase = 1;
+  moxeePhaseChangeCount = 0;
   offlineMode = false;
   Serial.println("");
   Serial.print("Connected to ");
@@ -1155,6 +1157,8 @@ void runCommandsFromNonJson(char * nonJsonLine){
       }
     } else if (command ==  "get uptime") {
       textOut("Last booted: " + timeAgo("") + "\n");
+    } else if (command ==  "get wifi uptime") {
+      textOut("WiFi up: " + msTimeAgo(wifiOnTime) + "\n");
     } else if (command ==  "get lastpoll") {
       textOut("Last poll: " + msTimeAgo(lastPoll) + "\n");
     } else if (command ==  "get lastdatalog") {
@@ -1218,6 +1222,7 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
   } else if (knownMoxeePhase == 1) {
     knownMoxeePhase = 0;
   }
+  moxeePhaseChangeCount++;
   //only do one reboot!  it usually takes two, but this thing can be made to cycle so fast that this same function can handle both reboots, which is important if the reboot happens to 
   //be out of phase with the cellular hotspot
   shiftArrayUp(moxeeRebootTimes,  timeClient.getEpochTime(), 10);
@@ -1296,9 +1301,16 @@ void setup(void){
 }
 //LOOP----------------------------------------------------
 void loop(){
-  Serial.println("");
-  Serial.print("KNOWN MOXEE PHASE: ");
-  Serial.println(knownMoxeePhase);
+  //Serial.println("");
+  //Serial.print("KNOWN MOXEE PHASE: ");
+  //Serial.println(knownMoxeePhase);
+
+  unsigned long nowTime = millis() + timeOffset;
+  if(moxeePhaseChangeCount > 12) { 
+    //if it's been more than twelve phase changes since the last connection, 
+    //then we really don't know what phase we are in, so back to uncertain
+    knownMoxeePhase = -1;
+  }
   /*
   uint8_t testHi = 0;//(millis() >> 8) & 0xFF;
   uint8_t testLow = 4;// millis() & 0xFF;
@@ -1325,7 +1337,7 @@ void loop(){
  
   //dumpMemoryStats(122);
   //was doing an experiment:
-  if(millis() - wifiOnTime > 20000) {
+  if(nowTime - wifiOnTime > 20000) {
     //WiFi.disconnect(true);
   }
   cleanup();
@@ -1340,7 +1352,7 @@ void loop(){
   }
  
   timeClient.update();
-  long nowTime = millis() + timeOffset;
+  
   int granularityToUse = polling_granularity;
   if(connectionFailureMode) {
     if(knownMoxeePhase == 0) {
@@ -1360,7 +1372,7 @@ void loop(){
   //Serial.print(granularityToUse);
   //Serial.print(" ");
   //Serial.println(connectionFailureTime);
-  if(nowTime < granularityToUse * 1000 || (nowTime - lastPoll)/1000 > granularityToUse || connectionFailureTime>0 && connectionFailureTime + connection_failure_retry_seconds * 1000 > millis()) {  //send data to backend server every <polling_granularity> seconds or so
+  if(nowTime < granularityToUse * 1000 || (nowTime - lastPoll)/1000 > granularityToUse || connectionFailureTime>0 && connectionFailureTime + connection_failure_retry_seconds * 1000 > nowTime) {  //send data to backend server every <polling_granularity> seconds or so
     //Serial.print("Connection failure time: ");
     //Serial.println(connectionFailureTime);
     //Serial.print("  Connection failure calculation: ");
@@ -1376,7 +1388,7 @@ void loop(){
   lookupLocalPowerData();
 
   if(offlineMode || fram_address < 1){
-    if(millis() - lastOfflineReconnectAttemptTime > 1000 * offline_reconnect_interval) {
+    if(nowTime - lastOfflineReconnectAttemptTime > 1000 * offline_reconnect_interval) {
       //time to attempt a reconnection
      if(WiFi.status() != WL_CONNECTED) {
       wiFiConnect();
@@ -1385,9 +1397,9 @@ void loop(){
     }
   } else {
     if(rtc_address > 0) { //if we have an RTC and we are not offline, sync RTC
-      if (millis() - lastRtcSyncTime > 86400000 || lastRtcSyncTime == 0) {
+      if (nowTime - lastRtcSyncTime > 86400000 || lastRtcSyncTime == 0) {
         syncRTCWithNTP();
-        lastRtcSyncTime = millis();
+        lastRtcSyncTime = nowTime;
       }
     }
   }
@@ -1421,7 +1433,6 @@ void doSerialCommands() {
   delay(5);
   char serialByte;
   String command = "!-1|";
- 
   while(Serial.available()) {
     serialByte = Serial.read();
     if(serialByte == '\r' || serialByte == '\n') {
@@ -1541,7 +1552,7 @@ time_t parseDateTime(String dateTime) {
 
  
 String msTimeAgo(long millisFromPast) {
-  humanReadableTimespan((uint32_t) (millis() - millisFromPast));
+  return humanReadableTimespan((uint32_t) (millis() - millisFromPast)/1000);
 }
  
 // Overloaded version: Uses NTP time as the default comparison
