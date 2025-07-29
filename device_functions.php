@@ -1778,7 +1778,6 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
   changer5,
   changer6,
   changer7,
-  weather,
   weather_condition_id
   ) VALUES (";
   $loggingSql .= $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," .
@@ -1798,8 +1797,7 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
    $changer4 . "," .
    $changer5 . "," .
    $changer6 . "," .
-   $changer7 . ",'" .
-   $weatherDescription . "'," .
+   $changer7 . "," .
    $weatherConditionId .
    ")";
   $loggingResult = mysqli_query($conn, $loggingSql);
