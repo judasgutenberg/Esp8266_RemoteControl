@@ -1898,7 +1898,8 @@ function getCurrentSolarDataFromCloud($tenant) {
     //if ($data["pvTo"] == true) { //this indicates we have real data!
     
     
-    
+    //let's use saveSolarData insead of this:
+    /*
     $weatherDescriptionKey = "weather_description" . $tenant["tenant_id"];
     $weatherDescription = readMemoryCache($weatherDescriptionKey, 10);
     if(!$weatherDescription) {
@@ -1912,11 +1913,27 @@ function getCurrentSolarDataFromCloud($tenant) {
     }
     $weatherConditionId = weatherConditionIdLookup($weatherDescription, $tenant["tenant_id"]);
     
-      $loggingSql = "INSERT INTO inverter_log ( tenant_id, recorded, solar_power, load_power, grid_power, battery_percentage, battery_power, weather_condition_id, weather) VALUES (";
-      $loggingSql .= $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . $data["pvPower"] . "," . $data["loadOrEpsPower"] . "," . $data["gridOrMeterPower"] . "," . $data["soc"] . "," . $data["battPower"]    . "," . $weatherConditionId .",'" . $weatherDescription . "')";
-      $loggingResult = mysqli_query($conn, $loggingSql);
-    //}
+    
+    $loggingSql = "INSERT INTO inverter_log ( tenant_id, recorded, solar_power, load_power, grid_power, battery_percentage, battery_power, weather_condition_id, weather) VALUES (";
+    $loggingSql .= $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . $data["pvPower"] . "," . $data["loadOrEpsPower"] . "," . $data["gridOrMeterPower"] . "," . $data["soc"] . "," . $data["battPower"]    . "," . $weatherConditionId .",'" . $weatherDescription . "')";
+    $loggingResult = mysqli_query($conn, $loggingSql);
+    */
     //echo $loggingSql;
+    $deviceDigest = getDigestBitmask($tenant["tenant_id"]); //eventually move this inside saveSolarData();
+    saveSolarData($tenant, $data["gridOrMeterPower"], $data["soc"],  $data["battPower"], $data["loadOrEpsPower"] , 
+      intval($data["pvPower"])/2, intval($data["pvPower"])/2, NULL, 
+      $deviceDigest,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    );
     return Array("tenant_id"=>$tenant["tenant_id"], "recorded" => $formatedDateTime, "solar_power" => $data["pvPower"], "load_power" => $data["loadOrEpsPower"] ,
     "grid_power" =>  $data["gridOrMeterPower"], "battery_percentage" => $data["soc"], "battery_power" => $data["battPower"]); 
   } else {
