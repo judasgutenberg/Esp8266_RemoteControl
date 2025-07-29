@@ -1480,31 +1480,6 @@ function generateDecryptedByte($counter, $thisNibble, $thisByteOfStoragePassword
 	return $thisByteResult;
 }
 
-function getDigestBitmask($tenantId) {
-    Global $conn;
-    // Prepare and execute query
-    $sql = "
-        SELECT digest_bit_position 
-        FROM device_feature 
-        WHERE tenant_id = " . intval($tenantId) . " 
-          AND value = 1 
-          AND digest_bit_position IS NOT NULL
-    ";
-    $bitmask = 0;
-    $result = mysqli_query($conn, $sql);
-    if($result) {
-      $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
-      // Build 32-bit integer
-      foreach ($rows as $row) {
-        $bitPos = intval($row["digest_bit_position"]);
- 
-          if ($bitPos >= 0 && $bitPos < 32) {
-              $bitmask |= (1 << $bitPos);
-          }
-      }
-    }
-    return $bitmask;
-}
 //some helpful sql examples for creating sql users:
 //CREATE USER 'weathertron'@'localhost' IDENTIFIED  BY 'your_password';
 //GRANT CREATE, ALTER, DROP, INSERT, UPDATE, DELETE, SELECT, REFERENCES, RELOAD on *.* TO 'weathertron'@'localhost' WITH GRANT OPTION;
