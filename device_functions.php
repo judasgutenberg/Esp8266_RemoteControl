@@ -1735,7 +1735,6 @@ function getDevices($tenantId, $allDeviceColumnMaps = true){
 
 function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $loadPower, 
   $solarString1, $solarString2, $batteryVoltage, 
-  $deviceDigest,
   $mysteryValue3,
   $mysteryValue1,
   $mysteryValue2,
@@ -1751,7 +1750,7 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
   $date = new DateTime("now", new DateTimeZone($timezone));
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
   $nowTime = strtotime($formatedDateTime);
-
+  $deviceDigest = getDigestBitmask($tenant["tenant_id"]); 
   $weatherDescriptionKey = "weather_description" . $tenant["tenant_id"];
   $weatherDescription = readMemoryCache($weatherDescriptionKey, 10);
   if(!$weatherDescription) {
@@ -1919,10 +1918,8 @@ function getCurrentSolarDataFromCloud($tenant) {
     $loggingResult = mysqli_query($conn, $loggingSql);
     */
     //echo $loggingSql;
-    $deviceDigest = getDigestBitmask($tenant["tenant_id"]); //eventually move this inside saveSolarData();
     saveSolarData($tenant, $data["gridOrMeterPower"], $data["soc"],  $data["battPower"], $data["loadOrEpsPower"] , 
       intval($data["pvPower"])/2, intval($data["pvPower"])/2, NULL, 
-      $deviceDigest,
       NULL,
       NULL,
       NULL,
