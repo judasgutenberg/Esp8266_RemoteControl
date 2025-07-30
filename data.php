@@ -176,7 +176,7 @@ if($_REQUEST) {
 					foreach($recentReboots as $rebootOccasion) {
 						if(intval($rebootOccasion) > 0 && $canAccessData) {
 
-              $dt = new DateTime('now', new DateTimeZone($timezone)); // set to New York time
+              $dt = new DateTime('now', new DateTimeZone($timezone)); // set to your time
               $dt->setTimestamp($rebootOccasion);
               $rebootOccasionSql = $dt->format('Y-m-d H:i:s');
 
