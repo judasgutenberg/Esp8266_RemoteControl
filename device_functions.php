@@ -1154,7 +1154,7 @@ function commands($tenantId, $deviceId){
   return $out;
 }
 
-function deviceColumnMaps($deviceId, $tenantId){
+function deviceColumnMaps($deviceId, $user){
   $table = "device_column_map";
   $out = "<div class='listheader'>Device Column Maps</div>";
   $out .= "<div class='listtools'>";
