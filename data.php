@@ -175,13 +175,15 @@ if($_REQUEST) {
 					$recentReboots = explode("*", $lines[1]);
 					foreach($recentReboots as $rebootOccasion) {
 						if(intval($rebootOccasion) > 0 && $canAccessData) {
-						$dt = new DateTime();
-						$dt->setTimestamp($rebootOccasion);
-						$rebootOccasionSql = $dt->format('Y-m-d H:i:s');
-						$rebootLogSql = "INSERT INTO reboot_log(device_id, recorded, server_recorded) SELECT " . intval($deviceId) . ",'" .$rebootOccasionSql . "','" . $formatedDateTime . "' 
-							FROM DUAL WHERE NOT EXISTS (SELECT * FROM reboot_log WHERE device_id=" . intval($deviceId) . " AND recorded='" . $rebootOccasionSql . "' LIMIT 1)";
-						
-						$result = mysqli_query($conn, $rebootLogSql);
+
+              $dt = new DateTime('now', new DateTimeZone($timezone)); // set to New York time
+              $dt->setTimestamp($rebootOccasion);
+              $rebootOccasionSql = $dt->format('Y-m-d H:i:s');
+
+              $rebootLogSql = "INSERT INTO reboot_log(device_id, recorded, server_recorded) SELECT " . intval($deviceId) . ",'" .$rebootOccasionSql . "','" . $formatedDateTime . "' 
+                FROM DUAL WHERE NOT EXISTS (SELECT * FROM reboot_log WHERE device_id=" . intval($deviceId) . " AND recorded='" . $rebootOccasionSql . "' LIMIT 1)";
+              
+              $result = mysqli_query($conn, $rebootLogSql);
 						}
 					}
 					if(count($lines) > 2) {
@@ -1422,8 +1424,6 @@ function simpleDecrypt2($encryptedString, $dataString, $timestampString, $encryp
     }
 	//echo $decryptedString . "=\n";
     return $decryptedString;
-
-
 }
 
 
