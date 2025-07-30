@@ -178,7 +178,7 @@ if($_REQUEST) {
 						$dt = new DateTime();
 						$dt->setTimestamp($rebootOccasion);
 						$rebootOccasionSql = $dt->format('Y-m-d H:i:s');
-						$rebootLogSql = "INSERT INTO reboot_log(device_id, recorded) SELECT " . intval($deviceId) . ",'" .$rebootOccasionSql . "' 
+						$rebootLogSql = "INSERT INTO reboot_log(device_id, recorded, server_recorded) SELECT " . intval($deviceId) . ",'" .$rebootOccasionSql . "','" . $formatedDateTime . "' 
 							FROM DUAL WHERE NOT EXISTS (SELECT * FROM reboot_log WHERE device_id=" . intval($deviceId) . " AND recorded='" . $rebootOccasionSql . "' LIMIT 1)";
 						
 						$result = mysqli_query($conn, $rebootLogSql);
