@@ -395,7 +395,7 @@ if ($user) {
     }
 	} else if($table == "device_column_map") {
     if ($action == "startcreate" || gvfw("device_column_map_id") != "") {
-      $out .=  editDeviceColumnMap($errors, $user, $tenantId);
+      $out .=  editDeviceColumnMap($errors, $deviceId, $user);
     } else {
      $out .= deviceColumnMaps($deviceId, $user);
     }

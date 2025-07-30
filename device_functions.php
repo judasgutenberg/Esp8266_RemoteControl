@@ -1224,6 +1224,7 @@ function deviceColumnMaps($deviceId, $user){
 
 function editDeviceColumnMap($error, $deviceId, $user) {
   $table = "device_column_map";
+  $tenantId  = $user["tenant_id"];
   $pk = gvfw($table . "_id");
   
   $submitLabel = "save device column map";
@@ -1236,6 +1237,7 @@ function editDeviceColumnMap($error, $deviceId, $user) {
     if($deviceId != ""){
       $sql .= " AND device_id=" . intval($deviceId);
     }
+    //echo $sql;
     $result = replaceTokensAndQuery($sql, $user);
     if($result) {
       $source = mysqli_fetch_array($result);
