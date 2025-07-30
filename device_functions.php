@@ -1733,6 +1733,22 @@ function getDevices($tenantId, $allDeviceColumnMaps = true){
 	}
 }
 
+function getCurrentWeatherConditionId($tenant) {
+  $weatherDescriptionKey = "weather_description" . $tenant["tenant_id"];
+  $weatherDescription = readMemoryCache($weatherDescriptionKey, 10);
+  if(!$weatherDescription) {
+    $weatherData = getWeatherDataByCoordinates($tenant["latitude"], $tenant["longitude"], $tenant["open_weather_api_key"]);
+    //var_dump($weatherData);
+    $weatherDescription = $weatherData["weather"][0]["description"];
+    writeMemoryCache($weatherDescriptionKey, $weatherDescription);
+  }
+  if($weatherDescription == "") {
+    $weatherDescription = "none";
+  }
+  $weatherConditionId = weatherConditionIdLookup($weatherDescription, $tenant["tenant_id"]);
+  return $weatherConditionId;
+}
+
 function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $loadPower, 
   $solarString1, $solarString2, $batteryVoltage, 
   $mysteryValue3,
@@ -1750,20 +1766,8 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
   $date = new DateTime("now", new DateTimeZone($timezone));
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
   $nowTime = strtotime($formatedDateTime);
-  $deviceDigest = getDigestBitmask($tenant["tenant_id"]); 
-  $weatherDescriptionKey = "weather_description" . $tenant["tenant_id"];
-  $weatherDescription = readMemoryCache($weatherDescriptionKey, 10);
-  if(!$weatherDescription) {
-    $weatherData = getWeatherDataByCoordinates($tenant["latitude"], $tenant["longitude"], $tenant["open_weather_api_key"]);
-    //var_dump($weatherData);
-    $weatherDescription = $weatherData["weather"][0]["description"];
-    writeMemoryCache($weatherDescriptionKey, $weatherDescription);
-  }
-  if($weatherDescription == "") {
-    $weatherDescription = "none";
-  }
-  $weatherConditionId = weatherConditionIdLookup($weatherDescription, $tenant["tenant_id"]);
-  
+  $deviceDigest = getDigestBitmask($tenant); 
+  $weatherConditionId = getCurrentWeatherConditionId($tenant);
   $loggingSql = "INSERT INTO inverter_log ( tenant_id, recorded, 
   solar_power, load_power, grid_power, battery_percentage, battery_power,
   battery_voltage,
@@ -1875,7 +1879,6 @@ function getCurrentSolarDataFromCloud($tenant) {
             'lan' => 'en'         
     ];
 
-    // Make GET request to user endpoint
     $queryString = http_build_query($userParams);
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $actionUrl . "?" . $queryString);
@@ -1891,31 +1894,6 @@ function getCurrentSolarDataFromCloud($tenant) {
     $dataBody = json_decode($dataResponse, true);
     //var_dump($dataBody );
     $data = $dataBody["data"];
-    //var_dump($data);
-    //if ($data["pvTo"] == true) { //this indicates we have real data!
-    
-    
-    //let's use saveSolarData insead of this:
-    /*
-    $weatherDescriptionKey = "weather_description" . $tenant["tenant_id"];
-    $weatherDescription = readMemoryCache($weatherDescriptionKey, 10);
-    if(!$weatherDescription) {
-      $weatherData = getWeatherDataByCoordinates($tenant["latitude"], $tenant["longitude"], $tenant["open_weather_api_key"]);
-      //var_dump($weatherData);
-      $weatherDescription = $weatherData["weather"][0]["description"];
-      writeMemoryCache($weatherDescriptionKey, $weatherDescription);
-    }
-    if($weatherDescription == "") {
-      $weatherDescription = "none";
-    }
-    $weatherConditionId = weatherConditionIdLookup($weatherDescription, $tenant["tenant_id"]);
-    
-    
-    $loggingSql = "INSERT INTO inverter_log ( tenant_id, recorded, solar_power, load_power, grid_power, battery_percentage, battery_power, weather_condition_id, weather) VALUES (";
-    $loggingSql .= $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . $data["pvPower"] . "," . $data["loadOrEpsPower"] . "," . $data["gridOrMeterPower"] . "," . $data["soc"] . "," . $data["battPower"]    . "," . $weatherConditionId .",'" . $weatherDescription . "')";
-    $loggingResult = mysqli_query($conn, $loggingSql);
-    */
-    //echo $loggingSql;
     saveSolarData($tenant, $data["gridOrMeterPower"], $data["soc"],  $data["battPower"], $data["loadOrEpsPower"] , 
       intval($data["pvPower"])/2, intval($data["pvPower"])/2, NULL, 
       NULL,
@@ -2571,8 +2549,9 @@ function weatherConditionIdLookup($name, $tenantId) {
   return $id;
 };
 
-function getDigestBitmask($tenantId) {
-    Global $conn;
+function getDigestBitmask($tenant) {
+    global $conn;
+    $tenantId = $tenant["tenant_id"];
     // Prepare and execute query
     $sql = "
         SELECT digest_bit_position 
