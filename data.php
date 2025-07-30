@@ -588,6 +588,8 @@ if($_REQUEST) {
 						$consolidateAllSensorsToOneRecord = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $consolidateAllSensorsToOneRecord, $arrWeatherData, "consolidate");
 
 						//die("x" . $consolidateAllSensorsToOneRecord);
+						$deviceDigest = getDigestBitmask($tenant); 
+						$weatherConditionId = getCurrentWeatherConditionId($tenant);
 						$weatherSql = "INSERT INTO 
 						device_log(device_id, device_feature_id, recorded, 
 							temperature, pressure, humidity, 
@@ -595,7 +597,7 @@ if($_REQUEST) {
 							wind_direction,  wind_speed, wind_increment, 
 							precipitation, 
 							reserved1, reserved2, reserved3, reserved4,
-							sensor_id, voltage, ampage, latitude, longitude, elevation, millis, data_hash) 
+							sensor_id, weather_condition_id, digest, voltage, ampage, latitude, longitude, elevation, millis, data_hash) 
 						VALUES (" . 
 						mysqli_real_escape_string($conn, $locationId) . "," .
 						mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
@@ -613,6 +615,8 @@ if($_REQUEST) {
 						mysqli_real_escape_string($conn, $reserved3) . "," .  
 						mysqli_real_escape_string($conn, $reserved4) . "," .  
 						mysqli_real_escape_string($conn, $sensorId) . "," .
+						$weatherConditionId . "," .
+						$deviceDigest . "," .
 						mysqli_real_escape_string($conn, $measuredVoltage)  . "," .
 						mysqli_real_escape_string($conn, floatval($measuredAmpage))  . "," .
 						mysqli_real_escape_string($conn, $latitude)  . "," .
