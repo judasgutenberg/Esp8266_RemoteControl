@@ -16,6 +16,7 @@ function utilityForm($user, $foundData) {
     }
     $runOverride = gvfa("run_override", $foundData);
     if($runOverride){
+      $runOverride = tokenReplace($runOverride, $user);
       $form = str_replace("value='Run' type='submit'/>", "value='Run' type='button'  onclick='return(" . $runOverride  . ")'/>", $form);
     } else {
       $form = str_replace("value='Run' type='submit'/>", "value='Run' type='submit'  " . $confirmJs  . "/>", $form);
@@ -2361,7 +2362,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
   Global $conn;
   $tenantId = $user["tenant_id"];
   $historicDataObject = null;
-
+  $count = 0;
   if($reportLogId != null) {
     $sql = "SELECT data, report_id FROM report_log WHERE report_log_id = " . intval($reportLogId) . " AND tenant_id=" . intval($tenantId) . " AND user_id=" . intval($user["user_id"]);
    
@@ -2599,6 +2600,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
           header("Location: " . $url);
         }
         $timeElapsedSecs = microtime(true) - $start;
+         
         $reportLogSql = "INSERT INTO report_log (tenant_id, user_id, report_id, run, records_returned, runtime, `data`, `sql`) VALUES (" . intval($tenantId) . "," . intval($user["user_id"]) . "," . intval($reportId) . ",'" . $formatedDateTime . "'," . $count  . "," .  intval($timeElapsedSecs * 1000) . ",'" . mysqli_real_escape_string($conn, json_encode($decodedFormToUse)) . "','" . mysqli_real_escape_string($conn, $sql) . "');";
         $reportLogResult = mysqli_query($conn, $reportLogSql);
         if($zip) {

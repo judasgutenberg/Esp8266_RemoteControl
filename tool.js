@@ -890,6 +890,7 @@ function genericListActionBackend(
 	  out += "<div><button type='button' onclick='instantCommand()'>Run</button><button type='button' onclick='document.getElementById(\"command_response\").value=\"\"'>Clear Responses</button></div>";
    
 	  out += "<div>Responses: <textarea id='command_response' style='width:680px;height:400px'/></textarea></div>";
+	  out += "<div>Log: <div id='instantcommandlog'></div></div>";
 	  div.innerHTML = out;
 	  xmlhttp.onreadystatechange = function() {
 		  console.log("did" + xmlhttp.readyState + " " +xmlhttp.status  );
@@ -915,12 +916,26 @@ function genericListActionBackend(
   
   
   function instantCommand() {
-	  let xmlhttp = new XMLHttpRequest();
 	  const params = new URLSearchParams();
 	  const commandTextInput = document.getElementById('command_text');//document.querySelector(`textarea[name="command_text"]`);
 	  const commandText = commandTextInput.value;
 	  const deviceDropdown = document.querySelector(`select[name="device_id"]`);
 	  const deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
+	  const logPlace = document.getElementById('instantcommandlog');
+	  
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.onreadystatechange = function() {
+      console.log(xmlhttp.responseText);
+      let data = JSON.parse(xmlhttp.responseText);
+      let html = "<div class='list'>";
+      for(let datum of data) {
+        html += "<div class='listrow'><span><b>" + datum['recorded'] + "</b></span><span onclick='document.getElementById(\"command_text\").value=\"" + datum['command_text'] +"\"'>" + datum['command_text']   + "</span></div>";
+      }
+      html += "</div>";
+      logPlace.innerHTML = html;
+    }
+
+
 	  let url = "?table=utilities&action=instantcommand"; 
 	  params.append("command_text", commandText);
 	  params.append("device_id", deviceId);
@@ -2109,61 +2124,61 @@ function genericListActionBackend(
     return time;
   }
 
-  //be sure to include our submit button in the data
+ 
 
-// Be sure to include our submit button in the data
-let form = document.querySelector("form");
+  // Be sure to include our submit button in the data
+  let form = document.querySelector("form");
 
-if (form) {
-  form.addEventListener("submit", function (e) {
-    e.preventDefault();
+  if (form) {
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
 
-    const submitter = e.submitter;
+      const submitter = e.submitter;
 
-    let formData;
+      let formData;
 
-    // Feature-detect support for the 2-argument FormData constructor
-    try {
-      formData = new FormData(form, submitter);
-    } catch (err) {
-      formData = new FormData(form);
-      if (submitter && submitter.name) {
-        formData.append(submitter.name, submitter.value);
-      }
-    }
-
-    const jsonObject = {};
-
-    for (const [key, value] of formData.entries()) {
-      if (jsonObject.hasOwnProperty(key)) {
-        if (!Array.isArray(jsonObject[key])) {
-          jsonObject[key] = [jsonObject[key]];
+      // Feature-detect support for the 2-argument FormData constructor
+      try {
+        formData = new FormData(form, submitter);
+      } catch (err) {
+        formData = new FormData(form);
+        if (submitter && submitter.name) {
+          formData.append(submitter.name, submitter.value);
         }
-        jsonObject[key].push(value);
-      } else {
-        jsonObject[key] = value;
       }
-    }
 
-    const targetUrl = form.action || window.location.href;
+      const jsonObject = {};
 
-    fetch(targetUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      credentials: "same-origin",
-      body: JSON.stringify(jsonObject)
-    })
-      .then(resp => {
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        return resp.json();
+      for (const [key, value] of formData.entries()) {
+        if (jsonObject.hasOwnProperty(key)) {
+          if (!Array.isArray(jsonObject[key])) {
+            jsonObject[key] = [jsonObject[key]];
+          }
+          jsonObject[key].push(value);
+        } else {
+          jsonObject[key] = value;
+        }
+      }
+
+      const targetUrl = form.action || window.location.href;
+
+      fetch(targetUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "same-origin",
+        body: JSON.stringify(jsonObject)
       })
-      .then(data => {
-        console.log("Success:", data);
-      })
-      .catch(err => {
-        console.error("Submission failed:", err);
-      });
-  });
-}
+        .then(resp => {
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          return resp.json();
+        })
+        .then(data => {
+          console.log("Success:", data);
+        })
+        .catch(err => {
+          console.error("Submission failed:", err);
+        });
+    });
+  }

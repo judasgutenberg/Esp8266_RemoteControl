@@ -278,6 +278,7 @@ if ($user) {
               if($foundData["action"]) {
                 $codeToRun = tokenReplace($foundData["action"], $_GET);
                 $codeToRun = tokenReplace($codeToRun, $_POST) . ";";
+                $codeToRun = tokenReplace($codeToRun, $user) . ";";
               }
               if(strpos($codeToRun, ">") !== false || checkPhpFunctionCallIsBogus($codeToRun)){
                 $errors["generic"] = "You must enter all the necessary data in the utility form.";
