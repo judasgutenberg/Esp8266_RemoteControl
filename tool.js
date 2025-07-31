@@ -929,7 +929,9 @@ function genericListActionBackend(
       let data = JSON.parse(xmlhttp.responseText);
       let html = "<div class='list'>";
       for(let datum of data) {
-        html += "<div class='listrow'><span><b>" + datum['recorded'] + "</b></span><span onclick='document.getElementById(\"command_text\").value=\"" + datum['command_text'] +"\"'>" + datum['command_text']   + "</span></div>";
+        html += "<div class='listrow'><span><b>" + datum['recorded'] + "</b></span><span onclick='document.getElementById(\"command_text\").value=\"";
+        html +=  datum['command_text'] +"\"'>" + datum['command_text']  + "<div class=\"dot-loader\"><span></span><span></span><span></span></div>";
+        html +=  "</span></div>";
       }
       html += "</div>";
       logPlace.innerHTML = html;

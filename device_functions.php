@@ -2466,8 +2466,9 @@ function instantCommand($tenantId, $userId, $deviceId) {
     $sql = "INSERT INTO command_log(command_text, recorded, device_id, tenant_id, user_id) VALUES('" . mysqli_real_escape_string($conn, $commandText) . "','" . $formatedDateTime . "'," . $deviceId . "," . $tenantId  ."," . $userId . ")";
     //die($sql);
     $result = $conn->query($sql);
+    $commandLogId = mysqli_insert_id($conn);
     //write the command to a text file so data.php can find it and include it in the commands sent to the device
-    file_put_contents("instant_command_" . gvfw("device_id") . ".txt", $commandText);
+    file_put_contents("instant_command_" . gvfw("device_id") . ".txt", $commandText . "\n" . $commandLogId);
     $sql = "SELECT * FROM command_log WHERE device_id=" . intval($deviceId) . " AND tenant_id = " . intval($tenantId) . " ORDER BY recorded DESC";
     $result = $conn->query($sql);
     if($result) {
