@@ -889,7 +889,7 @@ function genericListActionBackend(
   
 	  out += "<div><button type='button' onclick='instantCommand()'>Run</button><button type='button' onclick='document.getElementById(\"command_response\").value=\"\"'>Clear Responses</button></div>";
    
-	  out += "<div>Responses: <textarea id='command_response' style='width:680px;height:400px'/></textarea></div>";
+	  //out += "<div>Responses: <textarea id='command_response' style='width:680px;height:400px'/></textarea></div>";
 	  out += "<div>Log: <div id='instantcommandlog'></div></div>";
 	  div.innerHTML = out;
 	  xmlhttp.onreadystatechange = function() {
@@ -914,58 +914,94 @@ function genericListActionBackend(
   }
   
   
-  
-  function instantCommand() {
-	  const params = new URLSearchParams();
-	  const commandTextInput = document.getElementById('command_text');//document.querySelector(`textarea[name="command_text"]`);
-	  const commandText = commandTextInput.value;
-	  const deviceDropdown = document.querySelector(`select[name="device_id"]`);
-	  const deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
-	  const logPlace = document.getElementById('instantcommandlog');
-	  
-    let xmlhttp = new XMLHttpRequest();
-    xmlhttp.onreadystatechange = function() {
-      console.log(xmlhttp.responseText);
-      let data = JSON.parse(xmlhttp.responseText);
-      let html = "<div class='list'>";
-      for(let datum of data) {
-        html += "<div class='listrow'><span><b>" + datum['recorded'] + "</b></span><span onclick='document.getElementById(\"command_text\").value=\"";
-        html +=  datum['command_text'] +"\"'>" + datum['command_text']  + "<div class=\"dot-loader\"><span></span><span></span><span></span></div>";
-        html +=  "</span></div>";
-      }
-      html += "</div>";
-      logPlace.innerHTML = html;
-    }
+	let startedUpdatingInstantCommand = false;
 
+  function instantCommand(nodata) {
+		const params = new URLSearchParams();
+		const commandTextInput = document.getElementById('command_text');//document.querySelector(`textarea[name="command_text"]`);
+		const commandText = commandTextInput.value;
+		const deviceDropdown = document.querySelector(`select[name="device_id"]`);
+		const deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
+		const logPlace = document.getElementById('instantcommandlog');
+		
+		let xmlhttp = new XMLHttpRequest();
+		xmlhttp.onreadystatechange = function() {
+			console.log(xmlhttp.responseText);
+			if(xmlhttp.responseText){
+				let data = JSON.parse(xmlhttp.responseText);
+				let html = "<div class='list'>";
+				html += "<div class='listrow'><span><b>recorded</b></span><span>command</span><span>results</span></div>";
+				for(let datum of data) {
+					html += "<div class='listrow'><span><b>" + datum['recorded'] + "</b></span><span onclick='document.getElementById(\"command_text\").value=\"";
+					html +=  datum['command_text'] +"\"'>" + datum['command_text']  + "</span><span>";
+					if(datum["result_text"] != "" && datum["result_text"] != null){
+						html += datum["result_text"];
+					} else {
+						html +=  "<div class=\"dot-loader\"><span></span><span></span><span></span></div>";
+					}
+					
+					html +=  "</span></div>";
+				}
+				html += "</div>";
+				logPlace.innerHTML = html;
+			}
+			if(!startedUpdatingInstantCommand){
+				setTimeout(()=>{
+					updateInstantCommandResponse();
+					instantCommand(true);
+					startedUpdatingInstantCommand = true;
+				}, 2000);
+			}
+		}
+		
 
-	  let url = "?table=utilities&action=instantcommand"; 
-	  params.append("command_text", commandText);
-	  params.append("device_id", deviceId);
-	  xmlhttp.open("POST", url, true);
-	  xmlhttp.send(params);
-	  updateInstantCommandResponse();
-	  return false;
+		let url = "?table=utilities&action=instantcommand"; 
+		if(!nodata){
+			params.append("command_text", commandText);
+		}
+		params.append("device_id", deviceId);
+		xmlhttp.open("POST", url, true);
+		xmlhttp.send(params);
+
+	  	return false;
   }
-  
+
   function updateInstantCommandResponse() {
 	  console.log("update command");
 	  let xmlhttp = new XMLHttpRequest();
 	  const commandResponseTextArea = document.getElementById('command_response'); //document.querySelector(`textarea[name="command_response"]`);
-	  xmlhttp.onreadystatechange = function() {
-		  console.log("did" + xmlhttp.readyState + " " +xmlhttp.status  );
-		  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
-			  const data = xmlhttp.responseText;
-			  //console.log(data);
-			  commandResponseTextArea.value += data;
-		  }
-	  }
-	  const deviceDropdown = document.querySelector(`select[name="device_id"]`);
-	  const deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
-	  let url = "?action=commandpoll&device_id=" + deviceId; 
-	  xmlhttp.open("GET", url, true);
-	  xmlhttp.send();
-	  console.log(url);
-	  setTimeout(()=>updateInstantCommandResponse(), 2000);
+	  //if(commandResponseTextArea) {
+		xmlhttp.onreadystatechange = function() {
+			console.log("did" + xmlhttp.readyState + " " +xmlhttp.status  );
+			if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+				const data = xmlhttp.responseText;
+				//console.log(data);
+
+				/*
+							echo '{"localCommand": "refresh"}';
+				unlink($possibleTemporaryCommandFileName);
+				} else {
+				echo '{"localCommand": "none"}';
+				*/
+				//commandResponseTextArea.value += data;
+				if(xmlhttp.responseText){
+					let data = JSON.parse(xmlhttp.responseText);
+					console.log("__________________");
+					console.log(data);
+					if(data["status"] == "new"){
+						instantCommand(true);
+					}
+				}
+			}
+		}
+		const deviceDropdown = document.querySelector(`select[name="device_id"]`);
+		const deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
+		let url = "?action=commandpoll&device_id=" + deviceId; 
+		xmlhttp.open("GET", url, true);
+		xmlhttp.send();
+		console.log(url);
+		setTimeout(()=>updateInstantCommandResponse(), 5000);
+	  //}
   }
   
   
@@ -2184,3 +2220,5 @@ function genericListActionBackend(
         });
     });
   }
+  
+  

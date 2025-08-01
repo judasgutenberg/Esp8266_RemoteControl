@@ -125,10 +125,19 @@ if ($user) {
   if($action == "commandpoll"){
     $possibleTemporaryCommandFileName = "instant_response_" . $deviceId . ".txt";
     if(file_exists($possibleTemporaryCommandFileName)){
+      
       $temporaryComandText = file_get_contents($possibleTemporaryCommandFileName);
-      echo $temporaryComandText;
+      $sql = "UPDATE command_log SET result_text='" . mysqli_real_escape_string($conn, $temporaryComandText) . "' WHERE tenant_id=". intval($tenantId) . "  AND device_id=" . intval($deviceId);
+      $sql .= " AND command_log_id=(SELECT MAX(command_log_id) FROM command_log WHERE device_id=" . intval($deviceId) . " AND tenant_id=". intval($tenantId) . "  AND result_text IS NULL)";
+      
+      $result = replaceTokensAndQuery($sql, $user);
+      //die($sql);
+      echo '{"status": "new"}';
       unlink($possibleTemporaryCommandFileName);
+    } else {
+      echo '{"status": "none"}';
     }
+
     die();
   }
   if($action == "checksqlsyntax") {

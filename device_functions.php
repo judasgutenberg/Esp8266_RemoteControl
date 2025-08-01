@@ -2458,27 +2458,30 @@ function instantCommand($tenantId, $userId, $deviceId) {
   global $conn, $timezone;
   $date = new DateTime("now", new DateTimeZone($timezone));
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
-  if(gvfw("command_text")){
-    $commandText = gvfw("command_text");
-    //echo $commandText;
-    //echo "<br>";
-    //echo gvfw("device_id");
+
+  $commandText = gvfw("command_text");
+  //echo $commandText;
+  //echo "<br>";
+  //echo gvfw("device_id");
+  if($commandText != "") { //since this is also used to refresh, if we pass no command, then just return fresh data and skip this part
     $sql = "INSERT INTO command_log(command_text, recorded, device_id, tenant_id, user_id) VALUES('" . mysqli_real_escape_string($conn, $commandText) . "','" . $formatedDateTime . "'," . $deviceId . "," . $tenantId  ."," . $userId . ")";
     //die($sql);
     $result = $conn->query($sql);
     $commandLogId = mysqli_insert_id($conn);
+ 
     //write the command to a text file so data.php can find it and include it in the commands sent to the device
     file_put_contents("instant_command_" . gvfw("device_id") . ".txt", $commandText . "\n" . $commandLogId);
-    $sql = "SELECT * FROM command_log WHERE device_id=" . intval($deviceId) . " AND tenant_id = " . intval($tenantId) . " ORDER BY recorded DESC";
-    $result = $conn->query($sql);
-    if($result) {
-      $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
-      if($rows) {
-        echo json_encode($rows);
-      }
-    }
-    die();
   }
+  $sql = "SELECT * FROM command_log WHERE device_id=" . intval($deviceId) . " AND tenant_id = " . intval($tenantId) . " ORDER BY recorded DESC";
+  $result = $conn->query($sql);
+  if($result) {
+    $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    if($rows) {
+      echo json_encode($rows);
+    }
+  }
+  die();
+
 }
 
 function visitorLog($deviceId, $number, $type) {
