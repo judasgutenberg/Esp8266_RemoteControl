@@ -946,10 +946,12 @@ function genericListActionBackend(
 				logPlace.innerHTML = html;
 			}
 			if(!startedUpdatingInstantCommand){
+				startedUpdatingInstantCommand = true;
 				setTimeout(()=>{
+					console.log("firsting");
 					updateInstantCommandResponse();
 					instantCommand(true);
-					startedUpdatingInstantCommand = true;
+					
 				}, 2000);
 			}
 		}
