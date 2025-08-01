@@ -49,7 +49,7 @@ body
 .dot-loader {
   display: flex;
   gap: 5px;
-  justify-content: center;
+  justify-content: left;
   vertical-align: top;
   align-items: center;
 }
