@@ -887,7 +887,7 @@ function genericListActionBackend(
 	  out += "<div>Command: <input id='command_text' style='width:300px'/></div>";
 	  out += "<div>Device: <span id='deviceDropdown'/></div>";
   
-	  out += "<div><button type='button' onclick='instantCommand()'>Run</button><button type='button' onclick='document.getElementById(\"command_response\").value=\"\"'>Clear Responses</button></div>";
+	  out += "<div><button type='button' onclick='instantCommand()'>Run</button></div>";
    
 	  //out += "<div>Responses: <textarea id='command_response' style='width:680px;height:400px'/></textarea></div>";
 	  out += "<div>Log: <div id='instantcommandlog'></div></div>";
