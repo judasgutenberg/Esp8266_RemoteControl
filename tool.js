@@ -884,8 +884,8 @@ function genericListActionBackend(
 	  let xmlhttp = new XMLHttpRequest();
 	  const div = document.getElementById('utilityDiv');
 	  let out = "";
-	  out += "<div>Command: <input id='command_text' style='width:300px'/></div>";
-	  out += "<div>Device: <span id='deviceDropdown'/></div>";
+	  out += "<div id='commandline' style='display:none'>Command: <input id='command_text' style='width:300px'/></div>";
+	  out += "<div>Device: <span style='margin-left:17px' id='deviceDropdown'/></div>";
   
 	  out += "<div><button type='button' onclick='instantCommand()'>Run</button></div>";
    
@@ -935,10 +935,15 @@ function populateInstantCommandForm(commandText, deviceId) {
 		const params = new URLSearchParams();
 		const commandTextInput = document.getElementById('command_text');//document.querySelector(`textarea[name="command_text"]`);
 		const commandText = commandTextInput.value;
+		const commandLine = document.getElementById('commandline');
 		const deviceDropdown = document.querySelector(`select[name="device_id"]`);
 		let deviceId = null;
 		if(deviceDropdown){
 			deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
+		}
+		commandLine.style.display = 'block';
+		if(!deviceId) {
+			commandLine.style.display = 'none';
 		}
 		const logPlace = document.getElementById('instantcommandlog');
 		
