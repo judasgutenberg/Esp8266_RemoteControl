@@ -890,7 +890,7 @@ function genericListActionBackend(
 	  out += "<div><button type='button' onclick='instantCommand()'>Run</button></div>";
    
 	  //out += "<div>Responses: <textarea id='command_response' style='width:680px;height:400px'/></textarea></div>";
-	  out += "<div>Log: <div id='instantcommandlog'></div></div>";
+	  out += "<div>Interactive Command Log: <div id='instantcommandlog'></div></div>";
 	  div.innerHTML = out;
 	  xmlhttp.onreadystatechange = function() {
 		  console.log("did" + xmlhttp.readyState + " " +xmlhttp.status  );
