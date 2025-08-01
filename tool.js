@@ -1,17 +1,17 @@
-function managementRuleTool(item) {
-	let xmlhttp = new XMLHttpRequest();
-	xmlhttp.onreadystatechange = function() {
-	  console.log(xmlhttp.responseText);
-	  let data = JSON.parse(xmlhttp.responseText);
-	  showDataInPanelTool(data);
-	  //console.log(data);
+	function managementRuleTool(item) {
+		let xmlhttp = new XMLHttpRequest();
+		xmlhttp.onreadystatechange = function() {
+			console.log(xmlhttp.responseText);
+			let data = JSON.parse(xmlhttp.responseText);
+			showDataInPanelTool(data);
+			//console.log(data);
+		}
+
+		let url = "?table=management_rule&action=json&management_rule_id=" + item.value;
+		xmlhttp.open("GET", url, true);
+		xmlhttp.send();
+
 	}
-  
-	let url = "?table=management_rule&action=json&management_rule_id=" + item.value;
-	xmlhttp.open("GET", url, true);
-	xmlhttp.send();
-   
-  }
   
   function tenantTool(item) {
 	  let xmlhttp = new XMLHttpRequest();
@@ -897,7 +897,8 @@ function genericListActionBackend(
 		  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
 			  const data = xmlhttp.responseText;
 			  selectData = JSON.parse(data);
-			  let selectedString = "\n<select name='device_id'>\n";
+			  let selectedString = "\n<select onchange='instantCommand(true)' name='device_id' id='device_id'>\n";
+			  selectedString += '\n<option value="">none</option>\n';
 			  for(let item of selectData){
 				  selectedString += '\n<option value="' + item["device_id"] + '">' + item["name"] + '</option>\n';
 			  }
@@ -914,14 +915,31 @@ function genericListActionBackend(
   }
   
   
-	let startedUpdatingInstantCommand = false;
+let startedUpdatingInstantCommand = false;
+
+
+function populateInstantCommandForm(commandText, deviceId) {
+	const commandTextFormItem = document.getElementById("command_text");
+	const deviceIdFormItem = document.getElementById("device_id");
+	commandTextFormItem.value = commandText;
+	for (let i = 0; i < deviceIdFormItem.options.length; i++) {
+		const option = deviceIdFormItem.options[i];
+		if (parseInt(option.value) === deviceId) {
+			option.selected = true;
+			break;
+		}
+	}
+}
 
   function instantCommand(nodata) {
 		const params = new URLSearchParams();
 		const commandTextInput = document.getElementById('command_text');//document.querySelector(`textarea[name="command_text"]`);
 		const commandText = commandTextInput.value;
 		const deviceDropdown = document.querySelector(`select[name="device_id"]`);
-		const deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
+		let deviceId = null;
+		if(deviceDropdown){
+			deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
+		}
 		const logPlace = document.getElementById('instantcommandlog');
 		
 		let xmlhttp = new XMLHttpRequest();
@@ -930,10 +948,10 @@ function genericListActionBackend(
 			if(xmlhttp.responseText){
 				let data = JSON.parse(xmlhttp.responseText);
 				let html = "<div class='list'>";
-				html += "<div class='listrow'><span><b>recorded</b></span><span>command</span><span>results</span></div>";
+				html += "<div class='listrow'><span>recorded</span><span>command</span><span>results</span><span>device</span></div>";
 				for(let datum of data) {
-					html += "<div class='listrow'><span><b>" + datum['recorded'] + "</b></span><span onclick='document.getElementById(\"command_text\").value=\"";
-					html +=  datum['command_text'] +"\"'>" + datum['command_text']  + "</span><span>";
+					html += "<div class='listrow'><span>" + datum['recorded'] + "</span><span style='cursor:pointer' onclick=\"populateInstantCommandForm('" + datum['command_text'] + "'," + datum['device_id'] + ")\">" + datum['command_text']  + "</span>";
+					html += "<span>";
 					if(datum["result_text"] != "" && datum["result_text"] != null){
 						html += datum["result_text"];
 					} else if(timeAgo(datum["recorded"],  null, true) > 200){
@@ -942,7 +960,7 @@ function genericListActionBackend(
 						html +=  "<div class=\"dot-loader\"><span></span><span></span><span></span></div>";
 					}
 					
-					html +=  "</span></div>";
+					html +=  "</span><span>" + datum["device_name"]  + " </span></div>";
 				}
 				html += "</div>";
 				logPlace.innerHTML = html;
@@ -963,7 +981,9 @@ function genericListActionBackend(
 		if(!nodata){
 			params.append("command_text", commandText);
 		}
+
 		params.append("device_id", deviceId);
+		
 		xmlhttp.open("POST", url, true);
 		xmlhttp.send(params);
 
@@ -2227,5 +2247,14 @@ function genericListActionBackend(
         });
     });
   }
+
+
+
+window.onload = function() {
+	const commandTextInput = document.getElementById('command_text');
+	if(commandTextInput) { //if we are on instant command, load all the recent instant commands, no matter what device
+		instantCommand(true);
+	}
+};
   
   
