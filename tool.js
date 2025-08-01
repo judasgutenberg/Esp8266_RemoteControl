@@ -936,6 +936,8 @@ function genericListActionBackend(
 					html +=  datum['command_text'] +"\"'>" + datum['command_text']  + "</span><span>";
 					if(datum["result_text"] != "" && datum["result_text"] != null){
 						html += datum["result_text"];
+					} else if(timeAgo(datum["recorded"],  null, true) > 200){
+							html += "<em>data never returned</em>";
 					} else {
 						html +=  "<div class=\"dot-loader\"><span></span><span></span><span></span></div>";
 					}
@@ -2094,7 +2096,7 @@ function genericListActionBackend(
 	  return datetimeString;
   }
   
-  function timeAgo(sqlDateTime, compareTo = null) {
+  function timeAgo(sqlDateTime, compareTo = null, returnDiffInSeconds) {
 	  sqlDateTime = sqlDateTime.replace(" ", "T"); // Fix for Safari 11
 	  // Define the timezone globally or set a default
 	  const timezone = window.timezone || "UTC";
@@ -2107,6 +2109,9 @@ function genericListActionBackend(
 	
 	  // Calculate the difference in seconds
 	  let diffInSeconds = Math.floor((now - past) / 1000);
+	  if(returnDiffInSeconds){
+		return diffInSeconds;
+	  }
 	  diffInSeconds = Math.max(0, diffInSeconds);
 	
 	  // Calculate units of time
