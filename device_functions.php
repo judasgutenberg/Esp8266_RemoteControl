@@ -2458,7 +2458,7 @@ function instantCommand($tenantId, $userId, $deviceId) {
   global $conn, $timezone;
   $date = new DateTime("now", new DateTimeZone($timezone));
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
-
+ 
   $commandText = gvfw("command_text");
   //echo $commandText;
   //echo "<br>";
@@ -2472,7 +2472,12 @@ function instantCommand($tenantId, $userId, $deviceId) {
     //write the command to a text file so data.php can find it and include it in the commands sent to the device
     file_put_contents("instant_command_" . gvfw("device_id") . ".txt", $commandText . "\n" . $commandLogId);
   }
-  $sql = "SELECT * FROM command_log WHERE device_id=" . intval($deviceId) . " AND tenant_id = " . intval($tenantId) . " ORDER BY recorded DESC";
+  if($deviceId){
+    $sql = "SELECT c.*, d.name AS device_name FROM command_log c JOIN device d ON c.device_id=d.device_id AND c.tenant_id=d.tenant_id WHERE c.device_id=" . intval($deviceId) . " AND c.tenant_id = " . intval($tenantId) . " ORDER BY c.recorded DESC";
+  } else {
+    $sql = "SELECT c.*, d.name AS device_name FROM command_log c JOIN device d ON c.device_id=d.device_id AND c.tenant_id=d.tenant_id WHERE c.tenant_id = " . intval($tenantId) . " ORDER BY c.recorded DESC LIMIT 0,100";
+  }
+  
   $result = $conn->query($sql);
   if($result) {
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
@@ -2594,4 +2599,18 @@ function getDigestBitmask($tenant) {
       }
     }
     return $bitmask;
+}
+
+function getNumberAfterLastNewline($input, $returnFirstPart = false) {
+    $lastNewlinePos = strrpos($input, "\n");
+    // If no newline and returnFirstPart is requested
+    if ($lastNewlinePos === false) {
+        return $returnFirstPart ? $input : null;
+    }
+    if ($returnFirstPart) {
+        return substr($input, 0, $lastNewlinePos);
+    }
+    $afterNewline = substr($input, $lastNewlinePos + 1);
+    $afterNewline = trim($afterNewline);
+    return is_numeric($afterNewline) ? $afterNewline + 0 : null;
 }

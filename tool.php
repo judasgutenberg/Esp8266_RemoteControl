@@ -43,7 +43,7 @@ $page = gvfw('page');
 $datatype = gvfw('datatype'); 
 //echo $table  . "*" . $action. "*" .  $datatype;
 $date = new DateTime("now", new DateTimeZone($timezone));//$timezone is set in config.php
-$formatedDateTime =  $date->format('Y-m-d H:i:s');
+$formattedDateTime =  $date->format('Y-m-d H:i:s');
 
 
 if(strpos($action, "password") !== false) {
@@ -124,20 +124,28 @@ if ($user) {
 	$out .= "<div>\n";
   if($action == "commandpoll"){
     $possibleTemporaryCommandFileName = "instant_response_" . $deviceId . ".txt";
-    if(file_exists($possibleTemporaryCommandFileName)){
+    //if(file_exists($possibleTemporaryCommandFileName)){
+    $sql = "SELECT MAX(result_recorded) as result_recorded FROM command_log WHERE tenant_id=" . intval($tenantId);
+    if($deviceId > 0) {
+      $sql .= " AND device_id=" . intval($deviceId);
+    }
+    $result = mysqli_query($conn, $sql);
+    $row = mysqli_fetch_array($result);
+    if($row["result_recorded"] > gvfw("result_recorded")) {
+      //$temporaryComandText = file_get_contents($possibleTemporaryCommandFileName);
+      //$commandText = getNumberAfterLastNewline($temporaryComandText, true);
+      //$commandLogId = getNumberAfterLastNewline($temporaryComandText, false);
+      //$sql = "UPDATE command_log SET result_text='" . mysqli_real_escape_string($conn, $temporaryComandText) . "' WHERE tenant_id=". intval($tenantId) . "  AND device_id=" . intval($deviceId);
+      //$sql .= " AND command_log_id=" . $commandLogId;
       
-      $temporaryComandText = file_get_contents($possibleTemporaryCommandFileName);
-      $sql = "UPDATE command_log SET result_text='" . mysqli_real_escape_string($conn, $temporaryComandText) . "' WHERE tenant_id=". intval($tenantId) . "  AND device_id=" . intval($deviceId);
-      $sql .= " AND command_log_id=(SELECT MAX(command_log_id) FROM command_log WHERE device_id=" . intval($deviceId) . " AND tenant_id=". intval($tenantId) . "  AND result_text IS NULL)";
-      
-      $result = replaceTokensAndQuery($sql, $user);
+      //$result = replaceTokensAndQuery($sql, $user);
       //die($sql);
       echo '{"status": "new"}';
-      unlink($possibleTemporaryCommandFileName);
+      //unlink($possibleTemporaryCommandFileName);
     } else {
       echo '{"status": "none"}';
     }
-
+    
     die();
   }
   if($action == "checksqlsyntax") {
@@ -201,7 +209,7 @@ if ($user) {
       $userClause = ", user_id=" . $user["user_id"];
     }
     if(in_array($table, tablesThatRequireModified())){
-      $userClause = ", modified='" . $formatedDateTime . "'";
+      $userClause = ", modified='" . $formattedDateTime . "'";
     }
     $sql = "UPDATE ". filterStringForSqlEntities($table, true) . " SET " . filterStringForSqlEntities($name, true) . "='" .  mysqli_real_escape_string($conn, $value) . "' " . $userClause . " WHERE tenant_id=" . intval($tenantId) . " AND " . filterStringForSqlEntities($primaryKeyName, true) . "='" . intval($primaryKeyValue) . "'";
 
@@ -254,7 +262,7 @@ if ($user) {
     
     $data = json_decode(gvfw("_data")); //don't actually need this
     $foundData = getUtilityInfo($user, $action); 
-
+ 
     if ($foundData) {
       $role = gvfa("role", $foundData);
       $path = gvfa("path", $foundData);
@@ -262,6 +270,7 @@ if ($user) {
       $outputFormat = gvfa("output_format", $foundData);
   
       if($_POST && (gvfa("action", $foundData) || $outputFormat)) { // ||  (gvfa("action", $foundData) && gvfa("form", $foundData))
+ 
         $out .= "<div class='issuesheader'>" .  gvfa("label", $foundData)  . "</div>";
         //dealing with a utility that has a form
         $role = gvfa("role", $foundData);
@@ -296,6 +305,7 @@ if ($user) {
                 try {
                   if($codeToRun) {
                     //echo $codeToRun;
+        
                     eval('$result  =' . $codeToRun . ";");
                   }
                   if($outputFormat == "download") {

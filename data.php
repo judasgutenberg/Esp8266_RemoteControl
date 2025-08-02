@@ -23,14 +23,14 @@ $out = [];
 $date = new DateTime("now", new DateTimeZone($timezone));//set the $timezone global in config.php
 $pastDate = $date;
 $aFewMinutesPastDate = $date;
-$formatedDateTime =  $date->format('Y-m-d H:i:s');
-$storageDateTime = $formatedDateTime;
+$formattedDateTime =  $date->format('Y-m-d H:i:s');
+$storageDateTime = $formattedDateTime;
 $currentTime = $date->format('H:i:s');
 $pastDate->modify('-20 minutes');
-$formatedDateTime20MinutesAgo =  $pastDate->format('Y-m-d H:i:s');
+$formattedDateTime20MinutesAgo =  $pastDate->format('Y-m-d H:i:s');
 $aFewMinutesPastDate->modify('-6 minutes');
-$formatedDateTimeAFewMinutesAgo =  $aFewMinutesPastDate->format('Y-m-d H:i:s');
-//$formatedDateTime =  $date->format('H:i');
+$formattedDateTimeAFewMinutesAgo =  $aFewMinutesPastDate->format('Y-m-d H:i:s');
+//$formattedDateTime =  $date->format('H:i');
 $deviceId = "";
 $locationId = "";
 $deviceName = "Your device";
@@ -180,7 +180,7 @@ if($_REQUEST) {
               $dt->setTimestamp($rebootOccasion);
               $rebootOccasionSql = $dt->format('Y-m-d H:i:s');
 
-              $rebootLogSql = "INSERT INTO reboot_log(device_id, recorded, server_recorded) SELECT " . intval($deviceId) . ",'" .$rebootOccasionSql . "','" . $formatedDateTime . "' 
+              $rebootLogSql = "INSERT INTO reboot_log(device_id, recorded, server_recorded) SELECT " . intval($deviceId) . ",'" .$rebootOccasionSql . "','" . $formattedDateTime . "' 
                 FROM DUAL WHERE NOT EXISTS (SELECT * FROM reboot_log WHERE device_id=" . intval($deviceId) . " AND recorded='" . $rebootOccasionSql . "' LIMIT 1)";
               
               $result = mysqli_query($conn, $rebootLogSql);
@@ -284,7 +284,13 @@ if($_REQUEST) {
 				}
 			} else if ($mode=="debug") {
 			} else if ($mode=="commandout") { //if we sent an instant_command, then the ESP8266 will redirect any output it generates to sendRemoteData, sending the output in the "data" parameter
-				file_put_contents("instant_response_" . gvfw("device_id") . ".txt", $data, FILE_APPEND | LOCK_EX);
+				//old way, back when we didn't have a command_log table:
+				//file_put_contents("instant_response_" . gvfw("device_id") . ".txt", $data, FILE_APPEND | LOCK_EX);
+        $commandText = getNumberAfterLastNewline($data, true);
+        $commandLogId = getNumberAfterLastNewline($data, false);
+        $sql = "UPDATE command_log SET result_recorded='" . $formattedDateTime  ."', result_text='" . mysqli_real_escape_string($conn, $commandText) . "' WHERE tenant_id=". intval($tenantId) . "  AND device_id=" . intval($deviceId) . " AND command_log_id=" . intval($commandLogId);
+        $result = mysqli_query($conn, $sql);
+        //this is where you get just datetime info back
 			} else if ($mode=="saveLocallyGatheredSolarData") { //used by the special inverter monitoring MCU to send fine-grain data promptly
 					if($canAccessData) {
 						///weather/data.php?storagePassword=xxxxxx&locationId=16&mode=saveLocallyGatheredSolarData&data=0*61*3336*3965*425*420*0*0*6359|||***192.168.1.200 
@@ -430,20 +436,20 @@ if($_REQUEST) {
 					$periodScale = $scaleRecord["period_scale"];
 					$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
 					$groupBy = gvfa("group_by", $scaleRecord, "");
-					$startOfPeriod = "'" . $formatedDateTime . "'"; 
+					$startOfPeriod = "'" . $formattedDateTime . "'"; 
 					$historyOffset = 1;
 					$sql = "SELECT * FROM inverter_log  
 						WHERE tenant_id = " . $tenantId . " ";
 					if ($absoluteTimespanCusps == 1) {
 						// Calculate starting point at the "cusp" of each period scale
-						$startOfPeriod = sqlForStartOfPeriodScale($periodScale, $formatedDateTime);
+						$startOfPeriod = sqlForStartOfPeriodScale($periodScale, $formattedDateTime);
 						// Adjust SQL to break at cusps rather than present
 						$sql .= " AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
 						if ($periodAgo > 0) {
 							$sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
 						}
 					} else {
-						$sql .= " AND recorded > DATE_ADD(DATE_ADD('" . $formatedDateTime . "', INTERVAL -" . intval($periodSize * ($periodAgo + 1) + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
+						$sql .= " AND recorded > DATE_ADD(DATE_ADD('" . $formattedDateTime . "', INTERVAL -" . intval($periodSize * ($periodAgo + 1) + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
 					}
 					//AND  recorded > DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + $historyOffset) + $initialOffset)) . " " . $periodScale . ") ";
 					if($periodAgo  > 0) {
@@ -490,7 +496,7 @@ if($_REQUEST) {
 					}
 					if ($absoluteTimespanCusps == 1) {
 						// Calculate starting point at the "cusp" of each period scale
-						$startOfPeriod = sqlForStartOfPeriodScale($periodScale, $formatedDateTime);
+						$startOfPeriod = sqlForStartOfPeriodScale($periodScale, $formattedDateTime);
 						// Adjust SQL to break at cusps rather than present
 						$sql .= " AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
 						if ($periodAgo > 0) {
@@ -498,12 +504,12 @@ if($_REQUEST) {
 						}
 					} else {
 
-						$sql .= " AND recorded > DATE_ADD(DATE_ADD('" . $formatedDateTime . "', INTERVAL -" . intval($periodSize * ($periodAgo + 1) + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
+						$sql .= " AND recorded > DATE_ADD(DATE_ADD('" . $formattedDateTime . "', INTERVAL -" . intval($periodSize * ($periodAgo + 1) + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
 					}
 					if($periodAgo  > 0) {
-						$sql .= " AND recorded < DATE_ADD(DATE_ADD('" . $formatedDateTime . "', INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
+						$sql .= " AND recorded < DATE_ADD(DATE_ADD('" . $formattedDateTime . "', INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
 					} else if ($yearsAgo > 0){
-						$sql .= " AND recorded < DATE_ADD(DATE_ADD('" . $formatedDateTime . "', INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
+						$sql .= " AND recorded < DATE_ADD(DATE_ADD('" . $formattedDateTime . "', INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
 					}
 					if($groupBy){
 						$sql .= " GROUP BY " . $groupBy . " ";//contrary to what you might think, this is never passed in from the frontend.
@@ -685,7 +691,7 @@ if($_REQUEST) {
 					if(strpos($ipAddress, " ") > 0){ //was getting crap from some esp8266s here
 						$ipAddress = explode(" ", $ipAddress)[0];
 					}
-					$deviceSql = "UPDATE device SET ip_address='" . $ipAddress . "', last_poll='" . $formatedDateTime  . "' ";
+					$deviceSql = "UPDATE device SET ip_address='" . $ipAddress . "', last_poll='" . $formattedDateTime  . "' ";
 					if($measuredVoltage){
 						$deviceSql .= ", voltage=" . $measuredVoltage;
 					}
@@ -764,12 +770,12 @@ if($_REQUEST) {
 						if(gvfa("debug", $_REQUEST) == 'suspension'){
 							echo "<BR>". $row["name"] ."; feature id: " . $deviceFeatureId;
 							echo "<BR>formatted in future: " . $formattedInTheFuture;
-							echo "<BR>now time: " . $formatedDateTime;
+							echo "<BR>now time: " . $formattedDateTime;
 							echo "<BR>automationDisabledWhen: " . $automationDisabledWhen  ;
 							echo "<BR>allowAutomaticManagement: " . $allowAutomaticManagement . "<BR>";
 							echo "<hr>";
 						}
-						if($allowAutomaticManagement  && ($automationDisabledWhen == null || $formattedInTheFuture < $formatedDateTime)) {
+						if($allowAutomaticManagement  && ($automationDisabledWhen == null || $formattedInTheFuture < $formattedDateTime)) {
 							$automationSql = "SELECT m.* FROM management_rule m JOIN device_feature_management_rule d ON m.management_rule_id = d.management_rule_id AND m.tenant_id=d.tenant_id WHERE d.device_feature_id = " . $deviceFeatureId . " ORDER BY management_priority DESC";
 							//logSql("management sql:" .  $automationSql);
 							$automationResult = mysqli_query($conn, $automationSql);
@@ -822,7 +828,7 @@ if($_REQUEST) {
 												if($managementLocationId != ""){
 													$extraManagementWhereClause = " AND device_id=" . intval($managementLocationId);
 												}
-												$managmentValueLookupSql = "SELECT " . $managementColumn . " As value FROM " . $managementTableName . " WHERE recorded >= '" . $formatedDateTime20MinutesAgo . "' AND " . $managementTableName . "_id = (SELECT MAX(" . $managementTableName. "_id) FROM " . $managementTableName . " WHERE 1=1 " . $extraManagementWhereClause . ") " . $extraManagementWhereClause;
+												$managmentValueLookupSql = "SELECT " . $managementColumn . " As value FROM " . $managementTableName . " WHERE recorded >= '" . $formattedDateTime20MinutesAgo . "' AND " . $managementTableName . "_id = (SELECT MAX(" . $managementTableName. "_id) FROM " . $managementTableName . " WHERE 1=1 " . $extraManagementWhereClause . ") " . $extraManagementWhereClause;
 												$managementValueResult = mysqli_query($conn, $managmentValueLookupSql);
 
 												if($managementValueResult) {
@@ -861,7 +867,7 @@ if($_REQUEST) {
 											}
 											if($managementJudgment == 1  && $row["value"] != $managementResultValue){
 												//don't automate a change within five minutes of a user change
-												if(timeDifferenceInMinutes($modified, $formatedDateTime) > 5) {
+												if(timeDifferenceInMinutes($modified, $formattedDateTime) > 5) {
 													$mechanism = "automation";
 													$managementRuleId = $managementRuleIdIfNeeded;
 													//echo intval($managementResultValue) . "<BR>";
@@ -876,16 +882,16 @@ if($_REQUEST) {
 								}
 							}
 						}
-						if($formattedInTheFuture < $formatedDateTime && $automationDisabledWhen) {
+						if($formattedInTheFuture < $formattedDateTime && $automationDisabledWhen) {
 							$undoDisabledAutomation = " automation_disabled_when=NULL,";
 						}
 						$lastModified  = "";
 						$sqlToUpdateDeviceFeature = "";
 						//echo $deviceFeatureId . "*" . $pinCursor . "<BR>";
-						//if we have a pinValuesKnownToDevice change AND there is allowAutomaticManagement then we need to take the $formatedDateTime, and use that to set automation_disabled_when 
+						//if we have a pinValuesKnownToDevice change AND there is allowAutomaticManagement then we need to take the $formattedDateTime, and use that to set automation_disabled_when 
 						if(count($pinValuesKnownToDevice) > $pinCursor && is_numeric($pinValuesKnownToDevice[$pinCursor])) {
 							//echo $deviceFeatureId   . "=" . $pinCursor . "<BR>";
-							$lastModified = " last_known_device_modified='" . $formatedDateTime . "',";
+							$lastModified = " last_known_device_modified='" . $formattedDateTime . "',";
 							$lastKnownDevice = " last_known_device_value =  " . nullifyOrNumber($pinValuesKnownToDevice[$pinCursor]) . ","; //only do this when we actually have data from the microcontroller
 							$sqlToUpdateDeviceFeature = "UPDATE device_feature SET <lastknowndevice/><lastmodified/><additional/>";
 							$sqlIfDataGoingUpstream = " value =" . $pinValuesKnownToDevice[$pinCursor] . ",";
@@ -929,18 +935,18 @@ if($_REQUEST) {
 									$newValue = $row["value"];
 								} 
 								if(!$automationDisabledWhen && $allowAutomaticManagement && !$automatedChangeMade && intval($oldValue) != intval($newValue)) {  
-									$sqlToUpdateDeviceFeature .= " automation_disabled_when='" . $formatedDateTime . "',";
+									$sqlToUpdateDeviceFeature .= " automation_disabled_when='" . $formattedDateTime . "',";
 								}
 								//if this is an ipaddress-mechanism change undoing a recent automation change, then don't bother
-								if($historicMechanism == "automation" && intval($historicBecame) != intval($newValue)  &&  $mechanism == $ipAddress && $historicRecorded > $formatedDateTimeAFewMinutesAgo){
+								if($historicMechanism == "automation" && intval($historicBecame) != intval($newValue)  &&  $mechanism == $ipAddress && $historicRecorded > $formattedDateTimeAFewMinutesAgo){
 									$canUpdateDeviceFeature = false;
 								}
 								//also log this change in the new device_feature_log table!  we're going to need that for when device_features get changed automatically based on data as well!
-								$weJustHadALogItemLikeThis = intval($historicWas) == intval($oldValue) && intval($historicBecame) == intval($newValue) && $historicMechanism == $mechanism && $historicRecorded > $formatedDateTimeAFewMinutesAgo;
+								$weJustHadALogItemLikeThis = intval($historicWas) == intval($oldValue) && intval($historicBecame) == intval($newValue) && $historicMechanism == $mechanism && $historicRecorded > $formattedDateTimeAFewMinutesAgo;
 
 								if(!$weJustHadALogItemLikeThis && $canUpdateDeviceFeature) {
 									$loggingSql = "INSERT INTO device_feature_log (device_feature_id, tenant_id, recorded, beginning_state, end_state, management_rule_id, mechanism, user_id) VALUES (";
-									$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "'," . $userId .")";
+									$loggingSql .= nullifyOrNumber($row["device_feature_id"]) . "," . $tenant["tenant_id"] . ",'" . $formattedDateTime . "'," . intval($oldValue) . "," . intval($newValue)  . "," . nullifyOrNumber($managementRuleId)  . ",'" . $mechanism . "'," . $userId .")";
 									if($automatedChangeMade || $specificPin > -1 && $specificPin == $pinCursor  || $specificPin == -1){ //otherwise we get too much logging if we're in one-pin-at-a-mode time
 										if(intval($oldValue) != intval($newValue) ) { //let's only log ch-ch-ch-changes
 											$loggingResult = mysqli_query($conn, $loggingSql);
@@ -1017,7 +1023,7 @@ if($_REQUEST) {
 		}
 	} else {
 		$out = ["error"=>"you lack permissions"];
-		logSql("permission failed " . $formatedDateTime . ": " . $data);
+		logSql("permission failed " . $formattedDateTime . ": " . $data);
 	}
 	//var_dump($out);
 	if (endsWith(strtolower($mode), "nonjson")) {
@@ -1051,7 +1057,7 @@ if($_REQUEST) {
 		
 		//new way to do it:
 		if($latestCommandData) {
-			$nonJsonOutString .= "!" . $latestCommandData["command_id"] . "|" . removeDelimiters($latestCommandData["command"]) . "|" . removeDelimiters($latestCommandData["value"]) . "|" . $latency;
+			$nonJsonOutString .= "!" . $latestCommandData["command_id"] . "|" . removeDelimiters($latestCommandData["command"]) . "|" . removeDelimiters($latestCommandData["value"]) . "|" . $latency . "!" .  $latestCommandData["command_log_id"];
 		} else {
 			$nonJsonOutString .= "!|||" . $latency;
 		}
@@ -1109,15 +1115,15 @@ function deriveTenantFromStoragePassword($storagePassword) {
 
 function logPost($post){
 	//return; //for when you don't actually want to log
-	global $formatedDateTime;
-	//$myfile = file_put_contents('post.txt', "\n\n" . $formatedDateTime . ": " . $post, FILE_APPEND | LOCK_EX);
+	global $formattedDateTime;
+	//$myfile = file_put_contents('post.txt', "\n\n" . $formattedDateTime . ": " . $post, FILE_APPEND | LOCK_EX);
 }
 
 function logSql($sql){
 	//return;
 	//return; //for when you don't actually want to log
-	global $formatedDateTime;
-	//$myfile = file_put_contents('sql.txt', "\n\n" . $formatedDateTime . ": " . $sql, FILE_APPEND | LOCK_EX);
+	global $formattedDateTime;
+	//$myfile = file_put_contents('sql.txt', "\n\n" . $formattedDateTime . ": " . $sql, FILE_APPEND | LOCK_EX);
 }
 
 function mergeWeatherDatum($consolidateAllSensorsToOneRecord, $existingValue, $sourceArray, $keyName, $deviceId = null, $tenantId = null) {
@@ -1261,16 +1267,41 @@ function sqlForStartOfPeriodScale($periodScale, $now) {
 
 function getLatestCommandData($deviceId, $tenantId){
 	Global $conn;
+	//old way, from before we had command_log:
+	/*
 	$possibleTemporaryCommandFileName = "instant_command_" . $deviceId . ".txt";
 	if(file_exists($possibleTemporaryCommandFileName)){
+    
 		$temporaryComandText = file_get_contents($possibleTemporaryCommandFileName);
-		$commandArray = explode("|", $temporaryComandText);
+		$commandPart = getNumberAfterLastNewline($temporaryComandText, true);
+		$commandLogId = getNumberAfterLastNewline($temporaryComandText, false);
+		$commandArray = explode("|", $commandPart);
 		$value = null;
 		if(count($commandArray)>1) {
 			$value = $commandArray[1];
 		}
 		unlink($possibleTemporaryCommandFileName);
-		return array("command_id"=> -2 , "command" => $commandArray[0], "value" => $value);
+		return array("command_id"=> -2 , "command" => str_replace("\n", "", $commandArray[0]), "value" => $value, "command_log_id" => $commandLogId);
+	}
+	*/
+	$sql = "SELECT *
+    FROM command_log
+    WHERE tenant_id = " . intval($tenantId) . " 
+      AND device_id = " . intval($deviceId) . "
+      AND result_recorded IS NULL
+      -- AND recorded >= NOW() - INTERVAL 6000 SECOND
+    ORDER BY command_log_id ASC
+    LIMIT 1;";
+  $result = mysqli_query($conn, $sql);
+  //echo $sql . "\n";
+ 
+  //var_dump($result);
+  if($result) {
+    $row = mysqli_fetch_array($result);
+    if($row) {
+    //var_dump($row);
+      return array("command_id"=> -2 , "command" => $row["command_text"], "value" => "", "command_log_id" => $row["command_log_id"]);
+    }
 	}
 	$sql = "SELECT * FROM command c JOIN command_type t ON c.command_type_id=t.command_type_id AND c.tenant_id=t.tenant_id WHERE device_id=" . intval($deviceId) . " AND c.tenant_id=" . $tenantId . " AND done=0 ORDER BY command_id ASC LIMIT 0,1";
 	$result = mysqli_query($conn, $sql);
@@ -1306,8 +1337,8 @@ function getLatestCommandData($deviceId, $tenantId){
 function markCommandDone($commandId, $tenantId){ 
 	Global $conn, $timezone;
 	$date = new DateTime("now", new DateTimeZone($timezone));//set the $timezone global in config.php
-	$formatedDateTime =  $date->format('Y-m-d H:i:s');
-	$sql = "UPDATE command SET done = 1, performed = '" . $formatedDateTime . "' WHERE done=0 AND command_id=" . intval($commandId) . " AND tenant_id=" . $tenantId;
+	$formattedDateTime =  $date->format('Y-m-d H:i:s');
+	$sql = "UPDATE command SET done = 1, performed = '" . $formattedDateTime . "' WHERE done=0 AND command_id=" . intval($commandId) . " AND tenant_id=" . $tenantId;
 	$result = mysqli_query($conn, $sql);
 }
 

@@ -916,7 +916,8 @@ function genericListActionBackend(
   
   
 let startedUpdatingInstantCommand = false;
-
+let resultRecorded = {};
+ 
 
 function populateInstantCommandForm(commandText, deviceId) {
 	const commandTextFormItem = document.getElementById("command_text");
@@ -929,6 +930,7 @@ function populateInstantCommandForm(commandText, deviceId) {
 			break;
 		}
 	}
+	instantCommand(true);
 }
 
   function instantCommand(nodata) {
@@ -955,6 +957,13 @@ function populateInstantCommandForm(commandText, deviceId) {
 				let html = "<div class='list'>";
 				html += "<div class='listrow'><span>recorded</span><span>command</span><span>results</span><span>device</span></div>";
 				for(let datum of data) {
+          if(!(deviceId in resultRecorded)) {
+            resultRecorded[deviceId] = "";
+          }
+          if(datum["result_recorded"] > resultRecorded[deviceId]) {
+            //resultRecorded is a global
+            resultRecorded[deviceId] = datum["result_recorded"]; //we want to know what the largest resultRecorded is for update reasons
+          }
 					html += "<div class='listrow'><span>" + datum['recorded'] + "</span><span style='cursor:pointer' onclick=\"populateInstantCommandForm('" + datum['command_text'] + "'," + datum['device_id'] + ")\">" + datum['command_text']  + "</span>";
 					html += "<span>";
 					if(datum["result_text"] != "" && datum["result_text"] != null){
@@ -994,6 +1003,8 @@ function populateInstantCommandForm(commandText, deviceId) {
 
 	  	return false;
   }
+  
+  
 
   function updateInstantCommandResponse() {
 	  console.log("update command");
@@ -1025,7 +1036,8 @@ function populateInstantCommandForm(commandText, deviceId) {
 		}
 		const deviceDropdown = document.querySelector(`select[name="device_id"]`);
 		const deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
-		let url = "?action=commandpoll&device_id=" + deviceId; 
+		//resultRecorded has to be a global!
+		let url = "?action=commandpoll&result_recorded=" + encodeURIComponent(resultRecorded[deviceId]) + "&device_id=" + deviceId; 
 		xmlhttp.open("GET", url, true);
 		xmlhttp.send();
 		console.log(url);
@@ -1211,51 +1223,51 @@ function populateInstantCommandForm(commandText, deviceId) {
   }
   
   function formatSQL(sql) {
-	const keywords = ['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'OUTER JOIN', 'JOIN', 'ON', 'HAVING'];
-	const newlineKeywords = new Set(['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT', 'JOIN', 'ON', 'HAVING']);
-	const indentKeywords = new Set(['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT']);
-  
-	let formatted = '';
-	let indentLevel = 0;
-  
-	// Updated tokenizer to preserve <tokens>
-	const tokens = sql.match(/(--.*?$)|('[^']*'|"[^"]*")|<[^>\s]+>|[\w.*]+|[(),=<>!+\-;]/gms) || [];
-  
-	function addNewline(level = indentLevel) {
-	  formatted += '\n' + '  '.repeat(level);
-	}
-  
-	for (let i = 0; i < tokens.length; i++) {
-	  let token = tokens[i];
-	  let upperToken = token.toUpperCase().trim();
-  
-	  if (token.startsWith('--')) {
-		addNewline(0);
-		formatted += token.trim();
-	  } else if (newlineKeywords.has(upperToken)) {
-		indentLevel = 0;
-		addNewline();
-		formatted += upperToken;
-		if (indentKeywords.has(upperToken)) {
-		  indentLevel = 1;
-		}
-	  } else if (token === ',') {
-		formatted += ',';
-		addNewline();
-	  } else if (token === ';') {
-		formatted += ';';
-		addNewline();
-		addNewline(); // double spacing between statements
-	  } else if (token === ')') {
-		formatted += token;
-	  } else if (token === '(') {
-		formatted += token;
-	  } else {
-		formatted += ' ' + token.trim();
-	  }
-	}
-  
-	return formatted.trim();
+    const keywords = ['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'OUTER JOIN', 'JOIN', 'ON', 'HAVING'];
+    const newlineKeywords = new Set(['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT', 'JOIN', 'ON', 'HAVING']);
+    const indentKeywords = new Set(['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT']);
+    
+    let formatted = '';
+    let indentLevel = 0;
+    
+    // Updated tokenizer to preserve <tokens>
+    const tokens = sql.match(/(--.*?$)|('[^']*'|"[^"]*")|<=|>=|<>|!=|[=<>!]|<[^>\s]+>|[\w.*]+|[(),+\-;]/gms) || [];
+    
+    function addNewline(level = indentLevel) {
+      formatted += '\n' + '  '.repeat(level);
+    }
+    
+    for (let i = 0; i < tokens.length; i++) {
+      let token = tokens[i];
+      let upperToken = token.toUpperCase().trim();
+    
+      if (token.startsWith('--')) {
+      addNewline(0);
+      formatted += token.trim();
+      } else if (newlineKeywords.has(upperToken)) {
+      indentLevel = 0;
+      addNewline();
+      formatted += upperToken;
+      if (indentKeywords.has(upperToken)) {
+        indentLevel = 1;
+      }
+      } else if (token === ',') {
+      formatted += ',';
+      addNewline();
+      } else if (token === ';') {
+      formatted += ';';
+      addNewline();
+      addNewline(); // double spacing between statements
+      } else if (token === ')') {
+      formatted += token;
+      } else if (token === '(') {
+      formatted += token;
+      } else {
+      formatted += ' ' + token.trim();
+      }
+    }
+    
+    return formatted.trim();
   }
   
   
