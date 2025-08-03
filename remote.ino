@@ -118,6 +118,7 @@ uint32_t moxeeRebootTimes[] = {0,0,0,0,0,0,0,0,0,0,0};
 int moxeeRebootCount = 0;
 int timeOffset = 0;
 long lastCommandId = 0;
+char * deferredCommand = "";
  
 bool onePinAtATimeMode = false; //used when the server starts gzipping data and we can't make sense of it
 char requestNonJsonPinInfo = 1; //use to get much more compressed data double-delimited data from data.php if 1, otherwise if 0 it requests JSON
@@ -691,6 +692,10 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
         if(mode=="commandout"  || outputMode == 2) {
           lastCommandLogId = 0;
         }
+        if(deferredCommand != "") {  //here is where we run commands we cannot recover from
+          //deferred command has everything we need to reboot or whatever
+          runCommandsFromNonJson(deferredCommand, true);
+        }
         lastDataLogTime = millis();
         canSleep = true; //canSleep is a global and will not be set until all the tasks of the device are finished.
         //also we can switch outputMode to 0 and clear responseBuffer
@@ -737,7 +742,7 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
           } 
           if(lastCommandLogId == 0) {
             lastCommandLogId = strtoul(serverCommandParts[2].c_str(), NULL, 10);
-            runCommandsFromNonJson((char *)("!" + serverCommandParts[1]).c_str());
+            runCommandsFromNonJson((char *)("!" + serverCommandParts[1]).c_str(), false);
           }
         }
         receivedDataJson = true;
@@ -747,7 +752,7 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
           Serial.print("COMMAND: ");
           Serial.println(retLine);
         }
-        runCommandsFromNonJson((char *)retLine.c_str());
+        runCommandsFromNonJson((char *)retLine.c_str(), false);
         break;      
       } else {
         if(debug) {
@@ -1074,7 +1079,7 @@ void runCommandsFromJson(char * json){
 }
 */
 
-void runCommandsFromNonJson(char * nonJsonLine){
+void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
   //can change the default values of some config data for things like polling
   String command;
   int commandId;
@@ -1097,7 +1102,16 @@ void runCommandsFromNonJson(char * nonJsonLine){
   if(commandId) {
     //Serial.println(command);
     if(command == "reboot") {
-      rebootEsp();
+      //can't do this here, so we defer it!
+      if(!deferred) {
+        nonJsonLine--; //get the ! back at the beginning
+        size_t len = strlen(nonJsonLine);
+        deferredCommand = new char[len + 1];  // +1 for null terminator
+        strcpy(deferredCommand, nonJsonLine);
+        textOut("Rebooting... \n");
+      } else {
+         rebootEsp();
+      }
     } else if(command == "one pin at a time") {
       onePinAtATimeMode = (boolean)commandData.toInt(); //setting a global.
     } else if(command == "sleep seconds per loop") {
@@ -1452,7 +1466,7 @@ void doSerialCommands() {
         Serial.print("Serial command: ");
         Serial.println(command);
       }
-      runCommandsFromNonJson((char *) command.c_str());
+      runCommandsFromNonJson((char *) command.c_str(), false);
     } else {
       command = command + serialByte;
     }
