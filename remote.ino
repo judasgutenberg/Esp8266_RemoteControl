@@ -114,7 +114,7 @@ SimpleMap<String, int> *sensorObjectCursor = new SimpleMap<String, int>([](Strin
   else return -1;            // a is smaller than b
 });
 
-long moxeeRebootTimes[] = {0,0,0,0,0,0,0,0,0,0,0};
+uint32_t moxeeRebootTimes[] = {0,0,0,0,0,0,0,0,0,0,0};
 int moxeeRebootCount = 0;
 int timeOffset = 0;
 long lastCommandId = 0;
@@ -126,6 +126,7 @@ bool connectionFailureMode = true;  //when we're in connectionFailureMode, we ch
 
 int knownMoxeePhase = -1;  //-1 is unknown. 0 is stupid "show battery level", 1 is operational
 int moxeePhaseChangeCount = 0;
+uint32_t lastCommandLogId = 0;
 
 ESP8266WebServer server(80); //Server on port 80
 
@@ -545,7 +546,7 @@ void wiFiConnect() {
     if(wiFiSeconds % 25 == 0) {
       //Serial.println("");
     }
-    if((millis() - beganWifiAttempt) % 1000 == 0) { 
+    if((millis() - beganWifiAttempt) % 1000 == 0  && beganWifiAttempt > 0 && millis() - beganWifiAttempt > 0) { 
       Serial.print(".");
       wiFiSeconds++;
     }
@@ -687,6 +688,9 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
           Serial.println(retLine);
           Serial.println(retLine.indexOf("error:"));
         }
+        if(mode=="commandout"  || outputMode == 2) {
+          lastCommandLogId = 0;
+        }
         lastDataLogTime = millis();
         canSleep = true; //canSleep is a global and will not be set until all the tasks of the device are finished.
         //also we can switch outputMode to 0 and clear responseBuffer
@@ -721,8 +725,8 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
           Serial.print("non-JSON: ");
           Serial.println(retLine);
         }
-        String serverCommandParts[2];
-        splitString(retLine, '!', serverCommandParts, 2);
+        String serverCommandParts[3];
+        splitString(retLine, '!', serverCommandParts, 3);
         setLocalHardwareToServerStateFromNonJson((char *)serverCommandParts[0].c_str());
         if(retLine.indexOf("!") > -1) {
           if(serverCommandParts[1].length()>5) { //just has latency data
@@ -731,7 +735,10 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
               Serial.println(serverCommandParts[1]);
             }
           } 
-          runCommandsFromNonJson((char *)("!" + serverCommandParts[1]).c_str());
+          if(lastCommandLogId == 0) {
+            lastCommandLogId = strtoul(serverCommandParts[2].c_str(), NULL, 10);
+            runCommandsFromNonJson((char *)("!" + serverCommandParts[1]).c_str());
+          }
         }
         receivedDataJson = true;
         break;              
@@ -1169,6 +1176,8 @@ void runCommandsFromNonJson(char * nonJsonLine){
       debug = true;
     } else if (command == "clear debug") {
       debug = false;
+    } else {
+      //lastCommandLogId = 0; //don't do this!!
     }
     if(commandId > 0) { //don't reset lastCommandId if the command came via serial port
       lastCommandId = commandId;
@@ -1304,6 +1313,8 @@ void loop(){
   //Serial.println("");
   //Serial.print("KNOWN MOXEE PHASE: ");
   //Serial.println(knownMoxeePhase);
+  //Serial.print("Last command log id: ");
+  //Serial.println(lastCommandLogId);
 
   unsigned long nowTime = millis() + timeOffset;
   if(moxeePhaseChangeCount > 12) { 
@@ -1347,10 +1358,11 @@ void loop(){
     doSerialCommands();
   }
 
-  if(responseBuffer != "") {
-    sendRemoteData(responseBuffer, "commandout", 0xFFFF);
-  }
  
+  if(lastCommandLogId > 0 || responseBuffer != "") {
+    String stringToSend = responseBuffer + "\n" + lastCommandLogId;
+    sendRemoteData(stringToSend, "commandout", 0xFFFF);
+  }
   timeClient.update();
   
   int granularityToUse = polling_granularity;
@@ -1551,7 +1563,7 @@ time_t parseDateTime(String dateTime) {
 }
 
  
-String msTimeAgo(long millisFromPast) {
+String msTimeAgo(uint32_t millisFromPast) {
   return humanReadableTimespan((uint32_t) (millis() - millisFromPast)/1000);
 }
  
@@ -1567,7 +1579,7 @@ String timeAgo(String sqlDateTime, time_t compareTo) {
 
     if (sqlDateTime.length() == 0) {
         // If an empty string is passed, use millis() for uptime
-        unsigned long uptimeSeconds = millis() / 1000;
+        uint32_t uptimeSeconds = millis() / 1000;
         nowTime = uptimeSeconds;
         past = 0;
     } else {
@@ -1654,7 +1666,7 @@ void syncRTCWithNTP() {
 * looks like epoch has to be a date like 1900 or 2000 with two zeros at the end.  1984 will not work!
 ****************************************************/
 uint32_t getSecsSinceEpoch(uint16_t epoch, uint8_t month, uint8_t day, uint8_t years, uint8_t hour, uint8_t minute, uint8_t second){
-  unsigned long secs = 0;
+  uint32_t secs = 0;
   int countleap = 0;
   int i;
   int dayspermonth;
@@ -2345,7 +2357,7 @@ String urlEncode(String str, bool minimizeImpact) {
   return encodedString;
 }
 
-String joinValsOnDelimiter(long vals[], String delimiter, int numberToDo) {
+String joinValsOnDelimiter(uint32_t vals[], String delimiter, int numberToDo) {
   String out = "";
   for(int i=0; i<numberToDo; i++){
     out = out + (String)vals[i];
@@ -2385,7 +2397,7 @@ String nullifyOrInt(int inVal) {
   }
 }
 
-void shiftArrayUp(long array[], long newValue, int arraySize) {
+void shiftArrayUp(uint32_t array[], uint32_t newValue, int arraySize) {
     // Shift elements down by one index
     for (int i =  1; i < arraySize ; i++) {
         array[i - 1] = array[i];
