@@ -2454,7 +2454,7 @@ function copyTemplatesToTenant($tenantId, $tablesString){
 }
 
 //runs a command instantly targeting a device
-function instantCommand($tenantId, $userId, $deviceId) {
+function instantCommand($tenantId, $userId, $deviceId = "") {
   global $conn, $timezone;
   $date = new DateTime("now", new DateTimeZone($timezone));
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
@@ -2463,14 +2463,16 @@ function instantCommand($tenantId, $userId, $deviceId) {
   //echo $commandText;
   //echo "<br>";
   //echo gvfw("device_id");
-  if($commandText != "") { //since this is also used to refresh, if we pass no command, then just return fresh data and skip this part
-    $sql = "INSERT INTO command_log(command_text, recorded, device_id, tenant_id, user_id) VALUES('" . mysqli_real_escape_string($conn, $commandText) . "','" . $formatedDateTime . "'," . $deviceId . "," . $tenantId  ."," . $userId . ")";
+  if($commandText != ""  && $deviceId != "") { //since this is also used to refresh, if we pass no command, then just return fresh data and skip this part
+    $sql = "INSERT INTO command_log(command_text, recorded, device_id, tenant_id, user_id) VALUES('" . mysqli_real_escape_string($conn, $commandText) . "','" . $formatedDateTime . "'," . intval($deviceId) . "," . $tenantId  ."," . $userId . ")";
+    
     //die($sql);
     $result = $conn->query($sql);
     $commandLogId = mysqli_insert_id($conn);
  
     //write the command to a text file so data.php can find it and include it in the commands sent to the device
-    file_put_contents("instant_command_" . gvfw("device_id") . ".txt", $commandText . "\n" . $commandLogId);
+    //but we no longer do this
+    //file_put_contents("instant_command_" . gvfw("device_id") . ".txt", $commandText . "\n" . $commandLogId);
   }
   if($deviceId){
     $sql = "SELECT c.*, d.name AS device_name FROM command_log c JOIN device d ON c.device_id=d.device_id AND c.tenant_id=d.tenant_id WHERE c.device_id=" . intval($deviceId) . " AND c.tenant_id = " . intval($tenantId) . " ORDER BY c.recorded DESC";
@@ -2491,7 +2493,7 @@ function instantCommand($tenantId, $userId, $deviceId) {
 
 function visitorLog($deviceId, $number, $type) {
   $lines=array();
-  $logFile = "/var/log/apache2/access.log";
+  $logFile = "/var/log/apache2/saccess.log";
   $grepPreFilter = "";
   $secondStageFile = $logFile;
   if($type == "just microcontroller visits") {
