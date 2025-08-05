@@ -884,7 +884,8 @@ function genericListActionBackend(
 	  let xmlhttp = new XMLHttpRequest();
 	  const div = document.getElementById('utilityDiv');
 	  let out = "";
-	  out += "<div id='commandline' style='display:none'>Command: <input id='command_text' style='width:300px'/></div>";
+	  out += "<div id='commandline' style='display:none'>Command: <input id='command_text' style='width:200px'/>";
+	  out += "&nbsp;&nbsp;Data: <input id='command_data' style='width:300px'/></div>";
 	  out += "<div>Device: <span style='margin-left:17px' id='deviceDropdown'/></div>";
   
 	  out += "<div><button type='button' onclick='instantCommand()'>Run</button></div>";
@@ -920,25 +921,43 @@ let resultRecorded = {};
 let greatestResultRecorded = "";
  
 
-function populateInstantCommandForm(commandText, deviceId) {
+function populateInstantCommandForm(command_log_id) {
 	const commandTextFormItem = document.getElementById("command_text");
+	const commandDataFormItem = document.getElementById("command_data");
 	const deviceIdFormItem = document.getElementById("device_id");
-	commandTextFormItem.value = commandText;
-	for (let i = 0; i < deviceIdFormItem.options.length; i++) {
-		const option = deviceIdFormItem.options[i];
-		if (parseInt(option.value) === deviceId) {
-			option.selected = true;
-			break;
+	let xmlhttp = new XMLHttpRequest();
+	const commandResponseTextArea = document.getElementById('command_response'); //document.querySelector(`textarea[name="command_response"]`);
+	xmlhttp.onreadystatechange = function() {
+		//console.log("did" + xmlhttp.readyState + " " +xmlhttp.status  );
+		if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+			const jsonData = xmlhttp.responseText;
+			const recordedData = JSON.parse(jsonData);
+			commandTextFormItem.value = recordedData["command_text"];
+			commandDataFormItem.value = recordedData["command_data"];
+			const deviceId = recordedData["device_id"];
+			for (let i = 0; i < deviceIdFormItem.options.length; i++) {
+				const option = deviceIdFormItem.options[i];
+				if (parseInt(option.value) === parseInt(deviceId)) {
+					option.selected = true;
+					break;
+				}
+			}
 		}
-	}
-	instantCommand(true);
+		instantCommand(true);
+	};
+	let url = "?action=json&table=command_log&command_log_id=" + command_log_id; 
+	xmlhttp.open("GET", url, true);
+	xmlhttp.send();
 }
 
   function instantCommand(nodata) {
 		const params = new URLSearchParams();
 		const commandTextInput = document.getElementById('command_text');//document.querySelector(`textarea[name="command_text"]`);
+		const commandDataInput = document.getElementById('command_data');
 		const commandText = commandTextInput.value;
+		const commandData = commandDataInput.value;
 		const commandLine = document.getElementById('commandline');
+ 
 		const deviceDropdown = document.querySelector(`select[name="device_id"]`);
 		let deviceId = "0";
 		if(deviceDropdown){
@@ -960,9 +979,9 @@ function populateInstantCommandForm(commandText, deviceId) {
 				let html = "<div class='list'>";
 				html += "<div class='listrow'><span>recorded</span><span>command</span><span>results</span><span>device</span><span>response time</span></div>";
 				for(let datum of data) {
-          if(!deviceId) {
-            deviceId = 0;
-          }
+					if(!deviceId) {
+						deviceId = 0;
+					}
           //console.log(datum["result_recorded"]);
           if(!resultRecorded[deviceId]) {
             resultRecorded[deviceId] = "";
@@ -976,7 +995,7 @@ function populateInstantCommandForm(commandText, deviceId) {
             greatestResultRecorded = datum["result_recorded"];
           }
           let loader = "<div class=\"dot-loader\"><span></span><span></span><span></span></div>";
-					html += "<div class='listrow'><span>" + datum['recorded'] + "</span><span style='cursor:pointer' onclick=\"populateInstantCommandForm('" + datum['command_text'] + "'," + datum['device_id'] + ")\">" + datum['command_text']  + "</span>";
+					html += "<div class='listrow'><span>" + datum['recorded'] + "</span><span style='cursor:pointer' onclick=\"populateInstantCommandForm(" + datum['command_log_id'] + ")\">" + datum['command_text']  + "</span>";
 					html += "<span>";
 					if(datum["result_text"] != "" && datum["result_text"] != null){
 						html += datum["result_text"];
@@ -1010,8 +1029,12 @@ function populateInstantCommandForm(commandText, deviceId) {
 		
 
 		let url = "?table=utilities&action=instantcommand"; 
+		
 		if(!nodata){
 			params.append("command_text", commandText);
+		}
+		if(!nodata){
+			params.append("command_data", commandData);
 		}
 		if(!deviceId) {
       deviceId = "NULL"

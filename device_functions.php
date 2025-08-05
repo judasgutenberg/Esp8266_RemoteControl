@@ -2460,11 +2460,14 @@ function instantCommand($tenantId, $userId, $deviceId = "") {
   $formatedDateTime =  $date->format('Y-m-d H:i:s');
  
   $commandText = gvfw("command_text");
+  $commandData = gvfw("command_data");
+  $commandAddress = gvfw("command_address");
   //echo $commandText;
   //echo "<br>";
   //echo gvfw("device_id");
   if($commandText != ""  && $deviceId != "") { //since this is also used to refresh, if we pass no command, then just return fresh data and skip this part
-    $sql = "INSERT INTO command_log(command_text, recorded, device_id, tenant_id, user_id) VALUES('" . mysqli_real_escape_string($conn, $commandText) . "','" . $formatedDateTime . "'," . intval($deviceId) . "," . $tenantId  ."," . $userId . ")";
+    $sql = "INSERT INTO command_log(command_text, command_data, command_address, recorded, device_id, tenant_id, user_id) VALUES('" . 
+    mysqli_real_escape_string($conn, $commandText) . "','" . mysqli_real_escape_string($conn, $commandData)  .  "','" .  mysqli_real_escape_string($conn, $commandAddress)  .  "','" .  $formatedDateTime . "'," . intval($deviceId) . "," . $tenantId  ."," . $userId . ")";
     
     //die($sql);
     $result = $conn->query($sql);

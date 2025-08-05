@@ -1300,7 +1300,7 @@ function getLatestCommandData($deviceId, $tenantId){
     $row = mysqli_fetch_array($result);
     if($row) {
     //var_dump($row);
-      return array("command_id"=> -2 , "command" => $row["command_text"], "value" => "", "command_log_id" => $row["command_log_id"]);
+      return array("command_id"=> -2 , "command" => $row["command_text"], "value" => $row["command_data"], "command_log_id" => $row["command_log_id"]);
     }
 	}
 	$sql = "SELECT * FROM command c JOIN command_type t ON c.command_type_id=t.command_type_id AND c.tenant_id=t.tenant_id WHERE device_id=" . intval($deviceId) . " AND c.tenant_id=" . $tenantId . " AND done=0 ORDER BY command_id ASC LIMIT 0,1";

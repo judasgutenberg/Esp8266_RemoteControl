@@ -298,13 +298,13 @@ if ($user) {
                 $codeToRun = tokenReplace($codeToRun, $_POST) . ";";
                 $codeToRun = tokenReplace($codeToRun, $user) . ";";
               }
+              //echo $codeToRun ;
               if(strpos($codeToRun, ">") !== false || checkPhpFunctionCallIsBogus($codeToRun)){
                 $errors["generic"] = "You must enter all the necessary data in the utility form.";
                 $out .= "Error: " . $errors["generic"]  . "\n";
               } else {
                 try {
                   if($codeToRun) {
-                    //echo $codeToRun;
         
                     eval('$result  =' . $codeToRun . ";");
                   }
