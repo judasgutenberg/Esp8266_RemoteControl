@@ -2477,7 +2477,7 @@ function instantCommand($tenantId, $userId, $deviceId = "") {
   if($deviceId){
     $sql = "SELECT c.*, d.name AS device_name FROM command_log c JOIN device d ON c.device_id=d.device_id AND c.tenant_id=d.tenant_id WHERE c.device_id=" . intval($deviceId) . " AND c.tenant_id = " . intval($tenantId) . " ORDER BY c.recorded DESC";
   } else {
-    $sql = "SELECT c.*, d.name AS device_name FROM command_log c JOIN device d ON c.device_id=d.device_id AND c.tenant_id=d.tenant_id WHERE c.tenant_id = " . intval($tenantId) . " ORDER BY c.recorded DESC LIMIT 0,100";
+    $sql = "SELECT c.*, d.name AS device_name FROM command_log c JOIN device d ON c.device_id=d.device_id AND c.tenant_id=d.tenant_id WHERE c.tenant_id = " . intval($tenantId) . " ORDER BY c.recorded DESC LIMIT 0, 20";
   }
   
   $result = $conn->query($sql);
