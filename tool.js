@@ -975,6 +975,7 @@ function populateInstantCommandForm(commandText, deviceId) {
           if( datum["result_recorded"] > greatestResultRecorded) {
             greatestResultRecorded = datum["result_recorded"];
           }
+          let loader = "<div class=\"dot-loader\"><span></span><span></span><span></span></div>";
 					html += "<div class='listrow'><span>" + datum['recorded'] + "</span><span style='cursor:pointer' onclick=\"populateInstantCommandForm('" + datum['command_text'] + "'," + datum['device_id'] + ")\">" + datum['command_text']  + "</span>";
 					html += "<span>";
 					if(datum["result_text"] != "" && datum["result_text"] != null){
@@ -982,11 +983,16 @@ function populateInstantCommandForm(commandText, deviceId) {
 					} else if(timeAgo(datum["recorded"],  null, true) > 200){
 							html += "<em>data never returned</em>";
 					} else {
-						html +=  "<div class=\"dot-loader\"><span></span><span></span><span></span></div>";
+						html +=  loader;
 					}
 					
 					html +=  "</span><span>" + datum["device_name"]  + " </span>"
-					html +=  "</span><span>" + timeAgo(datum["recorded"], datum["result_recorded"], false, true)  + " </span>"
+					//console.log(datum["result_recorded"]);
+					let timeToResult = loader;
+					if(datum["result_recorded"] ) {
+            timeToResult = timeAgo(datum["recorded"], datum["result_recorded"], false, true);
+					}
+					html +=  "<span>" +  timeToResult  + " </span>";
           html +=  "</div>";
 				}
 				html += "</div>";
