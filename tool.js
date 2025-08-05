@@ -893,7 +893,7 @@ function genericListActionBackend(
 	  out += "<div>Interactive Command Log: <div id='instantcommandlog'></div></div>";
 	  div.innerHTML = out;
 	  xmlhttp.onreadystatechange = function() {
-		  console.log("did" + xmlhttp.readyState + " " +xmlhttp.status  );
+		  //console.log("did" + xmlhttp.readyState + " " +xmlhttp.status  );
 		  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
 			  const data = xmlhttp.responseText;
 			  selectData = JSON.parse(data);
@@ -993,7 +993,6 @@ function populateInstantCommandForm(commandText, deviceId) {
 			if(!startedUpdatingInstantCommand){
 				startedUpdatingInstantCommand = true;
 				setTimeout(()=>{
-					console.log("firsting");
 					updateInstantCommandResponse();
 					instantCommand(true);
 					
@@ -1021,14 +1020,14 @@ function populateInstantCommandForm(commandText, deviceId) {
   
 
   function updateInstantCommandResponse() {
-	  console.log("update command");
+	  //console.log("update command");
 	  let xmlhttp = new XMLHttpRequest();
 	  const commandResponseTextArea = document.getElementById('command_response'); //document.querySelector(`textarea[name="command_response"]`);
 	  //if(commandResponseTextArea) {
 		xmlhttp.onreadystatechange = function() {
-			console.log("did" + xmlhttp.readyState + " " +xmlhttp.status  );
+			//console.log("did" + xmlhttp.readyState + " " +xmlhttp.status  );
 			if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
-				const data = xmlhttp.responseText;
+				//const data = xmlhttp.responseText;
 				//console.log(data);
 
 				/*
@@ -1040,8 +1039,6 @@ function populateInstantCommandForm(commandText, deviceId) {
 				//commandResponseTextArea.value += data;
 				if(xmlhttp.responseText){
 					let data = JSON.parse(xmlhttp.responseText);
-					console.log("__________________");
-					console.log(data);
 					if(data["status"] == "new"){
 						instantCommand(true);
 					}
@@ -1055,11 +1052,11 @@ function populateInstantCommandForm(commandText, deviceId) {
 		if (!deviceId) {
       lastGotDataTime = greatestResultRecorded;
     }
-    console.log(greatestResultRecorded);
+    //console.log(greatestResultRecorded);
 		let url = "?action=commandpoll&result_recorded=" + encodeURIComponent(lastGotDataTime) + "&device_id=" + deviceId; 
 		xmlhttp.open("GET", url, true);
 		xmlhttp.send();
-		console.log(url);
+		//console.log(url);
 		setTimeout(()=>updateInstantCommandResponse(), 5000);
 	  //}
   }
