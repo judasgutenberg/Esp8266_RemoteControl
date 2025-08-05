@@ -939,7 +939,7 @@ function populateInstantCommandForm(commandText, deviceId) {
 		const commandText = commandTextInput.value;
 		const commandLine = document.getElementById('commandline');
 		const deviceDropdown = document.querySelector(`select[name="device_id"]`);
-		let deviceId = null;
+		let deviceId = "0";
 		if(deviceDropdown){
 			deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
 		}
@@ -954,13 +954,19 @@ function populateInstantCommandForm(commandText, deviceId) {
 			console.log(xmlhttp.responseText);
 			if(xmlhttp.responseText){
 				let data = JSON.parse(xmlhttp.responseText);
+				console.log(xmlhttp.responseText.length); // Check full size matches expected
+        console.log(xmlhttp.responseText.slice(7950, 8020)); // Peek near the reported error
 				let html = "<div class='list'>";
 				html += "<div class='listrow'><span>recorded</span><span>command</span><span>results</span><span>device</span></div>";
 				for(let datum of data) {
-          if(!(deviceId in resultRecorded)) {
+          if(!deviceId) {
+            deviceId = 0;
+          }
+          //console.log(datum["result_recorded"]);
+          if(!resultRecorded[deviceId]) {
             resultRecorded[deviceId] = "";
           }
-          if(datum["result_recorded"] > resultRecorded[deviceId]) {
+          if(datum["result_recorded"] > resultRecorded[deviceId] || resultRecorded[deviceId] == "") {
             //resultRecorded is a global
             resultRecorded[deviceId] = datum["result_recorded"]; //we want to know what the largest resultRecorded is for update reasons
           }
@@ -995,7 +1001,10 @@ function populateInstantCommandForm(commandText, deviceId) {
 		if(!nodata){
 			params.append("command_text", commandText);
 		}
-
+		if(!deviceId) {
+      deviceId = "NULL"
+		}
+    
 		params.append("device_id", deviceId);
 		
 		xmlhttp.open("POST", url, true);
@@ -1037,7 +1046,17 @@ function populateInstantCommandForm(commandText, deviceId) {
 		const deviceDropdown = document.querySelector(`select[name="device_id"]`);
 		const deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
 		//resultRecorded has to be a global!
-		let url = "?action=commandpoll&result_recorded=" + encodeURIComponent(resultRecorded[deviceId]) + "&device_id=" + deviceId; 
+		let deviceKey = deviceId;
+		if (typeof deviceId !==  'number') {
+      deviceKey = "";
+    }
+    
+		let lastGotDataTime = resultRecorded[deviceKey];
+		console.log(deviceKey, typeof deviceKey, lastGotDataTime);
+		if(!lastGotDataTime){
+      lastGotDataTime = "";
+    }
+		let url = "?action=commandpoll&result_recorded=" + encodeURIComponent(lastGotDataTime) + "&device_id=" + deviceId; 
 		xmlhttp.open("GET", url, true);
 		xmlhttp.send();
 		console.log(url);
