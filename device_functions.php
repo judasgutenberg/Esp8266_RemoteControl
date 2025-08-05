@@ -1919,7 +1919,7 @@ function getCurrentSolarDataFromCloud($tenant) {
 
 function getMostRecentInverterRecord($tenant){
   Global $conn;
-  $sql = "SELECT * FROM inverter_log WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE tenant_id=<tenant_id/>) LIMIT 0,1";
+  $sql = "SELECT w.name as weather, solar_power, load_power, grid_power, battery_percentage,  battery_power, battery_voltage, recorded, inverter_log_id FROM inverter_log i JOIN weather_condition w ON i.weather_condition_id=w.weather_condition_id AND w.tenant_id=i.tenant_id WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE tenant_id=<tenant_id/>) LIMIT 0,1";
   $result = replaceTokensAndQuery($sql, $tenant);
 	if($result) {
 		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
@@ -1929,7 +1929,7 @@ function getMostRecentInverterRecord($tenant){
 
 function currentSensorData($tenant){
   $out = "";
-  $sql = "SELECT * FROM inverter_log WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE tenant_id=<tenant_id/>) ";
+  $sql = "SELECT w.name as weather, solar_power, load_power, grid_power, battery_percentage,  battery_power, battery_voltage, recorded, inverter_log_id FROM inverter_log i JOIN weather_condition w ON i.weather_condition_id=w.weather_condition_id AND w.tenant_id=i.tenant_id WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE tenant_id=<tenant_id/>) ";
   $result = replaceTokensAndQuery($sql, $tenant);
   $out .= "<div class='listheader'>Inverter </div>";
   $energyInfo = array(
