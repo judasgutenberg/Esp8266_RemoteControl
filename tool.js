@@ -958,7 +958,7 @@ function populateInstantCommandForm(commandText, deviceId) {
 				//console.log(xmlhttp.responseText.length); // Check full size matches expected
         //console.log(xmlhttp.responseText.slice(7950, 8020)); // Peek near the reported error
 				let html = "<div class='list'>";
-				html += "<div class='listrow'><span>recorded</span><span>command</span><span>results</span><span>device</span></div>";
+				html += "<div class='listrow'><span>recorded</span><span>command</span><span>results</span><span>device</span><span>response time</span></div>";
 				for(let datum of data) {
           if(!deviceId) {
             deviceId = 0;
@@ -985,7 +985,9 @@ function populateInstantCommandForm(commandText, deviceId) {
 						html +=  "<div class=\"dot-loader\"><span></span><span></span><span></span></div>";
 					}
 					
-					html +=  "</span><span>" + datum["device_name"]  + " </span></div>";
+					html +=  "</span><span>" + datum["device_name"]  + " </span>"
+					html +=  "</span><span>" + timeAgo(datum["recorded"], datum["result_recorded"], false, true)  + " </span>"
+          html +=  "</div>";
 				}
 				html += "</div>";
 				logPlace.innerHTML = html;
@@ -2149,17 +2151,18 @@ function populateInstantCommandForm(commandText, deviceId) {
 	  return datetimeString;
   }
   
-  function timeAgo(sqlDateTime, compareTo = null, returnDiffInSeconds) {
+  function timeAgo(sqlDateTime, compareTo, returnDiffInSeconds, noEndWord) {
 	  sqlDateTime = sqlDateTime.replace(" ", "T"); // Fix for Safari 11
 	  // Define the timezone globally or set a default
 	  const timezone = window.timezone || "UTC";
-	
+    //console.log(sqlDateTime, compareTo);
 	  // Parse the dates into `Date` objects in the specified timezone
 	  const past = new Date(new Date(sqlDateTime).toLocaleString("en-US", { timeZone: timezone }));
-	  const now = compareTo 
-		? new Date(new Date(compareTo).toLocaleString("en-US", { timeZone: timezone })) 
-		: new Date(new Date().toLocaleString("en-US", { timeZone: timezone }));
-	
+    const now = compareTo
+      ? new Date(compareTo.replace(" ", "T"))
+      : new Date();
+
+      
 	  // Calculate the difference in seconds
 	  let diffInSeconds = Math.floor((now - past) / 1000);
 	  if(returnDiffInSeconds){
@@ -2175,17 +2178,21 @@ function populateInstantCommandForm(commandText, deviceId) {
 	  if(isNaN(seconds)){
 		  return "";
 	  }
+	  let endWord = "ago";
+	  if(noEndWord) {
+      endWord = "";
+	  }
 	  // Return the appropriate message
 	  if (days > 0) {
-		return days === 1 ? "1 day ago" : `${days} days ago`;
+		return days === 1 ? "1 day " + endWord : `${days} days ` + endWord;
 	  }
 	  if (hours > 0) {
-		return hours === 1 ? "1 hour ago" : `${hours} hours ago`;
+		return hours === 1 ? "1 hour " + endWord : `${hours} hours ` + endWord;
 	  }
 	  if (minutes > 0) {
-		return minutes === 1 ? "1 minute ago" : `${minutes} minutes ago`;
+		return minutes === 1 ? "1 minute " + endWord : `${minutes} minutes ` + endWord;
 	  }
-	  return seconds === 1 ? "1 second ago" : `${seconds} seconds ago`;
+	  return seconds === 1 ? "1 second " + endWord : `${seconds} seconds  ` + endWord;
 	}
   
   function expandArray(arr, n) {
