@@ -1656,7 +1656,7 @@ function managementRules($user, $deviceId){
   return $out;
 }
 
-function deviceFeatureLog($deviceFeatureId, $tenantId){
+function deviceFeatureLog($deviceFeatureId, $user){
   $headerData = array(
     [
 	    'label' => 'recorded',
@@ -1683,6 +1683,7 @@ function deviceFeatureLog($deviceFeatureId, $tenantId){
       'name' => 'rule_name' 
     ]
     );
+  $tenantId = $user["tenant_id"];
   $deviceFeatureName = getDeviceFeature($deviceFeatureId, $tenantId)["name"];
   $sql = "SELECT recorded, beginning_state, end_state, mechanism, m.name AS rule_name , email, u.user_id  FROM device_feature_log f LEFT JOIN management_rule m ON m.management_rule_id=f.management_rule_id  AND m.tenant_id=f.tenant_id LEFT JOIN user u ON f.user_id = u.user_id WHERE f.tenant_id =<tenant_id/> AND device_feature_id=" . intval($deviceFeatureId) . " ORDER BY recorded DESC LIMIT 0,500";
   //die($sql);
@@ -1704,6 +1705,7 @@ function getDeviceFeature($deviceFeatureId, $tenantId){
 }
 
 function getGeneric($table, $pk, $user){
+  global $conn;
   $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id='" . mysqli_real_escape_string($conn, $pk)  . "' AND tenant_id=<tenant_id/>";
 	$result = replaceTokensAndQuery($sql, $user);
 	if($result) {
@@ -1713,7 +1715,7 @@ function getGeneric($table, $pk, $user){
 }
 
 function getDevices($tenantId, $allDeviceColumnMaps = true){
-  Global $conn;
+  global $conn;
   $sql = "SELECT * FROM device WHERE tenant_id=" . intval($tenantId) . " ORDER BY device_id";
 	$result = mysqli_query($conn, $sql);
 	if($result) {
@@ -1982,7 +1984,8 @@ function currentSensorData($tenant){
       wd.pressure,
       wd.humidity,
       wd.gas_metric,
-      wd.recorded
+      wd.recorded,
+      wd.device_log_id
     FROM
       device_log wd
     JOIN
@@ -1990,13 +1993,15 @@ function currentSensorData($tenant){
     JOIN (
       SELECT
           device_id,
-          MAX(recorded) AS max_recorded
+          MAX(device_log_id) AS max_log
       FROM
           device_log
       GROUP BY
           device_id
-    ) latest ON wd.device_id = latest.device_id AND wd.recorded = latest.max_recorded
-    WHERE d.tenant_id = <tenant_id/>";
+    ) latest ON wd.device_id = latest.device_id AND wd.device_log_id = latest.max_log
+    WHERE d.tenant_id = <tenant_id/>
+    ORDER BY wd.device_log_id ASC
+    ";
   $result = replaceTokensAndQuery($sql, $tenant);
   $out .= "<div class='listheader'>Weather </div>";
 

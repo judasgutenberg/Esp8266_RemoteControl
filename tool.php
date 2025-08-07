@@ -395,7 +395,7 @@ if ($user) {
     }
   } elseif($action == "log") {
       if($table == "device_feature"){
-        $out .= deviceFeatureLog(gvfw($table . '_id'), $tenantId);
+        $out .= deviceFeatureLog(gvfw($table . '_id'), $user);
       }
   //this is the section for conditionals related to specially-written editors and listers
 	} else if($table == "report") {
