@@ -87,6 +87,7 @@ String additionalSensorInfo; //we keep it stored in a delimited string just the 
 float measuredVoltage = 0;
 float measuredAmpage = 0;
 bool canSleep = false;
+bool deferredCanSleep = false;
 long latencySum = 0;
 long latencyCount = 0;
 bool offlineMode = false;
@@ -527,60 +528,59 @@ void wiFiConnect() {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
   WiFi.setAutoReconnect(false);
-  WiFi.persistent(false); //hopefully keeps my flash from being corrupted, see: https://rayshobby.net/wordpress/esp8266-reboot-cycled-caused-by-flash-memory-corruption-fixed/
-  if (WiFi.status() != WL_CONNECTED) {
-    WiFi.begin(wifi_ssid, wifi_password);
-  }    
+  WiFi.persistent(false);
+  WiFi.disconnect(true);  // Clear any old WiFi config
+  delay(100);
+  WiFi.begin(wifi_ssid, wifi_password);
+
   Serial.println();
-  // Wait for connection
-  int wiFiSeconds = 0;
+  unsigned long startAttemptTime = millis();
+  unsigned long lastDotTime = 0;
+
   bool initialAttemptPhase = true;
-  int beganWifiAttempt = millis();
+
   while (WiFi.status() != WL_CONNECTED) {
     if (WiFi.status() == WL_NO_SSID_AVAIL) {
       Serial.println("SSID not found.");
-      if(fram_address > 0) {
-        offlineMode = true;
-      }
+      if (fram_address > 0) offlineMode = true;
       return;
     }
-    if(wiFiSeconds % 25 == 0) {
-      //Serial.println("");
-    }
-    if((millis() - beganWifiAttempt) % 1000 == 0  && beganWifiAttempt > 0 && millis() - beganWifiAttempt > 0) { 
+
+    if (millis() - lastDotTime >= 1000) {
       Serial.print(".");
-      wiFiSeconds++;
+      lastDotTime = millis();
     }
-    if((millis() - beganWifiAttempt)/1000  > wifi_timeout) {
-      Serial.println("");
-      Serial.println("WiFi taking too long, rebooting Moxee");
+
+    if ((millis() - startAttemptTime) / 1000 > wifi_timeout) {
+      Serial.println("\nWiFi taking too long, rebooting Moxee");
       rebootMoxee();
-      //WiFi.begin(wifi_ssid, wifi_password);  //meh, don't bother
-      wiFiSeconds = 0; //if you don't do this, you'll be stuck in a rebooting loop if WiFi fails once
-      beganWifiAttempt = millis();
       initialAttemptPhase = false;
+      startAttemptTime = millis();
     }
-    if(!initialAttemptPhase && ((millis() - beganWifiAttempt)/1000  > wifi_timeout/2)  && fram_address > 0) {
-      //give up for the time being
+
+    if (!initialAttemptPhase &&
+        ((millis() - startAttemptTime) / 1000 > wifi_timeout / 2) &&
+        fram_address > 0) {
       offlineMode = true;
       haveReconnected = false;
-      Serial.print("Entering offline mode...");
+      Serial.println("Entering offline mode...");
       return;
     }
+
+    delay(10);  // Give WiFi background tasks time to run
   }
+
   wifiOnTime = millis();
-  if(offlineMode){
-    haveReconnected = true;
-  }
+  if (offlineMode) haveReconnected = true;
   knownMoxeePhase = 1;
   moxeePhaseChangeCount = 0;
   offlineMode = false;
-  Serial.println("");
+  Serial.println();
   Serial.print("Connected to ");
   Serial.println(wifi_ssid);
+  ipAddress = WiFi.localIP().toString();
   Serial.print("IP address: ");
-  ipAddress =  WiFi.localIP().toString();
-  Serial.println(WiFi.localIP());  //IP address assigned to your ESP
+  Serial.println(ipAddress);
 }
 
 //SEND DATA TO A REMOTE SERVER TO STORE IN A DATABASE----------------------------------------------------
@@ -689,6 +689,13 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
           Serial.println(retLine);
           Serial.println(retLine.indexOf("error:"));
         }
+        lastDataLogTime = millis();
+        //Serial.print("last command log id (before sleep test): ");
+        //Serial.println(lastCommandLogId);
+        if(lastCommandLogId == 0 && responseBuffer == "" && outputMode == 0) {
+          //Serial.println("can sleep!!");
+          canSleep = true; //canSleep is a global and will not be set until all the tasks of the device are finished.
+        }  
         if(mode=="commandout"  || outputMode == 2) {
           lastCommandLogId = 0;
         }
@@ -696,8 +703,8 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
           //deferred command has everything we need to reboot or whatever
           runCommandsFromNonJson(deferredCommand, true);
         }
-        lastDataLogTime = millis();
-        canSleep = true; //canSleep is a global and will not be set until all the tasks of the device are finished.
+        
+ 
         //also we can switch outputMode to 0 and clear responseBuffer
         outputMode = 0;
         responseBuffer = "";
@@ -742,6 +749,15 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
           } 
           if(lastCommandLogId == 0) {
             lastCommandLogId = strtoul(serverCommandParts[2].c_str(), NULL, 10);
+            //Serial.print("last command log id: ");
+            //Serial.println(lastCommandLogId);
+            if(lastCommandLogId > 0) {
+              canSleep = false; //now we have a pending command, cannot sleep!
+              deferredCanSleep = true;
+            } else if (deferredCanSleep) {
+              canSleep = true; 
+              deferredCanSleep = false;
+            }
             runCommandsFromNonJson((char *)("!" + serverCommandParts[1]).c_str(), false);
           }
         }
@@ -1438,7 +1454,7 @@ void loop(){
       haveReconnected = false;
     }
   }
- 
+
   if(canSleep) {
     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
     if(deep_sleep_time_per_loop > 0) {
