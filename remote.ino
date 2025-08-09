@@ -528,59 +528,53 @@ void wiFiConnect() {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
   WiFi.setAutoReconnect(false);
-  WiFi.persistent(false);
-  WiFi.disconnect(true);  // Clear any old WiFi config
-  delay(100);
-  WiFi.begin(wifi_ssid, wifi_password);
-
+  WiFi.persistent(false); //hopefully keeps my flash from being corrupted, see: https://rayshobby.net/wordpress/esp8266-reboot-cycled-caused-by-flash-memory-corruption-fixed/
+  WiFi.begin(wifi_ssid, wifi_password);    
   Serial.println();
-  unsigned long startAttemptTime = millis();
-  unsigned long lastDotTime = 0;
-
+  // Wait for connection
+  int wiFiSeconds = 0;
   bool initialAttemptPhase = true;
-
   while (WiFi.status() != WL_CONNECTED) {
-    if (WiFi.status() == WL_NO_SSID_AVAIL) {
-      Serial.println("SSID not found.");
-      if (fram_address > 0) offlineMode = true;
-      return;
+    delay(1000);
+    if(wiFiSeconds % 25 == 0) {
+      //Serial.println("");
     }
-
-    if (millis() - lastDotTime >= 1000) {
-      Serial.print(".");
-      lastDotTime = millis();
+    Serial.print(".");
+    wiFiSeconds++;
+    uint32_t wifiTimeoutToUse = wifi_timeout;
+    if(knownMoxeePhase == 0) {
+      wifiTimeoutToUse = granularity_when_in_moxee_phase_0;// used to be granularity_when_in_connection_failure_mode;
+    } else { //if unknown or operational, let's go slowly!
+      wifiTimeoutToUse = granularity_when_in_moxee_phase_1;
     }
-
-    if ((millis() - startAttemptTime) / 1000 > wifi_timeout) {
-      Serial.println("\nWiFi taking too long, rebooting Moxee");
+    if(wiFiSeconds > wifiTimeoutToUse) {
+      Serial.println("");
+      Serial.println("WiFi taking too long, rebooting Moxee");
       rebootMoxee();
+      WiFi.begin(wifi_ssid, wifi_password);  
+      wiFiSeconds = 0; //if you don't do this, you'll be stuck in a rebooting loop if WiFi fails once
       initialAttemptPhase = false;
-      startAttemptTime = millis();
     }
-
-    if (!initialAttemptPhase &&
-        ((millis() - startAttemptTime) / 1000 > wifi_timeout / 2) &&
-        fram_address > 0) {
+    if(!initialAttemptPhase && wiFiSeconds > (wifi_timeout/2)  && fram_address > 0) {
+      //give up for the time being
       offlineMode = true;
       haveReconnected = false;
-      Serial.println("Entering offline mode...");
+      Serial.print("Entering offline mode...");
       return;
     }
-
-    delay(10);  // Give WiFi background tasks time to run
   }
-
   wifiOnTime = millis();
-  if (offlineMode) haveReconnected = true;
+  if(offlineMode){
+    haveReconnected = true;
+  }
   knownMoxeePhase = 1;
-  moxeePhaseChangeCount = 0;
   offlineMode = false;
-  Serial.println();
+  Serial.println("");
   Serial.print("Connected to ");
   Serial.println(wifi_ssid);
-  ipAddress = WiFi.localIP().toString();
   Serial.print("IP address: ");
-  Serial.println(ipAddress);
+  ipAddress =  WiFi.localIP().toString();
+  Serial.println(WiFi.localIP());  //IP address assigned to your ESP
 }
 
 //SEND DATA TO A REMOTE SERVER TO STORE IN A DATABASE----------------------------------------------------
@@ -623,6 +617,7 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
     connectionFailureTime = millis();
     connectionFailureMode = true;
     rebootMoxee();
+
     if(debug) {
       Serial.print(host_get);
       Serial.println();
@@ -1128,6 +1123,8 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       } else {
          rebootEsp();
       }
+    } else if(command == "reboot now") {
+      rebootEsp(); //only use in extreme measures -- as an instant command will produce a booting loop until command is manually cleared
     } else if(command == "one pin at a time") {
       onePinAtATimeMode = (boolean)commandData.toInt(); //setting a global.
     } else if(command == "sleep seconds per loop") {
@@ -1262,6 +1259,12 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
     knownMoxeePhase = 0;
   }
   moxeePhaseChangeCount++;
+
+  if(moxeePhaseChangeCount > 12) { 
+    //if it's been more than twelve phase changes since the last connection, 
+    //then we really don't know what phase we are in, so back to uncertain
+    knownMoxeePhase = -1;
+  }
   //only do one reboot!  it usually takes two, but this thing can be made to cycle so fast that this same function can handle both reboots, which is important if the reboot happens to 
   //be out of phase with the cellular hotspot
   shiftArrayUp(moxeeRebootTimes,  timeClient.getEpochTime(), 10);
@@ -1269,6 +1272,8 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
   if(moxeeRebootCount > 9 && fram_address > 0) { //don't bother with offline mode if we can't log data
     offlineMode = true;
     moxeeRebootCount = 0;
+  } else if(moxeeRebootCount > 9) { //kind of a watchdog
+    rebootEsp();
   }
 }
 
@@ -1347,11 +1352,7 @@ void loop(){
   //Serial.println(lastCommandLogId);
 
   unsigned long nowTime = millis() + timeOffset;
-  if(moxeePhaseChangeCount > 12) { 
-    //if it's been more than twelve phase changes since the last connection, 
-    //then we really don't know what phase we are in, so back to uncertain
-    knownMoxeePhase = -1;
-  }
+
   /*
   uint8_t testHi = 0;//(millis() >> 8) & 0xFF;
   uint8_t testLow = 4;// millis() & 0xFF;
