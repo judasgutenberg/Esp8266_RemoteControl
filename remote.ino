@@ -525,6 +525,7 @@ void compileAndSendWeatherData(String zerothRowData, String thirdRowData, String
 
 void wiFiConnect() {
   lastOfflineReconnectAttemptTime = millis();
+  unsigned long lastDotTime = 0;
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
   WiFi.setAutoReconnect(false);
@@ -535,12 +536,24 @@ void wiFiConnect() {
   int wiFiSeconds = 0;
   bool initialAttemptPhase = true;
   while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    if(wiFiSeconds % 25 == 0) {
-      //Serial.println("");
+     if (millis() - lastOfflineReconnectAttemptTime > 10000) { // 10s timeout
+      WiFi.disconnect();
+      WiFi.begin(wifi_ssid, wifi_password);
+      lastOfflineReconnectAttemptTime = millis();
+      Serial.print("*");
     }
-    Serial.print(".");
-    wiFiSeconds++;
+    if (WiFi.status() == WL_NO_SSID_AVAIL) {
+      Serial.println("SSID not found.");
+      if (fram_address > 0) {
+        offlineMode = true;
+        return;
+      }
+    }
+    if (millis() - lastDotTime >= 1000) {
+      Serial.print(".");
+      lastDotTime = millis();
+      wiFiSeconds++;
+    }
     uint32_t wifiTimeoutToUse = wifi_timeout;
     if(knownMoxeePhase == 0) {
       wifiTimeoutToUse = granularity_when_in_moxee_phase_0;// used to be granularity_when_in_connection_failure_mode;
@@ -562,6 +575,7 @@ void wiFiConnect() {
       Serial.print("Entering offline mode...");
       return;
     }
+    yield();
   }
   wifiOnTime = millis();
   if(offlineMode){
@@ -1272,7 +1286,7 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
   if(moxeeRebootCount > 9 && fram_address > 0) { //don't bother with offline mode if we can't log data
     offlineMode = true;
     moxeeRebootCount = 0;
-  } else if(moxeeRebootCount > 9) { //kind of a watchdog
+  } else if(moxeeRebootCount > number_of_hotspot_reboots_over_limited_timeframe_before_esp_reboot) { //kind of a watchdog
     rebootEsp();
   }
 }
@@ -1296,10 +1310,11 @@ void setup(void){
   Serial.setRxBufferSize(256);  
  
   Serial.setDebugOutput(false);
-  textOut("Just started up...\n");
+  textOut("\n\nJust started up...\n");
+ 
   Wire.begin();
   //Wire.setClock(50000); // Set I2C speed to 100kHz (default is 400kHz)
-  
+  startWeatherSensors(sensor_id,  sensor_sub_type, sensor_i2c, sensor_data_pin, sensor_power_pin);
   wiFiConnect();
   server.on("/", handleRoot);      //Displays a form where devices can be turned on and off and the outputs of sensors
   server.on("/readLocalData", localShowData);
@@ -1307,7 +1322,7 @@ void setup(void){
   server.on("/writeLocalData", localSetData);
   server.begin(); 
   textOut("HTTP server started\n");
-  startWeatherSensors(sensor_id,  sensor_sub_type, sensor_i2c, sensor_data_pin, sensor_power_pin);
+  
   //initialize NTP client
   timeClient.begin();
   // Set offset time in seconds to adjust for your timezone, for example:
