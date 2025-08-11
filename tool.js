@@ -959,7 +959,7 @@ function populateInstantCommandForm(command_log_id) {
 		const commandLine = document.getElementById('commandline');
  
 		const deviceDropdown = document.querySelector(`select[name="device_id"]`);
-		let deviceId = "0";
+		let deviceId = 0;
 		if(deviceDropdown){
 			deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
 		}
@@ -977,24 +977,29 @@ function populateInstantCommandForm(command_log_id) {
 				//console.log(xmlhttp.responseText.length); // Check full size matches expected
         //console.log(xmlhttp.responseText.slice(7950, 8020)); // Peek near the reported error
 				let html = "<div class='list'>";
-				html += "<div class='listrow'><span>recorded</span><span>command</span><span>results</span><span>device</span><span>response time</span></div>";
+				html += "<div class='listrow'><span>recorded</span><span>command</span><span>results</span>";
+ 
+				if(deviceId == "NULL") {
+					html += "<span>device</span>";
+				}
+				html += "<span>response time</span></div>";
 				for(let datum of data) {
 					if(!deviceId) {
 						deviceId = 0;
 					}
-          //console.log(datum["result_recorded"]);
-          if(!resultRecorded[deviceId]) {
-            resultRecorded[deviceId] = "";
-          }
-          
-          if(datum["result_recorded"] > resultRecorded[deviceId] || resultRecorded[deviceId] == "") {
-            //resultRecorded is a global
-            resultRecorded[deviceId] = datum["result_recorded"]; //we want to know what the largest resultRecorded is for update reasons
-          }
-          if( datum["result_recorded"] > greatestResultRecorded) {
-            greatestResultRecorded = datum["result_recorded"];
-          }
-          let loader = "<div class=\"dot-loader\"><span></span><span></span><span></span></div>";
+					//console.log(datum["result_recorded"]);
+					if(!resultRecorded[deviceId]) {
+						resultRecorded[deviceId] = "";
+					}
+					
+					if(datum["result_recorded"] > resultRecorded[deviceId] || resultRecorded[deviceId] == "") {
+						//resultRecorded is a global
+						resultRecorded[deviceId] = datum["result_recorded"]; //we want to know what the largest resultRecorded is for update reasons
+					}
+					if( datum["result_recorded"] > greatestResultRecorded) {
+						greatestResultRecorded = datum["result_recorded"];
+					}
+					let loader = "<div class=\"dot-loader\"><span></span><span></span><span></span></div>";
 					html += "<div class='listrow'><span>" + datum['recorded'] + "</span><span style='cursor:pointer' onclick=\"populateInstantCommandForm(" + datum['command_log_id'] + ")\">" + datum['command_text']  + "</span>";
 					html += "<span>";
 					if(datum["result_text"] != "" && datum["result_text"] != null){
@@ -1004,8 +1009,10 @@ function populateInstantCommandForm(command_log_id) {
 					} else {
 						html +=  loader;
 					}
-					
-					html +=  "</span><span>" + datum["device_name"]  + " </span>"
+					html +=  "</span>";
+					if(deviceId == "NULL") {
+						html +=  "<span>" + datum["device_name"]  + " </span>";
+					}
 					//console.log(datum["result_recorded"]);
 					let timeToResult = loader;
 					if(datum["result_recorded"] ) {
@@ -1269,55 +1276,76 @@ function populateInstantCommandForm(command_log_id) {
     }
   }
   
-  function formatSQL(sql) {
-    const keywords = ['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'OUTER JOIN', 'JOIN', 'ON', 'HAVING'];
-    const newlineKeywords = new Set(['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT', 'JOIN', 'ON', 'HAVING']);
-    const indentKeywords = new Set(['SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT']);
-    
-    let formatted = '';
-    let indentLevel = 0;
-    
-    // Updated tokenizer to preserve <tokens>
-    const tokens = sql.match(/(--.*?$)|('[^']*'|"[^"]*")|<=|>=|<>|!=|[=<>!]|<[^>\s]+>|[\w.*]+|[(),+\-;]/gms) || [];
-    
-    function addNewline(level = indentLevel) {
-      formatted += '\n' + '  '.repeat(level);
-    }
-    
-    for (let i = 0; i < tokens.length; i++) {
-      let token = tokens[i];
-      let upperToken = token.toUpperCase().trim();
-    
-      if (token.startsWith('--')) {
+
+function formatSQL(sql) {
+  const keywords = [
+    'SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT',
+    'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'OUTER JOIN', 'JOIN',
+    'ON', 'HAVING'
+  ];
+  const newlineKeywords = new Set([
+    'SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT',
+    'JOIN', 'ON', 'HAVING'
+  ]);
+  const indentKeywords = new Set([
+    'SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT'
+  ]);
+
+  // --- 1. Extract XML blocks ---
+  let xmlBlocks = [];
+  sql = sql.replace(/<[^>]+>/gms, match => {
+    let index = xmlBlocks.length;
+    xmlBlocks.push(match);
+    return `__XML_BLOCK_${index}__`;
+  });
+
+  // --- 2. Format the SQL normally ---
+  let formatted = '';
+  let indentLevel = 0;
+
+  const tokens = sql.match(
+    /(--.*?$)|('[^']*'|"[^"]*")|<=|>=|<>|!=|[=<>!]|[\w.*]+|[(),+\-;]/gms
+  ) || [];
+
+  function addNewline(level = indentLevel) {
+    formatted += '\n' + '  '.repeat(level);
+  }
+
+  for (let i = 0; i < tokens.length; i++) {
+    let token = tokens[i];
+    let upperToken = token.toUpperCase().trim();
+
+    if (token.startsWith('--')) {
       addNewline(0);
       formatted += token.trim();
-      } else if (newlineKeywords.has(upperToken)) {
+    } else if (newlineKeywords.has(upperToken)) {
       indentLevel = 0;
       addNewline();
       formatted += upperToken;
-      if (indentKeywords.has(upperToken)) {
-        indentLevel = 1;
-      }
-      } else if (token === ',') {
+      if (indentKeywords.has(upperToken)) indentLevel = 1;
+    } else if (token === ',') {
       formatted += ',';
       addNewline();
-      } else if (token === ';') {
+    } else if (token === ';') {
       formatted += ';';
       addNewline();
-      addNewline(); // double spacing between statements
-      } else if (token === ')') {
+      addNewline();
+    } else if (token === '(' || token === ')') {
       formatted += token;
-      } else if (token === '(') {
-      formatted += token;
-      } else {
-      formatted += ' ' + token.trim();
-      }
+    } else {
+      if (formatted && !/\s$/.test(formatted)) formatted += ' ';
+      formatted += token.trim();
     }
-    
-    return formatted.trim();
   }
-  
-  
+
+  formatted = formatted.trim();
+
+  // --- 3. Restore XML blocks ---
+  formatted = formatted.replace(/__XML_BLOCK_(\d+)__/g, (_, idx) => xmlBlocks[idx]);
+
+  return formatted;
+}
+
   
   //the result of a productive back-and-forth with ChatGPT:
   function xsmoothArray(intArray, windowSize, weightFactor) {
