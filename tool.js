@@ -1027,6 +1027,8 @@ function populateInstantCommandForm(command_log_id) {
 					html += "<span>";
 					if(datum["result_text"] != "" && datum["result_text"] != null){
 						html += datum["result_text"];
+					} else if(parseInt(datum["canceled"]) == 1){
+            html += "<em>canceled</em>";
 					} else if(timeAgo(datum["recorded"],  null, true) > 200){
 							html += "<em>data never returned</em>";
 					} else {
