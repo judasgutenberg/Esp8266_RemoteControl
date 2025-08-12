@@ -2458,6 +2458,13 @@ function copyTemplatesToTenant($tenantId, $tablesString){
  
 }
 
+function cancelInstantCommand($commandLogId, $formattedDateTime){
+  global $conn;
+  $sql = "UPDATE command_log SET result_recorded='" . $formattedDateTime . "', canceled=1 WHERE command_log_id=" . intval($commandLogId); 
+  $result = mysqli_query($conn, $sql);
+  return array("canceled"=>$formattedDateTime);
+}
+
 //runs a command instantly targeting a device
 function instantCommand($tenantId, $userId, $deviceId = "") {
   global $conn, $timezone;

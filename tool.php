@@ -152,6 +152,10 @@ if ($user) {
     $sql = gvfw('sql');
     $out = json_encode(checkMySqlSyntax($sql));
     die($out);
+  } else if($action == "cancelinstantcommand") {
+    $commandLogId = gvfw('command_log_id');
+    $out = cancelInstantCommand($commandLogId, $formattedDateTime);
+    die(json_encode($out));
   } else if($action == "valueexistselsewhere") {
     $value = gvfw('value');
     $pkName = gvfw('pk_name');

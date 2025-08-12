@@ -880,6 +880,26 @@ function genericListActionBackend(
 	}
   }
   
+  function cancelInstantCommand(commandLogId) {
+     const payload = {
+        action: "cancelinstantcommand",
+        command_log_id: commandLogId
+    };
+    const xmlhttp = new XMLHttpRequest();
+	  xmlhttp.onreadystatechange = function() {
+		  //console.log("did" + xmlhttp.readyState + " " +xmlhttp.status  );
+		  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+			  const data = xmlhttp.responseText;
+			  dateInfo = JSON.parse(data);
+		  }
+	  }
+    xmlhttp.open("POST", "tool.php", true);
+    // Tell the server we�re sending JSON
+    xmlhttp.setRequestHeader("Content-Type", "application/json");
+    xmlhttp.send(JSON.stringify(payload));
+	  
+  }
+  
   function instantCommandFrontend() {
 	  let xmlhttp = new XMLHttpRequest();
 	  const div = document.getElementById('utilityDiv');
@@ -982,7 +1002,10 @@ function populateInstantCommandForm(command_log_id) {
 				if(deviceId == "NULL") {
 					html += "<span>device</span>";
 				}
-				html += "<span>response time</span></div>";
+				html += "<span>response time</span>";
+				html += "<span>action</span>";
+				html += "</div>";
+ 
 				for(let datum of data) {
 					if(!deviceId) {
 						deviceId = 0;
@@ -1019,6 +1042,11 @@ function populateInstantCommandForm(command_log_id) {
             timeToResult = timeAgo(datum["recorded"], datum["result_recorded"], false, true);
 					}
 					html +=  "<span>" +  timeToResult  + " </span>";
+					html +=  "<span>";
+					if(!datum["result_recorded"]) {
+            html +=  "<button onclick='cancelInstantCommand(" +  datum["command_log_id"] + ")'>cancel</button></span>";
+          }
+          html +=  "</span>";
           html +=  "</div>";
 				}
 				html += "</div>";
