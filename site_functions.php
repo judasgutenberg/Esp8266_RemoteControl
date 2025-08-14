@@ -1195,6 +1195,10 @@ function topmostNav() {
       'url' => "energy.php"
     ],
     [
+      'label' => 'Maps',
+      'url' => "map.php"
+    ],
+    [
       'label' => 'Device Control',
       'url' => "tool.php"
     ]);

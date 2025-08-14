@@ -117,7 +117,7 @@ if($_REQUEST) {
 	//die($storagePassword . " : " . time() . " ; " . $checksum . "?=" . $x  . " : " . urlencode($data));
 	if($user && !$storagePassword) {
 		$storagePassword  = $user['storage_password'];
-		if(!in_array($mode, ["getOfficialWeatherData", "getInverterData", "getWeatherData", "getEarliestRecorded"])){ //keeps certain kinds of hacks from working
+		if(!in_array($mode, ["getOfficialWeatherData", "getInverterData", "getWeatherData", "getEarliestRecorded", "getMap"])){ //keeps certain kinds of hacks from working
 			die(json_encode(["error"=>"your brilliant hack has failed"]));
 		}
 	}
@@ -388,6 +388,14 @@ if($_REQUEST) {
 						$out["energy_info"]["load_power"] = $energyInfo["load_power"];
 						$out["energy_info"]["bat_percent"] = $energyInfo["battery_percentage"];
 					}
+				}
+
+			} else if ($mode=="getMap"){ //this gets critical SolArk data for possible use automating certain things
+				$sql = "SELECT * from device_log WHERE device_id=" . intval($deviceId) . " ORDER BY recorded DESC";
+				$subResult = mysqli_query($conn, $sql);
+				if($subResult) {
+					$subRows = mysqli_fetch_all($subResult, MYSQLI_ASSOC);
+					$out["points"] = $subRows;
 				}
 			} else if ($mode=="getDeviceData" || $mode == "getInitialDeviceInfo" || $mode=="saveLocallyGatheredSolarData") {
 				$deviceSql = "SELECT name, location_name FROM device WHERE device_id = " . intval($deviceId);
