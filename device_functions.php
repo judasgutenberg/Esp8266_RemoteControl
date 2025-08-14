@@ -1706,10 +1706,11 @@ function getDeviceFeature($deviceFeatureId, $tenantId){
 
 function getGeneric($table, $pk, $user, $lookupColumn = null){
   global $conn;
+  $pk = $table . "_id";
   if(!$lookupColumn) {
-    $lookupColumn = $table . "_id";
+    $lookupColumn = $pk;
   }
-  $sql = "SELECT * FROM " . $table . " WHERE " . $lookupColumn  . "='" . mysqli_real_escape_string($conn, $pk)  . "' AND tenant_id=<tenant_id/>";
+  $sql = "SELECT * FROM " . $table . " WHERE " . $lookupColumn  . "='" . mysqli_real_escape_string($conn, $pk)  . "' AND tenant_id=<tenant_id/> ORDER BY " . $pk . " DESC";
 	$result = replaceTokensAndQuery($sql, $user);
 	if($result) {
 		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
