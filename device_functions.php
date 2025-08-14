@@ -1704,9 +1704,12 @@ function getDeviceFeature($deviceFeatureId, $tenantId){
   return getGeneric("device_feature", $deviceFeatureId, ["tenant_id"=>$tenantId]);
 }
 
-function getGeneric($table, $pk, $user){
+function getGeneric($table, $pk, $user, $lookupColumn = null){
   global $conn;
-  $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id='" . mysqli_real_escape_string($conn, $pk)  . "' AND tenant_id=<tenant_id/>";
+  if(!$lookupColumn) {
+    $lookupColumn = $table . "_id";
+  }
+  $sql = "SELECT * FROM " . $table . " WHERE " . $lookupColumn  . "='" . mysqli_real_escape_string($conn, $pk)  . "' AND tenant_id=<tenant_id/>";
 	$result = replaceTokensAndQuery($sql, $user);
 	if($result) {
 		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
@@ -1745,6 +1748,8 @@ function getCurrentWeatherConditionId($tenant) {
     //var_dump($weatherData);
     $weatherDescription = $weatherData["weather"][0]["description"];
     writeMemoryCache($weatherDescriptionKey, $weatherDescription);
+    //a little hook here to do unrelated things on a regular basis, that is, every ten minutes
+    doVariousThingsRegularly($tenant);
   }
   if($weatherDescription == "") {
     $weatherDescription = "none";
@@ -2630,4 +2635,184 @@ function getNumberAfterLastNewline($input, $returnFirstPart = false) {
     $afterNewline = substr($input, $lastNewlinePos + 1);
     $afterNewline = trim($afterNewline);
     return is_numeric($afterNewline) ? $afterNewline + 0 : null;
+}
+
+function doVariousThingsRegularly($tenant) {
+  //this should be commented out if you don't have my particular setup!:
+  gatherAnyTractiveGpsData($tenant);
+}
+
+function getCredential($tenantId, $type) {
+  $record = getGeneric("api_credential", $type, ["tenant_id"=>$tenantId], "type");
+  //var_dump($record);
+  if($record["enabled"]) {
+    return $record;
+  }
+}
+
+function gatherAnyTractiveGpsData($tenant){
+  global $conn, $timezone;
+  $credential = getCredential($tenant["tenant_id"], "tractive");
+  //var_dump($credential);
+  //gus mueller, tractive API 
+  $yourEmail = $credential["username"];
+  $yourPassword = $credential["password"];
+  $yourTrackerCode = $credential["instance_name"];
+  $baseUrl = "https://graph.tractive.com/4";
+  // URL to retrieve token
+  $url = $baseUrl . "/auth/token";
+  //google SSO would be like so, but google single sign in is a headache, so AVOID
+  //$url = $baseUrl . "/auth/token/google";
+  // Payload to POST
+
+  // this:
+  $data = [
+      "platform_email" => $yourEmail,
+      "platform_token" => $yourPassword,
+      "grant_type" => "tractive"
+  ];
+  //not this, this would be for google SSO:
+  /*
+  $data = 
+    [
+      "auth_code"=> "4/0AVMBsJjosQ71dTZn-LdRDPBBNIfJN6hP1pZ9IS5I4BCC2qGw-B3Vd15Y1MWWujBC0xOjfg",
+      "locale"=>"en_US",
+      "all_terms_accepted"=> true
+    ]
+;
+*/
+  // Initialize cURL
+  $ch = curl_init($url);
+  $headers = [
+    'Accept: application/json, text/plain, */*',
+    'Content-Type: application/json;charset=UTF-8',
+    'Origin: https://my.tractive.com',
+    'Referer: https://my.tractive.com/',
+    'Sec-CH-UA: "Not)A;Brand";v="8", "Chromium";v="138", "Google Chrome";v="138"',
+    'Sec-CH-UA-Mobile: ?0',
+    'Sec-CH-UA-Platform: "Windows"',
+    'Sec-Fetch-Dest: empty',
+    'Sec-Fetch-Mode: cors',
+    'Sec-Fetch-Site: same-site',
+    'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
+    'X-Tractive-App: site.tractivegps',
+    'X-Tractive-AppBuild: 1c46d9f2',
+    'X-Tractive-AppVersion: 2025-08-12T11:12:32.025Z#1c46d9f2',
+    'X-Tractive-Client: 5728aa1fc9077f7c32000186',
+    'X-Tractive-User: unknown'
+];
+  // Set cURL options
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_POST, true);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+  curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+  // Execute request
+  $response = curl_exec($ch);
+  // Check for errors
+  if (curl_errno($ch)) {
+      echo "cURL error: " . curl_error($ch);
+      curl_close($ch);
+      exit;
+  } 
+  // Close cURL
+  curl_close($ch);
+  // Decode JSON response
+  $result = json_decode($response, true);
+  // Check if decoding succeeded
+  if ($result === null) {
+      echo "Failed to decode JSON response";
+      exit;
+  }
+  // FOR DEBUGGING! Print the access token
+  /*
+  echo "Access Token: " . $result['access_token'] . PHP_EOL;
+  echo "Expires at: " . date('Y-m-d H:i:s', $result['expires_at']) . PHP_EOL;
+  echo "User ID: " . $result['user_id'] . PHP_EOL;
+  echo "Client ID: " . $result['client_id'] . PHP_EOL;
+    */
+  $timestamp = time();
+  $timezoneOffset = 18000; //for east coast!
+  $url = $baseUrl . "/tracker/" . $yourTrackerCode . "/positions?time_from=" . intval( $timestamp - 2600)  . "&time_to=" . intval(18000 + $timestamp) . "&format=json_segments";
+  //echo   $url;
+  
+  $headers = [
+      "accept: application/json, text/plain, */*",
+      "accept-encoding: gzip, deflate, br, zstd",
+      "authorization: Bearer " . $result['access_token'],
+      "origin: https://my.tractive.com",
+      "referer: https://my.tractive.com/",
+      "sec-ch-ua: \"Not)A;Brand\";v=\"8\", \"Chromium\";v=\"138\", \"Google Chrome\";v=\"138\"",
+      "sec-ch-ua-mobile: ?0",
+      "sec-ch-ua-platform: \"Windows\"",
+      "sec-fetch-dest: empty",
+      "sec-fetch-mode: cors",
+      "sec-fetch-site: same-site",
+      "user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+      "x-tractive-app: site.tractivegps",
+      "x-tractive-appbuild: 1c46d9f2",
+      "x-tractive-appversion: 2025-08-12T11:12:32.025Z#1c46d9f2",
+      "x-tractive-client: " . $result['client_id'],
+      "x-tractive-user: " . $result['user_id']  
+  ];
+  $ch = curl_init();
+  curl_setopt($ch, CURLOPT_URL, $url);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_ENCODING, ""); // allow gzip/br decoding
+  curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+  $response = curl_exec($ch);
+  $data = null;
+  if (curl_errno($ch)) {
+      //echo "cURL error: " . curl_error($ch);
+  } else {
+    $data = json_decode($response, true);
+  }
+  curl_close($ch);
+  //DEBUGGING Output raw response
+  //echo $response;
+  $deviceId = $credential["pseudo_device_id"];
+  //what comes back from tractive is an array of objects, each of this form:
+  //{time, latlong, alt, speed, pos_uncertainty, sensor_used}...
+  //so we can just pump these into a device_log using a device_id for a new device
+  if($data) {
+    $data = $data[0];  //i know, stupid
+    foreach($data as $datum){
+      $rawSensorUsed= $datum["sensor_used"];
+      $sensorUsed = 0;
+      if($rawSensorUsed == "KNOWN_WIFI"){
+        $sensorUsed = 1;
+      } else if($rawSensorUsed == "PHONE"){
+        $sensorUsed = 2;
+      } else if($rawSensorUsed == "GPS"){
+        $sensorUsed = 3;
+      }
+      $latlong = $datum["latlong"];
+      $dt = new DateTime('@' . $datum["time"]); // '@' treats it as a Unix timestamp in UTC
+      $dt->setTimezone(new DateTimeZone($timezone));
+      $recorded = $dt->format('Y-m-d H:i:s');
+      $sql = "
+        INSERT INTO device_log (
+            recorded, latitude, longitude, elevation, reserved1, reserved2, reserved3, device_id
+        )
+        SELECT
+            '" . $recorded . "',
+            " . $latlong[0] . ",
+            " . $latlong[1] . ",
+            " . $datum["alt"] . ",
+            " . floatval($datum["speed"]) . ",
+            " . $datum["pos_uncertainty"] . ",
+            " . $sensorUsed . ",
+  
+            " . $deviceId . "
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM device_log
+            WHERE device_id = " . $deviceId . "
+              AND recorded = '" . $recorded . "'
+        )
+      ";
+      //echo $sql;
+      $result = mysqli_query($conn, $sql);
+    }
+  }
 }

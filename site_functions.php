@@ -539,7 +539,8 @@ function genericEntitySave($user, $table) {
   }
  
   $sql = insertUpdateSql($conn, $table, array($pk => gvfw($table . '_id')), $data);
-  echo $sql;
+  //echo $sql;
+  //die();
   $error = mysqli_error($conn);
 
 
