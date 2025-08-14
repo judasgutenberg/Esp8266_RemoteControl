@@ -666,7 +666,6 @@ function editTenant($error, $user){
       'type' => 'datetime',
       'value' => gvfa("expired", $source)
 	  ] 
- 
     ,
     [
 	    'label' => 'storage_password',
@@ -675,30 +674,6 @@ function editTenant($error, $user){
       'value' => gvfa("storage_password", $source)
 	  ] 
     ,
-    [
-	    'label' => 'Energy API username',
-      'name' => 'energy_api_username',
-      'type' => 'text',
-      'value' => gvfa("energy_api_username", $source)
-	  ],
-		[
-	    'label' => 'Energy API password',
-      'name' => 'energy_api_password',
-      'type' => 'text',
-      'value' => gvfa("energy_api_password", $source)
-    ],
-    [
-	    'label' => 'Energy API plant id',
-      'name' => 'energy_api_plant_id',
-      'type' => 'text',
-      'value' => gvfa("energy_api_plant_id", $source)
-    ],
-    [
-	    'label' => 'Open_weather API key',
-      'name' => 'open_weather_api_key',
-      'type' => 'text',
-      'value' => gvfa("open_weather_api_key", $source)
-    ],
     [
 	    'label' => 'Preferences',
       'name' => 'preferences',
@@ -1706,12 +1681,14 @@ function getDeviceFeature($deviceFeatureId, $tenantId){
 
 function getGeneric($table, $pk, $user, $lookupColumn = null){
   global $conn;
-  $pk = $table . "_id";
+  $pkName = $table . "_id";
   if(!$lookupColumn) {
-    $lookupColumn = $pk;
+    $lookupColumn = $pkName;
   }
-  $sql = "SELECT * FROM " . $table . " WHERE " . $lookupColumn  . "='" . mysqli_real_escape_string($conn, $pk)  . "' AND tenant_id=<tenant_id/> ORDER BY " . $pk . " DESC";
+  $sql = "SELECT * FROM " . $table . " WHERE " . $lookupColumn  . "='" . mysqli_real_escape_string($conn, $pk)  . "' AND tenant_id=<tenant_id/> ORDER BY " . $pkName . " DESC";
+	
 	$result = replaceTokensAndQuery($sql, $user);
+	//var_dump($result);
 	if($result) {
 		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
 		return $row;
@@ -1745,7 +1722,10 @@ function getCurrentWeatherConditionId($tenant) {
   $weatherDescriptionKey = "weather_description" . $tenant["tenant_id"];
   $weatherDescription = readMemoryCache($weatherDescriptionKey, 10);
   if(!$weatherDescription) {
-    $weatherData = getWeatherDataByCoordinates($tenant["latitude"], $tenant["longitude"], $tenant["open_weather_api_key"]);
+    $credential = getCredential($tenant, "openweather");
+    //var_dump($credential);
+    $apiKey = $credential["password"];
+    $weatherData = getWeatherDataByCoordinates($tenant["latitude"], $tenant["longitude"], $apiKey);
     //var_dump($weatherData);
     $weatherDescription = $weatherData["weather"][0]["description"];
     writeMemoryCache($weatherDescriptionKey, $weatherDescription);
@@ -1836,7 +1816,14 @@ function getCurrentSolarDataFromCloud($tenant) {
   //echo $minutesSinceLastRecord;
   
   if($minutesSinceLastRecord > 5) { //we don't need to get data from SolArk any more, but this is how you would
-    $plantId = $tenant["energy_api_plant_id"];
+    $credential = getCredential($tenant, "solark");
+    //var_dump($credential);
+    $username = $credential["username"];
+    $password = $credential["password"];
+    $plantId = $credential["instance_name"];
+
+    // URL to retrieve token
+  
     $url = $baseUrl . '/oauth/token';
     $headers = [
         'Content-Type: application/json;charset=UTF-8',
@@ -1848,8 +1835,8 @@ function getCurrentSolarDataFromCloud($tenant) {
     $params = [
             'client_id' => 'csp-web',
             'grant_type' => 'password',
-            'password' => $tenant["energy_api_password"],
-            'username' => $tenant["energy_api_username"]
+            'password' => $password,
+            'username' => $username
  
     ];
 
@@ -1885,7 +1872,7 @@ function getCurrentSolarDataFromCloud($tenant) {
     $userParams =   [
             //'access_token' => $access_token,
             'date' => $currentDate,
-            'id' => $tenant["energy_api_plant_id"],
+            'id' => $plantId,
             'lan' => 'en'         
     ];
 
@@ -2643,8 +2630,8 @@ function doVariousThingsRegularly($tenant) {
   gatherAnyTractiveGpsData($tenant);
 }
 
-function getCredential($tenantId, $type) {
-  $record = getGeneric("api_credential", $type, ["tenant_id"=>$tenantId], "type");
+function getCredential($tenant, $type) {
+  $record = getGeneric("api_credential", $type, $tenant, "type");
   //var_dump($record);
   if($record["enabled"]) {
     return $record;
@@ -2652,8 +2639,9 @@ function getCredential($tenantId, $type) {
 }
 
 function gatherAnyTractiveGpsData($tenant){
+  //var_dump($tenant);
   global $conn, $timezone;
-  $credential = getCredential($tenant["tenant_id"], "tractive");
+  $credential = getCredential($tenant, "tractive");
   //var_dump($credential);
   //gus mueller, tractive API 
   $yourEmail = $credential["username"];
