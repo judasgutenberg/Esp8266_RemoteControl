@@ -1723,6 +1723,9 @@ function getCurrentWeatherConditionId($tenant) {
   $weatherDescription = readMemoryCache($weatherDescriptionKey, 10);
   if(!$weatherDescription || true) {
     $credential = getCredential($tenant, "openweather");
+    if(!$credential) {
+      return;
+    }
     //var_dump($credential);
     $apiKey = $credential["password"];
     $weatherData = getWeatherDataByCoordinates($tenant["latitude"], $tenant["longitude"], $apiKey);
@@ -1817,6 +1820,9 @@ function getCurrentSolarDataFromCloud($tenant) {
   
   if($minutesSinceLastRecord > 5) { //we don't need to get data from SolArk any more, but this is how you would
     $credential = getCredential($tenant, "solark");
+    if(!$credential) {
+      return;
+    }
     //var_dump($credential);
     $username = $credential["username"];
     $password = $credential["password"];
@@ -2642,6 +2648,9 @@ function gatherAnyTractiveGpsData($tenant){
   //var_dump($tenant);
   global $conn, $timezone;
   $credential = getCredential($tenant, "tractive");
+  if(!$credential) {
+    return;
+  }
   //var_dump($credential);
   //gus mueller, tractive API 
   $yourEmail = $credential["username"];
