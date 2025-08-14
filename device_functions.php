@@ -1686,7 +1686,7 @@ function getGeneric($table, $pk, $user, $lookupColumn = null){
     $lookupColumn = $pkName;
   }
   $sql = "SELECT * FROM " . $table . " WHERE " . $lookupColumn  . "='" . mysqli_real_escape_string($conn, $pk)  . "' AND tenant_id=<tenant_id/> ORDER BY " . $pkName . " DESC";
-	
+	//echo $sql;
 	$result = replaceTokensAndQuery($sql, $user);
 	//var_dump($result);
 	if($result) {
@@ -1721,7 +1721,7 @@ function getDevices($tenantId, $allDeviceColumnMaps = true){
 function getCurrentWeatherConditionId($tenant) {
   $weatherDescriptionKey = "weather_description" . $tenant["tenant_id"];
   $weatherDescription = readMemoryCache($weatherDescriptionKey, 10);
-  if(!$weatherDescription) {
+  if(!$weatherDescription || true) {
     $credential = getCredential($tenant, "openweather");
     //var_dump($credential);
     $apiKey = $credential["password"];

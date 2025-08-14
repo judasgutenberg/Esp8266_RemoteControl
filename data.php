@@ -400,11 +400,13 @@ if($_REQUEST) {
 			} else if ($mode=="getOfficialWeatherData") {
 				$sql = "SELECT latitude, longitude  FROM device  WHERE device_id =" . intval($deviceId);
 				$getDeviceResult = mysqli_query($conn, $sql);
+				$credential = getCredential($tenant, "openweather");
+        //var_dump($credential);
+        $apiKey = $credential["password"];
 				if($getDeviceResult) {
 					$deviceRow = mysqli_fetch_array($getDeviceResult);
 					$latitudeForApi = $deviceRow["latitude"];
 					$longitudeForApi = $deviceRow["longitude"];
-					$apiKey = $tenant["open_weather_api_key"];
 				}
 				if($latitudeForApi  && $longitudeForApi && $apiKey) {
 					$out["official_weather"] = getWeatherDataByCoordinates($latitudeForApi, $longitudeForApi, $apiKey);
