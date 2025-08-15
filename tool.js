@@ -2124,7 +2124,7 @@ function formatSQL(sql) {
   
   }
   
-  function createTimescalePeriodDropdown(scales, thisPeriod, scaleName, currentStartDate, event, eventAction, tableName, locationId) {
+  function createTimescalePeriodDropdown(scales, thisPeriod, scaleName, currentStartDate, event, eventAction, tableName, deviceId) {
 	  const scale = scales.find(s => s.value === scaleName);
 	  let numberOfPeriods = 200;
 	  //let's find how far back data goes
@@ -2132,6 +2132,7 @@ function formatSQL(sql) {
 		  console.error("Scale not found!");
 		  return;
 	  }
+	  //console.log(scaleName, scale);
 	  const periodSize = scale.period_size;
 	  const periodScale = scale.period_scale;
 	  //console.log(periodSize, periodScale);
@@ -2156,7 +2157,9 @@ function formatSQL(sql) {
   
 			  let setByTimespanSwitch = false;
 			  for (let i = 0; i < numberOfPeriods; i++) {
+				//console.log(i);
 				  const option = document.createElement('option');
+				  //console.log(periodScale, periodSize);
 				  let label = pastStepper(periodScale, periodSize, i);
 				  option.text = label;
 				  option.value = i;
@@ -2179,7 +2182,7 @@ function formatSQL(sql) {
 		  }
 	  }
   
-	  let url = "data.php?mode=getEarliestRecorded&table=" + tableName + "&locationId=" + locationId; 
+	  let url = "data.php?mode=getEarliestRecorded&table=" + tableName + "&device_id=" + deviceId; 
 	  xmlhttp.open("GET", url, true);
 	  xmlhttp.send();
   }

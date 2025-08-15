@@ -391,10 +391,41 @@ if($_REQUEST) {
 				}
 
 			} else if ($mode=="getMap"){ //this gets critical SolArk data for possible use automating certain things
-				$sql = "SELECT * from device_log WHERE device_id=" . intval($deviceId) . " ORDER BY recorded DESC";
+				$sql = "SELECT * from device_log WHERE device_id=" . intval($deviceId) . "  ";
+
+				$scaleRecord = findRecordByKey(timeScales(), "value", $scale);
+				$periodSize = $scaleRecord["period_size"];
+				$periodScale = $scaleRecord["period_scale"];
+				$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
+				$groupBy = gvfa("group_by", $scaleRecord, "");
+				$startOfPeriod = "'" . $formattedDateTime . "'"; 
+				$historyOffset = 1;				if ($absoluteTimespanCusps == 1) {
+					// Calculate starting point at the "cusp" of each period scale
+					$startOfPeriod = sqlForStartOfPeriodScale($periodScale, $formattedDateTime);
+					// Adjust SQL to break at cusps rather than present
+					$sql .= " AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
+					if ($periodAgo > 0) {
+						$sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
+					}
+				} else {
+					$sql .= " AND recorded > DATE_ADD(DATE_ADD('" . $formattedDateTime . "', INTERVAL -" . intval($periodSize * ($periodAgo + 1) + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
+				}
+				//AND  recorded > DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + $historyOffset) + $initialOffset)) . " " . $periodScale . ") ";
+				if($periodAgo  > 0) {
+					$sql .= " AND recorded < DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo) + $initialOffset)) . " " . $periodScale . ") ";
+				}
+				if($groupBy){
+					$sql .= " GROUP BY " . $groupBy . " "; //contrary to what you might think, this is never passed in from the frontend.
+				}
+				$sql .= " ORDER BY device_log_id ASC";
+
+
+
 				$subResult = mysqli_query($conn, $sql);
+				$out["sql"] = $sql;
 				if($subResult) {
 					$subRows = mysqli_fetch_all($subResult, MYSQLI_ASSOC);
+					
 					$out["points"] = $subRows;
 				}
 			} else if ($mode=="getDeviceData" || $mode == "getInitialDeviceInfo" || $mode=="saveLocallyGatheredSolarData") {
