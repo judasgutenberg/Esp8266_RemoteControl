@@ -7,11 +7,6 @@ include("device_functions.php");
 //ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
 
-if(array_key_exists( "locationId", $_REQUEST)) {
-	$locationId = $_REQUEST["locationId"];
-} else {
-	$locationId = 1;
-}
 $poser = null;
 $poserString = "";
 $out = "";
@@ -86,18 +81,18 @@ if(!$user) {
 			$poserString = " posing as <span class='poserindication'>" . $poser["email"] . "</span> (<a href='?action=disimpersonate'>unpose</a>)";
 		}
 		$out .= "<div class='loggedin'>You are logged in as <b>" . $user["email"] . "</b>" .  $poserString . "  on " . $user["name"] . " <div class='basicbutton'><a href=\"?action=logout\">logout</a></div></div>\n";
-		}
+	}
 		else
-		{
+  {
 		//$out .= "<div class='loggedin'>You are logged out.  </div>\n";
-		} 
-		$out .= "<div>\n";
-		$out .= "<div class='documentdescription'>";
-		$out .= "</div>";
-		//$out .= "<div class='innercontent'>";
-		echo $out; 
-    $selectId = "locationDropdown";
-    $handler = "initMap()";
+	} 
+  $out .= "<div>\n";
+  $out .= "<div class='documentdescription'>";
+  $out .= "</div>";
+  //$out .= "<div class='innercontent'>";
+  echo $out; 
+  $selectId = "locationDropdown";
+  $handler = "initMap()";
   ?>
     <div style="text-align:center;"><b><span id='greatestTime'></span></b></div>
 		<div class='generalerror'><?php echo $error ?></div>
@@ -127,6 +122,6 @@ if(!$user) {
     let currentStartDate; //a global that needs to persist through HTTP sessions in the frontend
     let justLoaded = true;
   </script>
-    <script async src="https://maps.googleapis.com/maps/api/js?key=<?php echo $credential["password"]?>&callback=initMap"></script>
+  <script async src="https://maps.googleapis.com/maps/api/js?key=<?php echo $credential["password"]?>&callback=initMap"></script>
 </body>
 </html>
