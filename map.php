@@ -77,7 +77,7 @@ if(!$user) {
    <style>
     /* The map needs a set height to display */
     #map {
-      height: 80vh;
+      height: calc(100vh - 120px); /* assuming header is 60px tall */
       width: 100%;
     }
   </style
@@ -88,7 +88,7 @@ if(!$user) {
 <?php
 
 	$out .= topmostNav();
-	$out .= "<div class='logo'>Inverter Data</div>\n";
+	$out .= "<div class='logo'>Map</div>\n";
 	if($user) {
 		$out .= "<div class='outercontent'>";
 		if($poser) {
@@ -145,10 +145,6 @@ if(!$user) {
         </table>
     </div>
 	</div>
-
-
-
-
 
 </div>
 <script src='map.js'></script>
