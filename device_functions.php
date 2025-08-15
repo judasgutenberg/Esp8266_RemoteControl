@@ -58,7 +58,6 @@ function deviceFeatures($user, $deviceId) {
       'label' => 'enabled',
       'name' => 'enabled',
       'changeable' => true,
-      'name' => 'enabled',
       'accent_color' => "red",
       'type' => 'bool'
     ],
@@ -1470,6 +1469,15 @@ function editDevice($error,  $user) {
       'error' => gvfa('device_type_id', $error),
       'values' => "SELECT device_type_id, name as 'text' FROM device_type WHERE tenant_id='" . $tenantId  . "' ORDER BY name ASC",
 	  ],
+  
+    
+    [
+	    'label' => 'can move',
+      'name' => 'can_move',
+      'accent_color' => "purple",
+      'type' => 'checkbox',
+      'value' => gvfa("can_move", $source), 
+	  ],
     [
 	    'label' => 'location name',
       'name' => 'location_name',
@@ -1721,7 +1729,7 @@ function getDevices($tenantId, $allDeviceColumnMaps = true){
 function getCurrentWeatherConditionId($tenant) {
   $weatherDescriptionKey = "weather_description" . $tenant["tenant_id"];
   $weatherDescription = readMemoryCache($weatherDescriptionKey, 10);
-  if(!$weatherDescription || true) {
+  if(!$weatherDescription) {
     $credential = getCredential($tenant, "openweather");
     if(!$credential) {
       return;
@@ -2759,12 +2767,32 @@ function gatherAnyTractiveGpsData($tenant){
   curl_setopt($ch, CURLOPT_ENCODING, ""); // allow gzip/br decoding
   curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
   $response = curl_exec($ch);
+  //echo $response;
   $data = null;
   if (curl_errno($ch)) {
-      //echo "cURL error: " . curl_error($ch);
+    echo "cURL error: " . curl_error($ch);
   } else {
     $data = json_decode($response, true);
   }
+  $url = $baseUrl . "/device_hw_report/" . $yourTrackerCode;
+  //echo $url . "<BR>";
+  $ch = curl_init();
+  curl_setopt($ch, CURLOPT_URL, $url);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_ENCODING, ""); // allow gzip/br decoding
+  curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+  $responseChannel = curl_exec($ch);
+  //echo "-----";
+  //var_dump($responseChannel);
+  $data2 = null;
+  if (curl_errno($ch)) {
+    echo "cURL error: " . curl_error($ch);
+  } else {
+    $data2 = json_decode($responseChannel, true);
+  }
+
+  //var_dump($data2);
   curl_close($ch);
   //DEBUGGING Output raw response
   //echo $response;
@@ -2774,9 +2802,18 @@ function gatherAnyTractiveGpsData($tenant){
   //so we can just pump these into a device_log using a device_id for a new device
   if($data) {
     $data = $data[0];  //i know, stupid
+    //var_dump($data);
     foreach($data as $datum){
       $rawSensorUsed= $datum["sensor_used"];
       $sensorUsed = 0;
+      $batteryLevel = 0;
+      $temperatureState = 0;
+      $hwStatus = 0;
+      if($data2){
+        $batteryLevel = $data2["battery_level"];
+        $temperatureState = intval($data2["temperature_state"]);
+        $hwStatus = intval($data2["hw_status"]);
+      }
       if($rawSensorUsed == "KNOWN_WIFI"){
         $sensorUsed = 1;
       } else if($rawSensorUsed == "PHONE"){
@@ -2784,23 +2821,27 @@ function gatherAnyTractiveGpsData($tenant){
       } else if($rawSensorUsed == "GPS"){
         $sensorUsed = 3;
       }
+ 
       $latlong = $datum["latlong"];
       $dt = new DateTime('@' . $datum["time"]); // '@' treats it as a Unix timestamp in UTC
       $dt->setTimezone(new DateTimeZone($timezone));
       $recorded = $dt->format('Y-m-d H:i:s');
       $sql = "
         INSERT INTO device_log (
-            recorded, latitude, longitude, elevation, reserved1, reserved2, reserved3, device_id
+            recorded, latitude, longitude, elevation, voltage, temperature, wind_speed, reserved1, reserved2, reserved3, reserved4, device_id
         )
         SELECT
-            '" . $recorded . "',
+          '"  . $recorded . "',
             " . $latlong[0] . ",
             " . $latlong[1] . ",
             " . $datum["alt"] . ",
+            " . $batteryLevel  . ",
+            " . $temperatureState  . ",
+            " . floatval($datum["speed"]) . ",
             " . floatval($datum["speed"]) . ",
             " . $datum["pos_uncertainty"] . ",
             " . $sensorUsed . ",
-  
+            " . $hwStatus  . ",
             " . $deviceId . "
         WHERE NOT EXISTS (
             SELECT 1
