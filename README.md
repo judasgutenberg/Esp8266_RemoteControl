@@ -105,6 +105,8 @@ In the weather data display there is also a button that will cause data from pre
 
 As parameters are changed on the pages showing weather and inverter graphical data, the url is changed accordingly, providing urls that can be saved for a return to a future version of the very same display.
 
+![alt text](maps.jpg?raw=true)
+
 There is also a Maps tab to display device data that can be plotted on a map (this is still in development and is kind of janky, but it works as a place to show where my dog Charlotte happens to be and where she's been within a dropdown-pickable time frame).
 
 ![alt text](weathergraph.jpg?raw=true)
