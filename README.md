@@ -107,7 +107,7 @@ As parameters are changed on the pages showing weather and inverter graphical da
 
 ![alt text](maps.jpg?raw=true)
 
-There is also a Maps tab to display device data that can be plotted on a map (this is still in development and is kind of janky, but it works as a place to show where my dog Charlotte happens to be and where she's been within a dropdown-pickable time frame).
+There is also a Maps tab to display device data that can be plotted on a map (this is still in development and is kind of janky, but it works as a place to show where my dog Charlotte happens to be and where she's been within a dropdown-pickable time frame). Devices with a can_move set to 1 can be viewed in Maps.
 
 ![alt text](weathergraph.jpg?raw=true)
 
