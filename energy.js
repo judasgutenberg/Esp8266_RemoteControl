@@ -462,7 +462,7 @@ function getInverterData(yearsAgo) {
         let dataObject = JSON.parse(this.responseText); 
          console.log(dataObject);
         if(dataObject) {
-          if(dataObject["sql"]){
+          if(dataObject["sql"] && dataObject["error"]){
             console.log(dataObject["sql"], dataObject["error"]);
           } else {
             if(dataObject["device_features"]) { //we need this to label device feature ons and offs on the graph

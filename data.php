@@ -390,7 +390,7 @@ if($_REQUEST) {
 					}
 				}
 
-			} else if ($mode=="getMap"){ //this gets critical SolArk data for possible use automating certain things
+			} else if ($mode=="getMap"){ //an endpoint specifically for maps
 				$sql = "SELECT * from device_log WHERE device_id=" . intval($deviceId) . "  ";
 
 				$scaleRecord = findRecordByKey(timeScales(), "value", $scale);
@@ -505,9 +505,10 @@ if($_REQUEST) {
 						$result = mysqli_query($conn, $sql);
 						$error = mysqli_error($conn);
 						if($result && $canAccessData) {
-              				$out["device_features"] = allDeviceFeatures($tenantId);
+              $out["device_features"] = allDeviceFeatures($tenantId);
 							$out["weather_conditions"] = allWeatherConditions($tenantId);
 							$out["inverter_data"] = mysqli_fetch_all($result, MYSQLI_ASSOC);
+							$out["sql"] = $sql;
 						}
 						if(count($out) <1){
 							array_push($out, ["sql" => $sql, "error"=>$error]);
