@@ -2125,67 +2125,67 @@ function formatSQL(sql) {
   }
   
   function createTimescalePeriodDropdown(scales, thisPeriod, scaleName, currentStartDate, event, eventAction, tableName, deviceId) {
-	  const scale = scales.find(s => s.value === scaleName);
-	  let numberOfPeriods = 200;
-	  //let's find how far back data goes
-	  if (!scale) {
-		  console.error("Scale not found!");
-		  return;
-	  }
-	  //console.log(scaleName, scale);
-	  const periodSize = scale.period_size;
-	  const periodScale = scale.period_scale;
-	  //console.log(periodSize, periodScale);
-	  let xmlhttp = new XMLHttpRequest();
-	  xmlhttp.onreadystatechange = function() {
-		  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
-			  let jsonData = xmlhttp.responseText;
-			  //console.log(jsonData);
-			  recordedData = JSON.parse(jsonData);
-			  let minimalDate = recordedData["recorded"];
-			  const dropdown = document.createElement('select');
-			  dropdown.id = 'startDateDropdown';
-			  if(event){
-				  dropdown.addEventListener(event, function(event) {
-					  // Access the selected value via event.target.value
-					  //console.log('Selected value:', event.target.value);
-					  if(eventAction){
-						  eval(eventAction);
-					  }
-				  });
-			  }
-  
-			  let setByTimespanSwitch = false;
-			  for (let i = 0; i < numberOfPeriods; i++) {
-				//console.log(i);
-				  const option = document.createElement('option');
-				  //console.log(periodScale, periodSize);
-				  let label = pastStepper(periodScale, periodSize, i);
-				  option.text = label;
-				  option.value = i;
-				  if(option.text <= currentStartDate  && !setByTimespanSwitch) {
-					  setByTimespanSwitch = true;
-					  option.selected = true; 
-				  }
-				  if(thisPeriod !== false && thisPeriod == i  && !setByTimespanSwitch){
-					  //console.log("selected:", option.value, option.text);
-					  option.selected = true; 
-				  }
-				  //console.log(minimalDate, label);
-				  if(minimalDate <= label  || i==0){//filter out options where there is no data
-					  dropdown.appendChild(option); 
-				  }
-			  }
-			  //document.getElementById('placeforscaledropdown').replaceChildren(dropdown); //breaks on older Chromebooks
-			  document.getElementById('placeforscaledropdown').innerHTML = '';
-			  document.getElementById('placeforscaledropdown').appendChild(dropdown);
-		  }
-	  }
-  
-	  let url = "data.php?mode=getEarliestRecorded&table=" + tableName + "&device_id=" + deviceId; 
-	  xmlhttp.open("GET", url, true);
-	  xmlhttp.send();
+    const scale = scales.find(s => s.value === scaleName);
+    let numberOfPeriods = 200;
+
+    if (!scale) {
+      console.error("Scale not found!");
+      return;
+    }
+
+    const periodSize = scale.period_size;
+    const periodScale = scale.period_scale;
+    const initialOffset = scale.initial_offset || 0;
+
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.onreadystatechange = function() {
+      if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+        let jsonData = xmlhttp.responseText;
+        recordedData = JSON.parse(jsonData);
+        let minimalDate = recordedData["recorded"];
+
+        const dropdown = document.createElement('select');
+        dropdown.id = 'startDateDropdown';
+
+        if(event){
+          dropdown.addEventListener(event, function(event) {
+            if(eventAction){
+              eval(eventAction);
+            }
+          });
+        }
+
+        let setByTimespanSwitch = false;
+        for (let i = 0; i < numberOfPeriods; i++) {
+          const option = document.createElement('option');
+          let label = pastStepper(periodScale, periodSize, i, initialOffset);
+
+          option.text = label;
+          option.value = i;
+
+          if(option.text <= currentStartDate  && !setByTimespanSwitch) {
+            setByTimespanSwitch = true;
+            option.selected = true; 
+          }
+          if(thisPeriod !== false && thisPeriod == i  && !setByTimespanSwitch){
+            option.selected = true; 
+          }
+
+          if(minimalDate <= label  || i==0){
+            dropdown.appendChild(option); 
+          }
+        }
+
+        document.getElementById('placeforscaledropdown').innerHTML = '';
+        document.getElementById('placeforscaledropdown').appendChild(dropdown);
+      }
+    }
+
+    let url = "data.php?mode=getEarliestRecorded&table=" + tableName + "&device_id=" + deviceId; 
+    xmlhttp.open("GET", url, true);
+    xmlhttp.send();
   }
+
   
   function calculateRevisedTimespanPeriod(scales, thisPeriod, scaleName, currentStartDate){
 	  //does what the preceding function does, but only outputs a number of steps of scaleName to get back to currentStartDate instead of option dropdowns
@@ -2217,30 +2217,52 @@ function formatSQL(sql) {
 	  return 0;
   }
   
-  function pastStepper(periodScale, periodSize, ordinal){
-	  //steps into the past ordinal * periodSize units of periodScale size, returning a string representation of a datetime
-	  const now = new Date();
-	  let currentDate = new Date(now);
-	  //janky ChatGPT code that failed after ordinal==16:
-	  //currentDate[`set${timeUnitMap[periodScale]}`](now[`get${timeUnitMap[periodScale]}`]() - ((ordinal + 1 )* periodSize));
-	  if(periodScale == 'day'){
-		  currentDate.setDate(currentDate.getDate() - (ordinal+1) * periodSize);
-	  } else if (periodScale == 'month'){
-		  currentDate.setMonth(currentDate.getMonth() - (ordinal+1) * periodSize);
-	  } else if (periodScale == 'year'){
-		  currentDate.setFullYear(currentDate.getFullYear() - (ordinal+1) * periodSize);
-	  } else if (periodScale == 'hour'){
-		  currentDate.setHours(currentDate.getHours() - (ordinal+1) * periodSize);
-	  }
-	  let datetimeString;
-	  if (periodScale === 'hour') {
-		  datetimeString = currentDate.toISOString().substring(0, 16).replace('T', ' ');  // YYYY-MM-DD HH:mm format
-	  } else {
-		  datetimeString = currentDate.toISOString().substring(0, 10);  // YYYY-MM-DD format
-	  }
-	  return datetimeString;
+  function pastStepper(periodScale, periodSize, ordinal, initialOffset = 0) {
+    const now = new Date();
+    let currentDate = new Date(now);
+
+    if (periodScale === 'day') {
+      currentDate.setDate(currentDate.getDate() - ((ordinal + 1) * periodSize + initialOffset));
+    } else if (periodScale === 'month') {
+      currentDate.setMonth(currentDate.getMonth() - ((ordinal + 1) * periodSize + initialOffset));
+    } else if (periodScale === 'year') {
+      currentDate.setFullYear(currentDate.getFullYear() - ((ordinal + 1) * periodSize + initialOffset));
+    } else if (periodScale === 'hour') {
+      currentDate.setHours(currentDate.getHours() - ((ordinal + 1) * periodSize + initialOffset));
+    }
+
+    // ✅ Snap to cusps only if checkbox is checked
+    const cuspAlign = document.getElementById('atc_id')?.checked;
+
+    if (cuspAlign) {
+      if (periodScale === 'hour') {
+        // Snap to 0,3,6,... hours
+        const h = currentDate.getHours();
+        currentDate.setHours(h - (h % periodSize));
+        currentDate.setMinutes(0, 0, 0);
+      } else if (periodScale === 'day') {
+        // Snap to midnight
+        currentDate.setHours(0, 0, 0, 0);
+      } else if (periodScale === 'week') {
+        // Snap to Sunday (start of week)
+        const day = currentDate.getDay(); // 0 = Sunday
+        currentDate.setDate(currentDate.getDate() - day);
+        currentDate.setHours(0, 0, 0, 0);
+      } else if (periodScale === 'month') {
+        // Snap to first of month
+        currentDate.setDate(1);
+        currentDate.setHours(0, 0, 0, 0);
+      } else if (periodScale === 'year') {
+        // Snap to Jan 1
+        currentDate.setMonth(0, 1);
+        currentDate.setHours(0, 0, 0, 0);
+      }
+    }
+
+    return (periodScale === 'hour')
+      ? currentDate.toISOString().substring(0, 16).replace('T', ' ')
+      : currentDate.toISOString().substring(0, 10);
   }
-  
   function timeAgo(sqlDateTime, compareTo, returnDiffInSeconds, noEndWord) {
 	  sqlDateTime = sqlDateTime.replace(" ", "T"); // Fix for Safari 11
 	  // Define the timezone globally or set a default
