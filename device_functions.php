@@ -582,6 +582,7 @@ function tenants($user){
   }
   //echo $sql;
   $toolsTemplate = "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
+  $toolsTemplate .= " | <a href='?table=api_credential'>API Credentials</a> ";
   $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
   $result = mysqli_query($conn, $sql);
   
