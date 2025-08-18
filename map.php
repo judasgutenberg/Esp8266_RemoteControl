@@ -66,7 +66,7 @@ if(!$user) {
    <style>
     /* The map needs a set height to display */
     #map {
-      height: calc(100vh - 120px); /* assuming header is 60px tall */
+      height: calc(100vh - 150px); /* assuming header is 60px tall */
       width: 100%;
     }
   </style
@@ -105,6 +105,7 @@ if(!$user) {
         echo genericSelect("scaleDropdown", "scale", defaultFailDown(gvfw("scale"), "day"), $scaleConfig, "onchange", $handler);
         echo "</td></tr>";
         echo "<tr><td>Date/Time Begin:</td><td id='placeforscaledropdown'></td></tr>";
+        echo "<tr><td>Use Absolute Timespan Cusps</td><td><input type='checkbox' value='absolute_timespan_cusps' id='atc_id' onchange='" . $handler . "'/></td></tr>";
         $thisDataSql = "SELECT location_name as text, device_id as value FROM device WHERE location_name <> '' AND location_name IS NOT NULL AND tenant_id=" . intval($user["tenant_id"]) . " AND can_move=1 ORDER BY location_name ASC;";
         $result = mysqli_query($conn, $thisDataSql);
         if($result) {
