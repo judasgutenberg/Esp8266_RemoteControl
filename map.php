@@ -62,6 +62,7 @@ if(!$user) {
  ?>
   <link rel='stylesheet' href='tool.css?version=1711570359'>
   <script src='tool.js'></script>
+  <script src='tinycolor.js'></script>
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
    <style>
     /* The map needs a set height to display */
