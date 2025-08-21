@@ -9,7 +9,8 @@ window.initMap = async function () {
     let absoluteTimespanCusps = queryParams.get('absolute_timespan_cusps');
     let atcCheckbox = document.getElementById("atc_id");
     let yearsAgoToShow = queryParams.get('years_ago');
-    let greatestTime = "2000-01-01 00:00:00";
+    
+    let absoluteTimeAgo = queryParams.get('absolute_time_ago');
 
     let url = new URL(window.location.href);
     let colors = [];
@@ -62,7 +63,7 @@ window.initMap = async function () {
     history.pushState({}, "", url);
     let deviceDropdown = document.getElementById("locationDropdown");
     let deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
-    // Create the map centered somewhere reasonable
+    // Create the map centered somewhere IN THE BESTEST COUNTRY IN THE UNIVERSE, MERKA!!!
     map = new google.maps.Map(document.getElementById('map'), {
       center: { lat: 40, lng: -100 }, // fallback center
       zoom: 4
@@ -70,7 +71,13 @@ window.initMap = async function () {
 
     try {
       // Fetch your JSON data from backend
-      const response = await fetch("data.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&period_ago=" + periodAgo + "&mode=getMap&device_id=" + deviceId);
+      let url = "data.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&period_ago=" + periodAgo + "&mode=getMap&device_id=" + deviceId;
+      if(absoluteTimeAgo) {
+        url = "data.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&absolute_time_ago=" + absoluteTimeAgo + "&mode=getMap&device_id=" + deviceId;
+      }
+      //console.log(url);
+      const response = await fetch(url);
+
       const locations = await response.json();
           console.log(locations);
       // If the JSON looks like: [{latitude: 40.7, longitude: -74.0}, ...]
@@ -90,17 +97,20 @@ window.initMap = async function () {
         let newestRecorded = locations.points.reduce((oldest, p) => {
           return p.recorded > oldest ? p.recorded : oldest;
         }, locations.points[0].recorded);
+        
+        
+        const devices = locations.devices;
         for (let i = 0; i < locations.points.length; i++) {
           const loc = locations.points[i];
           const latLng = {
             lat: parseFloat(loc.latitude),
             lng: parseFloat(loc.longitude)
           };
- 
+          const deviceFound = findObjectByColumn(devices, "device_id", loc.device_id);
           // draw small circle instead of marker
           new google.maps.Circle({
             strokeWeight: 0,
-            fillColor: "#000",
+            fillColor: deviceFound.color,
             fillOpacity: 0.7,
             map,
             center: latLng,

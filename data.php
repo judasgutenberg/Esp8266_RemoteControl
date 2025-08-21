@@ -86,6 +86,7 @@ if($_REQUEST) {
 	//absolute_timespan_cusps
 	$absoluteTimespanCusps = false;
 	$absoluteTimespanCusps = gvfw("absolute_timespan_cusps");
+	$absoluteTimeAgo = "";
 	$yearsAgo = 0;
 	if(array_key_exists("years_ago", $_REQUEST)) {
 		$yearsAgo = intval($_REQUEST["years_ago"]);
@@ -97,9 +98,8 @@ if($_REQUEST) {
 		$periodAgo = intval($_REQUEST["period_ago"]);
 	}  
 	if(array_key_exists("absolute_time_ago", $_REQUEST)) {
-		$absoluteTimeAgo = intval($_REQUEST["absolute_time_ago"]);
+		$absoluteTimeAgo = $_REQUEST["absolute_time_ago"];
 	}  
-
 	$storagePassword  = gvfw("storage_password", gvfw("storagePassword"));
 	$encryptedKey = gvfw("key");
 	$encryptedKey2 = gvfw("k2"); //version 2
@@ -399,6 +399,7 @@ if($_REQUEST) {
 
 				$subResult = mysqli_query($conn, $sql);
 				$out["sql"] = $sql;
+				$out["devices"] = getDevices($tenant["tenant_id"], true);
 				if($subResult) {
 					$subRows = mysqli_fetch_all($subResult, MYSQLI_ASSOC);
 					
@@ -1500,8 +1501,11 @@ function buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $ab
   } else {
     $sql .= "   AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
   }
-  if ($periodAgo > 0) {
+  if ($periodAgo > 0  || $absoluteTimeAgo) {
     if($absoluteTimeAgo) {//the default behavior had been to step back into time relatively.  but we can also do it absolutely!
+      if($periodAgo  == 0) {
+        $periodAgo = -1;
+      }
       $sql .= " AND recorded < DATE_ADD(DATE_ADD('" . mysqli_real_escape_string($conn, $absoluteTimeAgo)  . "', INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
     } else {
       $sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
