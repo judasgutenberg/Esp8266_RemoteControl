@@ -306,7 +306,8 @@ function getWeatherData(yearsAgo) {
 	let atcCheckbox = document.getElementById("atc_id");
 	let yearsAgoToShow = queryParams.get('years_ago');
 	let greatestTime = "2000-01-01 00:00:00";
-
+  let absoluteTimeAgo = queryParams.get('absolute_time_ago');
+  
 	let url = new URL(window.location.href);
 
 	if(yearsAgo > 0 && pastYearsViewed.indexOf(yearsAgo) < 0){
@@ -348,8 +349,9 @@ function getWeatherData(yearsAgo) {
 	}
 	let locationIdDropdown = document.getElementById('locationDropdown');
 	if(!justLoaded){
-		locationId  = locationIdDropdown[locationIdDropdown.selectedIndex].value
-	}
+		locationId  = locationIdDropdown[locationIdDropdown.selectedIndex].value;
+		absoluteTimeAgo = "";
+	}  
 	if(!locationId){
 		locationId = defaultLocationId;
 	}
@@ -426,6 +428,10 @@ function getWeatherData(yearsAgo) {
 	history.pushState({}, "", url);
 	let xhttp = new XMLHttpRequest();
 	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&locationId=" + locationId + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&years_ago=" + yearsAgo;
+	if(absoluteTimeAgo) {
+    endpointUrl = "./data.php?scale=" + scale + "&absolute_time_ago=" + absoluteTimeAgo + "&mode=getWeatherData&locationId=" + locationId + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&years_ago=" + yearsAgo;
+	}
+	
 	if(plotType == 'multi'){
 		document.getElementById("singleplotdiv").style.opacity ='0.5';
 		document.getElementById("multiplotdiv").style.opacity ='1';

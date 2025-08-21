@@ -9,7 +9,6 @@ window.initMap = async function () {
     let absoluteTimespanCusps = queryParams.get('absolute_timespan_cusps');
     let atcCheckbox = document.getElementById("atc_id");
     let yearsAgoToShow = queryParams.get('years_ago');
-    
     let absoluteTimeAgo = queryParams.get('absolute_time_ago');
 
     let url = new URL(window.location.href);
@@ -38,6 +37,8 @@ window.initMap = async function () {
       if(absoluteTimespanCusps == 1){
         atcCheckbox.checked = true;
       }
+    } else {
+      absoluteTimeAgo = "";
     }
     url.searchParams.set("absolute_timespan_cusps", absoluteTimespanCusps);
 	

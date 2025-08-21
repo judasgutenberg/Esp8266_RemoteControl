@@ -401,11 +401,14 @@ function getInverterData(yearsAgo) {
 	let atcCheckbox = document.getElementById("atc_id");
 	let url = new URL(window.location.href);
 	let greatestTime = "2000-01-01 00:00:00";
-
+  let absoluteTimeAgo = queryParams.get('absolute_time_ago');
+  
 	if(justLoaded){
 		if(absoluteTimespanCusps == 1){
 			atcCheckbox.checked = true;
 		}
+	} else {
+    absoluteTimeAgo = "";
 	}
 	if(atcCheckbox.checked) {
 		absoluteTimespanCusps = 1;
@@ -446,6 +449,9 @@ function getInverterData(yearsAgo) {
 	history.pushState({}, "", url);
 	let xhttp = new XMLHttpRequest();
 	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getInverterData&absolute_timespan_cusps=" + absoluteTimespanCusps;
+	if(absoluteTimeAgo) {
+    endpointUrl = "./data.php?scale=" + scale + "&absolute_time_ago=" + absoluteTimeAgo + "&mode=getInverterData&absolute_timespan_cusps=" + absoluteTimespanCusps;
+	}
 	console.log(endpointUrl);
 
 	xhttp.onreadystatechange = function() {
