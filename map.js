@@ -56,6 +56,10 @@ window.initMap = async function () {
         //console.log("dates unchanged");
       }
       currentStartDate = periodAgoDropdown[periodAgoDropdown.selectedIndex].text;
+      if(!justLoaded){
+        absoluteTimeAgo = currentStartDate; //hmm, we can do this instead now
+        url.searchParams.set("absolute_time_ago", absoluteTimeAgo);
+      }
     }	
     periodAgo = calculateRevisedTimespanPeriod(scaleConfig, periodAgo, scale, currentStartDate);
     url.searchParams.set("period_ago", periodAgo);
