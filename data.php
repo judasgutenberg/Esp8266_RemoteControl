@@ -1497,18 +1497,18 @@ function buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $ab
     $startOfPeriod = sqlForStartOfPeriodScale($periodScale, $formattedDateTime);
   }
   if($absoluteTimeAgo) {//the default behavior had been to step back into time relatively.  but we can also do it absolutely!
-    $sql .= "   AND recorded > DATE_ADD('" . mysqli_real_escape_string($conn, $absoluteTimeAgo) . "', INTERVAL -" . intval($yearsAgo) . " YEAR)";
+    $sql .= "   AND recorded > DATE_ADD('" . mysqli_real_escape_string($conn, $absoluteTimeAgo) . "', INTERVAL " . (-1 * intval($yearsAgo)) . " YEAR)";
   } else {
-    $sql .= "   AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
+    $sql .= "   AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL " . (-1 * intval(($periodSize * ($periodAgo + 1) + $initialOffset))) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
   }
   if ($periodAgo > 0  || $absoluteTimeAgo) {
     if($absoluteTimeAgo) {//the default behavior had been to step back into time relatively.  but we can also do it absolutely!
       if($periodAgo  == 0) {
         $periodAgo = -1;
       }
-      $sql .= " AND recorded < DATE_ADD(DATE_ADD('" . mysqli_real_escape_string($conn, $absoluteTimeAgo)  . "', INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
+      $sql .= " AND recorded < DATE_ADD(DATE_ADD('" . mysqli_real_escape_string($conn, $absoluteTimeAgo)  . "', INTERVAL " . (-1 * intval($periodSize * $periodAgo + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
     } else {
-      $sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
+      $sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL " . (-1 * intval($periodSize * $periodAgo + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
     }
   }
  
