@@ -1489,24 +1489,20 @@ function buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $ab
   $groupBy = gvfa("group_by", $scaleRecord, "");
   $startOfPeriod = "'" . $formattedDateTime . "'"; 
   $historyOffset = 1;				
-  if($absoluteTimeAgo) {
+  if($absoluteTimeAgo) { //the default behavior had been to step back into time relatively.  but we can also do it absolutely!
   
   }
   if ($absoluteTimespanCusps == 1) {
     // Calculate starting point at the "cusp" of each period scale
-    $startOfPeriod = sqlForStartOfPeriodScale($periodScale, $formattedDateTime);
     // Adjust SQL to break at cusps rather than present
-    $sql .= " AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
-    if ($periodAgo > 0) {
-      $sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
-    }
-  } else {
-    $sql .= " AND recorded > DATE_ADD(DATE_ADD('" . $formattedDateTime . "', INTERVAL -" . intval($periodSize * ($periodAgo + 1) + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . intval($yearsAgo) . " YEAR)";
+    $startOfPeriod = sqlForStartOfPeriodScale($periodScale, $formattedDateTime);
   }
-  //AND  recorded > DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + $historyOffset) + $initialOffset)) . " " . $periodScale . ") ";
-  if($periodAgo  > 0) {
-    $sql .= " AND recorded < DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo) + $initialOffset)) . " " . $periodScale . ") ";
+    
+  $sql .= "   AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
+  if ($periodAgo > 0) {
+    $sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
   }
+ 
   if($groupBy){
     $sql .= " GROUP BY " . $groupBy . " "; //contrary to what you might think, this is never passed in from the frontend.
   }
