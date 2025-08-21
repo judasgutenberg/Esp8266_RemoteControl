@@ -395,7 +395,7 @@ if($_REQUEST) {
 
 			} else if ($mode=="getMap"){ //an endpoint specifically for maps
 				$sql = "SELECT * from device_log WHERE device_id=" . intval($deviceId) . "  ";
-        $sql .= buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimeAgo,  "device_log_id"); 
+        $sql .= buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimespanCusps, $absoluteTimeAgo,  "device_log_id"); 
 
 				$subResult = mysqli_query($conn, $sql);
 				$out["sql"] = $sql;
@@ -450,7 +450,7 @@ if($_REQUEST) {
 					//line 94 and it is used by both Javascript and PHP
 					$sql = "SELECT * FROM inverter_log  
 						WHERE tenant_id = " . $tenantId . " ";
-					$sql .= buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimeAgo,  "inverter_log_id"); 
+					$sql .= buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimespanCusps, $absoluteTimeAgo,  "inverter_log_id"); 
 					if($sql) {
 						$result = mysqli_query($conn, $sql);
 						$error = mysqli_error($conn);
@@ -480,7 +480,7 @@ if($_REQUEST) {
 						$sql = "SELECT " . implode(",", $weatherColumns) . ", device_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE device_id=" . $locationId;
 					}
 					
-					$sql .= " " . buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimeAgo,  "device_log_id"); 
+					$sql .= " " . buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimespanCusps, $absoluteTimeAgo,  "device_log_id"); 
 
 					if($sql) {
 						$result = mysqli_query($conn, $sql);
@@ -1478,7 +1478,7 @@ function generateDecryptedByte($counter, $thisNibble, $thisByteOfStoragePassword
 	return $thisByteResult;
 }
 
-function buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimeAgo, $orderBy) {
+function buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimespanCusps, $absoluteTimeAgo, $orderBy) {
   //i have a hardcoded config for all the different time scales in device_functions.php at or around
   //line 94 and it is used by both Javascript and PHP
   $sql = "";
@@ -1489,18 +1489,22 @@ function buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $ab
   $groupBy = gvfa("group_by", $scaleRecord, "");
   $startOfPeriod = "'" . $formattedDateTime . "'"; 
   $historyOffset = 1;				
-  if($absoluteTimeAgo) { //the default behavior had been to step back into time relatively.  but we can also do it absolutely!
-  
-  }
   if ($absoluteTimespanCusps == 1) {
     // Calculate starting point at the "cusp" of each period scale
     // Adjust SQL to break at cusps rather than present
     $startOfPeriod = sqlForStartOfPeriodScale($periodScale, $formattedDateTime);
   }
-    
-  $sql .= "   AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
+  if($absoluteTimeAgo) {//the default behavior had been to step back into time relatively.  but we can also do it absolutely!
+    $sql .= "   AND recorded > DATE_ADD('" . $absoluteTimeAgo . "', INTERVAL -" . intval($yearsAgo) . " YEAR)";
+  } else {
+    $sql .= "   AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
+  }
   if ($periodAgo > 0) {
-    $sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
+    if($absoluteTimeAgo) {//the default behavior had been to step back into time relatively.  but we can also do it absolutely!
+      $sql .= " AND recorded < DATE_ADD(DATE_ADD('" . $absoluteTimeAgo  . "', INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
+    } else {
+      $sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
+    }
   }
  
   if($groupBy){
