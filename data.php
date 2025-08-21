@@ -96,6 +96,9 @@ if($_REQUEST) {
 	if(array_key_exists("period_ago", $_REQUEST)) {
 		$periodAgo = intval($_REQUEST["period_ago"]);
 	}  
+	if(array_key_exists("absolute_time_ago", $_REQUEST)) {
+		$absoluteTimeAgo = intval($_REQUEST["absolute_time_ago"]);
+	}  
 
 	$storagePassword  = gvfw("storage_password", gvfw("storagePassword"));
 	$encryptedKey = gvfw("key");
@@ -392,34 +395,7 @@ if($_REQUEST) {
 
 			} else if ($mode=="getMap"){ //an endpoint specifically for maps
 				$sql = "SELECT * from device_log WHERE device_id=" . intval($deviceId) . "  ";
-
-				$scaleRecord = findRecordByKey(timeScales(), "value", $scale);
-				$periodSize = $scaleRecord["period_size"];
-				$periodScale = $scaleRecord["period_scale"];
-				$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
-				$groupBy = gvfa("group_by", $scaleRecord, "");
-				$startOfPeriod = "'" . $formattedDateTime . "'"; 
-				$historyOffset = 1;				if ($absoluteTimespanCusps == 1) {
-					// Calculate starting point at the "cusp" of each period scale
-					$startOfPeriod = sqlForStartOfPeriodScale($periodScale, $formattedDateTime);
-					// Adjust SQL to break at cusps rather than present
-					$sql .= " AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
-					if ($periodAgo > 0) {
-						$sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
-					}
-				} else {
-					$sql .= " AND recorded > DATE_ADD(DATE_ADD('" . $formattedDateTime . "', INTERVAL -" . intval($periodSize * ($periodAgo + 1) + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
-				}
-				//AND  recorded > DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + $historyOffset) + $initialOffset)) . " " . $periodScale . ") ";
-				if($periodAgo  > 0) {
-					$sql .= " AND recorded < DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo) + $initialOffset)) . " " . $periodScale . ") ";
-				}
-				if($groupBy){
-					$sql .= " GROUP BY " . $groupBy . " "; //contrary to what you might think, this is never passed in from the frontend.
-				}
-				$sql .= " ORDER BY device_log_id ASC";
-
-
+        $sql .= buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimeAgo,  "device_log_id"); 
 
 				$subResult = mysqli_query($conn, $sql);
 				$out["sql"] = $sql;
@@ -472,35 +448,9 @@ if($_REQUEST) {
 				} else {
 					//i have a hardcoded config for all the different time scales in device_functions.php at or around
 					//line 94 and it is used by both Javascript and PHP
-					$scaleRecord = findRecordByKey(timeScales(), "value", $scale);
-					$periodSize = $scaleRecord["period_size"];
-					$periodScale = $scaleRecord["period_scale"];
-					$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
-					$groupBy = gvfa("group_by", $scaleRecord, "");
-					$startOfPeriod = "'" . $formattedDateTime . "'"; 
-					$historyOffset = 1;
 					$sql = "SELECT * FROM inverter_log  
 						WHERE tenant_id = " . $tenantId . " ";
-					if ($absoluteTimespanCusps == 1) {
-						// Calculate starting point at the "cusp" of each period scale
-						$startOfPeriod = sqlForStartOfPeriodScale($periodScale, $formattedDateTime);
-						// Adjust SQL to break at cusps rather than present
-						$sql .= " AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
-						if ($periodAgo > 0) {
-							$sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
-						}
-					} else {
-						$sql .= " AND recorded > DATE_ADD(DATE_ADD('" . $formattedDateTime . "', INTERVAL -" . intval($periodSize * ($periodAgo + 1) + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
-					}
-					//AND  recorded > DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + $historyOffset) + $initialOffset)) . " " . $periodScale . ") ";
-					if($periodAgo  > 0) {
-						$sql .= " AND recorded < DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo) + $initialOffset)) . " " . $periodScale . ") ";
-					}
-					if($groupBy){
-						$sql .= " GROUP BY " . $groupBy . " "; //contrary to what you might think, this is never passed in from the frontend.
-					}
-					$sql .= " ORDER BY inverter_log_id ASC";
-					//die($sql);
+					$sql .= buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimeAgo,  "inverter_log_id"); 
 					if($sql) {
 						$result = mysqli_query($conn, $sql);
 						$error = mysqli_error($conn);
@@ -522,13 +472,6 @@ if($_REQUEST) {
 				if(!$conn) {
 					$out = ["error"=>"bad database connection"];
 				} else {
-					//i have a hardcoded config for all the different time scales in device_functions.php at or around
-					//line 94 and it is used by both Javascript and PHP
-					$scaleRecord = findRecordByKey(timeScales(), "value", $scale);
-					$periodSize = $scaleRecord["period_size"];
-					$periodScale = $scaleRecord["period_scale"];
-					$initialOffset = gvfa("initial_offset", $scaleRecord, 0);
-					$groupBy = gvfa("group_by", $scaleRecord, "");
 					if($specificColumn) {
 						//to revisit:  need to figure out a way to keep users without a device_id from seeing someone else's devices
 						$sql = "SELECT " . filterStringForSqlEntities($specificColumn, true)  . ", device_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE  device_id IN (" . filterCommasAndDigits($locationIds) . ") ";
@@ -536,28 +479,9 @@ if($_REQUEST) {
 						$weatherColumns = getGraphColumns($user["tenant_id"], $locationId);
 						$sql = "SELECT " . implode(",", $weatherColumns) . ", device_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE device_id=" . $locationId;
 					}
-					if ($absoluteTimespanCusps == 1) {
-						// Calculate starting point at the "cusp" of each period scale
-						$startOfPeriod = sqlForStartOfPeriodScale($periodScale, $formattedDateTime);
-						// Adjust SQL to break at cusps rather than present
-						$sql .= " AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
-						if ($periodAgo > 0) {
-							$sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . $yearsAgo . " YEAR)";
-						}
-					} else {
+					
+					$sql .= " " . buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimeAgo,  "device_log_id"); 
 
-						$sql .= " AND recorded > DATE_ADD(DATE_ADD('" . $formattedDateTime . "', INTERVAL -" . intval($periodSize * ($periodAgo + 1) + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
-					}
-					if($periodAgo  > 0) {
-						$sql .= " AND recorded < DATE_ADD(DATE_ADD('" . $formattedDateTime . "', INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
-					} else if ($yearsAgo > 0){
-						$sql .= " AND recorded < DATE_ADD(DATE_ADD('" . $formattedDateTime . "', INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . $yearsAgo . " YEAR)";
-					}
-					if($groupBy){
-						$sql .= " GROUP BY " . $groupBy . " ";//contrary to what you might think, this is never passed in from the frontend.
-					}
-					$sql .= " ORDER BY device_log_id ASC";
-					//die($sql);
 					if($sql) {
 						$result = mysqli_query($conn, $sql);
 						$error = mysqli_error($conn);
@@ -1552,6 +1476,42 @@ function generateDecryptedByte($counter, $thisNibble, $thisByteOfStoragePassword
 			break;
 	}
 	return $thisByteResult;
+}
+
+function buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimeAgo, $orderBy) {
+  //i have a hardcoded config for all the different time scales in device_functions.php at or around
+  //line 94 and it is used by both Javascript and PHP
+  $sql = "";
+  $scaleRecord = findRecordByKey(timeScales(), "value", $scale);
+  $periodSize = $scaleRecord["period_size"];
+  $periodScale = $scaleRecord["period_scale"];
+  $initialOffset = gvfa("initial_offset", $scaleRecord, 0);
+  $groupBy = gvfa("group_by", $scaleRecord, "");
+  $startOfPeriod = "'" . $formattedDateTime . "'"; 
+  $historyOffset = 1;				
+  if($absoluteTimeAgo) {
+  
+  }
+  if ($absoluteTimespanCusps == 1) {
+    // Calculate starting point at the "cusp" of each period scale
+    $startOfPeriod = sqlForStartOfPeriodScale($periodScale, $formattedDateTime);
+    // Adjust SQL to break at cusps rather than present
+    $sql .= " AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
+    if ($periodAgo > 0) {
+      $sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
+    }
+  } else {
+    $sql .= " AND recorded > DATE_ADD(DATE_ADD('" . $formattedDateTime . "', INTERVAL -" . intval($periodSize * ($periodAgo + 1) + $initialOffset) . " " . $periodScale  . "), INTERVAL -" . intval($yearsAgo) . " YEAR)";
+  }
+  //AND  recorded > DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + $historyOffset) + $initialOffset)) . " " . $periodScale . ") ";
+  if($periodAgo  > 0) {
+    $sql .= " AND recorded < DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo) + $initialOffset)) . " " . $periodScale . ") ";
+  }
+  if($groupBy){
+    $sql .= " GROUP BY " . $groupBy . " "; //contrary to what you might think, this is never passed in from the frontend.
+  }
+  $sql .= " ORDER BY " . $orderBy . " ASC";
+  return $sql;
 }
 
 
