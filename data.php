@@ -1481,6 +1481,7 @@ function generateDecryptedByte($counter, $thisNibble, $thisByteOfStoragePassword
 function buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimespanCusps, $absoluteTimeAgo, $orderBy) {
   //i have a hardcoded config for all the different time scales in device_functions.php at or around
   //line 94 and it is used by both Javascript and PHP
+  global $conn;
   $sql = "";
   $scaleRecord = findRecordByKey(timeScales(), "value", $scale);
   $periodSize = $scaleRecord["period_size"];
@@ -1495,13 +1496,13 @@ function buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $ab
     $startOfPeriod = sqlForStartOfPeriodScale($periodScale, $formattedDateTime);
   }
   if($absoluteTimeAgo) {//the default behavior had been to step back into time relatively.  but we can also do it absolutely!
-    $sql .= "   AND recorded > DATE_ADD('" . $absoluteTimeAgo . "', INTERVAL -" . intval($yearsAgo) . " YEAR)";
+    $sql .= "   AND recorded > DATE_ADD('" . mysqli_real_escape_string($conn, $absoluteTimeAgo) . "', INTERVAL -" . intval($yearsAgo) . " YEAR)";
   } else {
     $sql .= "   AND recorded > DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval(($periodSize * ($periodAgo + 1) + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
   }
   if ($periodAgo > 0) {
     if($absoluteTimeAgo) {//the default behavior had been to step back into time relatively.  but we can also do it absolutely!
-      $sql .= " AND recorded < DATE_ADD(DATE_ADD('" . $absoluteTimeAgo  . "', INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
+      $sql .= " AND recorded < DATE_ADD(DATE_ADD('" . mysqli_real_escape_string($conn, $absoluteTimeAgo)  . "', INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
     } else {
       $sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL -" . intval($periodSize * $periodAgo + $initialOffset) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
     }
