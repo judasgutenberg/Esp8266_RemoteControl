@@ -699,6 +699,7 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
           Serial.println(retLine.indexOf("error:"));
         }
         lastDataLogTime = millis();
+        moxeeRebootCount = 0; //might as well reset this
         //Serial.print("last command log id (before sleep test): ");
         //Serial.println(lastCommandLogId);
         if(lastCommandLogId == 0 && responseBuffer == "" && outputMode == 0) {
