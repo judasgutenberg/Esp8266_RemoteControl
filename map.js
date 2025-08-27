@@ -113,7 +113,7 @@ window.initMap = async function () {
           };
           const deviceFound = findObjectByColumn(devices, "device_id", loc.device_id);
           // draw small circle instead of marker
-          new google.maps.Circle({
+          let circle =  new google.maps.Circle({
             strokeWeight: 0,
             fillColor: deviceFound.color,
             fillOpacity: 0.7,
@@ -121,7 +121,29 @@ window.initMap = async function () {
             center: latLng,
             radius: 10 // in meters; make this tiny to look like a dot
           });
-
+          
+          const content = `
+            <div style="font-size: 12px; line-height: 1.4;">
+              <strong>Recorded:</strong> ${loc.recorded}<br>
+              (${timeAgo(loc.recorded,  null, false)}) <br>
+              <strong>Speed:</strong> ${loc.wind_speed} m/s<br>
+              <strong>Elevation:</strong> ${loc.elevation} m<br>
+              <strong>Battery:</strong> ${loc.voltage}%
+            </div>
+          `;
+            const infoWindow = new google.maps.InfoWindow({
+              content: content,
+              position: latLng
+            });
+            
+           circle.addListener("mouseover", () => {
+            infoWindow.setPosition(circle.getCenter());
+            infoWindow.open(map);
+          });
+          circle.addListener("mouseout", () => {
+            infoWindow.close();
+          });
+      
           // draw line segment to next point
           if (i < locations.points.length - 1) {
             const nextLoc = locations.points[i + 1];
