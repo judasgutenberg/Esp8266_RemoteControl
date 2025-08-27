@@ -17,7 +17,7 @@ $scaleConfig =  timeScales();
 $credential = getCredential($user, "googlemap");
 $error = "";
 $deviceId = gvfw("device_id");
-$version = 1.0;
+$version = 1.1;
 if($deviceId == ""){
   $deviceId = 21; //hard coded for me, probably not what you want
 }
