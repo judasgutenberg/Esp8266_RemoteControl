@@ -167,7 +167,7 @@ window.initMap = async function () {
             //let colors = ["#ff0000", "#00ff00", "#0000ff", "#ff00ff", "#ffaa00"];
             //color = colors[parseInt(Math.random() * colors.length)];
             //console.log(color, ageMinutes);
-            const preAdjust =  (recordedDate-oldestDate)/(newestDate-oldestDate);
+            const preAdjust =  1-((recordedDate-oldestDate)/(newestDate-oldestDate)); //red is newest!
             const hue = (preAdjust * 360);
             //const adjustedValue = rainbowColor(Math.pow(hue, 0.7)); // tweak exponent to shift distribution
             const color = rainbowColor(preAdjust); // tweak exponent to shift distribution

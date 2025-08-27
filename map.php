@@ -17,6 +17,7 @@ $scaleConfig =  timeScales();
 $credential = getCredential($user, "googlemap");
 $error = "";
 $deviceId = gvfw("device_id");
+$version = 1.0;
 if($deviceId == ""){
   $deviceId = 21; //hard coded for me, probably not what you want
 }
@@ -61,8 +62,8 @@ if(!$user) {
  }
  ?>
   <link rel='stylesheet' href='tool.css?version=1711570359'>
-  <script src='tool.js'></script>
-  <script src='tinycolor.js'></script>
+  <script src='tool.js?version=<?php echo $version?>'></script>
+  <script src='tinycolor.js?version=<?php echo $version?>'></script>
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
    <style>
     /* The map needs a set height to display */
@@ -118,7 +119,7 @@ if(!$user) {
     </div>
 	</div>
 </div>
-<script src='map.js'></script>
+<script src='map.js?version=<?php echo $version?>'></script>
  <script>
     let map;
     let currentStartDate; //a global that needs to persist through HTTP sessions in the frontend
