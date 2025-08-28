@@ -107,7 +107,7 @@ As parameters are changed on the pages showing weather and inverter graphical da
 
 ![alt text](maps.jpg?raw=true)
 
-There is also a Maps tab to display devices with device_log data containing varying GPS coordinates that can be plotted on a map. Any device with a can_move set to 1 can be viewed in Maps.
+There is also a Maps tab to display devices with device_log data containing varying GPS coordinates that can be plotted on a map. Any device with a can_move set to 1 can be viewed in Maps.  The plotted map points are broken up according to the same start date and timespan picker used by the graphing tabs.
 
 ![alt text](weathergraph.jpg?raw=true)
 
