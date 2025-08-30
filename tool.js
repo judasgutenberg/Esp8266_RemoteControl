@@ -2155,26 +2155,48 @@ function formatSQL(sql) {
           });
         }
 
-        let setByTimespanSwitch = false;
-        for (let i = 0; i < numberOfPeriods; i++) {
-          const option = document.createElement('option');
-          let label = pastStepper(periodScale, periodSize, i, initialOffset);
+let setByTimespanSwitch = false;
+let closestOption = null;
+let closestDiff = Infinity;
 
-          option.text = label;
-          option.value = i;
+const now = new Date();
+const nowMinusOnePeriod = pastStepper(periodScale, periodSize, -1, initialOffset); // one step forward = now+period
+const cutoff = new Date(nowMinusOnePeriod); // upper bound for valid labels
 
-          if(option.text <= currentStartDate  && !setByTimespanSwitch) {
-            setByTimespanSwitch = true;
-            option.selected = true; 
-          }
-          if(thisPeriod !== false && thisPeriod == i  && !setByTimespanSwitch){
-            option.selected = true; 
-          }
+for (let i = 0; i < numberOfPeriods; i++) {
+  const option = document.createElement('option');
+  let label = pastStepper(periodScale, periodSize, i, initialOffset);
+  let labelDate = new Date(label);
 
-          if(minimalDate <= label  || i==0){
-            dropdown.appendChild(option); 
-          }
-        }
+  // only include if not in the future relative to (now - period)
+  if (labelDate <= cutoff) {
+    option.text = label;
+    option.value = i;
+
+    // track closest to currentStartDate
+    if (currentStartDate) {
+      let diff = Math.abs(labelDate - new Date(currentStartDate));
+      if (diff < closestDiff) {
+        closestDiff = diff;
+        closestOption = option;
+      }
+    }
+
+    if (minimalDate <= label || i === 0) {
+      dropdown.appendChild(option);
+    }
+  }
+}
+
+// apply selection
+if (closestOption && !setByTimespanSwitch) {
+  closestOption.selected = true;
+} else if (thisPeriod !== false) {
+  let match = [...dropdown.options].find(o => o.value == thisPeriod);
+  if (match) match.selected = true;
+}
+
+
 
         document.getElementById('placeforscaledropdown').innerHTML = '';
         document.getElementById('placeforscaledropdown').appendChild(dropdown);
@@ -2215,6 +2237,19 @@ function formatSQL(sql) {
 		  }
 	  }
 	  return 0;
+  }
+  
+  function toMySQLDatetime(date = new Date()) {
+    const pad = (n) => n.toString().padStart(2, '0');
+
+    const year = date.getFullYear();
+    const month = pad(date.getMonth() + 1); // Months are zero-based
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    const seconds = pad(date.getSeconds());
+
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   }
   
   function pastStepper(periodScale, periodSize, ordinal, initialOffset = 0) {
