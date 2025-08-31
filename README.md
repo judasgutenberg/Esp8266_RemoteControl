@@ -105,12 +105,13 @@ In the weather data display there is also a button that will cause data from pre
 
 As parameters are changed on the pages showing weather and inverter graphical data, the url is changed accordingly, providing urls that can be saved for a return to a future version of the very same display.
 
-![alt text](maps.jpg?raw=true)
+![alt text](weathergraph.jpg?raw=true)
+
 ## Maps
 
 There is also a Maps tab to display devices with device_log data containing varying GPS coordinates that can be plotted on a map. Any device with a can_move set to 1 can be viewed in Maps.  The plotted map points are broken up according to the same start date and timespan picker used by the graphing tabs and you cam mouse-over the points for detailed information collected from the device at that moment.
 
-![alt text](weathergraph.jpg?raw=true)
+![alt text](maps.jpg?raw=true)
 
 ## Automation and Conditions
 There is also an inverter-related endpoint in data.php to return live inverter information to the local remote (for now, this only works with SolArk inverters, as that is the kind I have, though they are notoriously hard to get data from).  This inverter data is also available to a conditions-processing system that automatically turns device_features on or off depending on inverter sensor values.  Such conditions are entered in the table management_rule in the conditions column.   Conditions include tokens that take the form <tablename[location_id].columnName>.  An example token would be <inverter_log[].battery_percentage>.  A condition made with that token would be something like
