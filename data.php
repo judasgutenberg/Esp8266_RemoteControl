@@ -82,7 +82,8 @@ if($_REQUEST) {
 	}
 
 	$averageLatency = intval(readMemoryCache("latency-" . $deviceId));
-
+  $allData = intval(gvfw("all_data"));
+  $maxRecorded = gvfw("max_recorded");
 	//absolute_timespan_cusps
 	$absoluteTimespanCusps = false;
 	$absoluteTimespanCusps = gvfw("absolute_timespan_cusps");
@@ -1474,7 +1475,7 @@ function generateDecryptedByte($counter, $thisNibble, $thisByteOfStoragePassword
 function buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimespanCusps, $absoluteTimeAgo, $yearsAgo, $orderBy) {
   //i have a hardcoded config for all the different time scales in device_functions.php at or around
   //line 94 and it is used by both Javascript and PHP
-  global $conn;
+  global $conn, $allData, $maxRecorded;
   $sql = "";
   $scaleRecord = findRecordByKey(timeScales(), "value", $scale);
   $periodSize = $scaleRecord["period_size"];
@@ -1483,6 +1484,9 @@ function buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $ab
   $groupBy = gvfa("group_by", $scaleRecord, "");
   $startOfPeriod = "'" . $formattedDateTime . "'"; 
   $historyOffset = 1;				
+  if($allData) {
+    $groupBy = "";
+  }
   if ($absoluteTimespanCusps == 1) {
     // Calculate starting point at the "cusp" of each period scale
     // Adjust SQL to break at cusps rather than present
@@ -1501,6 +1505,9 @@ function buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $ab
     } else {
       $sql .= " AND recorded < DATE_ADD(DATE_ADD(" . $startOfPeriod . ", INTERVAL " . (-1 * intval($periodSize * $periodAgo + $initialOffset)) . " " . $periodScale . " )" . ", INTERVAL -" . intval($yearsAgo) . " YEAR)";
     }
+  }
+  if($maxRecorded) {
+    $sql .= " AND recorded > '" . mysqli_real_escape_string($conn, $maxRecorded) ."' ";
   }
  
   if($groupBy){

@@ -103,17 +103,25 @@ if(!$user) {
       <div  id='singleplotdiv'>
         <table id="dataTable">
         <?php 
-        echo "<tr><td>Time Scale:</td><td>";
+        echo "<tr><td class='genericformelementlabel'>Time Scale:</td><td>";
         echo genericSelect("scaleDropdown", "scale", defaultFailDown(gvfw("scale"), "day"), $scaleConfig, "onchange", $handler);
-        echo "</td></tr>";
-        echo "<tr><td>Date/Time Begin:</td><td id='placeforscaledropdown'></td></tr>";
-        echo "<tr><td>Use Absolute Timespan Cusps</td><td><input type='checkbox' value='absolute_timespan_cusps' id='atc_id' onchange='" . $handler . "'/></td></tr>";
+        echo "</td>";
+        echo "<td class='genericformelementlabel'>Show All Data:</td><td><input type='checkbox' value='1' id='all_data' onchange='" . $handler . "'/></td>";
+        echo "</tr>\n";
+        echo "<tr><td class='genericformelementlabel'>Date/Time Begin:</td><td id='placeforscaledropdown'></td>";
+        echo "<td class='genericformelementlabel'>Live Update:</td><td><input type='checkbox' value='1' id='live_data' onchange='" . $handler . "'/></td>";
+        echo "</tr>\n";
+        echo "<tr><td>Use Absolute Timespan Cusps:</td><td><input type='checkbox' value='absolute_timespan_cusps' id='atc_id' onchange='" . $handler . "'/></td>";
         $thisDataSql = "SELECT location_name as text, device_id as value FROM device WHERE location_name <> '' AND location_name IS NOT NULL AND tenant_id=" . intval($user["tenant_id"]) . " AND can_move=1 ORDER BY location_name ASC;";
+
         $result = mysqli_query($conn, $thisDataSql);
         if($result) {
           $selectData = mysqli_fetch_all($result, MYSQLI_ASSOC); 
         }
-        echo "<tr><td>Tracker:</td><td>" . genericSelect($selectId, "deviceId", defaultFailDown(gvfw("device_id"), $deviceId), $selectData, "onchange", $handler) . "</td></tr>";
+        echo "<td class='genericformelementlabel'>Tracker:</td><td>" . genericSelect($selectId, "deviceId", defaultFailDown(gvfw("device_id"), $deviceId), $selectData, "onchange", $handler) . "</td>";
+        echo "</tr>\n";
+
+        
         ?>
         </table>
     </div>

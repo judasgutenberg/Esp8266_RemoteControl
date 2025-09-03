@@ -1,5 +1,21 @@
+let maxRecorded = "";
+ 
+
+function clearMap() {
+    map = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: 40, lng: -100 }, // fallback center
+    zoom: 4
+  });
+}
+    
 window.initMap = async function () {
     const queryParams = new URLSearchParams(window.location.search);
+    let liveData = 0;
+    let liveDataCheckbox = document.getElementById("live_data");
+    if(liveDataCheckbox.checked) {
+      liveData = 1;
+    }
+    //if liveData, not clear everything
     let locationIdArray = [];
     let scale = queryParams.get('scale');
     let locationId = queryParams.get('location_id');
@@ -8,11 +24,16 @@ window.initMap = async function () {
     let plotType = "single";
     let absoluteTimespanCusps = queryParams.get('absolute_timespan_cusps');
     let atcCheckbox = document.getElementById("atc_id");
+    let allDataCheckbox = document.getElementById("all_data");
     let yearsAgoToShow = queryParams.get('years_ago');
     let absoluteTimeAgo = queryParams.get('absolute_time_ago');
-
+    let allData = 0;
     let url = new URL(window.location.href);
     let colors = [];
+ 
+    if(allDataCheckbox.checked) {
+      allData = 1;
+    }
 
     if(!scale){
       scale = "day";
@@ -30,9 +51,8 @@ window.initMap = async function () {
 
     if(atcCheckbox.checked) {
       absoluteTimespanCusps = 1;
-    } else {
-      absoluteTimespanCusps = 0;
-    }
+    } 
+
     if(justLoaded){
       if(absoluteTimespanCusps == 1){
         atcCheckbox.checked = true;
@@ -69,22 +89,26 @@ window.initMap = async function () {
     let deviceDropdown = document.getElementById("locationDropdown");
     let deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
     // Create the map centered somewhere IN THE BESTEST COUNTRY IN THE UNIVERSE, MERKA!!!
-    map = new google.maps.Map(document.getElementById('map'), {
-      center: { lat: 40, lng: -100 }, // fallback center
-      zoom: 4
-    });
+    
+     if(!liveData || justLoaded) {
+      clearMap();
+     }
 
     try {
       // Fetch your JSON data from backend
-      let url = "data.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&period_ago=" + periodAgo + "&mode=getMap&device_id=" + deviceId;
+      console.log(maxRecorded);
+      let extraUrlData = "&mode=getMap&device_id=" + deviceId + "&all_data=" + allData; 
+      if(liveData) {
+        extraUrlData += "&max_recorded=" + maxRecorded;
+      }
+      let url = "data.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&period_ago=" + periodAgo + extraUrlData;
       if(absoluteTimeAgo) {
-        url = "data.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&absolute_time_ago=" + absoluteTimeAgo + "&mode=getMap&device_id=" + deviceId;
+        url = "data.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&absolute_time_ago=" + absoluteTimeAgo + extraUrlData;
       }
       //console.log(url);
       const response = await fetch(url);
-
       const locations = await response.json();
-          console.log(locations);
+      //console.log(locations);
       // If the JSON looks like: [{latitude: 40.7, longitude: -74.0}, ...]
       /*
       locations.points.forEach(loc => {
@@ -102,7 +126,10 @@ window.initMap = async function () {
         let newestRecorded = locations.points.reduce((oldest, p) => {
           return p.recorded > oldest ? p.recorded : oldest;
         }, locations.points[0].recorded);
-        
+        console.log(oldestRecorded, newestRecorded);
+        if(newestRecorded > maxRecorded || maxRecorded == "") {
+          maxRecorded = newestRecorded;
+        }
         
         const devices = locations.devices;
         for (let i = 0; i < locations.points.length; i++) {
@@ -173,7 +200,7 @@ window.initMap = async function () {
             const color = rainbowColor(preAdjust); // tweak exponent to shift distribution
 
             colors[colors.length] = color;
-            console.log(colors[colors.length-1]);
+            //console.log(colors[colors.length-1]);
   
             let polyline = new google.maps.Polyline({
               path: [latLng, nextLatLng],
@@ -196,6 +223,11 @@ window.initMap = async function () {
       }
       //console.log(scaleConfig);
       createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'initMap()', 'device_log', deviceId);
+      if(liveData) {
+        setTimeout(()=>{
+        initMap();
+        }, 3000);
+      }
       justLoaded = false;
     } catch (err) {
       console.error('Error loading location data:', err);
