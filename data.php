@@ -396,7 +396,7 @@ if($_REQUEST) {
 
 			} else if ($mode=="getMap"){ //an endpoint specifically for maps
 				$sql = "SELECT * from device_log WHERE device_id=" . intval($deviceId) . "  ";
-        $sql .= buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimespanCusps, $absoluteTimeAgo,  $yearsAgo, "device_log_id"); 
+        $sql .= buildRestOfSegmentedDataSql($formattedDateTime, "device_log_id"); 
 
 				$subResult = mysqli_query($conn, $sql);
 				$out["sql"] = $sql;
@@ -452,7 +452,7 @@ if($_REQUEST) {
 					//line 94 and it is used by both Javascript and PHP
 					$sql = "SELECT * FROM inverter_log  
 						WHERE tenant_id = " . $tenantId . " ";
-					$sql .= buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimespanCusps, $absoluteTimeAgo,  $yearsAgo, "inverter_log_id"); 
+					$sql .= buildRestOfSegmentedDataSql($formattedDateTime, "inverter_log_id"); 
 					if($sql) {
 						$result = mysqli_query($conn, $sql);
 						$error = mysqli_error($conn);
@@ -482,7 +482,7 @@ if($_REQUEST) {
 						$sql = "SELECT " . implode(",", $weatherColumns) . ", device_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE device_id=" . $locationId;
 					}
 					
-					$sql .= " " . buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimespanCusps, $absoluteTimeAgo,  $yearsAgo, "device_log_id"); 
+					$sql .= " " . buildRestOfSegmentedDataSql($formattedDateTime, "device_log_id"); 
 
 					if($sql) {
 						$result = mysqli_query($conn, $sql);
@@ -1472,10 +1472,10 @@ function generateDecryptedByte($counter, $thisNibble, $thisByteOfStoragePassword
 	return $thisByteResult;
 }
 
-function buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $absoluteTimespanCusps, $absoluteTimeAgo, $yearsAgo, $orderBy) {
+function buildRestOfSegmentedDataSql($formattedDateTime, $orderBy) {
   //i have a hardcoded config for all the different time scales in device_functions.php at or around
   //line 94 and it is used by both Javascript and PHP
-  global $conn, $allData, $maxRecorded;
+  global $conn, $allData, $maxRecorded, $absoluteTimespanCusps, $yearsAgo, $absoluteTimeAgo, $scale, $periodAgo;
   $sql = "";
   $scaleRecord = findRecordByKey(timeScales(), "value", $scale);
   $periodSize = $scaleRecord["period_size"];
@@ -1516,11 +1516,3 @@ function buildRestOfSegmentedDataSql($formattedDateTime, $scale, $periodAgo, $ab
   $sql .= " ORDER BY " . $orderBy . " ASC";
   return $sql;
 }
-
-
-
-//some helpful sql examples for creating sql users:
-//CREATE USER 'weathertron'@'localhost' IDENTIFIED  BY 'your_password';
-//GRANT CREATE, ALTER, DROP, INSERT, UPDATE, DELETE, SELECT, REFERENCES, RELOAD on *.* TO 'weathertron'@'localhost' WITH GRANT OPTION;
-//GRANT ALL PRIVILEGES ON *.* TO 'weathertron'@'localhost' WITH GRANT OPTION;
- 
