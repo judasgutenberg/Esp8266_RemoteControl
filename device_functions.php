@@ -1793,7 +1793,7 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
    $gridPower . "," . 
    $batteryPercent . "," . 
    $batteryPower . "," .  
-   $batteryVoltage . "," . 
+   nullifyOrNumber($batteryVoltage) . "," . 
    nullifyOrNumber($deviceDigest) . "," . 
    nullifyOrNumber($mysteryValue3) . "," .
    nullifyOrNumber($mysteryValue1) . "," .
