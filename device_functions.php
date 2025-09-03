@@ -1794,22 +1794,24 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
    $batteryPercent . "," . 
    $batteryPower . "," .  
    $batteryVoltage . "," . 
-   $deviceDigest . "," . 
-   $mysteryValue3 . "," .
-   $mysteryValue1 . "," .
-   $mysteryValue2 . "," .
-   $changer1 . "," .
-   $changer2 . "," .
-   $changer3 . "," .
-   $changer4 . "," .
-   $changer5 . "," .
-   $changer6 . "," .
-   $changer7 . "," .
+   nullifyOrNumber($deviceDigest) . "," . 
+   nullifyOrNumber($mysteryValue3) . "," .
+   nullifyOrNumber($mysteryValue1) . "," .
+   nullifyOrNumber($mysteryValue2) . "," .
+   nullifyOrNumber($changer1) . "," .
+   nullifyOrNumber($changer2) . "," .
+   nullifyOrNumber($changer3) . "," .
+   nullifyOrNumber($changer4) . "," .
+   nullifyOrNumber($changer5) . "," .
+   nullifyOrNumber($changer6) . "," .
+   nullifyOrNumber($changer7) . "," .
    $weatherConditionId .
    ")";
+   //echo $loggingSql;
   $loggingResult = mysqli_query($conn, $loggingSql);
 
 }
+
 
 //reads data from the cloud about our particular solar installation, which is great if you don't have a solark copilot
 function getCurrentSolarDataFromCloud($tenant) {
@@ -1920,8 +1922,10 @@ function getCurrentSolarDataFromCloud($tenant) {
       NULL,
       NULL
     );
-    return Array("tenant_id"=>$tenant["tenant_id"], "recorded" => $formatedDateTime, "solar_power" => $data["pvPower"], "load_power" => $data["loadOrEpsPower"] ,
+    $out = Array("tenant_id"=>$tenant["tenant_id"], "recorded" => $formatedDateTime, "solar_power" => $data["pvPower"], "load_power" => $data["loadOrEpsPower"] ,
     "grid_power" =>  $data["gridOrMeterPower"], "battery_percentage" => $data["soc"], "battery_power" => $data["battPower"]); 
+    //var_dump($out);
+    return $out;
   } else {
     return $mostRecentInverterRecord;
 

@@ -1179,14 +1179,6 @@ function addNodeIfPresent($object, $key, $value){
 	return $object;
 }
 
-function nullifyOrNumber($number){
-	$out = $number;
-	if($number === ""){
-		$out = "NULL";
-	}
-	return $out;
-}
-
 function deDelimitify($inString){
 	return str_replace("!", "", str_replace("|", "", str_replace("*", "", $inString)));
 }

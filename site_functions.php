@@ -1694,6 +1694,14 @@ function endsWith($strIn, $what) {
 	return false;
 }
 
+function nullifyOrNumber($number){
+	$out = $number;
+	if($number === "" || $number === NULL){
+		$out = "NULL";
+	}
+	return $out;
+}
+
 function formatBytes($bytes, $precision = 2) {
   $units = ['bytes', 'kilobytes', 'megabytes', 'gigabytes', 'terabytes'];
   if ($bytes == 0) {
