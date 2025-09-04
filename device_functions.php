@@ -1816,11 +1816,6 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
 //reads data from the cloud about our particular solar installation, which is great if you don't have a solark copilot
 function getCurrentSolarDataFromCloud($tenant) {
   global $conn, $timezone;
-  if (random_int(1, 10) !== 1) { //keeps it from happening multiple times
-    if(!gvfw("solarkapitest") ){
-      return;
-    }
-  }
   $baseUrl = "https://api.solarkcloud.com";
   $mostRecentInverterRecord = getMostRecentInverterRecord($tenant);
   $date = new DateTime("now", new DateTimeZone($timezone));//obviously, you would use your timezone, not necessarily mine
@@ -1835,7 +1830,7 @@ function getCurrentSolarDataFromCloud($tenant) {
   //var_dump($mostRecentInverterRecord);
   //echo $minutesSinceLastRecord;
   
-  if(gvfw("solarkapitest") || $minutesSinceLastRecord > 5) { //we don't need to get data from SolArk any more, but this is how you would
+  if($minutesSinceLastRecord > 5) { //we don't need to get data from SolArk any more, but this is how you would
     $credential = getCredential($tenant, "solark");
     if(!$credential) {
       return;
@@ -1912,9 +1907,7 @@ function getCurrentSolarDataFromCloud($tenant) {
     curl_close($ch);
 
     $dataBody = json_decode($dataResponse, true);
-    if(gvfw("solarkapitest")){
-      var_dump($dataBody);
-    }
+    //var_dump($dataBody );
     $data = $dataBody["data"];
     saveSolarData($tenant, $data["gridOrMeterPower"], $data["soc"],  $data["battPower"], $data["loadOrEpsPower"] , 
       intval($data["pvPower"])/2, intval($data["pvPower"])/2, NULL, 
@@ -2528,7 +2521,7 @@ function instantCommand($tenantId, $userId, $deviceId = "") {
 
 function visitorLog($deviceId, $number, $type) {
   $lines=array();
-  $logFile = "/var/log/apache2/saccess.log";
+  $logFile = "/var/log/apache2/access.log";
   $grepPreFilter = "";
   $secondStageFile = $logFile;
   if($type == "just microcontroller visits") {
