@@ -1,3 +1,5 @@
+	let cachedEarliestRecord = null;
+	
 	function managementRuleTool(item) {
 		let xmlhttp = new XMLHttpRequest();
 		xmlhttp.onreadystatechange = function() {
@@ -2124,10 +2126,12 @@ function formatSQL(sql) {
   
   }
   
+
   function createTimescalePeriodDropdown(scales, thisPeriod, scaleName, currentStartDate, event, eventAction, tableName, deviceId) {
     const scale = scales.find(s => s.value === scaleName);
     let numberOfPeriods = 200;
-
+    let loader = "<div class=\"dot-loader\"><span></span><span></span><span></span></div>";
+     document.getElementById('placeforscaledropdown').innerHTML = loader;
     if (!scale) {
       console.error("Scale not found!");
       return;
@@ -2137,69 +2141,75 @@ function formatSQL(sql) {
     const periodScale = scale.period_scale;
     const initialOffset = scale.initial_offset || 0;
 
+    // Helper function to create dropdown once we have minimalDate
+    function buildDropdown(minimalDate) {
+      const dropdown = document.createElement('select');
+      dropdown.id = 'startDateDropdown';
+      
+      if(event){
+        dropdown.addEventListener(event, function(event) {
+          if(eventAction){
+            eval(eventAction);
+          }
+        });
+      }
+
+      let setByTimespanSwitch = false;
+      let closestOption = null;
+      let closestDiff = Infinity;
+
+      const now = new Date();
+      const nowMinusOnePeriod = pastStepper(periodScale, periodSize, -1, initialOffset); 
+      const cutoff = new Date(nowMinusOnePeriod);
+
+      for (let i = 0; i < numberOfPeriods; i++) {
+        const option = document.createElement('option');
+        let label = pastStepper(periodScale, periodSize, i, initialOffset);
+        let labelDate = new Date(label);
+
+        if (labelDate <= cutoff) {
+          option.text = label;
+          option.value = i;
+
+          if (currentStartDate) {
+            let diff = Math.abs(labelDate - new Date(currentStartDate));
+            if (diff < closestDiff) {
+              closestDiff = diff;
+              closestOption = option;
+            }
+          }
+
+          if (minimalDate <= label || i === 0) {
+            dropdown.appendChild(option);
+          }
+        }
+      }
+
+      if (closestOption && !setByTimespanSwitch) {
+        closestOption.selected = true;
+      } else if (thisPeriod !== false) {
+        let match = [...dropdown.options].find(o => o.value == thisPeriod);
+        if (match) match.selected = true;
+      }
+
+      document.getElementById('placeforscaledropdown').innerHTML = '';
+      document.getElementById('placeforscaledropdown').appendChild(dropdown);
+    }
+
+    // If we already have cached value, use it
+    if (cachedEarliestRecord !== null) {
+      buildDropdown(cachedEarliestRecord);
+      return;
+    }
+
+    // Otherwise, fetch it via AJAX
     let xmlhttp = new XMLHttpRequest();
     xmlhttp.onreadystatechange = function() {
       if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
         let jsonData = xmlhttp.responseText;
         recordedData = JSON.parse(jsonData);
-        let minimalDate = recordedData["recorded"];
-
-        const dropdown = document.createElement('select');
-        dropdown.id = 'startDateDropdown';
-
-        if(event){
-          dropdown.addEventListener(event, function(event) {
-            if(eventAction){
-              eval(eventAction);
-            }
-          });
-        }
-
-let setByTimespanSwitch = false;
-let closestOption = null;
-let closestDiff = Infinity;
-
-const now = new Date();
-const nowMinusOnePeriod = pastStepper(periodScale, periodSize, -1, initialOffset); // one step forward = now+period
-const cutoff = new Date(nowMinusOnePeriod); // upper bound for valid labels
-
-for (let i = 0; i < numberOfPeriods; i++) {
-  const option = document.createElement('option');
-  let label = pastStepper(periodScale, periodSize, i, initialOffset);
-  let labelDate = new Date(label);
-
-  // only include if not in the future relative to (now - period)
-  if (labelDate <= cutoff) {
-    option.text = label;
-    option.value = i;
-
-    // track closest to currentStartDate
-    if (currentStartDate) {
-      let diff = Math.abs(labelDate - new Date(currentStartDate));
-      if (diff < closestDiff) {
-        closestDiff = diff;
-        closestOption = option;
-      }
-    }
-
-    if (minimalDate <= label || i === 0) {
-      dropdown.appendChild(option);
-    }
-  }
-}
-
-// apply selection
-if (closestOption && !setByTimespanSwitch) {
-  closestOption.selected = true;
-} else if (thisPeriod !== false) {
-  let match = [...dropdown.options].find(o => o.value == thisPeriod);
-  if (match) match.selected = true;
-}
-
-
-
-        document.getElementById('placeforscaledropdown').innerHTML = '';
-        document.getElementById('placeforscaledropdown').appendChild(dropdown);
+        cachedEarliestRecord = recordedData["recorded"]; // cache it
+        buildDropdown(cachedEarliestRecord);
       }
     }
 
@@ -2207,7 +2217,10 @@ if (closestOption && !setByTimespanSwitch) {
     xmlhttp.open("GET", url, true);
     xmlhttp.send();
   }
-
+ 
+ 
+ 
+ 
   
   function calculateRevisedTimespanPeriod(scales, thisPeriod, scaleName, currentStartDate){
 	  //does what the preceding function does, but only outputs a number of steps of scaleName to get back to currentStartDate instead of option dropdowns
