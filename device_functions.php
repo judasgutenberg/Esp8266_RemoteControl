@@ -1910,14 +1910,45 @@ function getCurrentSolarDataFromCloud($tenant) {
 
     $dataResponse = curl_exec($ch);
     curl_close($ch);
+    
+    
+    
+    
+    
 
     $dataBody = json_decode($dataResponse, true);
     if(gvfw("solarkapitest")){
       var_dump($dataBody);
     }
     $data = $dataBody["data"];
+    
+    //also get the PAC in case we need it
+    $actionUrl = $baseUrl . '/api/v1/plant/' . $plantId  . '/realtime?id=' . $plantId ;
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $actionUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+      "Authorization: Bearer " . $access_token,  //had been sending the token in the querystring, but that stopped working the morning of April 9, 2024
+      "Accept: application/json",
+    ));
+
+    $dataResponse = curl_exec($ch);
+    curl_close($ch);
+    $dataBodyRealtime = json_decode($dataResponse, true);
+    $dataRealtime = $dataBodyRealtime["data"];
+    $pac = $dataRealtime["pac"];
+    $pvPower = $data["pvPower"];
+    if($pac > $pvPower) {
+      $pvPower = $pac;
+    }
+    if(gvfw("solarkapitest")){
+      echo "<p>\n";
+      var_dump($dataBodyRealtime);
+    }
+
+    
     saveSolarData($tenant, $data["gridOrMeterPower"], $data["soc"],  $data["battPower"], $data["loadOrEpsPower"] , 
-      intval($data["pvPower"])/2, intval($data["pvPower"])/2, NULL, 
+      intval($$pvPower)/2, intval($pvPower)/2, NULL, 
       NULL,
       NULL,
       NULL,

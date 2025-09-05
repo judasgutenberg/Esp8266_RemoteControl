@@ -143,9 +143,11 @@ if($_REQUEST) {
 		$useCloudInverterData = false;
 		//die($ageOfInverterRecord  . "XX" . $date->getTimestamp() . "YY" . $lastInverterRecorded->getTimestamp());
 		if($ageOfInverterRecord > 600) { //it's been five minutes since we last had an inverter record, so maybe use the API then to get it from the SolArk cloud.
-      		$useCloudInverterData = true;
-        	getCurrentSolarDataFromCloud($tenant); //only do this one tenth of the time
-    	}
+      $useCloudInverterData = true;
+      if (random_int(1, 10) === 1) {
+        getCurrentSolarDataFromCloud($tenant); //only do this one tenth of the time
+      }
+    }
 		if(!$conn) {
 			$out = ["error"=>"bad database connection"];
 		} else {

@@ -2159,7 +2159,8 @@ function formatSQL(sql) {
       let closestDiff = Infinity;
 
       const now = new Date();
-      const nowMinusOnePeriod = pastStepper(periodScale, periodSize, -1, initialOffset); 
+      const nowMinusOnePeriod = pastStepper(periodScale, periodSize, 0, initialOffset); 
+      console.log(now, periodScale, periodSize, nowMinusOnePeriod);
       const cutoff = new Date(nowMinusOnePeriod);
 
       for (let i = 0; i < numberOfPeriods; i++) {
@@ -2265,10 +2266,13 @@ function formatSQL(sql) {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   }
   
-  function pastStepper(periodScale, periodSize, ordinal, initialOffset = 0) {
-    const now = new Date();
-    let currentDate = new Date(now);
-
+  function pastStepper(periodScale, periodSize, ordinal, initialOffset) {
+    if(!initialOffset) {
+      initialOffset = 0;
+    }
+    //console.log(sqlDateTime, compareTo);
+	  // Parse the dates into `Date` objects in the specified timezone
+	  const currentDate = new Date();
     if (periodScale === 'day') {
       currentDate.setDate(currentDate.getDate() - ((ordinal + 1) * periodSize + initialOffset));
     } else if (periodScale === 'month') {
@@ -2308,9 +2312,12 @@ function formatSQL(sql) {
     }
 
     return (periodScale === 'hour')
-      ? currentDate.toISOString().substring(0, 16).replace('T', ' ')
-      : currentDate.toISOString().substring(0, 10);
+      ? currentDate.toLocaleString("sv-SE").replace('T',' ').substring(0,16) // yyyy-mm-dd hh:mm
+      : currentDate.toLocaleDateString("sv-SE"); // yyyy-mm-dd
+
   }
+  
+  
   function timeAgo(sqlDateTime, compareTo, returnDiffInSeconds, noEndWord) {
 	  sqlDateTime = sqlDateTime.replace(" ", "T"); // Fix for Safari 11
 	  // Define the timezone globally or set a default

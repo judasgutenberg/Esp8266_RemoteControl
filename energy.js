@@ -534,7 +534,7 @@ function getInverterData(yearsAgo) {
           console.log("No data was found.");
         }
    
-        if(scale == "three-hour"  || scale == "day"){
+        if(scale == "hour"  || scale == "three-hour"  || scale == "day"){
           let batteryPercents =  graphDataObject[yearsAgo]["battery_percentage"];
           graphDataObject[yearsAgo]["battery_percentage"] = smoothArray(batteryPercents, 19, 1);
         }
