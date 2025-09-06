@@ -1,11 +1,11 @@
-
+ver
 const char* wifi_ssid = "your-ssid"; //mine was Moxee Hotspot83_2.4G
 const char* wifi_password = "your-wifi-password";
 const char* storage_password = "your-storage-password"; //to ensure someone doesn't store bogus data on your server. should match value in the storage_password column in you user table for your user
 const unsigned long long encryption_scheme = 0x1234567890ABCDEF; //formerly called "salt"
 //data posted to remote server so we can keep a historical record
-//url will be in the form: http://your-server.com:80/weather/data.php?data=
-const char* url_get = "/weather/data.php";
+//url will be in the form: http://your-server.com:80/weather/server.php?data=
+const char* url_get = "/weather/server.php";
 const char* host_get = "your-server.com";
 const char* sensor_config_string = ""; "0*-1*1*99*NULL*NULL*hotwater*11*1"; //<--that places an additional value at reserved4 in device_log; this is an easy way to specify multiple sensors. the format is: dataPin*powerPin*sensorType*sensorSubType*i2c_address*device_feature_id*name*ordinalOfOverwrite*consolidate_all_sensors_to_one_record|next_sensor...
 const int sensor_id = 280; //SENSORS! -- we support these: 7410 for ADT7410, 2320 for AHT20, 75 for LM75, 85 for BMP085, 180 for BMP180, 2301 for DHT 2301, 680 for BME680.  0 for no sensor. Multiple sensors are possible.
