@@ -16,11 +16,11 @@ if($user){
 	$devices = getDevices($user["tenant_id"], false);
 	$weatherColumns = getGraphColumns($user["tenant_id"]);
 	//var_dump($devices);
-	if(array_key_exists( "locationId", $_REQUEST)) {
-		$locationId = $_REQUEST["locationId"];
+	if(array_key_exists( "device_id", $_REQUEST)) {
+		$deviceId = $_REQUEST["device_id"];
 	} else {
 		if($devices  && $devices[0]){
-			$locationId = $devices[0]["device_id"]; //picking the first device now, but this could be in the tenant config
+			$deviceId = $devices[0]["device_id"]; //picking the first device now, but this could be in the tenant config
 		}
 	}
 }
@@ -164,7 +164,7 @@ function plotTypePicker($type, $handler){
 					//var_dump($selectData);
 					//echo  json_last_error_msg();
 					
-					echo "<tr><td>Location:</td><td>" . genericSelect($selectId, "locationId", defaultFailDown(gvfw("location_id"), $locationId), $selectData, "onchange", $handler) . "</td></tr>";
+					echo "<tr><td>Location:</td><td>" . genericSelect($selectId, "deviceId", defaultFailDown(gvfw("device_id"), $deviceId), $selectData, "onchange", $handler) . "</td></tr>";
 					?>
 					</table>
 				</div>
@@ -189,7 +189,7 @@ function plotTypePicker($type, $handler){
 </div>
 </div>
 <script>
-let defaultLocationId = <?php echo $locationId?>;
+let defaultdeviceId = <?php echo $deviceId?>;
 let columnsWeCareAbout = <?php echo json_encode($weatherColumns)?>;
 
 </script>
