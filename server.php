@@ -510,10 +510,14 @@ if($_REQUEST) {
 				$windSpeed = "NULL";
 				$windIncrement = "NULL";
 				$sensorId = "NULL";
-				$reserved1 = "NULL"; //we have four places for esoteric sensor data.  what they represent can be set in device.reservedX_name
+				$reserved1 = "NULL"; //we have four places for esoteric sensor data.  what they represent can be set in device_column_map
 				$reserved2 = "NULL";
 				$reserved3 = "NULL";
 				$reserved4 = "NULL";
+				$radiationCount = "NULL";
+				$lightningCount = "NULL";
+				$illumination = "NULL";
+				$colorMetric = "NULL";
 				//$twelveVoltBatteryVoltage = NULL;
 				
 				$consolidateAllSensorsToOneRecord = 0; //if this is set to one by the first weather record, all weather data is stored in a single device_log record
@@ -535,20 +539,7 @@ if($_REQUEST) {
 						$lightningCount = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $lightningCount, $arrWeatherData, "lightning_count", $deviceId, $tenantId);
 						$illumination = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $illumination, $arrWeatherData, "illumination", $deviceId, $tenantId);
 						$colorMetric = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $colorMetric, $arrWeatherData, "color_metric", $deviceId, $tenantId);
-						/*
-						$latitude = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $latitude, $arrWeatherData, "latitude", $deviceId, $tenantId);
-						$longitude = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $longitude, $arrWeatherData, "longitude", $deviceId, $tenantId);
-						$elevation = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $elevation, $arrWeatherData, "elevation", $deviceId, $tenantId);
-						$velocity = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $velocity, $arrWeatherData, "velocity", $deviceId, $tenantId);
-						$uncertainty = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $uncertainty, $arrWeatherData, "uncertainty", $deviceId, $tenantId);
-						*/
-						$energyPercentage = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $energyPercentage, $arrWeatherData, "energy_percentage", $deviceId, $tenantId);
-						$voltage = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $voltage, $arrWeatherData, "voltage", $deviceId, $tenantId);
-						$ampage = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $ampage, $arrWeatherData, "ampage", $deviceId, $tenantId);
-						//$millis = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $millis, $arrWeatherData, "millis", $deviceId, $tenantId);
-						//keep this on lines[4]:
-						//$numericTimestamp = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $numericTimestamp, $arrWeatherData, "numeric_timestamp", $deviceId, $tenantId);
-						
+ 
 						$reserved1 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved1, $arrWeatherData, "reserved1", $deviceId, $tenantId);
 						$reserved2 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved2, $arrWeatherData, "reserved2", $deviceId, $tenantId);
 						$reserved3 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved3, $arrWeatherData, "reserved3", $deviceId, $tenantId);
@@ -1108,7 +1099,7 @@ function mergeWeatherDatum($consolidateAllSensorsToOneRecord, $existingValue, $s
 	//old columnList format:
 	//$columnList = "temperature,pressure,humidity,gas_metric,wind_direction,wind_speed,wind_increment,precipitation,reserved1,reserved2,reserved3,reserved4,sensor_id,device_feature_id,sensor_name,consolidate";
 	//new columnList format:
-	$columnList =   "temperature,pressure,humidity,gas_metric,wind_direction,wind_speed,wind_increment,precipitation,radiation_count,lightning_count,illumination,color_metric,latitude,longitude,elevation,velocity,uncertainty,energy_percentage,voltage,ampage,millis,numeric_timestamp,reserved1,reserved2,reserved3,reserved4,sensor_id,device_feature_id,sensor_name,consolidate";
+	$columnList =   "temperature,pressure,humidity,gas_metric,wind_direction,wind_speed,wind_increment,precipitation,radiation_count,lightning_count,illumination,color_metric,reserved1,reserved2,reserved3,reserved4,sensor_id,device_feature_id,sensor_name,consolidate";
 	$columns = explode(",", $columnList);
 	$itemNumber = array_search($keyName, $columns);
 	//create an array of values keyed to the respective weather params so we can use these in the storage_function as needed

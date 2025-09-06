@@ -2967,7 +2967,7 @@ function findRecordByKey($records, $keyName, $value) {
   return null;
 }
 
-function defaultFailDown($first, $second="", $third=""){
+function defaultFailDown($first, $second="", $third="", $fourth=""){
   if($first){
     return $first;
   }
@@ -2976,6 +2976,28 @@ function defaultFailDown($first, $second="", $third=""){
   }
   if($third){
     return $third;
+  }
+  if($fourth){
+    return $fourth;
+  }
+}
+
+function arrayDefaultFailDown($array, $index, $second="", $third="", $fourth=""){
+  $value = "";
+  if(count($array) > $index || array_key_exists($index, $array)){
+    $value = $array[$index];
+  }
+  if($value){
+    return $value;
+  }
+  if($second){
+    return $second;
+  }
+  if($third){
+    return $third;
+  }
+  if($fourth){
+    return $fourth;
   }
 }
 
