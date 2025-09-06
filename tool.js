@@ -2361,7 +2361,99 @@ function formatSQL(sql) {
 	  }
 	  return seconds === 1 ? "1 second " + endWord : `${seconds} seconds  ` + endWord;
 	}
-  
+	
+  function backendDataUrl(mode, deviceId, allData, liveData, maxRecorded, scale, absoluteTimespanCusps, periodAgo, absoluteTimeAgo, yearsAgo){
+    absoluteTimeAgo = adjustToScale(scale, absoluteTimeAgo);
+    let extraUrlData = "&mode=" + mode + "&all_data=" + allData; 
+    if(deviceId) {
+      extraUrlData += "&device_id=" + deviceId;
+    }
+    if(liveData) {
+      extraUrlData += "&max_recorded=" + maxRecorded;
+    }
+    let url = "data.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&period_ago=" + periodAgo + extraUrlData;
+    if(absoluteTimeAgo) {
+      url = "data.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&absolute_time_ago=" + absoluteTimeAgo + extraUrlData;
+    }
+    return url;
+  }
+	
+	function adjustToScale(scaleValue, dateTimeStr) {
+    // Parse the input datetime
+    if(!dateTimeStr) {
+      return;
+    }
+    let inputDate = new Date(dateTimeStr.replace(" ", "T"));
+    let now = new Date();
+
+    // Find the scale config
+    const scale = scaleConfig.find(s => s.value === scaleValue);
+    if (!scale) {
+      throw new Error("Scale not found: " + scaleValue);
+    }
+
+    // Determine the most recent beginning of this scale relative to 'now'
+    let boundary = new Date(now);
+
+    switch (scale.period_scale) {
+      case "hour":
+        boundary.setMinutes(0, 0, 0);
+        boundary.setHours(boundary.getHours() - (boundary.getHours() % scale.period_size));
+        break;
+
+      case "day":
+        boundary.setHours(0, 0, 0, 0);
+        boundary.setDate(boundary.getDate() - ((boundary.getDate() - 1) % scale.period_size));
+        break;
+
+      case "week":
+        boundary.setHours(0, 0, 0, 0);
+        let day = boundary.getDay(); // Sunday=0
+        let diff = (day + 7 - 1) % 7; // Align to Monday (or adjust for week start)
+        boundary.setDate(boundary.getDate() - diff);
+        break;
+
+      case "month":
+        boundary.setDate(1);
+        boundary.setHours(0, 0, 0, 0);
+        boundary.setMonth(boundary.getMonth() - ((boundary.getMonth()) % scale.period_size));
+        break;
+
+      case "year":
+        boundary.setMonth(0, 1); // January 1
+        boundary.setHours(0, 0, 0, 0);
+        boundary.setFullYear(boundary.getFullYear() - ((boundary.getFullYear()) % scale.period_size));
+        break;
+
+      default:
+        throw new Error("Unsupported period scale: " + scale.period_scale);
+    }
+
+  // If inputDate is later than boundary, snap it back by one full period
+  if (inputDate > boundary) {
+    switch (scale.period_scale) {
+      case "hour":
+        boundary.setHours(boundary.getHours() - scale.period_size);
+        break;
+      case "day":
+        boundary.setDate(boundary.getDate() - scale.period_size);
+        break;
+      case "week":
+        boundary.setDate(boundary.getDate() - 7 * scale.period_size);
+        break;
+      case "month":
+        boundary.setMonth(boundary.getMonth() - scale.period_size);
+        break;
+      case "year":
+        boundary.setFullYear(boundary.getFullYear() - scale.period_size);
+        break;
+    }
+    return boundary.toISOString().slice(0, 19).replace("T", " ");
+  }
+
+  // Otherwise, return the original input
+  return dateTimeStr;
+}
   function expandArray(arr, n) {
 	  const originalLength = arr.length;
 	  const result = [...arr]; // Start with a copy of the original array

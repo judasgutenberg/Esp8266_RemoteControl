@@ -97,14 +97,8 @@ window.initMap = async function () {
     try {
       // Fetch your JSON data from backend
       console.log(maxRecorded);
-      let extraUrlData = "&mode=getMap&device_id=" + deviceId + "&all_data=" + allData; 
-      if(liveData) {
-        extraUrlData += "&max_recorded=" + maxRecorded;
-      }
-      let url = "data.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&period_ago=" + periodAgo + extraUrlData;
-      if(absoluteTimeAgo) {
-        url = "data.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&absolute_time_ago=" + absoluteTimeAgo + extraUrlData;
-      }
+      let url = backendDataUrl("getMap", deviceId, allData, liveData, maxRecorded, scale, absoluteTimespanCusps, periodAgo, absoluteTimeAgo, 0);
+      
       //console.log(url);
       const response = await fetch(url);
       const locations = await response.json();

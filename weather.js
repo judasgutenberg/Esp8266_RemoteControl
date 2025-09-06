@@ -11,17 +11,17 @@ let timeStamp = [];
 
 resetGraphData();
 
-function resetGraphData(locationIdArray){
+function resetGraphData(deviceIdArray){
 	multiGraphDataObject = {};
 	graphDataObject = {};
 	pastYearsViewed = [];
 	for (let year of yearsIntoThePastWeCareAbout) { 
-		if(locationIdArray){
+		if(deviceIdArray){
 			if (!multiGraphDataObject[year]) {
 				multiGraphDataObject[year] = {};
 			}
-			for(let specificLocationId of locationIdArray){
-				multiGraphDataObject[year][specificLocationId] = {"values": [], "timeStamps": []};
+			for(let specificdeviceId of deviceIdArray){
+				multiGraphDataObject[year][specificdeviceId] = {"values": [], "timeStamps": []};
 			}
 		}
 		for (let column of columnsWeCareAbout) {
@@ -36,14 +36,14 @@ function resetGraphData(locationIdArray){
 	}
 }
 
-function addPastYearToGraph(locationIdArray, locationId, yearsAgo, plotType){
+function addPastYearToGraph(deviceIdArray, deviceId, yearsAgo, plotType){
 	yearsAgo = parseInt(yearsAgo);
 	let columnCount = 0;
 	let colorSeries = ["#ffcccc","#ccffcc", "#ccccff", "#999999", "#aaaaaa", "#bbbbbb", "#cccccc"];
 	if(plotType == "multi"){
-		for(let locationId of locationIdArray){
+		for(let deviceId of deviceIdArray){
 			let yAxisId = "A";
-			let foundDevice = findObjectByColumn(devices, "device_id", locationId);
+			let foundDevice = findObjectByColumn(devices, "device_id", deviceId);
 			let label;
 			let color = colorSeries[columnCount];
 			if(foundDevice){
@@ -58,13 +58,13 @@ function addPastYearToGraph(locationIdArray, locationId, yearsAgo, plotType){
 						fill: false,  //Try with true
 						backgroundColor: color,
 						borderColor: color,
-						data: multiGraphDataObject[yearsAgo][locationId].values,
+						data: multiGraphDataObject[yearsAgo][deviceId].values,
 						yAxisID: yAxisId,
 						tension: 0.1
 					}
 			);	
 			columnCount++;	
-			//console.log(multiGraphDataObject[yearsAgo][locationId]);
+			//console.log(multiGraphDataObject[yearsAgo][deviceId]);
 		}
 
 	} else {  //not multi
@@ -73,7 +73,7 @@ function addPastYearToGraph(locationIdArray, locationId, yearsAgo, plotType){
 		if(graphDataObject[yearsAgo]){
 			for (let column of columnsWeCareAbout){
 				let mapToUse;
-				let foundDevice = findObjectByColumn(devices, "device_id", locationId.toString());
+				let foundDevice = findObjectByColumn(devices, "device_id", deviceId.toString());
 				let deviceColumnMaps = foundDevice["device_column_maps"];
 				for(let map of deviceColumnMaps){
 					if(column == map["column_name"] && map["table_name"] == "device_log"){
@@ -111,7 +111,7 @@ function addPastYearToGraph(locationIdArray, locationId, yearsAgo, plotType){
 	glblChart.update();
 }
 
-function showGraph(locationId, plotType){
+function showGraph(deviceId, plotType){
 	let colorSeries = ["#ff0000", "#00ff00", "#0000ff", "#009999", "#3300ff", "#ff0033", "#ff3300", "33ff00", "#0033ff", "#6600cc", "#ff0066", "#cc6600", "66cc00", "#0066cc"];
 	if(glblChart){
 		glblChart.destroy();
@@ -122,7 +122,7 @@ function showGraph(locationId, plotType){
 	//graphDataObject[yearsAgo][column]
 	let chartDataSet = [];
 	let columnCount = 0;
-	let foundDevice = findObjectByColumn(devices, "device_id", locationId.toString());
+	let foundDevice = findObjectByColumn(devices, "device_id", deviceId.toString());
 	let deviceColumnMaps = foundDevice["device_column_maps"];
 	if(plotType == "single"){
 		for (let column of columnsWeCareAbout){
@@ -192,7 +192,7 @@ function showGraph(locationId, plotType){
 	let graphSubtitle = "Weather Data";
 	//console.log(devices);
 	if(devices && devices.length>0){
- 		graphSubtitle =   findObjectByColumn(devices, "device_id", locationId + '')["location_name"] + " data";
+ 		graphSubtitle =   findObjectByColumn(devices, "device_id", deviceId + '')["location_name"] + " data";
 	}
 	if(plotType == "multi"){
 		timeStampLabels = [];
@@ -285,8 +285,8 @@ function showGraph(locationId, plotType){
 //On Page load show graphs
 window.onload = function() {
   //console.log(new Date().toLocaleTimeString());
-  let locationId = document.getElementById("locationDropdown")[document.getElementById("locationDropdown").selectedIndex].value;
-  officialWeather(locationId);
+  let deviceId = document.getElementById("locationDropdown")[document.getElementById("locationDropdown").selectedIndex].value;
+  officialWeather(deviceId);
   //showGraph(5,10,4,58);W
 };
  
@@ -295,11 +295,11 @@ let justLoaded = true;
 
 function getWeatherData(yearsAgo) {
 	const queryParams = new URLSearchParams(window.location.search);
-	let locationIdArray = [];
+	let deviceIdArray = [];
 	let scale = queryParams.get('scale');
-	let locationId = queryParams.get('location_id');
+	let deviceId = queryParams.get('location_id');
 	let periodAgo = queryParams.get('period_ago');
-	let locationIds = queryParams.get('location_ids');
+	let deviceIds = queryParams.get('location_ids');
 	let plotType = "single";
 	let specificColumn = queryParams.get('specific_column');
 	let absoluteTimespanCusps = queryParams.get('absolute_timespan_cusps');
@@ -347,19 +347,19 @@ function getWeatherData(yearsAgo) {
 	if(!scale){
 		scale = "day";
 	}
-	let locationIdDropdown = document.getElementById('locationDropdown');
+	let deviceIdDropdown = document.getElementById('locationDropdown');
 	if(!justLoaded){
-		locationId  = locationIdDropdown[locationIdDropdown.selectedIndex].value;
+		deviceId  = deviceIdDropdown[deviceIdDropdown.selectedIndex].value;
 		absoluteTimeAgo = "";
 	}  
-	if(!locationId){
-		locationId = defaultLocationId;
+	if(!deviceId){
+		deviceId = defaultdeviceId;
 	}
-	url.searchParams.set("location_id", locationId);
-	if(locationIds == null || !locationIds) {
-		locationIds = "";//locationId; //nope!
+	url.searchParams.set("location_id", deviceId);
+	if(deviceIds == null || !deviceIds) {
+		deviceIds = "";//deviceId; //nope!
 		//if(!justLoaded){
-			//locationIds = locationId;
+			//deviceIds = deviceId;
 		//}
 	}
 	if(document.getElementById('scaleDropdown')  && !justLoaded){
@@ -385,23 +385,23 @@ function getWeatherData(yearsAgo) {
 	
 	let specificDevices = document.getElementsByName('specificDevice');
 	if(!justLoaded){
-		locationIds = "";
+		deviceIds = "";
 		for(let device of specificDevices){
 			if(device.checked){
-				locationIds += device.value + ",";
+				deviceIds += device.value + ",";
 			}
 		}
-		locationIds = locationIds.slice(0, -1);
+		deviceIds = deviceIds.slice(0, -1);
 	} else {
-		locationIdArray = locationIds.split(",");
+		deviceIdArray = deviceIds.split(",");
 		for(let device of specificDevices){
-			if(locationIdArray.includes(device.value)){ // || plotType != 'multi' && device.value == locationId
+			if(deviceIdArray.includes(device.value)){ // || plotType != 'multi' && device.value == deviceId
 				device.checked = true;
 			}
 		}
 	}
-	locationIdArray = locationIds.split(",");
-	url.searchParams.set("location_ids", locationIds);
+	deviceIdArray = deviceIds.split(",");
+	url.searchParams.set("location_ids", deviceIds);
 	//make the startDateDropdown switch to the appropriate item on the new scale:
 	let periodAgoDropdown = document.getElementById('startDateDropdown');	
 
@@ -425,22 +425,28 @@ function getWeatherData(yearsAgo) {
 	periodAgo = calculateRevisedTimespanPeriod(scaleConfig, periodAgo, scale, currentStartDate);
 	url.searchParams.set("period_ago", periodAgo);
 	if(!yearsAgo){
-		//console.log(locationIdArray);
-		resetGraphData(locationIdArray);
+		//console.log(deviceIdArray);
+		resetGraphData(deviceIdArray);
 	} 
 	//update the URL without changing actual location
 	history.pushState({}, "", url);
 	let xhttp = new XMLHttpRequest();
-	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&locationId=" + locationId + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&years_ago=" + yearsAgo;
+	/*
+	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&deviceId=" + deviceId + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&years_ago=" + yearsAgo;
 	if(absoluteTimeAgo) {
-    endpointUrl = "./data.php?scale=" + scale + "&absolute_time_ago=" + absoluteTimeAgo + "&mode=getWeatherData&locationId=" + locationId + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&years_ago=" + yearsAgo;
+    endpointUrl = "./data.php?scale=" + scale + "&absolute_time_ago=" + absoluteTimeAgo + "&mode=getWeatherData&deviceId=" + deviceId + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&years_ago=" + yearsAgo;
 	}
+	*/
+  let allData = 0;
+	let liveData = 0;
+	let maxRecorded = "";
+	let endpointUrl = backendDataUrl("getWeatherData", deviceId, allData, liveData, maxRecorded, scale, absoluteTimespanCusps, periodAgo, absoluteTimeAgo, yearsAgo);
 	
 	if(plotType == 'multi'){
 		document.getElementById("singleplotdiv").style.opacity ='0.5';
 		document.getElementById("multiplotdiv").style.opacity ='1';
-		endpointUrl += "&specific_column=" + specificColumn + "&location_ids=" + locationIds;
-		locationIdDropdown.disabled = true;
+		endpointUrl += "&specific_column=" + specificColumn + "&location_ids=" + deviceIds;
+		deviceIdDropdown.disabled = true;
 		specificColumnSelect.disabled = false;
 		for(let specificDevice of specificDevices) {
 			specificDevice.disabled = false;
@@ -448,7 +454,7 @@ function getWeatherData(yearsAgo) {
 	} else {
 		document.getElementById("singleplotdiv").style.opacity ='1';
 		document.getElementById("multiplotdiv").style.opacity ='.5';;
-		locationIdDropdown.disabled = false;
+		deviceIdDropdown.disabled = false;
 		specificColumnSelect.disabled = true;
 		for(let specificDevice of specificDevices) {
 			specificDevice.disabled = true;
@@ -460,8 +466,8 @@ function getWeatherData(yearsAgo) {
 	     //Push the data in array
 			timeStamp = [];
 
-			//for(let specificLocationId of locationIdArray){
-			//	multiGraphDataObject[yearsAgo][specificLocationId] = {"values": [], "timeStamps": []};
+			//for(let specificdeviceId of deviceIdArray){
+			//	multiGraphDataObject[yearsAgo][specificdeviceId] = {"values": [], "timeStamps": []};
 			//}
 			
 			let time = new Date().toLocaleTimeString();
@@ -477,27 +483,27 @@ function getWeatherData(yearsAgo) {
 					//console.log(dataObject[0]["sql"], dataObject[0]["error"]);
 				} else {
 					devices = dataObject["devices"]; //for proper labels in the graph
-					const locationsForColumnsWeCareAbout = [...locationIdArray];
-					locationsForColumnsWeCareAbout.push(locationId.toString());
+					const locationsForColumnsWeCareAbout = [...deviceIdArray];
+					locationsForColumnsWeCareAbout.push(deviceId.toString());
 					updateColumnsWeCareAbout(devices,  locationsForColumnsWeCareAbout);
 					//console.log(devices);
 					for(let datum of dataObject["records"]) {
 						let time = datum["recorded"];
 						if(plotType == "multi") {
-;							locationId = datum["device_id"];
+;							deviceId = datum["device_id"];
 							let value = datum[specificColumn];
 							if(specificColumn == "temperature"){
 								value = value * (9/5) + 32;
 							}
-							if(multiGraphDataObject[yearsAgo][locationId]) {
-								multiGraphDataObject[yearsAgo][locationId]["values"].push(value);
+							if(multiGraphDataObject[yearsAgo][deviceId]) {
+								multiGraphDataObject[yearsAgo][deviceId]["values"].push(value);
 
-								for(let specificLocationId of locationIdArray){
-									if(specificLocationId != locationId){
-										multiGraphDataObject[yearsAgo][specificLocationId]["values"].push(null);
+								for(let specificdeviceId of deviceIdArray){
+									if(specificdeviceId != deviceId){
+										multiGraphDataObject[yearsAgo][specificdeviceId]["values"].push(null);
 									}
 								}
-								multiGraphDataObject[yearsAgo][locationId]["timeStamps"].push(time);
+								multiGraphDataObject[yearsAgo][deviceId]["timeStamps"].push(time);
 								if(time> greatestTime) {
 									greatestTime = time;
 								}
@@ -506,7 +512,7 @@ function getWeatherData(yearsAgo) {
 							//graphDataObject[year][column]
 							for (let column of columnsWeCareAbout){
 								let mapToUse;
-								let foundDevice = findObjectByColumn(devices, "device_id", locationId.toString());
+								let foundDevice = findObjectByColumn(devices, "device_id", deviceId.toString());
 								let deviceColumnMaps = foundDevice["device_column_maps"];
 								for(let map of deviceColumnMaps){
 									if(column == map["column_name"] && map["table_name"] == "device_log"){
@@ -543,7 +549,7 @@ function getWeatherData(yearsAgo) {
 				//crudely make the old data have the same number of items as the new data
 				if(yearsAgo > 0) {
 					if(plotType == "multi") {
-						multiGraphDataObject = fillOutArray(multiGraphDataObject, yearsAgo, locationIdArray, "values");
+						multiGraphDataObject = fillOutArray(multiGraphDataObject, yearsAgo, deviceIdArray, "values");
 						//console.log(multiGraphDataObject);
 					} else{
 						graphDataObject = fillOutArray(graphDataObject, yearsAgo, columnsWeCareAbout, null);
@@ -556,14 +562,14 @@ function getWeatherData(yearsAgo) {
 			}
 			
 			if(yearsAgo == 0){
-				glblChart = showGraph(locationId, plotType);  //Update Graphs
+				glblChart = showGraph(deviceId, plotType);  //Update Graphs
 				document.getElementById('greatestTime').innerHTML = " Latest Data: " + timeAgo(greatestTime);
 			} else {
-				addPastYearToGraph(locationIdArray, locationId, yearsAgo, plotType);
+				addPastYearToGraph(deviceIdArray, deviceId, yearsAgo, plotType);
 			}
-			officialWeather(locationId);
+			officialWeather(deviceId);
 			if(yearsAgoToShow){
-				//console.log(locationIdArray, yearsAgoToShow, plotType);
+				//console.log(deviceIdArray, yearsAgoToShow, plotType);
 				if(pastYearsViewed.indexOf(parseInt(yearsAgoToShow)) < 0){
 					getWeatherData(yearsAgoToShow);
 				}
@@ -573,7 +579,7 @@ function getWeatherData(yearsAgo) {
 	  };
   xhttp.open("GET", endpointUrl, true); 
   xhttp.send();
-  createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getWeatherData(0)', 'device_log', locationId);
+  createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getWeatherData(0)', 'device_log', deviceId);
   
   justLoaded = false;
 }
@@ -607,9 +613,9 @@ function ctof(inVal){
 	return inVal * (9/5) + 32;
 }
 
-function officialWeather(locationId) {
+function officialWeather(deviceId) {
 	let xhttp = new XMLHttpRequest();
-	let endpointUrl = "./data.php?mode=getOfficialWeatherData&locationId=" + locationId;
+	let endpointUrl = "./data.php?mode=getOfficialWeatherData&deviceId=" + deviceId;
 	xhttp.onreadystatechange = function() {
 	    if (this.readyState == 4 && this.status == 200) {
 	     //Push the data in array
@@ -628,7 +634,7 @@ function officialWeather(locationId) {
 			let sunset = dataObject["official_weather"]["sys"]["sunset"];
 			let weatherdiv = document.getElementById("officialweather");
 			let out = "<table>";
-			//out += "<tr><td>Location</td><td>" + locationId + "</td></tr>\n";
+			//out += "<tr><td>Location</td><td>" + deviceId + "</td></tr>\n";
 			out += "<tr><td>Weather</td><td>" + weatherDescription + "</td></tr>\n";
 			out += "<tr><td>Temperature</td><td>" + ctof(temperature).toFixed(1); + "</td></tr>\n";
 			out += "<tr><td>Extremes</td><td>" + ctof(temperatureMin).toFixed(1); + " to " + ctof(temperatureMax).toFixed(1); + "</td></tr>\n";
@@ -647,11 +653,11 @@ function officialWeather(locationId) {
   xhttp.send();
 }
 
-function updateColumnsWeCareAbout(devices, locationIds){
+function updateColumnsWeCareAbout(devices, deviceIds){
 	columnsWeCareAbout = [];
 	for(const device of devices){
 		if(device["device_column_maps"]) {
-			if(locationIds.indexOf(device["device_id"])>-1){
+			if(deviceIds.indexOf(device["device_id"])>-1){
 				for(const map of device["device_column_maps"]){
 					const columnName = map["column_name"];
 					if(columnsWeCareAbout.indexOf(columnName) < 0){
@@ -665,8 +671,8 @@ function updateColumnsWeCareAbout(devices, locationIds){
 
 function editColumns(){
 	const queryParams = new URLSearchParams(window.location.search);
-	const locationId = queryParams.get('location_id');
-	window.location = "tool.php?table=device_column_map&device_id=" + locationId;
+	const deviceId = queryParams.get('location_id');
+	window.location = "tool.php?table=device_column_map&device_id=" + deviceId;
 }
 
 getWeatherData();

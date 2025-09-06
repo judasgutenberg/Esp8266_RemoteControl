@@ -452,10 +452,11 @@ function getInverterData(yearsAgo) {
 	segmentRects = [];
 	history.pushState({}, "", url);
 	let xhttp = new XMLHttpRequest();
-	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getInverterData&absolute_timespan_cusps=" + absoluteTimespanCusps;
-	if(absoluteTimeAgo) {
-    endpointUrl = "./data.php?scale=" + scale + "&absolute_time_ago=" + absoluteTimeAgo + "&mode=getInverterData&absolute_timespan_cusps=" + absoluteTimespanCusps;
-	}
+	let allData = 0;
+	let liveData = 0;
+	let maxRecorded = "";
+	let endpointUrl = backendDataUrl("getInverterData", null, allData, liveData, maxRecorded, scale, absoluteTimespanCusps, periodAgo, absoluteTimeAgo, 0);
+	
 	console.log(endpointUrl);
 
 	xhttp.onreadystatechange = function() {
