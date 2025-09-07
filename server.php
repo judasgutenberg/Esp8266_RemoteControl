@@ -1485,7 +1485,10 @@ function buildRestOfSegmentedDataSql($formattedDateTime, $orderBy) {
   $initialOffset = gvfa("initial_offset", $scaleRecord, 0);
   $groupBy = gvfa("group_by", $scaleRecord, "");
   $startOfPeriod = "'" . $formattedDateTime . "'"; 
-  $historyOffset = 1;				
+  $historyOffset = 1;
+  if($periodAgo == 0) {
+    $absoluteTimeAgo = "";
+  }				
   if($allData) {
     $groupBy = "";
   }

@@ -2377,7 +2377,7 @@ function formatSQL(sql) {
     let url = "server.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&period_ago=" + periodAgo + extraUrlData;
 
     if(absoluteTimeAgo) {
-      url = "server.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&absolute_time_ago=" + absoluteTimeAgo + extraUrlData;
+      url = "server.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&absolute_time_ago=" + absoluteTimeAgo + extraUrlData + "&period_ago=" + periodAgo;
     }
     return url;
   }
