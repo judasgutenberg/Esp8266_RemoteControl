@@ -2214,7 +2214,7 @@ function formatSQL(sql) {
       }
     }
 
-    let url = "data.php?mode=getEarliestRecorded&table=" + tableName + "&device_id=" + deviceId; 
+    let url = "server.php?mode=getEarliestRecorded&table=" + tableName + "&device_id=" + deviceId; 
     xmlhttp.open("GET", url, true);
     xmlhttp.send();
   }
@@ -2371,9 +2371,13 @@ function formatSQL(sql) {
     if(liveData) {
       extraUrlData += "&max_recorded=" + maxRecorded;
     }
-    let url = "data.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&period_ago=" + periodAgo + extraUrlData;
+    if(yearsAgo > 0) {
+      extraUrlData += "&years_ago=" + yearsAgo;
+    }
+    let url = "server.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&period_ago=" + periodAgo + extraUrlData;
+
     if(absoluteTimeAgo) {
-      url = "data.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&absolute_time_ago=" + absoluteTimeAgo + extraUrlData;
+      url = "server.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&absolute_time_ago=" + absoluteTimeAgo + extraUrlData;
     }
     return url;
   }
