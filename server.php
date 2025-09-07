@@ -132,21 +132,21 @@ if($_REQUEST) {
 	}
 
 	$canAccessData = array_search($locationId, $deviceIds) !== false;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
-	if($canAccessData) {	
-		$tenant = deriveTenantFromStoragePassword($storagePassword);
-		$tenantId = $tenant["tenant_id"];
-		$mostRecentInverterRecord = getMostRecentInverterRecord($tenant);
-		$lastInverterRecorded = new DateTime($mostRecentInverterRecord["recorded"]);
-		//var_dump($mostRecentInverterRecord );
-		//echo "<BR>" . $mostRecentInverterRecord  . "***<BR>";
-		$ageOfInverterRecord = $date->getTimestamp() -$lastInverterRecorded->getTimestamp();
-		$useCloudInverterData = false;
-		//die($ageOfInverterRecord  . "XX" . $date->getTimestamp() . "YY" . $lastInverterRecorded->getTimestamp());
-		if($ageOfInverterRecord > 600) { //it's been five minutes since we last had an inverter record, so maybe use the API then to get it from the SolArk cloud.
+  if($canAccessData) {	
+    $tenant = deriveTenantFromStoragePassword($storagePassword);
+    $tenantId = $tenant["tenant_id"];
+    $mostRecentInverterRecord = getMostRecentInverterRecord($tenant);
+    $lastInverterRecorded = new DateTime($mostRecentInverterRecord["recorded"]);
+    //var_dump($mostRecentInverterRecord );
+    //echo "<BR>" . $mostRecentInverterRecord  . "***<BR>";
+    $ageOfInverterRecord = $date->getTimestamp() -$lastInverterRecorded->getTimestamp();
+    $useCloudInverterData = false;
+    //die($ageOfInverterRecord  . "XX" . $date->getTimestamp() . "YY" . $lastInverterRecorded->getTimestamp());
+    if($ageOfInverterRecord > 600) { //it's been five minutes since we last had an inverter record, so maybe use the API then to get data from the SolArk cloud. it's not great, but it's enough for automation
       $useCloudInverterData = true;
-      if (random_int(1, 10) === 1) {
-        getCurrentSolarDataFromCloud($tenant); //only do this one tenth of the time
-      }
+
+      getCurrentSolarDataFromCloud($tenant); //only do this one tenth of the time
+
     }
 		if(!$conn) {
 			$out = ["error"=>"bad database connection"];

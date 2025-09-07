@@ -2536,7 +2536,7 @@ function instantCommand($tenantId, $userId, $deviceId = "") {
     $result = $conn->query($sql);
     $commandLogId = mysqli_insert_id($conn);
  
-    //write the command to a text file so data.php can find it and include it in the commands sent to the device
+    //write the command to a text file so inverter.php can find it and include it in the commands sent to the device
     //but we no longer do this
     //file_put_contents("instant_command_" . gvfw("device_id") . ".txt", $commandText . "\n" . $commandLogId);
   }
