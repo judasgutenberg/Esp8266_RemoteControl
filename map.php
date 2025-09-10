@@ -98,6 +98,7 @@ if(!$user) {
   ?>
     <div style="text-align:center;"><b><span id='greatestTime'></span></b></div>
 		<div class='generalerror'><?php echo $error ?></div>
+		<div style="text-align:center;"><b><span id='greatestTime'></span></b></div>
 		<div id="map"></div>
     <div style='display:inline-block;vertical-align:top' >
       <div  id='singleplotdiv'>

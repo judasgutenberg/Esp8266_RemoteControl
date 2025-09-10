@@ -214,6 +214,7 @@ window.initMap = async function () {
           }));
           map.fitBounds(bounds);
         }
+        document.getElementById('greatestTime').innerHTML = " Latest Data: " + timeAgo(maxRecorded);
       }
       //console.log(scaleConfig);
       createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'initMap()', 'device_log', deviceId);
