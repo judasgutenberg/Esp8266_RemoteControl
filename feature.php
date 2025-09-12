@@ -9,6 +9,8 @@
 include("config.php");
 include("site_functions.php");
 include("device_functions.php");
+
+normalizePostData(); 
 //ini_set('display_errors', 1);
 //ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);

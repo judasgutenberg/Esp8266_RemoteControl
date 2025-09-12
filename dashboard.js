@@ -1,10 +1,24 @@
 const values = new Array();
 
-function toggleDeviceFeature(deviceFeatureId, hashedEntries,  actuallySetState) { //used to set state or to just retrieve existing state
-  let url = 'tool.php?action=genericFormSave&table=device_feature&primary_key_name=device_feature_id&primary_key_value=' + deviceFeatureId + '&value=' + !values[deviceFeatureId] + '&name=value&hashed_entities=' + hashedEntries;
+function toggleDeviceFeature(deviceFeatureId, hashedEntries,  actuallySetState) { //used to set state or to just      
+  const payload = {
+      action: "genericFormSave",
+      table: "device_feature",
+      primary_key_name: "device_feature_id",
+      primary_key_value: deviceFeatureId,
+      name: "value",
+      value: !values[deviceFeatureId] ,
+      hashed_entities: hashedEntries
+    };
+
+  const xhr = new XMLHttpRequest();
+  let url = 'tool.php';
   if(!actuallySetState) {
     url = "data:application/json,{}";
   }
+  
+  xhr.open("POST", "tool.php", true);
+  xhr.setRequestHeader("Content-Type", "application/json");
   let bgColor = "#ccccff";
   
   let urlGet = 'tool.php?action=json&table=device_feature';
@@ -12,7 +26,13 @@ function toggleDeviceFeature(deviceFeatureId, hashedEntries,  actuallySetState) 
     urlGet += '&device_feature_id=' + deviceFeatureId;
   }
   //console.log(urlGet);
-  fetch(url)
+    fetch(url, {
+      method: "POST", 
+      headers: {
+        "Content-Type": "application/json"  // tells the server you're sending JSON
+      },
+      body: JSON.stringify(payload)
+    })
     .then(response => {
       if (response.ok) {
         fetch(urlGet).then(response => {
@@ -40,7 +60,7 @@ function toggleDeviceFeature(deviceFeatureId, hashedEntries,  actuallySetState) 
 }
 
 function changeButton(data) {
-  let bgColor = '#cccccc';
+  bgColor = '#cccccc';
   let state = false;
   stateDisplay = "Unknown or non-existent";
   if(data["value"] === "1") {

@@ -195,7 +195,9 @@ if ($user) {
     $primaryKeyValue = gvfa('primary_key_value', $_POST);
     $hashedEntities = gvfa('hashed_entities', $_POST);
     $table = gvfa('table', $_POST);
-    $whatHashedEntitiesShouldBe =  hash_hmac('sha256', $name . $table . $primaryKeyName . $primaryKeyValue, $encryptionPassword);
+    $componentsOfHash = $name . $table . $primaryKeyName . $primaryKeyValue;
+    //echo "***" . $componentsOfHash;
+    $whatHashedEntitiesShouldBe =  hash_hmac('sha256', $componentsOfHash, $encryptionPassword);
     if($hashedEntities != $whatHashedEntitiesShouldBe){
       echo $hashedEntities. " " . $whatHashedEntitiesShouldBe . "\n";
       die("Data appears to have been tampered with.");
