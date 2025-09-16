@@ -12,6 +12,7 @@ $poserString = "";
 $out = "";
 $conn = mysqli_connect($servername, $username, $password, $database);
 $user = autoLogin();
+$deviceId = 0;
 if($user){
 	$devices = getDevices($user["tenant_id"], false);
 	$weatherColumns = getGraphColumns($user["tenant_id"]);
@@ -24,6 +25,7 @@ if($user){
 		}
 	}
 }
+ 
 
 $tenantSelector = "";
 $scaleConfig =  timeScales();

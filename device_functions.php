@@ -487,6 +487,12 @@ function editUser($error){
       'name' => $table . "_id",
       'type' => 'read_only'
 	  ],
+    [
+      'label' => 'full name',
+      'name' => 'full_name',
+      'value' => gvfa("full_name", $_POST), 
+      'error' => gvfa('full_name', $error)
+    ],
 		[
 	    'label' => 'email',
       'name' => 'email',
@@ -2691,7 +2697,7 @@ function doVariousThingsRegularly($tenant) {
 function getCredential($tenant, $type) {
   $record = getGeneric("api_credential", $type, $tenant, "type");
   //var_dump($record);
-  if($record["enabled"]) {
+  if($record && $record["enabled"]) {
     return $record;
   }
 }

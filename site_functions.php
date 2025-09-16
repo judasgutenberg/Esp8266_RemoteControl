@@ -185,10 +185,10 @@ function bodyWrap($content, $user, $deviceId, $poser = null) {
   $poserString = "";
   if($user) {
     if($poser) {
-      $poserString = " posing as <span class='poserindication'>" . $poser["email"] . "</span> (<a href='?action=disimpersonate'>unpose</a>)";
+      $poserString = " posing as <span class='poserindication'>" . userDisplayText($poser) . "</span> (<a href='?action=disimpersonate'>unpose</a>)";
 
     }
-    $out .= "<div class='loggedin'>You are logged in as <b>" . $user["email"] . "</b>" .  $poserString . "  on " . $user["name"] . " <div class='basicbutton'><a href=\"?action=logout\">logout</a></div></div>\n";
+    $out .= "<div class='loggedin'>You are logged in as <b>" . userDisplayText($user) . "</b>" .  $poserString . "  on " . $user["name"] . " <div class='basicbutton'><a href=\"?action=logout\">logout</a></div></div>\n";
 	}
 	else
 	{
@@ -308,6 +308,12 @@ function loginForm() {
 function newUserForm($error = NULL, $encryptedTenantId = NULL) {
 	$formData = array(
   [
+    'label' => 'full name',
+    'name' => 'full_name',
+    'value' => gvfa("full_name", $_POST), 
+    'error' => gvfa('full_name', $error)
+  ],
+  [
     'label' => 'email',
     'name' => 'email',
     'value' => gvfa("email", $_POST), 
@@ -326,7 +332,8 @@ function newUserForm($error = NULL, $encryptedTenantId = NULL) {
     'type' => 'password',
     'value' => gvfa("password2", $_POST),
     'error' => gvfa('password2', $error)
-	   ]
+	 ]
+
 	);
   if($encryptedTenantId) {
     if(!$encryptedTenantId) {
@@ -1724,6 +1731,7 @@ function createUser($encryptedTenantId = NULL){
   $password = gvfa("password", $_POST);
   $password2 = gvfa("password2", $_POST);
   $email = gvfa("email", $_POST);
+  $fullName = gvfa("full_name", $_POST);
   if($password != $password2 || $password == "") {
   	$errors["password2"] = "Passwords must be identical and have a value";
   }
@@ -1736,10 +1744,13 @@ function createUser($encryptedTenantId = NULL){
     $userList = userList();
     $tenantSql = "";
     $role = "normal";
+    if(!$fullName) {
+      $fullName = $email;
+    }
     if (!$encryptedTenantId){
       $role = "admin"; //admin can alter the tenant and run reports.  super can do ANYTHING. normal can only do the basics
     }
-    $sql = "INSERT INTO user(email, password, role, created) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" . $role . "','" . $formatedDateTime . "')"; 
+    $sql = "INSERT INTO user(email, password, role, created, full_name) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" . $role . "','" . $formatedDateTime . "','" . mysqli_real_escape_string($conn, $fullName) . "')"; 
     if(count(userList()) == 0) {
       //if there are no users, create the first one as admin. we also need a Tenant and we need to add the user to that Tenant
       $sql = "INSERT INTO user(email, password, created, role) VALUES ('" . $email . "','" .  mysqli_real_escape_string($conn, $encryptedPassword) . "','" .$formatedDateTime . "','super')"; 
@@ -3013,6 +3024,14 @@ function removeDelimiters($str, $replacement = "_") {
   // Replace all delimiters with an empty string
   $str = str_replace(str_split($delimiters), $replacement, $str);
   return $str;
+}
+
+
+function userDisplayText($user) {
+  if($user["full_name"]) {
+    return $user["full_name"];
+  }
+  return $user["email"];
 }
 
  
