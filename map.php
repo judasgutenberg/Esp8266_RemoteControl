@@ -134,6 +134,7 @@ if(!$user) {
     let currentStartDate; //a global that needs to persist through HTTP sessions in the frontend
     let justLoaded = true;
   </script>
-  <script async src="https://maps.googleapis.com/maps/api/js?key=<?php echo $credential["password"]?>&callback=initMap"></script>
+ 
+   <script async src="https://maps.googleapis.com/maps/api/js?key=<?php echo $credential["password"]?>&callback=initMap"></script> 
 </body>
 </html>

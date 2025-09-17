@@ -2284,7 +2284,10 @@ function formatSQL(sql) {
     }
 
     // ✅ Snap to cusps only if checkbox is checked
-    const cuspAlign = document.getElementById('atc_id')?.checked;
+	let cuspAlign = null;
+	if(document.getElementById('atc_id')){
+    	cuspAlign = document.getElementById('atc_id').checked;
+	}
 
     if (cuspAlign) {
       if (periodScale === 'hour') {
@@ -2494,63 +2497,70 @@ function formatSQL(sql) {
 
  
 
-  // Be sure to include our submit button in the data
-  let form = document.querySelector("form");
+// Be sure to include our submit button in the data
+let form = document.querySelector("form");
 
-  if (form) {
-    form.addEventListener("submit", function (e) {
-      e.preventDefault();
+if (form) {
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
 
-      const submitter = e.submitter;
+    const submitter = e.submitter;
 
-      let formData;
+    let formData;
 
-      // Feature-detect support for the 2-argument FormData constructor
-      try {
-        formData = new FormData(form, submitter);
-      } catch (err) {
-        formData = new FormData(form);
-        if (submitter && submitter.name) {
-          formData.append(submitter.name, submitter.value);
-        }
+    // Feature-detect support for the 2-argument FormData constructor
+    try {
+      formData = new FormData(form, submitter);
+    } catch (err) {
+      formData = new FormData(form);
+      if (submitter && submitter.name) {
+        formData.append(submitter.name, submitter.value);
       }
+    }
 
-      const jsonObject = {};
+    const jsonObject = {};
 
-      for (const [key, value] of formData.entries()) {
-        if (jsonObject.hasOwnProperty(key)) {
-          if (!Array.isArray(jsonObject[key])) {
-            jsonObject[key] = [jsonObject[key]];
+    for (const [key, value] of formData.entries()) {
+      if (jsonObject.hasOwnProperty(key)) {
+        if (!Array.isArray(jsonObject[key])) {
+          jsonObject[key] = [jsonObject[key]];
+        }
+        jsonObject[key].push(value);
+      } else {
+        jsonObject[key] = value;
+      }
+    }
+
+    const targetUrl = form.action || window.location.href;
+
+    // Use XMLHttpRequest instead of fetch for compatibility
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", targetUrl, true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.withCredentials = true; // mimic credentials: "same-origin"
+
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === 4) {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            var data = JSON.parse(xhr.responseText);
+            console.log("Success:", data);
+          } catch (err) {
+            console.error("Invalid JSON response:", err);
           }
-          jsonObject[key].push(value);
         } else {
-          jsonObject[key] = value;
+          console.error("Submission failed: HTTP " + xhr.status);
         }
       }
+    };
 
-      const targetUrl = form.action || window.location.href;
+    xhr.onerror = function () {
+      console.error("Submission failed: Network error");
+    };
 
-      fetch(targetUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        credentials: "same-origin",
-        body: JSON.stringify(jsonObject)
-      })
-        .then(resp => {
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          return resp.json();
-        })
-        .then(data => {
-          console.log("Success:", data);
-        })
-        .catch(err => {
-          console.error("Submission failed:", err);
-        });
-    });
-  }
-
+    xhr.send(JSON.stringify(jsonObject));
+  });
+}
 
 
 window.onload = function() {
