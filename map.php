@@ -61,6 +61,8 @@ if(!$user) {
   <?php
  }
  ?>
+ <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+ <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
   <link rel='stylesheet' href='tool.css?version=1711570359'>
   <script src='tool.js?version=<?php echo $version?>'></script>
   <script src='tinycolor.js?version=<?php echo $version?>'></script>
@@ -128,13 +130,16 @@ if(!$user) {
     </div>
 	</div>
 </div>
-<script src='map.js?version=<?php echo $version?>'></script>
+<script src='map_osm.js?version=<?php echo $version?>'></script>
  <script>
-    let map;
+    
     let currentStartDate; //a global that needs to persist through HTTP sessions in the frontend
     let justLoaded = true;
+    let googleApiKey = '<?php echo $credential["password"];?>';
+    initMap();
   </script>
  
-   <script async src="https://maps.googleapis.com/maps/api/js?key=<?php echo $credential["password"]?>&callback=initMap"></script> 
+ 
+   
 </body>
 </html>
