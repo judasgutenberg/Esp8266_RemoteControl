@@ -9,7 +9,7 @@ function clearMap() {
         map = null;
     }
 
-    map = L.map('map', { zoomControl: true }).setView([40, -100], 4);
+    map = L.map('map', { zoomControl: true }).setView([baseLatitude, baseLongitude], 12);
 
     // Define all base layers
     const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -208,11 +208,12 @@ window.initMap =   function () {
                 map.fitBounds(bounds);
                 document.getElementById('greatestTime').innerHTML = " Latest Data: " + timeAgo(maxRecorded);
             }
-
-            if (liveData) {
-                setTimeout(initMap, 3000);
+            createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'initMap()', 'device_log', deviceId);
+            if(liveData) {
+              setTimeout(()=>{
+              initMap();
+              }, 3000);
             }
-
             justLoaded = false;
 
         } else {
