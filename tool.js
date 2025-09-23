@@ -907,10 +907,11 @@ function genericListActionBackend(
 	  const div = document.getElementById('utilityDiv');
 	  let out = "";
 	  out += "<div id='commandline' style='display:none'>Command: <input id='command_text' style='width:200px'/>";
-	  out += "&nbsp;&nbsp;Data: <input id='command_data' style='width:300px'/></div>";
-	  out += "<div>Device: <span style='margin-left:17px' id='deviceDropdown'/></div>";
+	  out += "&nbsp;&nbsp;Data: <input id='command_data' style='width:300px'/>";
+	  
   
-	  out += "<div><button type='button' onclick='instantCommand()'>Run</button></div>";
+	  out += "<button type='button' onclick='instantCommand()'>Run</button></div>";
+	  out += "<div>Device: <span style='margin-left:17px' id='deviceDropdown'/></div>";
    
 	  //out += "<div>Responses: <textarea id='command_response' style='width:680px;height:400px'/></textarea></div>";
 	  out += "<div>Interactive Command Log: <div id='instantcommandlog'></div></div>";
@@ -1336,8 +1337,9 @@ function formatSQL(sql) {
   let indentLevel = 0;
 
   const tokens = sql.match(
-    /(--.*?$)|('[^']*'|"[^"]*")|<=|>=|<>|!=|[=<>!]|[\w.*]+|[(),+\-;]/gms
+    /(--.*?$)|('[^']*'|"[^"]*")|<=|>=|<>|!=|[=<>!]|[\w.*]+|[(),+\-/*;]/gms
   ) || [];
+
 
   function addNewline(level = indentLevel) {
     formatted += '\n' + '  '.repeat(level);
