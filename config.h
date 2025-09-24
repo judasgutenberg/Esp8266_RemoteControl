@@ -46,3 +46,7 @@ extern const int ina219_address;
 extern const int fram_address; //will usually be paired with a value in offline_log_granularity as a way to store offline log data
 
 extern const int rtc_address;
+
+extern int slave_i2c;
+extern const int slave_pet_watchdog_command;
+
