@@ -102,6 +102,7 @@ uint32_t wifiOnTime = 0;
 bool debug = true;
 uint8_t outputMode = 0;
 String responseBuffer = "";
+static unsigned long lastPet = 0;
 
 //https://github.com/spacehuhn/SimpleMap
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
@@ -403,7 +404,7 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
     }
   } else if(sensorIdLocal == 680) {
     Serial.print(F("Initializing BME680 sensor...\n"));
-    if (!BME680[objectCursor].begin(I2C_STANDARD_MODE, i2c)) {  // Start B DHTME680 using I2C, use first device found
+    if (!BME680[objectCursor].begin((uint8_t)i2c)) {  // Start B DHTME680 using I2C, use first device found
       Serial.print(F(" - Unable to find BME680.\n"));
     } 
     Serial.print(F("- Setting 16x oversampling for all sensors\n"));
@@ -480,6 +481,10 @@ void compileAndSendDeviceData(String weatherData, String whereWhenData, String p
       transmissionString = transmissionString + (1000 * latencySum)/latencyCount;
   };
   transmissionString = transmissionString + "*****"; //this is where latitude*longitude*elevation*velocity*uncertainty go.
+  if(slave_i2c > 0) {
+    transmissionString = transmissionString + "*" + slaveData();     
+  }
+  
   //where devicepowerinfo goes:
   if(powerData != "") {
     transmissionString = transmissionString + "|" + powerData;
@@ -1132,7 +1137,12 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
   }
   if(commandId) {
     //Serial.println(command);
-    if(command == "reboot") {
+    if (command == "reboot slave") {
+      if(slave_i2c > 0) {
+        requestLong(slave_i2c, 128);
+        textOut("Slave rebooted\n");
+      }
+    } else if(command.indexOf("reboot") > -1){
       //can't do this here, so we defer it!
       if(!deferred) {
         nonJsonLine--; //get the ! back at the beginning
@@ -1141,7 +1151,13 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
         strcpy(deferredCommand, nonJsonLine);
         textOut("Rebooting... \n");
       } else {
+        if(command.indexOf("watchdog") > -1){
+          if(slave_i2c > 0) {
+            requestLong(slave_i2c, 134);
+          }
+        } else {
          rebootEsp();
+        }
       }
     } else if(command == "reboot now") {
       rebootEsp(); //only use in extreme measures -- as an instant command will produce a booting loop until command is manually cleared
@@ -1209,6 +1225,21 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       if(rtc_address > 0) {
         printRTCDate();
       }
+
+    } else if(command == "get watchdog info") {
+      if(slave_i2c > 0) {
+        long ms      = requestLong(slave_i2c, 129); // millis
+        long lastReboot = requestLong(slave_i2c, 130); // last watchdog reboot time
+        long rebootCount  = requestLong(slave_i2c, 131); // reboot count
+        long lastWePetted  = requestLong(slave_i2c, 132);
+        long lastPetAtBite  = requestLong(slave_i2c, 133);
+        textOut("Watchdog millis: " + String(ms) + "; Last reboot at: " + String(lastReboot) + " (" + msTimeAgo(ms, lastReboot) + "); Reboot count: " + String(rebootCount) + "; Last petted: " + String(lastWePetted) + " (" + msTimeAgo(ms, lastWePetted) + "); Bit " + String(lastPetAtBite) + " seconds after pet\n"); 
+      }
+    } else if(command == "get watchdog data") {
+      if(slave_i2c > 0) {
+        textOut(slaveData() + "\n");
+      } 
+      
     } else if (command ==  "get uptime") {
       textOut("Last booted: " + timeAgo("") + "\n");
     } else if (command ==  "get wifi uptime") {
@@ -1259,6 +1290,15 @@ void sendIr(String rawDataStr) {
   irsend.sendRaw(rawData, rawDataLength, 38);
   Serial.println("IR signal sent!");
   free(rawData); // Free memory
+}
+
+String slaveData() {
+    long ms      = requestLong(slave_i2c, 129); // millis
+    long lastReboot = requestLong(slave_i2c, 130); // last watchdog reboot time
+    long rebootCount  = requestLong(slave_i2c, 131); // reboot count
+    long lastWePetted  = requestLong(slave_i2c, 132);
+    long lastPetAtBite  = requestLong(slave_i2c, 133);
+    return String(ms) + "*" + String(lastReboot) + "*" + String(rebootCount) + "*" + String(lastWePetted) + "*" + String(lastPetAtBite);
 }
 
 void rebootEsp() {
@@ -1373,6 +1413,20 @@ void loop(){
   //Serial.println(lastCommandLogId);
 
   unsigned long nowTime = millis() + timeOffset;
+
+
+  if (slave_pet_watchdog_command > 0 && (nowTime - lastPet) > 20000) { 
+  
+    Wire.beginTransmission(slave_i2c);
+    Wire.write((uint8_t)slave_pet_watchdog_command);  // command ID for "pet watchdog"
+    Wire.endTransmission();
+    yield();
+    //feedbackPrint("pet\n");
+   
+    lastPet = nowTime;
+  }
+
+
 
   /*
   uint8_t testHi = 0;//(millis() >> 8) & 0xFF;
@@ -1614,7 +1668,11 @@ time_t parseDateTime(String dateTime) {
     return mktime(&t); // Convert struct tm to Unix timestamp
 }
 
- 
+
+String msTimeAgo(uint32_t base, uint32_t millisFromPast) {
+  return humanReadableTimespan((uint32_t) (base - millisFromPast)/1000);
+}
+
 String msTimeAgo(uint32_t millisFromPast) {
   return humanReadableTimespan((uint32_t) (millis() - millisFromPast)/1000);
 }
@@ -2723,4 +2781,23 @@ String encryptStoragePassword(String datastring) {
         //Serial.print(":");
     }
     return processedString;
+}
+
+
+long requestLong(byte slaveAddress, byte command) {
+  Wire.beginTransmission(slaveAddress);
+  Wire.write(command);    // send the command
+  Wire.endTransmission();
+
+  Wire.requestFrom(slaveAddress, 4);
+  long value = 0;
+  byte buffer[4];
+  int i = 0;
+  while (Wire.available() && i < 4) {
+    buffer[i++] = Wire.read();
+  }
+  for (int j = 0; j < i; j++) {
+    value |= ((long)buffer[j] << (8 * j));
+  }
+  return value;
 }
