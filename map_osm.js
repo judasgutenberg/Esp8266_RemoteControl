@@ -41,6 +41,31 @@ function clearMap() {
     const carto = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     });
+    
+    const rainViewer = L.tileLayer(
+      'https://tilecache.rainviewer.com/v2/radar/{z}/{x}/{y}/256/2/1_1.png',
+      {
+        attribution: 'Weather radar © RainViewer',
+        opacity: 0.6
+      }
+    );
+    
+   const nasaGibs = L.tileLayer(
+    'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/{time}/{tilematrixset}{z}/{y}/{x}.jpg',
+    {
+      attribution: 'Imagery © NASA EOSDIS GIBS',
+      tilematrixset: 'GoogleMapsCompatible_Level9',
+      time: new Date().toISOString().split('T')[0], // today’s date in YYYY-MM-DD
+      maxZoom: 9
+    }
+  );
+  
+  const cyclosm = L.tileLayer(
+    'https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png',
+    {
+      attribution: '&copy; OpenStreetMap contributors, CyclOSM'
+    }
+  );
 
     // Default layer
     streetLayer.addTo(map);
@@ -53,7 +78,11 @@ function clearMap() {
         "Google Street": googleStreetLayer,
         "Google Satellite": googleSatelliteLayer,
         "ESRI Topo": esriTopo,      
-        "OpenTopoMap": topoLayer   
+        "OpenTopoMap": topoLayer,   
+        "RainViewer Radar": rainViewer,
+        "NASA GIBS":nasaGibs,
+        "Outdoors":cyclosm
+
     };
 
     L.control.layers(baseLayers).addTo(map);

@@ -32,6 +32,7 @@ $aFewMinutesPastDate->modify('-6 minutes');
 $formattedDateTimeAFewMinutesAgo =  $aFewMinutesPastDate->format('Y-m-d H:i:s');
 //$formattedDateTime =  $date->format('H:i');
 $deviceId = "";
+$manufactureId = gvfw("manufacture_id");
 $locationId = "";
 $deviceName = "Your device";
 $deviceIds = [];
@@ -69,6 +70,19 @@ if($_REQUEST) {
 	}
 	if(!$locationId) {
 		$locationId =  $deviceId;
+	}
+	if(!$locationId  && $manufactureId) {
+    $sql = "SELECT device_id FROM device WHERE manufacture_id= " . intval($manufactureId);
+       //echo $sql;
+      $result = mysqli_query($conn, $sql);
+      if($result) {
+        $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        if(count($rows)>0) {
+          $row = $rows[0];
+          $locationId = $row["device_id"];
+        }
+      }
+      //echo "XX" . $locationId . "XX";
 	}
 	if(!$deviceId) {
 		$deviceId = $locationId;
@@ -128,6 +142,10 @@ if($_REQUEST) {
 	
 	$specificColumn = gvfw("specific_column");
 	if($storagePassword){
+    if($manufactureId) {
+      //echo "*****" . $storagePassword . "****";
+      //echo "\n" . bin2hex($str);
+    }
 		$deviceIds = deriveDeviceIdsFromStoragePassword($storagePassword);
 	}
 
@@ -196,9 +214,8 @@ if($_REQUEST) {
             $latitude = arrayDefaultFailDown($whereAndWhen, 4, "NULL");
             $longitude = arrayDefaultFailDown($whereAndWhen, 5, "NULL");
             $elevation = arrayDefaultFailDown($whereAndWhen, 6, "NULL");
-            $elevation = arrayDefaultFailDown($whereAndWhen, 7, "NULL");
-            $velocity = arrayDefaultFailDown($whereAndWhen, 8, "NULL");
-            $uncertainty = arrayDefaultFailDown($whereAndWhen, 9, "NULL");
+            $velocity = arrayDefaultFailDown($whereAndWhen, 7, "NULL");
+            $uncertainty = arrayDefaultFailDown($whereAndWhen, 8, "NULL");
             $latency = time() - intval($transmissionTimestamp);
             if($averageLatency) {
               writeMemoryCache("latency-" . $deviceId, $averageLatency);
@@ -384,7 +401,7 @@ if($_REQUEST) {
 				}
 
 			} else if ($mode=="getMap"){ //an endpoint specifically for maps
-				$sql = "SELECT * from device_log WHERE device_id=" . intval($deviceId) . "  ";
+				$sql = "SELECT * from device_log WHERE latitude IS NOT NULL and latitude > 0 AND device_id=" . intval($deviceId) . "  ";
         $sql .= buildRestOfSegmentedDataSql($formattedDateTime, "device_log_id"); 
 
 				$subResult = mysqli_query($conn, $sql);
@@ -601,12 +618,16 @@ if($_REQUEST) {
 						mysqli_real_escape_string($conn, $hashedData) .
 						"')";
 					}
-
+          if($latitude != "null"  && $latitude != "") {
+            $doNotSaveBecauseNoData = false;
+          }
 					for($datumCounter = 0; $datumCounter < 12; $datumCounter++){
 						if(count($arrWeatherData)> $datumCounter){
 							$testValue = $arrWeatherData[$datumCounter];
 							if(strtolower($testValue) != "null" && $testValue != "" && strtolower($testValue) != "nan"){
-								$doNotSaveBecauseNoData = false;
+ 
+                  $doNotSaveBecauseNoData = false;
+								
 								//echo $datumCounter . ": " . $testValue . ", should now be false<BR>";
 							} else {
 								//echo $datumCounter . ": " . $testValue . "<BR>";
@@ -678,28 +699,30 @@ if($_REQUEST) {
 				$managementCache = []; //save us some database lookups
 				//SELECT pin_number, f.name, value, enabled, can_be_analog, IFNULL(via_i2c_address, 0) AS i2c, device_feature_id FROM device_feature f LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id WHERE device_id=11 ORDER BY i2c, pin_number;
 				//the part where we include any data from our remote control system:
-				$deviceSql = "SELECT 
-						allow_automatic_management, 
-						last_known_device_value, 
-						pin_number, f.name, 
-						value, 
-						enabled, 
-						can_be_analog, 
-						IFNULL(via_i2c_address, 0) AS i2c, 
-						device_feature_id, 
-						automation_disabled_when, 
-						restore_automation_after, 
-						f.user_id, 
-						f.modified,
-						(SELECT beginning_state FROM device_feature_log  dfl WHERE dfl.device_feature_id=f.device_feature_id ORDER BY device_feature_log_id DESC LIMIT 0,1) as historic_was,
-						(SELECT end_state FROM device_feature_log  dfl WHERE dfl.device_feature_id=f.device_feature_id ORDER BY device_feature_log_id DESC LIMIT 0,1) as historic_became,
-						(SELECT mechanism FROM device_feature_log  dfl WHERE dfl.device_feature_id=f.device_feature_id ORDER BY device_feature_log_id DESC LIMIT 0,1) as historic_mechanism,
-						(SELECT recorded FROM device_feature_log  dfl WHERE dfl.device_feature_id=f.device_feature_id ORDER BY device_feature_log_id DESC LIMIT 0,1) as historic_recorded
-					FROM device_feature f 
-					LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id 
-					WHERE pin_number IS NOT NULL AND sensor_type IS NULL AND enabled=1 AND device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
-				//echo $deviceSql;
-				$result = mysqli_query($conn, $deviceSql);
+				if($deviceId > 0) {
+          $deviceSql = "SELECT 
+              allow_automatic_management, 
+              last_known_device_value, 
+              pin_number, f.name, 
+              value, 
+              enabled, 
+              can_be_analog, 
+              IFNULL(via_i2c_address, 0) AS i2c, 
+              device_feature_id, 
+              automation_disabled_when, 
+              restore_automation_after, 
+              f.user_id, 
+              f.modified,
+              (SELECT beginning_state FROM device_feature_log  dfl WHERE dfl.device_feature_id=f.device_feature_id ORDER BY device_feature_log_id DESC LIMIT 0,1) as historic_was,
+              (SELECT end_state FROM device_feature_log  dfl WHERE dfl.device_feature_id=f.device_feature_id ORDER BY device_feature_log_id DESC LIMIT 0,1) as historic_became,
+              (SELECT mechanism FROM device_feature_log  dfl WHERE dfl.device_feature_id=f.device_feature_id ORDER BY device_feature_log_id DESC LIMIT 0,1) as historic_mechanism,
+              (SELECT recorded FROM device_feature_log  dfl WHERE dfl.device_feature_id=f.device_feature_id ORDER BY device_feature_log_id DESC LIMIT 0,1) as historic_recorded
+            FROM device_feature f 
+            LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id 
+            WHERE pin_number IS NOT NULL AND sensor_type IS NULL AND enabled=1 AND device_id=" . intval($deviceId) . " ORDER BY i2c, pin_number;";
+          //echo $deviceSql;
+          $result = mysqli_query($conn, $deviceSql);
+				}
 				if($result) {
 					$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
 					$pinCursor = 0;
