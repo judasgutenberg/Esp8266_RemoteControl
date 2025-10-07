@@ -1,0 +1,48 @@
+{
+  "wifi_ssid": "Your_SSID",
+  "wifi_password": "00000000",
+  "storage_password": "your_secret",
+  "encryption_scheme": "0x222222222222222",
+
+  "url_get": "/weather/server.php",
+  "host_get": "randomsprocket.com",
+  "sensor_config_string": "",
+  "sensor_id": 280,
+  "sensor_i2c": "0x77",
+  "consolidate_all_sensors_to_one_record": 1,
+  "device_id": 19,
+
+  "polling_granularity": 4,
+  "data_logging_granularity": 300,
+  "offline_log_granularity": 100,
+  "wifi_timeout": 40,
+  "offline_reconnect_interval": 20,
+  "fram_index_size": 256,
+  "fram_log_top": 28672,
+
+  "connection_failure_retry_seconds": 4,
+  "connection_retry_number": 22,
+
+  "granularity_when_in_moxee_phase_0": 3,
+  "granularity_when_in_moxee_phase_1": 17,
+  "number_of_hotspot_reboots_over_limited_timeframe_before_esp_reboot": 4,
+  "hotspot_limited_time_frame": 340,
+
+  "moxee_power_switch": -1,
+  "deep_sleep_time_per_loop": 0,
+  "light_sleep_time_per_loop": 0,
+
+  "sensor_data_pin": 14,
+  "sensor_power_pin": -1,
+  "sensor_sub_type": 21,
+
+  "pins_to_start_low": [12, 13, 14, 16, -1],
+  "ir_pin": -1,
+  "ina219_address": -1,
+
+  "fram_address": 0,
+  "rtc_address": 0,
+
+  "slave_i2c": 20,
+  "slave_pet_watchdog_command": 203
+}
