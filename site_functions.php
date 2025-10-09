@@ -1208,7 +1208,12 @@ function topmostNav() {
     [
       'label' => 'Device Control',
       'url' => "tool.php"
-    ]);
+    ],
+    [
+      'label' => 'Messages',
+      'url' => "message.php"
+    ]
+    );
   $out = "\n<div class='nav'>\n";
   $currentMode = gvfa('table', $_REQUEST);
   $deviceId = gvfa('device_id', $_REQUEST);

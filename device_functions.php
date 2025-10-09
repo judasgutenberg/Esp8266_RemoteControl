@@ -1518,6 +1518,14 @@ function editDevice($error,  $user) {
       'error' => gvfa('ip_address', $error)
 	  ],
     [
+	    'label' => 'manufacture id',
+      'name' => 'manufacture_id',
+      'type' => "int",
+      'width' => 200,
+	    'value' => gvfa("manufacture_id", $source), 
+      'error' => gvfa('manufacture_id', $error)
+	  ],
+    [
 	    'label' => 'sensor',
       'name' => 'sensor_id',
       'type' => "int",
@@ -2702,6 +2710,21 @@ function getCredential($tenant, $type) {
   }
 }
 
+function showLatestMessages($tenantId) {
+  global $conn;
+  $table = "message";
+  $sql = "SELECT recorded, content, lora_id, d.name as device_name, received  FROM " . $table  . " m LEFT JOIN device d ON m.device_id=d.device_id AND m.tenant_id=d.tenant_id WHERE m.tenant_id=" . intval($tenantId) . " ORDER BY recorded DESC LIMIT 0,100";
+  $result = mysqli_query($conn, $sql);
+  $out = "";
+  $toolsTemplate = "";
+  $headerData = "";
+  if($result) {
+    $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    $out .= genericTable($rows, $headerData, $toolsTemplate, null,  $table, $table . "_id", $sql);
+  }
+  return $out;
+}
+
 function gatherAnyTractiveGpsData($tenant){
   //var_dump($tenant);
   global $conn, $timezone;
@@ -2788,7 +2811,7 @@ function gatherAnyTractiveGpsData($tenant){
     */
   $timestamp = time();
   $timezoneOffset = 18000; //for east coast!
-  $url = $baseUrl . "/tracker/" . $yourTrackerCode . "/positions?time_from=" . intval( $timestamp - 2600)  . "&time_to=" . intval(18000 + $timestamp) . "&format=json_segments";
+  $url = $baseUrl . "/tracker/" . $yourTrackerCode . "/positions?time_from=" . intval( $timestamp-4000)  . "&time_to=" . intval($timezoneOffset + $timestamp) . "&format=json_segments";
   //echo   $url;
   
   $headers = [

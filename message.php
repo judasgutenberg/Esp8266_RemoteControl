@@ -1,0 +1,102 @@
+<!doctype html>
+<?php 
+include("config.php");
+include("site_functions.php");
+include("device_functions.php");
+//ini_set('display_errors', 1);
+//ini_set('display_startup_errors', 1);
+//error_reporting(E_ALL);
+
+$poser = null;
+$poserString = "";
+$out = "";
+$conn = mysqli_connect($servername, $username, $password, $database);
+$user = autoLogin();
+$tenantSelector = "";
+$scaleConfig =  timeScales();
+$credential = getCredential($user, "googlemap");
+$error = "";
+$deviceId = gvfw("device_id");
+$version = 1.1;
+if($deviceId == ""){
+  $deviceId = 21; //hard coded for me, probably not what you want
+}
+if(!$credential) {
+	$error = "No Google API Key found.";
+}
+$content = "";
+$action = gvfw("action");
+if ($action == "login") {
+	$tenantId = gvfa("tenant_id", $_GET);
+	$tenantSelector = loginUser($tenantId);
+} else if ($action == 'settenant') {
+	setTenant(gvfw("encrypted_tenant_id"));
+} else if ($action == "logout") {
+	logOut();
+	header("Location: ?action=login");
+	die();
+}
+if(!$user) {
+	if(gvfa("password", $_POST) != "" && $tenantSelector == "") {
+		$content .= "<div class='genericformerror'>The credentials you entered have failed.</div>";
+	}
+    if(!$tenantSelector) {
+		$content .= loginForm();
+	} else {
+		$content .= $tenantSelector;
+	}
+	echo bodyWrap($content, $user, "", null);
+	die();
+}
+?>
+<html>
+<head>
+  <title>Messages</title>
+ 
+ 
+ 
+  <link rel='stylesheet' href='tool.css?version=1711570359'>
+  <script src='tool.js?version=<?php echo $version?>'></script>
+  <script src='tinycolor.js?version=<?php echo $version?>'></script>
+  <link rel="icon" type="image/x-icon" href="./favicon.ico" />
+ 
+</head>
+<body>
+<?php
+	$out .= topmostNav();
+	$out .= "<div class='logo'>Map</div>\n";
+	if($user) {
+		$out .= "<div class='outercontent'>";
+		if($poser) {
+			$poserString = " posing as <span class='poserindication'>" . userDisplayText($poser) . "</span> (<a href='?action=disimpersonate'>unpose</a>)";
+		}
+		$out .= "<div class='loggedin'>You are logged in as <b>" . userDisplayText($user) . "</b>" .  $poserString . "  on " . $user["name"] . " <div class='basicbutton'><a href=\"?action=logout\">logout</a></div></div>\n";
+	}
+		else
+  {
+		//$out .= "<div class='loggedin'>You are logged out.  </div>\n";
+	} 
+  $out .= "<div>\n";
+  $out .= "<div class='documentdescription'>";
+  $out .= "</div>";
+ 
+  echo $out; 
+ 
+  ?>
+    <div style="text-align:center;"><b><span id='greatestTime'></span></b></div>
+		<div class='generalerror'><?php echo $error ?></div>
+		<div style="text-align:center;"><b><span id='greatestTime'></span></b></div>
+		<div id="map"></div>
+    <div style='display:inline-block;vertical-align:top' >
+      <div  id='singleplotdiv'>
+      <?php echo showLatestMessages($user["tenant_id"]); ?>
+    </div>
+	</div>
+</div>
+ 
+ 
+ 
+ 
+   
+</body>
+</html>
