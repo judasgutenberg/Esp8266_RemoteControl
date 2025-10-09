@@ -2713,7 +2713,7 @@ function getCredential($tenant, $type) {
 function showLatestMessages($tenantId) {
   global $conn;
   $table = "message";
-  $sql = "SELECT recorded, content, lora_id, d.name as device_name, received  FROM " . $table  . " m LEFT JOIN device d ON m.device_id=d.device_id AND m.tenant_id=d.tenant_id WHERE m.tenant_id=" . intval($tenantId) . " ORDER BY recorded DESC LIMIT 0,100";
+  $sql = "SELECT recorded, content, lora_id, d.name as device_name, received  FROM " . $table  . " m LEFT JOIN device d ON m.device_id=d.device_id AND m.tenant_id=d.tenant_id WHERE m.tenant_id=" . intval($tenantId) . "  ";
   $result = mysqli_query($conn, $sql);
   $out = "";
   $toolsTemplate = "";

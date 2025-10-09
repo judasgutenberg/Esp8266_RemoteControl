@@ -1206,12 +1206,12 @@ function topmostNav() {
       'url' => "map.php"
     ],
     [
-      'label' => 'Device Control',
-      'url' => "tool.php"
-    ],
-    [
       'label' => 'Messages',
       'url' => "message.php"
+    ],
+    [
+      'label' => 'Device Control',
+      'url' => "tool.php"
     ]
     );
   $out = "\n<div class='nav'>\n";

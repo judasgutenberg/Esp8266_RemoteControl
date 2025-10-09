@@ -55,8 +55,9 @@ if(!$user) {
  
  
  
-  <link rel='stylesheet' href='tool.css?version=1711570359'>
+  <link rel='stylesheet' href='tool.css?version=<?php echo $version?>'>
   <script src='tool.js?version=<?php echo $version?>'></script>
+  <script src='tablesort.js?version=<?php echo $version?>'></script>
   <script src='tinycolor.js?version=<?php echo $version?>'></script>
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
  
@@ -76,6 +77,7 @@ if(!$user) {
   {
 		//$out .= "<div class='loggedin'>You are logged out.  </div>\n";
 	} 
+	  $out .= "<div class='waitingouter' id='waitingouter'><div class='waiting' id='waiting'><img width='200' height='200' src='./images/signs.gif'></div><div id='waitingmessage' class='waitingmessage'>Waiting...</div></div>\n";
   $out .= "<div>\n";
   $out .= "<div class='documentdescription'>";
   $out .= "</div>";
@@ -83,6 +85,7 @@ if(!$user) {
   echo $out; 
  
   ?>
+  
     <div style="text-align:center;"><b><span id='greatestTime'></span></b></div>
 		<div class='generalerror'><?php echo $error ?></div>
 		<div style="text-align:center;"><b><span id='greatestTime'></span></b></div>
