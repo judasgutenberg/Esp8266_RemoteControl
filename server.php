@@ -621,7 +621,7 @@ if($_REQUEST) {
           if($latitude != "null"  && $latitude != "") {
             $doNotSaveBecauseNoData = false;
           }
-					for($datumCounter = 0; $datumCounter < 12; $datumCounter++){
+					for($datumCounter = 0; $datumCounter < 10; $datumCounter++){
 						if(count($arrWeatherData)> $datumCounter){
 							$testValue = $arrWeatherData[$datumCounter];
 							if(strtolower($testValue) != "null" && $testValue != "" && strtolower($testValue) != "nan"){
