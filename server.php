@@ -98,6 +98,7 @@ if($_REQUEST) {
 	$averageLatency = intval(readMemoryCache("latency-" . $deviceId));
   $allData = intval(gvfw("all_data"));
   $maxRecorded = gvfw("max_recorded");
+  $message = gvfw("message");
 	//absolute_timespan_cusps
 	$absoluteTimespanCusps = false;
 	$absoluteTimespanCusps = gvfw("absolute_timespan_cusps");
@@ -170,7 +171,16 @@ if($_REQUEST) {
 			$out = ["error"=>"bad database connection"];
 		} else {
 			$latestCommandData = getLatestCommandData($locationId, $tenant["tenant_id"]);
-	 
+      if($message) { //a message might be sent from Meshtastic or perhaps other communication systems I might integrate with
+        $sql = "INSERT INTO message(recorded, device_id, tenant_id, content) VALUES('" .  $formattedDateTime . "'," . intval($deviceId) . ",". $tenantId . ",'" . mysqli_real_escape_string($conn, $message) . "')";
+        $result = mysqli_query($conn, $sql);
+        $out =  ["message" => "Message saved"]; 
+        $error = mysqli_error($conn);
+				if($error != ""){
+					$out["error"] = $error;
+				}
+      
+      }
 			if(array_key_exists("data", $_REQUEST)) {
 				
 				$lines = explode("|",$data);
