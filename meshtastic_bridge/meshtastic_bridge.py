@@ -221,6 +221,9 @@ def buildUrl(flat, nodeId):
     )
 
     url = f"http://{CONFIG['host_get']}{CONFIG['url_get']}?k2={encryptedStoragePassword}&manufacture_id={nodeId}&mode=saveData&data={quote(dataToSend)}"
+    if "text" in flat:
+      url = url + "&message=" + quote(flat["text"])
+    
     print(url)
     return url
         
