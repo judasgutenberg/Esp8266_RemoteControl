@@ -2278,6 +2278,28 @@ function previousReportRuns($user, $reportId) {
   return $out;
 }
 
+function setOrderByClause($sql, $newOrderBy) {
+    // Normalize spacing for consistent regex matching
+    $sql = trim($sql);
+
+    // Regex pattern to detect ORDER BY and LIMIT clauses
+    $patternOrder = '/\bORDER\s+BY\b[^)]*(?=\bLIMIT\b|\Z)/i';
+    $patternLimit = '/\bLIMIT\b/i';
+
+    if (preg_match($patternOrder, $sql)) {
+        // Replace existing ORDER BY
+        $sql = preg_replace($patternOrder, "ORDER BY $newOrderBy ", $sql);
+    } elseif (preg_match($patternLimit, $sql)) {
+        // Insert ORDER BY before LIMIT
+        $sql = preg_replace($patternLimit, "ORDER BY $newOrderBy LIMIT", $sql, 1);
+    } else {
+        // Append ORDER BY to the end
+        $sql .= " ORDER BY $newOrderBy";
+    }
+
+    return trim($sql);
+}
+
 function splitSqlCommands($sql) {
   $commands = [];
   $length = strlen($sql);

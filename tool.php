@@ -133,7 +133,7 @@ if ($user) {
     $row = mysqli_fetch_array($result);
     if($row["result_recorded"] > gvfw("result_recorded")) {
       //$temporaryComandText = file_get_contents($possibleTemporaryCommandFileName);
-      //$commandText = getNumberAfterLastNewline($temporaryComandText, true);
+      //$commandText = getNumberAfterLastNewline($temporaryComandTeFoxt, true);
       //$commandLogId = getNumberAfterLastNewline($temporaryComandText, false);
       //$sql = "UPDATE command_log SET result_text='" . mysqli_real_escape_string($conn, $temporaryComandText) . "' WHERE tenant_id=". intval($tenantId) . "  AND device_id=" . intval($deviceId);
       //$sql .= " AND command_log_id=" . $commandLogId;
@@ -236,19 +236,20 @@ if ($user) {
   } else if ($action == "runencryptedsql") { //this is secure because the sql is very hard to decrypt if you don't know the encryption key
  
     $headerData = json_decode(gvfw('headerData'), true);
+   
     $currentSortColumn = gvfw('sortColumn');
-    $sortAddendum = "";
+    $sortClause = "";
     if($currentSortColumn  > -1){
       $sortDatum = $headerData[$currentSortColumn];
-      $sortAddendum = " ORDER BY ". $sortDatum["name"];
+      $sortClause = $sortDatum["name"];
       $direction = gvfw('direction');
       if($direction == "true"){
-        $sortAddendum .= " DESC";
+        $sortClause .= " DESC";
       }
     }
  
     $sql = decryptLongString(gvfw('value'), $encryptionPassword);
-    $sql .= $sortAddendum  ;
+    $sql = setOrderByClause($sql, $sortClause);
     //echo $sql . "\n\n";
     //die();
     $result = replaceTokensAndQuery($sql, $user);

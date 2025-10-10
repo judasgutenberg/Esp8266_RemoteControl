@@ -2713,11 +2713,43 @@ function getCredential($tenant, $type) {
 function showLatestMessages($tenantId) {
   global $conn;
   $table = "message";
-  $sql = "SELECT recorded, content, lora_id, d.name as device_name, received  FROM " . $table  . " m LEFT JOIN device d ON m.device_id=d.device_id AND m.tenant_id=d.tenant_id WHERE m.tenant_id=" . intval($tenantId) . "  ";
+  $sql = "SELECT recorded, content, lora_id, d.name as device_name, received  FROM " . $table  . " m LEFT JOIN device d ON m.device_id=d.device_id AND m.tenant_id=d.tenant_id WHERE m.tenant_id=" . intval($tenantId) . " ORDER BY recorded DESC LIMIT 0, 200 ";
   $result = mysqli_query($conn, $sql);
   $out = "";
   $toolsTemplate = "";
   $headerData = "";
+  $headerData =   $headerData = array(
+    [
+      'label' => 'recorded',
+      'name' => 'recorded',
+      'changeable' => false,
+      'type' => 'datetime'
+    ],
+    [
+      'label' => 'content',
+      'name' => 'content',
+      'changeable' => false,
+      'type' => 'string'
+    ],
+    [
+      'label' => 'lora id',
+      'name' => 'lora_id',
+      'changeable' => false,
+      'type' => 'int'
+    ],
+    [
+      'label' => 'name',
+      'name' => 'device_name',
+      'changeable' => false,
+      'type' => 'int'
+    ],
+    [
+      'label' => 'received',
+      'name' => 'received',
+      'changeable' => false,
+      'type' => 'bool'
+    ]
+   );
   if($result) {
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     $out .= genericTable($rows, $headerData, $toolsTemplate, null,  $table, $table . "_id", $sql);

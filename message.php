@@ -98,7 +98,7 @@ if(!$user) {
 </div>
  
  
- 
+ <script>currentSortColumn = 0;</script>
  
    
 </body>
