@@ -2279,6 +2279,9 @@ function previousReportRuns($user, $reportId) {
 }
 
 function setOrderByClause($sql, $newOrderBy) {
+    if(!$newOrderBy) {
+      return $sql;
+    }
     // Normalize spacing for consistent regex matching
     $sql = trim($sql);
 

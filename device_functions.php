@@ -2738,7 +2738,7 @@ function showLatestMessages($tenantId) {
       'type' => 'int'
     ],
     [
-      'label' => 'name',
+      'label' => 'device',
       'name' => 'device_name',
       'changeable' => false,
       'type' => 'int'

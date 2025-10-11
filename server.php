@@ -57,6 +57,7 @@ if($_POST) {
 if($_REQUEST) {
 	$periodAgo = 0;
 	$scale = "day";
+	$loraId = gvfw("lora_id");
 	//i may end up deciding that locationId and deviceId are the same thing, and for now they are
 	//but maybe some day they will be different things
 	if(array_key_exists("locationId", $_REQUEST)) {
@@ -171,15 +172,23 @@ if($_REQUEST) {
 			$out = ["error"=>"bad database connection"];
 		} else {
 			$latestCommandData = getLatestCommandData($locationId, $tenant["tenant_id"]);
+			if(!$loraId) {
+        $loraId = "NULL";
+			} else {
+        $loraId = intval($loraId);
+			}
       if($message) { //a message might be sent from Meshtastic or perhaps other communication systems I might integrate with
-        $sql = "INSERT INTO message(recorded, device_id, tenant_id, content) VALUES('" .  $formattedDateTime . "'," . intval($deviceId) . ",". $tenantId . ",'" . mysqli_real_escape_string($conn, $message) . "')";
+        $sql = "INSERT INTO message(recorded, device_id, tenant_id, content, lora_id) VALUES('" .  $formattedDateTime . "'," . intval($deviceId) . ",". $tenantId . ",'" . mysqli_real_escape_string($conn, $message) . "'," . $loraId . ")";
+    
         $result = mysqli_query($conn, $sql);
-        $out =  ["message" => "Message saved"]; 
+        $out["message"] = "Message saved"; 
         $error = mysqli_error($conn);
 				if($error != ""){
 					$out["error"] = $error;
 				}
-      
+				//pick up any web-produced messages and send via lora
+				$out["messages"] = getMessagesForLoRa($tenantId);
+        die(json_encode($out));
       }
 			if(array_key_exists("data", $_REQUEST)) {
 				
@@ -553,80 +562,87 @@ if($_REQUEST) {
 				foreach($multipleSensorArray  as $sensorDataString) { //if there is a ! in the weatherInfoString, 
 					$arrWeatherData = explode("*", $sensorDataString);
 					if(count($arrWeatherData) > 1) { //it's possible the $weatherInfoString began with a !, meaning the first weather record is technically empty
-						$temperature = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $temperature, $arrWeatherData, "temperature", $deviceId, $tenantId);
-						$pressure = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $pressure, $arrWeatherData, "pressure", $deviceId, $tenantId);
-						$humidity = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $humidity, $arrWeatherData, "humidity", $deviceId, $tenantId);
-						$gasMetric = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $gasMetric, $arrWeatherData, "gas_metric", $deviceId, $tenantId);
-						$windDirection = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windDirection, $arrWeatherData, "wind_direction", $deviceId, $tenantId);
-						$windSpeed = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windSpeed, $arrWeatherData, "wind_speed", $deviceId, $tenantId);
-						$windIncrement = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windIncrement, $arrWeatherData, "wind_increment", $deviceId, $tenantId);
-						$precipitation = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $precipitation, $arrWeatherData, "precipitation", $deviceId, $tenantId);
-												
-						$radiationCount = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $radiationCount, $arrWeatherData, "radiation_count", $deviceId, $tenantId);
-						$lightningCount = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $lightningCount, $arrWeatherData, "lightning_count", $deviceId, $tenantId);
-						$illumination = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $illumination, $arrWeatherData, "illumination", $deviceId, $tenantId);
-						$colorMetric = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $colorMetric, $arrWeatherData, "color_metric", $deviceId, $tenantId);
- 
-						$reserved1 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved1, $arrWeatherData, "reserved1", $deviceId, $tenantId);
-						$reserved2 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved2, $arrWeatherData, "reserved2", $deviceId, $tenantId);
-						$reserved3 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved3, $arrWeatherData, "reserved3", $deviceId, $tenantId);
-						$reserved4 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved4, $arrWeatherData, "reserved4", $deviceId, $tenantId);
-						$sensorId = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $sensorId, $arrWeatherData, "sensor_id");
-						//$twelveVoltBatteryVoltage = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $twelveVoltBatteryVoltage, $arrWeatherData, 16);
-						if($consolidateAllSensorsToOneRecord){
-							$deviceFeatureId = "NULL";
-						} else {
-							if(count($arrWeatherData)>13) {
-								$deviceFeatureId = $arrWeatherData[13];
-							} else {
-								$deviceFeatureId = "NULL";
-							}
-						}
-						if($deviceFeatureId == ""){
-							$deviceFeatureId = "NULL";
-						}
-						//sensorName is $arrWeatherData[14] -- not used here
-						//i put $consolidateAllSensorsToOneRecord on the sensor record so that some sensors could be separate and then later ones could be consolidated
-						$consolidateAllSensorsToOneRecord = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $consolidateAllSensorsToOneRecord, $arrWeatherData, "consolidate");
+            if(count($arrWeatherData) == 4 && $arrWeatherData[2] == "special") {
+              //special hack to update messages
+              //var_dump($_REQUEST);
+              //var_dump($arrWeatherData);
+              setMessageReceived($arrWeatherData[1], $loraId);
+            } else {
+              $temperature = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $temperature, $arrWeatherData, "temperature", $deviceId, $tenantId);
+              $pressure = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $pressure, $arrWeatherData, "pressure", $deviceId, $tenantId);
+              $humidity = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $humidity, $arrWeatherData, "humidity", $deviceId, $tenantId);
+              $gasMetric = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $gasMetric, $arrWeatherData, "gas_metric", $deviceId, $tenantId);
+              $windDirection = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windDirection, $arrWeatherData, "wind_direction", $deviceId, $tenantId);
+              $windSpeed = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windSpeed, $arrWeatherData, "wind_speed", $deviceId, $tenantId);
+              $windIncrement = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $windIncrement, $arrWeatherData, "wind_increment", $deviceId, $tenantId);
+              $precipitation = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $precipitation, $arrWeatherData, "precipitation", $deviceId, $tenantId);
+                          
+              $radiationCount = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $radiationCount, $arrWeatherData, "radiation_count", $deviceId, $tenantId);
+              $lightningCount = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $lightningCount, $arrWeatherData, "lightning_count", $deviceId, $tenantId);
+              $illumination = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $illumination, $arrWeatherData, "illumination", $deviceId, $tenantId);
+              $colorMetric = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $colorMetric, $arrWeatherData, "color_metric", $deviceId, $tenantId);
+   
+              $reserved1 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved1, $arrWeatherData, "reserved1", $deviceId, $tenantId);
+              $reserved2 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved2, $arrWeatherData, "reserved2", $deviceId, $tenantId);
+              $reserved3 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved3, $arrWeatherData, "reserved3", $deviceId, $tenantId);
+              $reserved4 = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $reserved4, $arrWeatherData, "reserved4", $deviceId, $tenantId);
+              $sensorId = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $sensorId, $arrWeatherData, "sensor_id");
+              //$twelveVoltBatteryVoltage = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $twelveVoltBatteryVoltage, $arrWeatherData, 16);
+              if($consolidateAllSensorsToOneRecord){
+                $deviceFeatureId = "NULL";
+              } else {
+                if(count($arrWeatherData)>13) {
+                  $deviceFeatureId = $arrWeatherData[13];
+                } else {
+                  $deviceFeatureId = "NULL";
+                }
+              }
+              if($deviceFeatureId == ""){
+                $deviceFeatureId = "NULL";
+              }
+              //sensorName is $arrWeatherData[14] -- not used here
+              //i put $consolidateAllSensorsToOneRecord on the sensor record so that some sensors could be separate and then later ones could be consolidated
+              $consolidateAllSensorsToOneRecord = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $consolidateAllSensorsToOneRecord, $arrWeatherData, "consolidate");
 
-						//die("x" . $consolidateAllSensorsToOneRecord);
-						$deviceDigest = getDigestBitmask($tenant); 
-						$weatherConditionId = getCurrentWeatherConditionId($tenant);
-						$weatherSql = "INSERT INTO 
-						device_log(device_id, device_feature_id, recorded, 
-							temperature, pressure, humidity, 
-							gas_metric, 
-							wind_direction,  wind_speed, wind_increment, 
-							precipitation, 
-							reserved1, reserved2, reserved3, reserved4,
-							sensor_id, weather_condition_id, digest, voltage, ampage, latitude, longitude, elevation, millis, data_hash) 
-						VALUES (" . 
-						mysqli_real_escape_string($conn, $locationId) . "," .
-						mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
-						mysqli_real_escape_string($conn, $storageDateTime)  . "'," . 
-						mysqli_real_escape_string($conn, $temperature) . "," . 
-						mysqli_real_escape_string($conn, $pressure) . "," . 
-						mysqli_real_escape_string($conn, $humidity) . "," . 
-						mysqli_real_escape_string($conn, $gasMetric) . "," .  
-						mysqli_real_escape_string($conn, $windDirection) . "," .  
-						mysqli_real_escape_string($conn, $windSpeed) . "," .  
-						mysqli_real_escape_string($conn, $windIncrement) . "," .
-						mysqli_real_escape_string($conn, $precipitation) . "," .  
-						mysqli_real_escape_string($conn, $reserved1) . "," .  
-						mysqli_real_escape_string($conn, $reserved2) . "," .  
-						mysqli_real_escape_string($conn, $reserved3) . "," .  
-						mysqli_real_escape_string($conn, $reserved4) . "," .  
-						mysqli_real_escape_string($conn, $sensorId) . "," .
-						$weatherConditionId . "," .
-						$deviceDigest . "," .
-						mysqli_real_escape_string($conn, $measuredVoltage)  . "," .
-						mysqli_real_escape_string($conn, floatval($measuredAmpage))  . "," .
-						mysqli_real_escape_string($conn, $latitude)  . "," .
-						mysqli_real_escape_string($conn, $longitude) . "," .
-						mysqli_real_escape_string($conn, $elevation) . "," .
-						mysqli_real_escape_string($conn, $millis)  . ",'" .
-						mysqli_real_escape_string($conn, $hashedData) .
-						"')";
+              //die("x" . $consolidateAllSensorsToOneRecord);
+              $deviceDigest = getDigestBitmask($tenant); 
+              $weatherConditionId = getCurrentWeatherConditionId($tenant);
+              $weatherSql = "INSERT INTO 
+              device_log(device_id, device_feature_id, recorded, 
+                temperature, pressure, humidity, 
+                gas_metric, 
+                wind_direction,  wind_speed, wind_increment, 
+                precipitation, 
+                reserved1, reserved2, reserved3, reserved4,
+                sensor_id, weather_condition_id, digest, voltage, ampage, latitude, longitude, elevation, millis, data_hash) 
+              VALUES (" . 
+              mysqli_real_escape_string($conn, $locationId) . "," .
+              mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
+              mysqli_real_escape_string($conn, $storageDateTime)  . "'," . 
+              mysqli_real_escape_string($conn, $temperature) . "," . 
+              mysqli_real_escape_string($conn, $pressure) . "," . 
+              mysqli_real_escape_string($conn, $humidity) . "," . 
+              mysqli_real_escape_string($conn, $gasMetric) . "," .  
+              mysqli_real_escape_string($conn, $windDirection) . "," .  
+              mysqli_real_escape_string($conn, $windSpeed) . "," .  
+              mysqli_real_escape_string($conn, $windIncrement) . "," .
+              mysqli_real_escape_string($conn, $precipitation) . "," .  
+              mysqli_real_escape_string($conn, $reserved1) . "," .  
+              mysqli_real_escape_string($conn, $reserved2) . "," .  
+              mysqli_real_escape_string($conn, $reserved3) . "," .  
+              mysqli_real_escape_string($conn, $reserved4) . "," .  
+              mysqli_real_escape_string($conn, $sensorId) . "," .
+              $weatherConditionId . "," .
+              $deviceDigest . "," .
+              mysqli_real_escape_string($conn, $measuredVoltage)  . "," .
+              mysqli_real_escape_string($conn, floatval($measuredAmpage))  . "," .
+              mysqli_real_escape_string($conn, $latitude)  . "," .
+              mysqli_real_escape_string($conn, $longitude) . "," .
+              mysqli_real_escape_string($conn, $elevation) . "," .
+              mysqli_real_escape_string($conn, $millis)  . ",'" .
+              mysqli_real_escape_string($conn, $hashedData) .
+              "')";
+						}
 					}
           if($latitude != "null"  && $latitude != "") {
             $doNotSaveBecauseNoData = false;
@@ -662,7 +678,14 @@ if($_REQUEST) {
 					$weatherRecordCounter++;
 				}
 				$method  = "saveWeatherData";
-				$out =  addNodeIfPresent(addNodeIfPresent(Array("message" => "done", "method"=>$method), "error", $error), "sql", $badSql);
+				
+				if($manufactureId) {
+          //so we can send any pending message
+          $out["messages"] = getMessagesForLoRa($tenantId);
+				} else {
+          //this will overwrite $out that was set earlier. should revisit!!
+          $out =  addNodeIfPresent(addNodeIfPresent(Array("message" => "done", "method"=>$method), "error", $error), "sql", $badSql);
+				}
 			}
 	 
 			if($mode == "getInitialDeviceInfo" ) { //return a double-delimited string of additional sensors, etc. this one begins with a "*" so we can identify it in the ESP8266. it will be the first data requested by the remote control
@@ -1553,4 +1576,24 @@ function buildRestOfSegmentedDataSql($formattedDateTime, $orderBy) {
   }
   $sql .= " ORDER BY " . $orderBy . " ASC";
   return $sql;
+}
+
+function setMessageReceived($messageId, $loraId) {
+  //echo $messageId . "=" . $loraId . "\n";
+  global $conn; 
+  $sql = "UPDATE message SET received=1, lora_id=" . intval($loraId) . " WHERE message_id = " . intval($messageId);
+  $result = mysqli_query($conn, $sql);
+  //die($sql);
+}
+
+function getMessagesForLoRa($tenantId) {
+  //pick up any web-produced messages and send via lora
+  global $conn;
+  $sql = "SELECT * from message where tenant_id=" . $tenantId  . " AND received <> 1 AND lora_id IS NULL ORDER BY recorded ASC LIMIT 0,1";
+  $result = mysqli_query($conn, $sql);
+  if($result) {
+    $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    return $rows;
+  }
+  
 }

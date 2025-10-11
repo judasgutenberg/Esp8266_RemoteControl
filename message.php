@@ -92,11 +92,31 @@ if(!$user) {
 		<div id="map"></div>
     <div style='display:inline-block;vertical-align:top' >
       <div  id='singleplotdiv'>
+      <textarea style='width:400px;height:100px' id='messagearea'></textarea><br/>
+      <button onclick='sendMessage("messagearea")'>send</button>
       <?php echo showLatestMessages($user["tenant_id"]); ?>
     </div>
 	</div>
 </div>
- 
+<script>
+
+function sendMessage(textAreaId) {
+    let textArea = document.getElementById(textAreaId);
+    if(textArea){
+        let content = textArea.value;
+    	  let xmlhttp = new XMLHttpRequest();
+          xmlhttp.onreadystatechange = function() {
+              console.log(xmlhttp.responseText);
+              textArea.value = "";
+          }
+          let url = "tool.php?action=sendmessage&content=" + encodeURIComponent(content);
+          xmlhttp.open("GET", url, true);
+          xmlhttp.send();
+    }
+}
+
+
+</script>
  
  <script>currentSortColumn = 0;</script>
  

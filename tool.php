@@ -43,7 +43,7 @@ $page = gvfw('page');
 $datatype = gvfw('datatype'); 
 //echo $table  . "*" . $action. "*" .  $datatype;
 $date = new DateTime("now", new DateTimeZone($timezone));//$timezone is set in config.php
-$formattedDateTime =  $date->format('Y-m-d H:i:s');
+$formattedDateTime = $date->format('Y-m-d H:i:s');
 
 
 if(strpos($action, "password") !== false) {
@@ -176,6 +176,11 @@ if ($user) {
       $sql = gvfw('json');
       $out = json_encode(checkJsonSyntax($sql));
       die($out);
+  } else if($action == "sendmessage") {
+    $content = gvfw("content");
+    $sql = "INSERT INTO message(recorded, user_id, tenant_id, content) VALUES ('" . $formattedDateTime . "'," . $user["user_id"] . "," . $user["tenant_id"] . ",'" . mysqli_real_escape_string($conn, $content) . "')";
+    $result = mysqli_query($conn, $sql);
+    die("{}");
   } else if($action == "getdevices") {
     $out = getDevices($tenantId);
     die(json_encode($out));
