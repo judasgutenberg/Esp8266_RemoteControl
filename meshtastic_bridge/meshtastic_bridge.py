@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import meshtastic
 import meshtastic.serial_interface
+import random
 import json
 import time
 import re
@@ -157,22 +158,37 @@ def buildDelimitedDataString(decoded, columnList):
     keys = columnList.split(",")
     return "*".join(str(decoded.get(k, "")) for k in keys)
 
-# -------------------------------
-# Callback for incoming packets
-# -------------------------------
 
 MAX_RETRIES = 10
 RETRY_DELAY = 5  # seconds
+pendingAcks = {}
 
-def send_with_retries(flat, nodeId):
+def sendLoraMessages(backendJson):
+    global iface, pendingAcks
+    messageObject = json.loads(backendJson)
+    print(messageObject)
+    if "messages" in messageObject:
+        messages = messageObject["messages"]
+        for message in messages:
+            messageText = message["content"]
+            messageId = message["message_id"]
+            packetInfo = iface.sendText(messageText, wantAck=True)
+            loraId = packetInfo.id
+            pendingAcks[loraId] = messageId  
+  
+
+def sendWithRetries(flat, nodeId, loraMessageId, messageId = 0):
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            url = buildUrl(flat, nodeId)
+            if messageId:
+                url = buildUrl(False, 0, loraMessageId, messageId)
+            else:
+                url = buildUrl(flat, nodeId, loraMessageId)
             response = requests.get(url, timeout=10)
             response.raise_for_status()
             print("Server responded with status:", response.status_code)
             print("\n\n", response.text)
-
+            sendLoraMessages(response.text)
             # Check for "insufficient permissions"
             if "you lack permissions" in response.text.lower():
                 raise PermissionError("Server responded with insufficient permissions")
@@ -198,47 +214,61 @@ def updateLostAndFoundCoordinates(flat_obj):
     text = flat_obj.get("text")
     if not text:
         return flat_obj
-
     if "I'm lost!" in flat_obj.get("text", ""):
         # Match "Lat / Lon: 43.119885, -74.342039" with optional trailing characters
         match = re.search(r"Lat / Lon:\s*([-\d.]+),\s*([-\d.]+)", text)
         if match:
             flat_obj['latitude'] = float(match.group(1))
             flat_obj['longitude'] = float(match.group(2))
-
     return flat_obj
 
-def buildUrl(flat, nodeId):
-    weatherDataString = buildDelimitedDataString(flat, weatherDataColumnList)
-    whereAndWhenString = buildDelimitedDataString(flat, whereAndWhenDataColumnList)
-    energyString = buildDelimitedDataString(flat, energyDataColumnList)
-
-    dataToSend = weatherDataString + "|" + whereAndWhenString + "|" + energyString
+def buildUrl(flat, loraNodeId, loraMessageId, messageId = 0):
+    if flat:
+        weatherDataString = buildDelimitedDataString(flat, weatherDataColumnList)
+        whereAndWhenString = buildDelimitedDataString(flat, whereAndWhenDataColumnList)
+        energyString = buildDelimitedDataString(flat, energyDataColumnList)
+        dataToSend = weatherDataString + "|" + whereAndWhenString + "|" + energyString
+    else:
+        dataToSend = str(random.random()) + "*" + str(messageId) + "*special*message_id"
 
     encryption_scheme_int = int(CONFIG['encryption_scheme'], 16)
-    encryptedStoragePassword = encryptStoragePassword(
-        dataToSend, CONFIG['storage_password'], encryption_scheme_int
-    )
-
-    url = f"http://{CONFIG['host_get']}{CONFIG['url_get']}?k2={encryptedStoragePassword}&manufacture_id={nodeId}&mode=saveData&data={quote(dataToSend)}"
-    if "text" in flat:
-      url = url + "&message=" + quote(flat["text"])
-    
+    encryptedStoragePassword = encryptStoragePassword( dataToSend, CONFIG['storage_password'], encryption_scheme_int)
+    loraMessageIdStr = str(loraMessageId)
+    url = f"http://{CONFIG['host_get']}{CONFIG['url_get']}?k2={encryptedStoragePassword}&manufacture_id={loraNodeId}&mode=saveData&data={quote(dataToSend)}&lora_id={quote(loraMessageIdStr)}"
+    if flat:
+        if "text" in flat:
+          url = url + "&message=" + quote(flat["text"])
     print(url)
     return url
         
         
             
 def onReceive(packet, interface):
+    global pendingAcks
+    #print("----------------")
+    #print(packet)
+    #print("++++++++++++++++")
     packet_safe = make_json_serializable(packet)
 
     if 'decoded' in packet_safe:
         decoded = packet_safe['decoded']
-        nodeId = packet_safe.get('from')
-        flat = flattenDecoded(decoded)
-        flat = updateLostAndFoundCoordinates(flat)
-        print("\n\nDecoded from node", nodeId, ":", flat)
-        send_with_retries(flat, nodeId)
+        if decoded.get("portnum") == "ROUTING_APP":
+            errorReason = decoded.get("errorReason")
+            if errorReason is None or errorReason == "NONE":
+                
+                loraMessageId = decoded.get('requestId')
+                print(str(loraMessageId) + "GOT AN ACK!!!!\n\n\n");
+                #do a special hacky update to the backend
+                messageId = pendingAcks[loraMessageId]
+                url = buildUrl(False, 0, loraMessageId, messageId)
+                sendWithRetries("", 0, loraMessageId, messageId)
+        else:
+            nodeId = packet_safe.get('from')
+            loraMessageId = packet_safe.get('id')
+            flat = flattenDecoded(decoded)
+            flat = updateLostAndFoundCoordinates(flat)
+            print("\n\nDecoded from node", nodeId, ":", flat)
+            sendWithRetries(flat, nodeId, loraMessageId)
 
 # -------------------------------
 # Subscribe to incoming packets
