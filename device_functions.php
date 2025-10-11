@@ -2713,12 +2713,22 @@ function getCredential($tenant, $type) {
 function showLatestMessages($tenantId) {
   global $conn;
   $table = "message";
-  $sql = "SELECT recorded, content, lora_id, d.name as device_name, received  FROM " . $table  . " m LEFT JOIN device d ON m.device_id=d.device_id AND m.tenant_id=d.tenant_id WHERE m.tenant_id=" . intval($tenantId) . " ORDER BY recorded DESC LIMIT 0, 200 ";
+  $sql = "SELECT message_id, recorded, content, lora_id, 
+  IFNULL(u.full_name, d.name) as sent_from, received  FROM " . $table  . " m 
+  LEFT JOIN device d ON m.device_id=d.device_id AND m.tenant_id=d.tenant_id 
+  LEFT JOIN user u ON m.user_id=u.user_id
+  WHERE m.tenant_id=" . intval($tenantId) . " ORDER BY recorded DESC LIMIT 0, 200 ";
   $result = mysqli_query($conn, $sql);
   $out = "";
   $toolsTemplate = "";
   $headerData = "";
-  $headerData =   $headerData = array(
+  $headerData = array(
+    [
+      'label' => 'message id',
+      'name' => 'message_id',
+      'changeable' => false,
+      'type' => 'int'
+    ],
     [
       'label' => 'recorded',
       'name' => 'recorded',
@@ -2738,16 +2748,16 @@ function showLatestMessages($tenantId) {
       'type' => 'int'
     ],
     [
-      'label' => 'device',
-      'name' => 'device_name',
+      'label' => 'device or user',
+      'name' => 'sent_from',
       'changeable' => false,
-      'type' => 'int'
+      'type' => 'string'
     ],
     [
       'label' => 'received',
       'name' => 'received',
-      'changeable' => false,
-      'type' => 'bool'
+      'changeable' => true,
+      'type' => 'checkbox'
     ]
    );
   if($result) {

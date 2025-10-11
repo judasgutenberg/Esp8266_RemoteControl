@@ -94,7 +94,19 @@ if(!$user) {
       <div  id='singleplotdiv'>
       <textarea style='width:400px;height:100px' id='messagearea'></textarea><br/>
       <button onclick='sendMessage("messagearea")'>send</button>
-      <?php echo showLatestMessages($user["tenant_id"]); ?>
+      Target device:
+      <?php 
+      $thisDataSql = "SELECT name as text, device_id as value FROM device WHERE manufacture_id IS NOT NULL AND tenant_id=" . intval($user["tenant_id"]) . " ORDER BY name ASC;";
+      $result = mysqli_query($conn, $thisDataSql);
+      if($result) {
+        $selectData = mysqli_fetch_all($result, MYSQLI_ASSOC); 
+        echo genericSelect("target_device_id", "target_device_id", defaultFailDown(gvfw("device_id"), $deviceId), $selectData);
+      }
+
+      echo showLatestMessages($user["tenant_id"]); 
+      
+      
+      ?>
     </div>
 	</div>
 </div>
@@ -102,14 +114,16 @@ if(!$user) {
 
 function sendMessage(textAreaId) {
     let textArea = document.getElementById(textAreaId);
+    let targetDeviceDropdown = document.getElementById("target_device_id");
     if(textArea){
+        let targetDeviceId = targetDeviceDropdown[targetDeviceDropdown.selectedIndex].value
         let content = textArea.value;
     	  let xmlhttp = new XMLHttpRequest();
           xmlhttp.onreadystatechange = function() {
               console.log(xmlhttp.responseText);
               textArea.value = "";
           }
-          let url = "tool.php?action=sendmessage&content=" + encodeURIComponent(content);
+          let url = "tool.php?action=sendmessage&target_device_id=" + targetDeviceId + "&content=" + encodeURIComponent(content);
           xmlhttp.open("GET", url, true);
           xmlhttp.send();
     }

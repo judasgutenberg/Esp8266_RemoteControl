@@ -178,7 +178,13 @@ if ($user) {
       die($out);
   } else if($action == "sendmessage") {
     $content = gvfw("content");
-    $sql = "INSERT INTO message(recorded, user_id, tenant_id, content) VALUES ('" . $formattedDateTime . "'," . $user["user_id"] . "," . $user["tenant_id"] . ",'" . mysqli_real_escape_string($conn, $content) . "')";
+    $targetDeviceId = gvfw("target_device_id");
+    if(!$targetDeviceId){
+      $targetDeviceId = "NULL";
+    } else {
+      $targetDeviceId = intval($targetDeviceId);
+    }
+    $sql = "INSERT INTO message(recorded, user_id, tenant_id, target_device_id, content) VALUES ('" . $formattedDateTime . "'," . $user["user_id"] . "," . $user["tenant_id"] . "," . $targetDeviceId . ",'" . mysqli_real_escape_string($conn, $content) . "')";
     $result = mysqli_query($conn, $sql);
     die("{}");
   } else if($action == "getdevices") {

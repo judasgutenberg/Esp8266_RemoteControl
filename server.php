@@ -88,6 +88,7 @@ if($_REQUEST) {
 	if(!$deviceId) {
 		$deviceId = $locationId;
 	}
+	//echo "&&&&&&&&&&&&&&&&&&&&&&&" . $deviceId . "=============\n\n";
 	if($locationId == ""){
 		$locationId = 1; //need to revisit this for multiuser/multitenant
 	}
@@ -566,7 +567,7 @@ if($_REQUEST) {
               //special hack to update messages
               //var_dump($_REQUEST);
               //var_dump($arrWeatherData);
-              setMessageReceived($arrWeatherData[1], $loraId);
+              setMessageReceived($arrWeatherData[1], $loraId, $deviceId, $manufactureId); 
             } else {
               $temperature = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $temperature, $arrWeatherData, "temperature", $deviceId, $tenantId);
               $pressure = mergeWeatherDatum($consolidateAllSensorsToOneRecord, $pressure, $arrWeatherData, "pressure", $deviceId, $tenantId);
@@ -1578,12 +1579,16 @@ function buildRestOfSegmentedDataSql($formattedDateTime, $orderBy) {
   return $sql;
 }
 
-function setMessageReceived($messageId, $loraId) {
-  //echo $messageId . "=" . $loraId . "\n";
+function setMessageReceived($messageId, $loraId, $deviceId, $manufactureId) {
+  //if target_id
   global $conn; 
-  $sql = "UPDATE message SET received=1, lora_id=" . intval($loraId) . " WHERE message_id = " . intval($messageId);
+  $sql = "UPDATE message SET received=1, lora_id=" . intval($loraId) . " WHERE (target_device_id=" . $deviceId . " OR target_device_id IS NULL) AND message_id = " . intval($messageId);
   $result = mysqli_query($conn, $sql);
-  //die($sql);
+  $error = mysqli_error($conn);
+  if($error) {
+    $out = ["error"=>$error, $sql => $sql, "manufacture_id"=>$manufactureId];
+    die(json_encode($out));
+  }
 }
 
 function getMessagesForLoRa($tenantId) {
