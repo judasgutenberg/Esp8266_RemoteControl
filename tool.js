@@ -277,67 +277,95 @@
   }
   
   //update the genericTable data
-  function autoUpdate(encryptedSql, headerData, tableId){
-	var decodedHeaderData = JSON.parse(headerData);
-	var xmlhttp = new XMLHttpRequest();
-	xmlhttp.onreadystatechange = function() {
-   
-	  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
-		//console.log(xmlhttp.responseText);
-		var data = JSON.parse(xmlhttp.responseText);
-		let tableRows;
-		if(tableId){
-		  tableRows = document.getElementById(tableId).getElementsByClassName("listrow");
-		} else {
-		  tableRows = document.getElementsByClassName("listrow");
-		}
-  
-  
-		rowCounter = 0;
-		for (const row of tableRows) {
-		  var htmlRow = tableRows[rowCounter];
-		  var dataRecord = data[rowCounter];
-		  if(htmlRow) {
-			//console.log(htmlRow);
-			var spans = htmlRow.getElementsByTagName("span");
-			cellCounter = 0;
-			for (const column of decodedHeaderData){
-			  //console.log(column);
-			  let key = column["name"];
-			  let newcolumnData;
-			  if(dataRecord) {
-				  newcolumnData = dataRecord[key];
-				  let originalValue = newcolumnData;
-				  if("function" in column) {
-					  //console.log(column["function"], dataRecord);
-					  //make sure you have a Javascript version of the PHP functions you do this with!:
-					  const stringToEval = tokenReplace(column["function"], dataRecord);
-					  //console.log(stringToEval);
-					  newcolumnData = eval(stringToEval);
-					  spans[cellCounter].setAttribute("value", originalValue);//for help with sorting
-					  //spans[cellCounter].value = originalValue; 
-				  }
-				  //console.log(key, newcolumnData);
-				  if(spans[cellCounter].innerHTML.indexOf("<input") == -1) {
-					  spans[cellCounter].textContent = newcolumnData;
-				  }
-			  }
-			  cellCounter++;
-			}
-		  }
-		  rowCounter++;
-  
-		}
-	  }
-	  //gotta reapply latest sort:
-	  //nah, let's not do it this way
-	  /*
-	  if(currentSortColumn > -1) {
-		ascending = -ascending;
-		sortTable(event, currentSortColumn);
-	  }
-	  */
-	}
+function autoUpdate(encryptedSql, headerData, tableId) {
+  const decodedHeaderData = JSON.parse(headerData);
+  const xmlhttp = new XMLHttpRequest();
+
+  xmlhttp.onreadystatechange = function() {
+    if (xmlhttp.readyState === 4 && xmlhttp.status === 200) {
+      const data = JSON.parse(xmlhttp.responseText);
+      const table = tableId ? document.getElementById(tableId) : document;
+      const tableRows = table.getElementsByClassName("listrow");
+
+      const rowCount = tableRows.length;
+      const dataCount = data.length;
+
+      // Add missing rows if new data has more records
+      if (dataCount > rowCount) {
+        const templateRow = tableRows[rowCount - 1]; // use the last row as template
+        for (let i = rowCount; i < dataCount; i++) {
+          const newRow = templateRow.cloneNode(true);
+          table.appendChild(newRow);
+        }
+      }
+
+      // Remove extra rows if data has fewer records
+      if (dataCount < rowCount) {
+        for (let i = rowCount - 1; i >= dataCount; i--) {
+          tableRows[i].remove();
+        }
+      }
+
+      // Update all rows
+      const updatedRows = table.getElementsByClassName("listrow");
+      for (let rowIndex = 0; rowIndex < dataCount; rowIndex++) {
+        const htmlRow = updatedRows[rowIndex];
+        const dataRecord = data[rowIndex];
+        const spans = htmlRow.getElementsByTagName("span");
+
+        for (let cellIndex = 0; cellIndex < decodedHeaderData.length; cellIndex++) {
+          const column = decodedHeaderData[cellIndex];
+          const key = column["name"];
+          let newColumnData = dataRecord[key];
+
+          if ("function" in column) {
+            const stringToEval = tokenReplace(column["function"], dataRecord);
+            const originalValue = newColumnData;
+            newColumnData = eval(stringToEval);
+            spans[cellIndex].setAttribute("value", originalValue);
+          }
+
+          // Update span content or input value
+          const span = spans[cellIndex];
+          const input = span.querySelector("input, select, textarea");
+          if (input) {
+            if (input.value !== newColumnData) {
+              input.value = newColumnData;
+             }
+          } else {
+            if (span.textContent !== newColumnData) {
+              span.textContent = newColumnData;
+            }
+          }
+          if(input) {
+            if (input.type === "checkbox") {
+              // Normalize: treat truthy/1/"1"/"true" as checked
+              const newChecked = newColumnData === true || newColumnData === 1 || newColumnData === "1" || newColumnData === "true";
+              if (input.checked !== newChecked) {
+                input.checked = newChecked;
+               }
+            } else if (input.tagName === "SELECT") {
+              if (input.value !== newColumnData) {
+                input.value = newColumnData;
+              }
+            } else if (input.tagName === "TEXTAREA" || input.type === "text" || input.type === "number" || input.type === "hidden") {
+              if (input.value !== newColumnData) {
+                input.value = newColumnData;
+              }
+            } else {
+              // catch-all for other input types
+              input.value = newColumnData;
+            }
+          }
+
+          
+        }
+      }
+    }
+  };
+
+
+
 	const params = new URLSearchParams();
 	params.append("direction", ascending);
 	params.append("sortColumn", currentSortColumn);
