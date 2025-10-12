@@ -1582,6 +1582,11 @@ function buildRestOfSegmentedDataSql($formattedDateTime, $orderBy) {
 function setMessageReceived($messageId, $loraId, $deviceId, $manufactureId) {
   //if target_id
   global $conn; 
+  if(!$deviceId) {
+    $deviceId = "NULL";
+  } else {
+    $device = intval($deviceId);
+  }
   $sql = "UPDATE message SET received=1, lora_id=" . intval($loraId) . " WHERE (target_device_id=" . $deviceId . " OR target_device_id IS NULL) AND message_id = " . intval($messageId);
   $result = mysqli_query($conn, $sql);
   $error = mysqli_error($conn);
