@@ -181,7 +181,7 @@ def sendWithRetries(flat, nodeId, loraMessageId, messageId = 0):
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             if messageId:
-                url = buildUrl(False, 0, loraMessageId, messageId)
+                url = buildUrl(False, nodeId, loraMessageId, messageId)
             else:
                 url = buildUrl(flat, nodeId, loraMessageId)
             response = requests.get(url, timeout=10)
@@ -252,6 +252,7 @@ def onReceive(packet, interface):
 
     if 'decoded' in packet_safe:
         decoded = packet_safe['decoded']
+        nodeId = packet_safe.get('from')
         if decoded.get("portnum") == "ROUTING_APP":
             errorReason = decoded.get("errorReason")
             if errorReason is None or errorReason == "NONE":
@@ -260,10 +261,8 @@ def onReceive(packet, interface):
                 print(str(loraMessageId) + "GOT AN ACK!!!!\n\n\n");
                 #do a special hacky update to the backend
                 messageId = pendingAcks[loraMessageId]
-                url = buildUrl(False, 0, loraMessageId, messageId)
-                sendWithRetries("", 0, loraMessageId, messageId)
+                sendWithRetries("", nodeId, loraMessageId, messageId)
         else:
-            nodeId = packet_safe.get('from')
             loraMessageId = packet_safe.get('id')
             flat = flattenDecoded(decoded)
             flat = updateLostAndFoundCoordinates(flat)
