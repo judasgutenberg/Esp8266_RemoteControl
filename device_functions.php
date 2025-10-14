@@ -2064,7 +2064,7 @@ function currentSensorData($tenant){
       GROUP BY
           device_id
     ) latest ON wd.device_id = latest.device_id AND wd.device_log_id = latest.max_log
-    WHERE d.tenant_id = <tenant_id/>
+    WHERE d.tenant_id = <tenant_id/> AND location_name IS NOT NULL AND location_name <>  ''
     ORDER BY wd.device_log_id ASC
     ";
   $result = replaceTokensAndQuery($sql, $tenant);
