@@ -1647,20 +1647,22 @@ function replaceTokensAndQuery($sql, $data) {
 function tokenReplace($template, $data,  $tableName = "", $strDelimiterBegin = "<", $strDelimiterEnd = "/>"){
   Global $encryptionPassword;
   //var_dump($data);
-  foreach($data as $key => $value) {
-    if(!is_array($value)) {
-      $template = str_replace($strDelimiterBegin . $key . $strDelimiterEnd, $value, $template);
-    } else {
-      if(array_is_list($value) && count($value) > 0 && is_array($value[0]) == false) {
-        $values = implode(",", $value);
-        $template = str_replace($strDelimiterBegin . $key . $strDelimiterEnd, $values, $template);
+  if($data && count($data) > 0) {
+    foreach($data as $key => $value) {
+      if(!is_array($value)) {
+        $template = str_replace($strDelimiterBegin . $key . $strDelimiterEnd, $value, $template);
+      } else {
+        if(array_is_list($value) && count($value) > 0 && is_array($value[0]) == false) {
+          $values = implode(",", $value);
+          $template = str_replace($strDelimiterBegin . $key . $strDelimiterEnd, $values, $template);
+        }
       }
     }
-  }
-  if($tableName!= "") {
-    //echo $tableName . "+" . $tableName . "_id" . "+" . $data[$tableName . "_id"] . "<BR>";
-    $hashedEntities = hash_hmac('sha256', $tableName . $tableName . "_id" . $data[$tableName . "_id"], $encryptionPassword);
-    $template = str_replace($strDelimiterBegin . "hashed_entities" . $strDelimiterEnd, $hashedEntities, $template);
+    if($tableName!= "") {
+      //echo $tableName . "+" . $tableName . "_id" . "+" . $data[$tableName . "_id"] . "<BR>";
+      $hashedEntities = hash_hmac('sha256', $tableName . $tableName . "_id" . $data[$tableName . "_id"], $encryptionPassword);
+      $template = str_replace($strDelimiterBegin . "hashed_entities" . $strDelimiterEnd, $hashedEntities, $template);
+    }
   }
   return $template;
 }
