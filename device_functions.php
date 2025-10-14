@@ -2581,7 +2581,7 @@ function visitorLog($deviceId, $number, $type) {
     $secondStageFile = "";
   }
   if($deviceId){
-    $strToExec = $grepPreFilter . "grep -E \"device_id=" . $deviceId . "|locationId=" .   $deviceId . "\" " . $secondStageFile . " | tail -n " . $number;
+    $strToExec = $grepPreFilter . "grep -E \"device_id=" . $deviceId . "\&|locationId=" .   $deviceId . "\" " . $secondStageFile . " | tail -n " . $number;
   } else {
     $strToExec = "cat " . $logFile . " | tail -n " . $number;
   }

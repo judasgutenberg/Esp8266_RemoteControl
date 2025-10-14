@@ -90,7 +90,9 @@ if($_REQUEST) {
 	}
 	//echo "&&&&&&&&&&&&&&&&&&&&&&&" . $deviceId . "=============\n\n";
 	if($locationId == ""){
-		$locationId = 1; //need to revisit this for multiuser/multitenant
+    //if($mode == "saveLocallyGatheredSolarData") { //because of the way we ascertain permissions we have to do this. should probably send a real device id instead
+      //$locationId = 1; //need to revisit this for multiuser/multitenant
+		//}
 	}
 	$locationIds = gvfw("location_ids");
 	if(!$locationIds){
@@ -665,6 +667,9 @@ if($_REQUEST) {
 					if(!$doNotSaveBecauseNoData) { //if sensors are all null, do not attempt to store!
 						//echo $weatherSql;
 						if(intval($consolidateAllSensorsToOneRecord) != 1 || $weatherRecordCounter == count($multipleSensorArray) - 1) {
+              if($deviceId ==1) {
+                logSql("weird data:" .  $data);
+              }
 							$result = mysqli_query($conn, $weatherSql);
 							$error = mysqli_error($conn);
 							if($error != ""){
@@ -1147,7 +1152,7 @@ function logSql($sql){
 	//return;
 	//return; //for when you don't actually want to log
 	global $formattedDateTime;
-	//$myfile = file_put_contents('sql.txt', "\n\n" . $formattedDateTime . ": " . $sql, FILE_APPEND | LOCK_EX);
+	$myfile = file_put_contents('sql.txt', "\n\n" . $formattedDateTime . ": " . $sql, FILE_APPEND | LOCK_EX);
 }
 
 function mergeWeatherDatum($consolidateAllSensorsToOneRecord, $existingValue, $sourceArray, $keyName, $deviceId = null, $tenantId = null) {

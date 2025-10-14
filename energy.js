@@ -9,6 +9,7 @@ let segmentRects = [];
 const bitColorMap = {};
 let deviceFeatures = [];
 let weatherConditions = [];
+let deviceId = 1; //had to hardcode. need to do something else if we have other tenants
 
 resetGraphData();
 
@@ -455,7 +456,7 @@ function getInverterData(yearsAgo) {
 	let allData = 0;
 	let liveData = 0;
 	let maxRecorded = "";
-	let endpointUrl = backendDataUrl("getInverterData", null, allData, liveData, maxRecorded, scale, absoluteTimespanCusps, periodAgo, absoluteTimeAgo, 0);
+	let endpointUrl = backendDataUrl("getInverterData", deviceId, allData, liveData, maxRecorded, scale, absoluteTimespanCusps, periodAgo, absoluteTimeAgo, 0);
 	
 	console.log(endpointUrl);
 
@@ -554,7 +555,7 @@ function getInverterData(yearsAgo) {
 
   xhttp.open("GET", endpointUrl, true);  
   xhttp.send();
-  createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getInverterData(0)', 'inverter_log', '');
+  createTimescalePeriodDropdown(scaleConfig, periodAgo, scale, currentStartDate, 'change', 'getInverterData(0)', 'inverter_log', deviceId);
 }
  
 getInverterData(0);
