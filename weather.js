@@ -492,12 +492,13 @@ function getWeatherData(yearsAgo) {
 						if(plotType == "multi") {
 ;							deviceId = datum["device_id"];
 							let value = datum[specificColumn];
+							dataInvalid = false;
 							if(specificColumn == "temperature"){
+
 								value = value * (9/5) + 32;
 							}
 							if(multiGraphDataObject[yearsAgo][deviceId]) {
-								multiGraphDataObject[yearsAgo][deviceId]["values"].push(value);
-
+                multiGraphDataObject[yearsAgo][deviceId]["values"].push(value);
 								for(let specificdeviceId of deviceIdArray){
 									if(specificdeviceId != deviceId){
 										multiGraphDataObject[yearsAgo][specificdeviceId]["values"].push(null);
@@ -526,9 +527,10 @@ function getWeatherData(yearsAgo) {
 									//process the string using the view_function if it's for post-processing
 									let evalString = tokenReplace(mapToUse["view_function"], datum,  "<", "/>");
 									value = eval(evalString);
-									
 								}
+	 
 								if(column == "temperature"){
+
 									value = value * (9/5) + 32;
 								}
 								if(!graphDataObject[yearsAgo]){
@@ -537,7 +539,7 @@ function getWeatherData(yearsAgo) {
 								if(!graphDataObject[yearsAgo][column]){
 									graphDataObject[yearsAgo][column] = [];
 								}
-								graphDataObject[yearsAgo][column].push(value);
+                graphDataObject[yearsAgo][column].push(value);
 							}
 							timeStamp.push(time)
 							if(time> greatestTime) {

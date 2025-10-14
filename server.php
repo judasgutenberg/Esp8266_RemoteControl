@@ -9,6 +9,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
 ini_set('display_errors', 0);
+$deviceFreeAcceptableModes = array("getInverterData", "getEarliestRecorded");
+$userAcceptableModes = array("getOfficialWeatherData", "getInverterData", "getWeatherData", "getEarliestRecorded", "getMap");
 
 include("config.php");
 include("site_functions.php");
@@ -138,9 +140,10 @@ if($_REQUEST) {
 		$storagePassword = simpleDecrypt2($encryptedKey2, $data,  $timeString, $encryptionScheme);
 	}
 	//die($storagePassword . " : " . time() . " ; " . $checksum . "?=" . $x  . " : " . urlencode($data));
+	
 	if($user && !$storagePassword) {
 		$storagePassword  = $user['storage_password'];
-		if(!in_array($mode, ["getOfficialWeatherData", "getInverterData", "getWeatherData", "getEarliestRecorded", "getMap"])){ //keeps certain kinds of hacks from working
+		if(!in_array($mode, $userAcceptableModes)){ //keeps certain kinds of hacks from working
 			die(json_encode(["error"=>$user["email"] + ": your brilliant hack has failed"]));
 		}
 	}
@@ -154,7 +157,7 @@ if($_REQUEST) {
 		$deviceIds = deriveDeviceIdsFromStoragePassword($storagePassword);
 	}
 
-	$canAccessData = array_search($locationId, $deviceIds) !== false;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
+	$canAccessData = array_search($locationId, $deviceIds) !== false  || ($user  && in_array($mode, $deviceFreeAcceptableModes)) ;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
   if($canAccessData) {	
     $tenant = deriveTenantFromStoragePassword($storagePassword);
     $tenantId = $tenant["tenant_id"];

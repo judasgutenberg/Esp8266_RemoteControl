@@ -9,7 +9,7 @@ let segmentRects = [];
 const bitColorMap = {};
 let deviceFeatures = [];
 let weatherConditions = [];
-let deviceId = 1; //had to hardcode. need to do something else if we have other tenants
+//let deviceId = 1; //had to hardcode. need to do something else if we have other tenants
 
 resetGraphData();
 

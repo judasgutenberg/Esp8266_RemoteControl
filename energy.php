@@ -7,10 +7,11 @@ include("device_functions.php");
 //ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
 
-if(array_key_exists( "locationId", $_REQUEST)) {
-	$locationId = $_REQUEST["locationId"];
+//we only need this so we have SOME deviceId for the backend. but we should change how that gets auth'ed
+if(array_key_exists( "deviceId", $_REQUEST)) {
+	$deviceId = $_REQUEST["deviceId"];
 } else {
-	$locationId = 1;
+	$deviceId = 0; //ignored, but must be a number
 }
 $poser = null;
 $poserString = "";
@@ -55,6 +56,7 @@ if(!$user) {
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <script>
+  let deviceId = <?php echo $deviceId ?>;
 	let scaleConfig = JSON.parse('<?php echo json_encode(timeScales()); ?>');
 	window.timezone ='<?php echo $timezone ?>';
   </script>
