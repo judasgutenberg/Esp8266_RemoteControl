@@ -126,7 +126,7 @@ if($_REQUEST) {
 	$encryptedKey = gvfw("key");
 	$encryptedKey2 = gvfw("k2"); //version 2
 	$data = gvfa("data", $_REQUEST);
-	$hashedData =  hash('sha256', $data);
+	$hashedData =  substr(hash('sha256', $data), 0, 16);
 	//$x = gvfw("x");
 	if($encryptedKey){
 		$checksum = calculateChecksum($data);
