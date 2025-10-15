@@ -291,12 +291,13 @@ function autoUpdate(encryptedSql, headerData, tableId) {
       const dataCount = data.length;
 
       // Add missing rows if new data has more records
-      if (dataCount > rowCount) {
+      if (dataCount > rowCount  && rowCount > 0) {
         const templateRow = tableRows[rowCount - 1]; // use the last row as template
         for (let i = rowCount; i < dataCount; i++) {
           const newRow = templateRow.cloneNode(true);
           table.appendChild(newRow);
         }
+        //if we have no rows, we will some day need a way to manufacture one
       }
 
       // Remove extra rows if data has fewer records
