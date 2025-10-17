@@ -66,7 +66,54 @@ function clearMap() {
       attribution: '&copy; OpenStreetMap contributors, CyclOSM'
     }
   );
+  
+  function tileXYToQuadKey(x, y, z) {
+      let quadKey = '';
+      for (let i = z; i > 0; i--) {
+          let digit = 0;
+          const mask = 1 << (i - 1);
+          if ((x & mask) !== 0) digit += 1;
+          if ((y & mask) !== 0) digit += 2;
+          quadKey += digit;
+      }
+      return quadKey;
+  }
 
+  // Create a working Bing Aerial layer instance
+  const bingLayer  = L.tileLayer('', {
+      attribution: 'Bing Imagery &copy; Microsoft',
+      subdomains: ['0','1','2','3','4'],
+      minZoom: 1,
+      maxZoom: 19,
+      // Custom tile URL function
+      tileSize: 256,
+      zoomOffset: 0,
+      detectRetina: false,
+      getTileUrl: function(coords) {
+          const q = tileXYToQuadKey(coords.x, coords.y, coords.z);
+          return `https://ecn.t3.tiles.virtualearth.net/tiles/a${q}.jpeg?g=1`;
+      }
+  });
+
+     // your OpenWeatherMap API key
+    const apiKey = openWeatherApiKey;
+
+    // choose one of their layer types:
+    const clouds = L.tileLayer(
+      `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${apiKey}`,
+      { opacity: 0.6, attribution: '&copy; <a href="https://openweathermap.org/">OpenWeatherMap</a>' }
+    );
+
+    const temp = L.tileLayer(
+      `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${apiKey}`,
+      { opacity: 0.5, attribution: '&copy; <a href="https://openweathermap.org/">OpenWeatherMap</a>' }
+    );
+    
+    const precipitation = L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${apiKey}`, { opacity: 0.5, attribution: '&copy; OpenWeatherMap' });
+    const wind = L.tileLayer(`https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${apiKey}`, { opacity: 0.5, attribution: '&copy; OpenWeatherMap' });
+    const pressure = L.tileLayer(`https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=${apiKey}`, { opacity: 0.5, attribution: '&copy; OpenWeatherMap' });
+
+  
     // Default layer
     streetLayer.addTo(map);
 
@@ -81,12 +128,41 @@ function clearMap() {
         "OpenTopoMap": topoLayer,   
         "RainViewer Radar": rainViewer,
         "NASA GIBS":nasaGibs,
-        "Outdoors":cyclosm
+        "Outdoors":cyclosm,
+        "Bing Aerial": bingLayer,
+   
 
     };
+    
+    overlays = {
+         "Clouds": clouds,
+        "Temperature": temp,
+        "Pressure": pressure,
+        "Wind": wind,
+        "Precipitation": precipitation
+    }
 
-    L.control.layers(baseLayers).addTo(map);
+    //L.control.layers(baseLayers).addTo(map);
+    L.control.layers(baseLayers, overlays).addTo(map);
+    
+    L.control.scale({
+      position: 'topright',   // or 'topleft', 'bottomleft', 'bottomright'
+      imperial: true,         // show miles/feet
+      metric: true,           // show km/meters
+      maxWidth: 200            // max length in pixels for the scale bar
+    }).addTo(map);
+
+
+
+    // assuming you already have a Leaflet map instance:
+ 
+
+ 
+ 
+
 }
+
+ 
 
 window.initMap =   function () {
 

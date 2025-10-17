@@ -15,6 +15,7 @@ $user = autoLogin();
 $tenantSelector = "";
 $scaleConfig =  timeScales();
 $credential = getCredential($user, "googlemap");
+$credentialWeather = getCredential($user, "openweather");
 $error = "";
 $deviceId = gvfw("device_id");
 $version = 1.1;
@@ -124,7 +125,7 @@ if(!$user) {
         echo "<td class='genericformelementlabel'>Tracker:</td><td>" . genericSelect($selectId, "deviceId", defaultFailDown(gvfw("device_id"), $deviceId), $selectData, "onchange", $handler) . "</td>";
         echo "</tr>\n";
 
-        
+        $device = getGeneric("device", $deviceId, $user);
         ?>
         </table>
     </div>
@@ -136,6 +137,9 @@ if(!$user) {
     let currentStartDate; //a global that needs to persist through HTTP sessions in the frontend
     let justLoaded = true;
     let googleApiKey = '<?php echo $credential["password"];?>';
+    let baseLatitude = '<?php echo $device["latitude"];?>';
+    let baseLongitude = '<?php echo $device["longitude"];?>';
+    let openWeatherApiKey = '<?php echo $credentialWeather["password"];?>';
     initMap();
   </script>
  
