@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 import meshtastic
+from types import SimpleNamespace
 import meshtastic.serial_interface
 import random
+import subprocess
 import json
 import time
 import re
+import sqlite3
+import os
+import time
 from urllib.parse import quote
 import requests
 from pubsub import pub
@@ -163,6 +168,75 @@ MAX_RETRIES = 10
 RETRY_DELAY = 5  # seconds
 pendingAcks = {}
 
+#have to do this because the Meshtastic developers are psychopaths:
+def oldSendTargetedMessage(msg, loraNodeNum):
+    global iface
+    nodeIdCli = f"!{int(loraNodeNum):08X}"
+    print("nodecli:", nodeIdCli)
+    iface.close()  # release /dev/ttyUSB0
+
+    try:
+        result = subprocess.run(
+            ["meshtastic", "--dest", nodeIdCli, "--sendtext", msg, "--ack"],
+            capture_output=True,
+            text=True,
+            timeout=30  # fail if it hangs
+        )
+    except subprocess.SubprocessError as e:
+        print("Subprocess error:", e)
+        return None
+
+    stdout = result.stdout
+    print("what we got")
+    print(stdout)
+    iface = meshtastic.serial_interface.SerialInterface()
+    # Check for acknowledgment
+    ackReceived = "Ack received" in stdout
+
+    # Extract the message ID
+    match = re.search(r"Message queued \(id=(\d+)\)", stdout)
+    msgId = int(match.group(1)) if match else None
+
+    return SimpleNamespace(
+        id=msgId,
+        nodeId=nodeIdCli,
+        message=msg,
+        ackReceived=ackReceived,
+        rawOutput=stdout
+    )
+
+#############################################################
+#madness caused by zero current support for targeted messages
+#############################################################
+#i am so fucking pissed at the morons behind Meshtastic!!
+
+def sendTargetedMessage(msg, nodeId):
+    global iface
+    if isinstance(nodeId, int):
+        nodeCli = f"!{nodeId:08X}"
+    else:
+        nodeCli = f"!{int(str(nodeId),16):08X}"
+    iface.close()  # release /dev/ttyUSB0
+
+    result = subprocess.run(
+        ["meshtastic", "--dest", nodeCli, "--sendtext", msg, "--ack"],
+        capture_output=True, text=True, timeout=30
+    )
+
+    out = result.stdout.strip()
+    iface = meshtastic.serial_interface.SerialInterface()
+    msgId = int(time.time() * 1000)
+
+    return SimpleNamespace(
+        id=msgId,
+        nodeId=nodeCli,
+        message=msg,
+        cliOut=out
+    )
+
+
+########################################## 
+   
 def sendLoraMessages(backendJson):
     global iface, pendingAcks
     messageObject = json.loads(backendJson)
@@ -172,7 +246,14 @@ def sendLoraMessages(backendJson):
         for message in messages:
             messageText = message["content"]
             messageId = message["message_id"]
-            packetInfo = iface.sendText(messageText, wantAck=True)
+            targetLoraId = message["manufacture_id"]
+            
+            if targetLoraId:
+              #sendTargetedMessage(msg, nodeId)
+              packetInfo = sendTargetedMessage(messageText, targetLoraId)
+            else:
+              packetInfo = iface.sendText(messageText, wantAck=True)
+           
             loraId = packetInfo.id
             pendingAcks[loraId] = messageId  
   
@@ -285,3 +366,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\nInterrupted, closing interface...")
         iface.close()
+        
