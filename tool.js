@@ -277,7 +277,7 @@
   }
   
   //update the genericTable data
-function autoUpdate(encryptedSql, headerData, tableId) {
+function autoUpdate(encryptedSql, headerData, tableId, doNotDoAgain) {
   const decodedHeaderData = JSON.parse(headerData);
   const xmlhttp = new XMLHttpRequest();
 
@@ -379,9 +379,11 @@ function autoUpdate(encryptedSql, headerData, tableId) {
 	xmlhttp.open("POST", url, true);
 	xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
 	xmlhttp.send(params);
-	setTimeout(function() { 
-	  autoUpdate(encryptedSql, headerData, tableId);
-	}, 7000);
+	if(!doNotDoAgain){
+		setTimeout(function() { 
+		autoUpdate(encryptedSql, headerData, tableId);
+		}, 7000);
+	}
   
   }
   

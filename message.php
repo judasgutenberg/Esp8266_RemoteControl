@@ -122,6 +122,7 @@ function sendMessage(textAreaId) {
           xmlhttp.onreadystatechange = function() {
               console.log(xmlhttp.responseText);
               textArea.value = "";
+              updateGridNow(true);
           }
           let url = "tool.php?action=sendmessage&target_device_id=" + targetDeviceId + "&content=" + encodeURIComponent(content);
           xmlhttp.open("GET", url, true);

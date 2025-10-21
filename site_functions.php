@@ -1507,7 +1507,7 @@ function genericTableViaJs($rows, $headerData = NULL, $toolsTemplate = NULL, $se
   $out .= "</div>\n";
   if($autoRefreshSql) {
     $encryptedSql = encryptLongString($autoRefreshSql, $encryptionPassword);
-    $out .= "<script>autoUpdate('" . $encryptedSql . "','" . addslashes(json_encode($headerData)) . "','" . $tableId . "');</script>";
+    $out .= "<script>function updateGridNow(doNotDoAgain){\nautoUpdate('" . $encryptedSql . "','" . addslashes(json_encode($headerData)) . "','" . $tableId . "',doNotDoAgain)\n};\nupdateGridNow();\n</script>";
 
   }
   return $out;
@@ -1631,7 +1631,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
   $out .= "</div>\n";
   if($autoRefreshSql) {
     $encryptedSql = encryptLongString($autoRefreshSql, $encryptionPassword);
-    $out .= "<script>autoUpdate('" . $encryptedSql . "','" . addslashes(json_encode($headerData)) . "','" . $tableId . "');</script>";
+    $out .= "<script>function updateGridNow(doNotDoAgain){\nautoUpdate('" . $encryptedSql . "','" . addslashes(json_encode($headerData)) . "','" . $tableId . "',doNotDoAgain)\n};\nupdateGridNow();\n;</script>";
 
   }
   return $out;
