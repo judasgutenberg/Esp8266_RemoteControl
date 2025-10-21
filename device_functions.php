@@ -1366,6 +1366,14 @@ function editReport($error,  $user) {
 	    'value' => gvfa("name", $source), 
       'error' => gvfa('name', $error)
 	  ],
+		[
+	    'label' => 'description',
+      'name' => 'description',
+      'width' => 400,
+      'height' => 30,
+	    'value' => gvfa("description", $source), 
+      'error' => gvfa('description', $error)
+	  ],
     [
 	    'label' => 'role',
       'name' => 'role',

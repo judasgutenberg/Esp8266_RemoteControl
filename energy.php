@@ -24,7 +24,6 @@ if(array_key_exists( "deviceId", $_REQUEST)) {
   <script src='tool.js'></script>
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
 </head>
-
 <body>
 <?php
 	$out .= topmostNav();
@@ -49,7 +48,6 @@ if(array_key_exists( "deviceId", $_REQUEST)) {
 		//$out .= "<div class='innercontent'>";
 		echo $out; 
   ?>
-
     <div style="text-align:center;"><b><span id='greatestTime'></span></b></div>
 		<div class="chart-container" style="width: 100%; height: 70vh;">
 			<canvas id="Chart"></canvas>
@@ -71,8 +69,5 @@ if(array_key_exists( "deviceId", $_REQUEST)) {
 </div>
 <script src='energy.js'></script>
 </body>
-
 </html>
- 
-
  
