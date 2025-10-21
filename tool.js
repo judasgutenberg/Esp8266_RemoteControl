@@ -1411,7 +1411,40 @@ function formatSQL(sql) {
   return formatted;
 }
 
-  
+
+
+function formatSQL(sql) {
+  // Keywords that trigger a newline
+  const newlineKeywords = [
+    'SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT',
+    'JOIN', 'ON', 'HAVING', 'WITH', 'UNION', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END'
+  ];
+
+  // --- 1. Extract quoted strings and XML placeholders ---
+  const literals = [];
+  sql = sql.replace(/('[^']*')|("[^"]*")|<[^>]+\/>/gms, match => {
+    const idx = literals.length;
+    literals.push(match);
+    return `__LIT_${idx}__`;
+  });
+
+  // --- 2. Add newlines before keywords ---
+  const keywordRegex = new RegExp(`\\b(${newlineKeywords.join('|')})\\b`, 'gi');
+  sql = sql.replace(keywordRegex, match => '\n' + match.toUpperCase());
+
+  // --- 3. Normalize spacing around commas ---
+  sql = sql.replace(/\s*,\s*/g, ', ');
+
+  // --- 4. Restore literals ---
+  sql = sql.replace(/__LIT_(\d+)__/g, (_, i) => literals[i]);
+
+  // --- 5. Clean up extra spaces/newlines ---
+  sql = sql.replace(/\n\s+/g, '\n  ');  // indent 2 spaces after newlines
+  sql = sql.replace(/[ \t]+/g, ' ');    // normalize spaces
+
+  return sql.trim();
+}
+
   //the result of a productive back-and-forth with ChatGPT:
   function xsmoothArray(intArray, windowSize, weightFactor) {
 	  // Create a new array to store the smoothed values
