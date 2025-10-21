@@ -1,62 +1,15 @@
-<!doctype html>
-<?php 
-include("config.php");
-include("site_functions.php");
-include("device_functions.php");
-//ini_set('display_errors', 1);
-//ini_set('display_startup_errors', 1);
-//error_reporting(E_ALL);
-
-$poser = null;
-$poserString = "";
-$out = "";
-$conn = mysqli_connect($servername, $username, $password, $database);
-$user = autoLogin();
-$tenantSelector = "";
-$scaleConfig =  timeScales();
-$credential = getCredential($user, "googlemap");
-$error = "";
-$deviceId = gvfw("device_id");
-$version = 1.1;
+<?php
+include("other_page_login.php");
 if($deviceId == ""){
   $deviceId = 21; //hard coded for me, probably not what you want
-}
-if(!$credential) {
-	$error = "No Google API Key found.";
-}
-$content = "";
-$action = gvfw("action");
-if ($action == "login") {
-	$tenantId = gvfa("tenant_id", $_GET);
-	$tenantSelector = loginUser($tenantId);
-} else if ($action == 'settenant') {
-	setTenant(gvfw("encrypted_tenant_id"));
-} else if ($action == "logout") {
-	logOut();
-	header("Location: ?action=login");
-	die();
-}
-if(!$user) {
-	if(gvfa("password", $_POST) != "" && $tenantSelector == "") {
-		$content .= "<div class='genericformerror'>The credentials you entered have failed.</div>";
-	}
-    if(!$tenantSelector) {
-		$content .= loginForm();
-	} else {
-		$content .= $tenantSelector;
-	}
-	echo bodyWrap($content, $user, "", null);
-	die();
 }
 ?>
 <html>
 <head>
   <title>Messages</title>
- 
- 
- 
   <link rel='stylesheet' href='tool.css?version=<?php echo $version?>'>
   <script src='tool.js?version=<?php echo $version?>'></script>
+  <script src='message.js?version=<?php echo $version?>'></script>
   <script src='tablesort.js?version=<?php echo $version?>'></script>
   <script src='tinycolor.js?version=<?php echo $version?>'></script>
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
@@ -110,30 +63,6 @@ if(!$user) {
     </div>
 	</div>
 </div>
-<script>
-
-function sendMessage(textAreaId) {
-    let textArea = document.getElementById(textAreaId);
-    let targetDeviceDropdown = document.getElementById("target_device_id");
-    if(textArea){
-        let targetDeviceId = targetDeviceDropdown[targetDeviceDropdown.selectedIndex].value
-        let content = textArea.value;
-    	  let xmlhttp = new XMLHttpRequest();
-          xmlhttp.onreadystatechange = function() {
-              console.log(xmlhttp.responseText);
-              textArea.value = "";
-              updateGridNow(true);
-          }
-          let url = "tool.php?action=sendmessage&target_device_id=" + targetDeviceId + "&content=" + encodeURIComponent(content);
-          xmlhttp.open("GET", url, true);
-          xmlhttp.send();
-    }
-}
-
-
-</script>
- 
- <script>currentSortColumn = 0;</script>
  
    
 </body>

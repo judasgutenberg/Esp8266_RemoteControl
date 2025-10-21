@@ -1,19 +1,6 @@
-<!doctype html>
 <?php 
-include("config.php");
-include("site_functions.php");
-include("device_functions.php");
-//ini_set('display_errors', 1);
-//ini_set('display_startup_errors', 1);
-//error_reporting(E_ALL);
- 
-$poser = null;
-$poserString = "";
-$out = "";
-$conn = mysqli_connect($servername, $username, $password, $database);
-$user = autoLogin();
-$deviceId = 0;
- 
+include("other_page_login.php");
+
 if($user){
 	$devices = getDevices($user["tenant_id"], false);
 	$weatherColumns = getGraphColumns($user["tenant_id"]);
@@ -25,38 +12,6 @@ if($user){
 			$deviceId = $devices[0]["device_id"]; //picking the first device now, but this could be in the tenant config
 		}
 	}
-}
- 
-
-$tenantSelector = "";
-$scaleConfig =  timeScales();
-
-$content = "";
-$action = gvfw("action");
-if ($action == "login") {
-	$tenantId = gvfa("tenant_id", $_GET);
-	$tenantSelector = loginUser($tenantId);
-} else if ($action == 'settenant') {
-	setTenant(gvfw("encrypted_tenant_id"));
-} else if ($action == "logout") {
-	logOut();
-	header("Location: ?action=login");
-	die();
-	
-}
-if(!$user) {
-	if(gvfa("password", $_POST) != "" && $tenantSelector == "") {
-		$content .= "<div class='genericformerror'>The credentials you entered have failed.</div>";
-	}
-    if(!$tenantSelector) {
-		$content .= loginForm();
-	} else {
-		$content .= $tenantSelector;
-	}
-
-
-	echo bodyWrap($content, $user, "", null);
-	die();
 }
  
 function multiDevicePicker($tenantId, $devices) {
@@ -91,7 +46,7 @@ function plotTypePicker($type, $handler){
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <script src = "tinycolor.js"></script>  
   <script>
-  	let scaleConfig = JSON.parse('<?php echo json_encode(timeScales()); ?>');
+  let scaleConfig = JSON.parse('<?php echo json_encode(timeScales()); ?>');
 	let devices = [];//JSON.parse('<?php echo json_encode($devices); ?>');
 	window.timezone ='<?php echo $timezone ?>';
   </script>

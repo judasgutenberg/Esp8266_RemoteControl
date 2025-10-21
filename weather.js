@@ -432,7 +432,7 @@ function getWeatherData(yearsAgo) {
 	history.pushState({}, "", url);
 	let xhttp = new XMLHttpRequest();
 	/*
-	let endpointUrl = "./data.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&deviceId=" + deviceId + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&years_ago=" + yearsAgo;
+	let endpointUrl = "./server.php?scale=" + scale + "&period_ago=" + periodAgo + "&mode=getWeatherData&deviceId=" + deviceId + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&years_ago=" + yearsAgo;
 	if(absoluteTimeAgo) {
     endpointUrl = "./data.php?scale=" + scale + "&absolute_time_ago=" + absoluteTimeAgo + "&mode=getWeatherData&deviceId=" + deviceId + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&years_ago=" + yearsAgo;
 	}
@@ -617,7 +617,7 @@ function ctof(inVal){
 
 function officialWeather(deviceId) {
 	let xhttp = new XMLHttpRequest();
-	let endpointUrl = "./data.php?mode=getOfficialWeatherData&deviceId=" + deviceId;
+	let endpointUrl = "./server.php?mode=getOfficialWeatherData&deviceId=" + deviceId;
 	xhttp.onreadystatechange = function() {
 	    if (this.readyState == 4 && this.status == 200) {
 	     //Push the data in array

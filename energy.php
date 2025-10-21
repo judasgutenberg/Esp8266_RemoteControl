@@ -1,50 +1,10 @@
-<!doctype html>
-<?php 
-include("config.php");
-include("site_functions.php");
-include("device_functions.php");
-//ini_set('display_errors', 1);
-//ini_set('display_startup_errors', 1);
-//error_reporting(E_ALL);
-
+<?php
+include("other_page_login.php");
 //we only need this so we have SOME deviceId for the backend. but we should change how that gets auth'ed
 if(array_key_exists( "deviceId", $_REQUEST)) {
 	$deviceId = $_REQUEST["deviceId"];
 } else {
 	$deviceId = 0; //ignored, but must be a number
-}
-$poser = null;
-$poserString = "";
-$out = "";
-$conn = mysqli_connect($servername, $username, $password, $database);
-$user = autoLogin();
-$tenantSelector = "";
-$scaleConfig =  timeScales();
-//$scaleConfig = '[{"text":"ultra-fine","value":"ultra-fine", "period_size": 1, "period_scale": "hour"},{"text":"fine","value":"fine", "period_size": 1, "period_scale": "day"},{"text":"hourly","value":"hour", "period_size": 7, "period_scale": "day"}, {"text":"daily","value":"day", "period_size": 1, "period_scale": "year"}]';
-
-$content = "";
-$action = gvfw("action");
-if ($action == "login") {
-	$tenantId = gvfa("tenant_id", $_GET);
-	$tenantSelector = loginUser($tenantId);
-} else if ($action == 'settenant') {
-	setTenant(gvfw("encrypted_tenant_id"));
-} else if ($action == "logout") {
-	logOut();
-	header("Location: ?action=login");
-	die();
-}
-if(!$user) {
-	if(gvfa("password", $_POST) != "" && $tenantSelector == "") {
-		$content .= "<div class='genericformerror'>The credentials you entered have failed.</div>";
-	}
-    if(!$tenantSelector) {
-		$content .= loginForm();
-	} else {
-		$content .= $tenantSelector;
-	}
-	echo bodyWrap($content, $user, "", null);
-	die();
 }
 
 ?>
