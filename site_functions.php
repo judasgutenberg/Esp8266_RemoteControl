@@ -523,8 +523,8 @@ function genericEntityForm($tenantId, $table, $errors){
 
  
 function genericEntitySave($user, $table) {
-  Global $conn;
-  Global $encryptionPassword;
+  global $conn;
+  global $encryptionPassword;
   $tenantId = $user["tenant_id"];
   $tablesThatRequireUser = tablesThatRequireUser();
   //$data = schemaArrayFromSchema($table, $pk);
@@ -559,6 +559,13 @@ function genericEntitySave($user, $table) {
           printf("%s\n", $row[0]);
         }
         mysqli_free_result($result);
+        $error = mysqli_error($conn);
+				if($error != ""){
+          echo $sql;
+          echo "\n<hr/>\n";
+					die($error);
+				}
+				
       }
       // if there are more result-sets, the print a divider
       if (mysqli_more_results($conn)) {
@@ -568,7 +575,7 @@ function genericEntitySave($user, $table) {
     } while (mysqli_next_result($conn));
   }
 
-
+  //die($sql);
   $id = mysqli_insert_id($conn);
   $url = "?table=" . $table;
   $deviceId = gvfw("device_id");
@@ -1559,6 +1566,8 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
   }
   $out .= "</div>\n";
   //$out .= "<div class='listbody' id='listbody'>\n";
+  //var_dump(count($rows));
+  //echo "<HR>";;
   for($rowCount = 0; $rowCount< count($rows); $rowCount++) {
     $row = $rows[$rowCount]; 
     $out .= "<div class='listrow'>\n";
@@ -1622,13 +1631,14 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
       $out .= "</span>\n";
     }
     if($toolsTemplate) {
-      
+     //$out .=  $rowCount . "*" .  $row["code_template_id"];
       $out .= "<span>" . tokenReplace($toolsTemplate,  $row, $tableName) . "</span>\n";
     }
     $out .= "</div>\n";
   }
   //$out .= "</div>\n";
   $out .= "</div>\n";
+  //var_dump(count($rows));
   if($autoRefreshSql) {
     $encryptedSql = encryptLongString($autoRefreshSql, $encryptionPassword);
     $out .= "<script>\nfunction updateGridNow(doNotDoAgain){\nautoUpdate('" . $encryptedSql . "','" . addslashes(json_encode($headerData)) . "','" . $tableId . "',doNotDoAgain)\n};\nupdateGridNow();\n</script>";

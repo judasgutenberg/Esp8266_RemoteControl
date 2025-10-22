@@ -431,6 +431,12 @@ if ($user) {
     } else {
      $out .= devices($user);
     }
+	} else if($table == "code_template") {
+    if ($action == "startcreate" || gvfw("code_template_id") != "") {
+      $out .=  editCodeTemplate($errors,  $user);
+    } else {
+     $out .= codeTemplates($user);
+    }
 	} else if($table == "device_column_map") {
     if ($action == "startcreate" || gvfw("device_column_map_id") != "") {
       $out .=  editDeviceColumnMap($errors, $deviceId, $user);

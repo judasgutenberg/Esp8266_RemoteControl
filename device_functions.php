@@ -138,6 +138,81 @@ function timeScales() {
   return $out;
 }
 
+function codeTemplates($user) {
+  $tenantId = $user["tenant_id"];
+  $table = "code_template";
+  $pk = gvfw($table . "_id");
+ 
+  $sql = "SELECT * FROM " . $table . " WHERE tenant_id=<tenant_id/>";
+  $result = replaceTokensAndQuery($sql, $user);
+  //echo $sql;
+  $out = "";
+  $out .= "<div class='listtitle'>Your " . $table . "s</div>\n";
+  $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a new " . $table  . "</div>\n";
+ 
+ 
+  $headerData = array(
+    [
+	    'label' => 'id',
+      'name' => $table . "_id"
+	  ],
+    [
+	    'label' => 'created',
+      'name' => "created",
+      'type' => 'read_only',
+ 
+	  ],
+    [
+	    'label' => 'modified',
+      'name' => "modified",
+      'type' => 'read_only',
+ 
+	  ],
+		[
+	    'label' => 'name',
+      'name' => 'name',
+      'width' => 400,
+ 
+	  ],
+		[
+	    'label' => 'content',
+      'name' => 'content',
+      'width' => 400,
+      'height'=> 400,
+ 
+	  ],
+		[
+	    'label' => 'language',
+      'name' => 'language',
+      'type'=> 'select',
+      'values'=> ["C", "Python", "Javascript", "SQL", "HTML"],
+ 
+	  ],
+    [
+	    'label' => 'enabled',
+      'accent_color' => "red",
+      'name' => 'enabled',
+      'type' => 'bool',
+ 
+	  ]
+    );
+    $toolsTemplate = "<div class='listtools'>";
+    $toolsTemplate .= "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
+    $toolsTemplate .= " | " . deleteLink($table, $table ."_id" ); 
+    $toolsTemplate .= "</div>";
+    //echo $toolsTemplate;
+    
+    if($result) {
+      $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+      //var_dump($rows);
+      if($rows) {
+        $out .= genericTable($rows, $headerData, $toolsTemplate, null,  $table, $table . "_id", $sql);
+      }
+    }
+    return $out;
+}
+
+
 function devices($user) {
   $table = "device";
   $sql = "SELECT *  FROM " . $table . "  WHERE tenant_id=<tenant_id/>";
@@ -887,6 +962,90 @@ function editDeviceFeature($error,  $user) {
                   ORDER BY 
                       m.name ASC;"
 	  ] 
+    );
+  $form = genericForm($formData, $submitLabel);
+  return $form;
+}
+
+function editCodeTemplate($error,  $user) {
+  $tenantId = $user["tenant_id"];
+  $table = "code_template";
+  $pk = gvfw($table . "_id");
+  
+  $submitLabel = "save code template";
+  if($pk  == "") {
+    $submitLabel = "create code template";
+    $source = $_POST;
+  } else {
+    $sql = "SELECT * FROM " . $table . " WHERE " . $table . "_id=" . intval($pk) . " AND tenant_id=<tenant_id/>";
+    $result = replaceTokensAndQuery($sql, $user);
+    if($result) {
+      $source = mysqli_fetch_array($result);
+    }
+  }
+  if(!$pk){
+    $pk = "NULL";
+  }
+  
+ 
+  
+  $formData = array(
+    [
+	    'label' => 'id',
+      'name' => $table . "_id",
+      'type' => 'read_only',
+	    'value' => gvfa($table . "_id", $source)
+	  ],
+    [
+	    'label' => 'created',
+      'name' => "created",
+      'type' => 'read_only',
+	    'value' => gvfa("created", $source)
+	  ],
+    [
+	    'label' => 'modified',
+      'name' => "modified",
+      'type' => 'read_only',
+	    'value' => gvfa("modified", $source)
+	  ],
+		[
+	    'label' => 'token',
+      'name' => 'token',
+      'width' => 400,
+	    'value' => gvfa("token", $source), 
+      'error' => gvfa('token', $error)
+	  ],
+		[
+	    'label' => 'name',
+      'name' => 'name',
+      'width' => 400,
+	    'value' => gvfa("name", $source), 
+      'error' => gvfa('name', $error)
+	  ],
+		[
+	    'label' => 'content',
+      'name' => 'content',
+      'width' => 400,
+      'height'=> 400,
+	    'value' => gvfa("content", $source), 
+      'error' => gvfa('content', $error)
+	  ],
+		[
+	    'label' => 'language',
+      'name' => 'language',
+      'type'=> 'select',
+      'values'=> ["C", "Python", "Javascript", "SQL", "HTML"],
+	    'value' => gvfa("language", $source), 
+      'error' => gvfa('language', $error)
+	  ],
+    [
+	    'label' => 'enabled',
+      'accent_color' => "red",
+      'name' => 'enabled',
+      'type' => 'bool',
+	    'value' => gvfa("enabled", $source), 
+      'error' => gvfa('enabled', $error)
+	  ]
     );
   $form = genericForm($formData, $submitLabel);
   return $form;
