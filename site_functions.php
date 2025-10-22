@@ -2681,6 +2681,74 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
   return $out;
 }
 
+/////////////////////////////////////////////////////////////
+//template functions////////////////////////////////////////
+///////////////////////////////////////////////////////////
+
+/**
+ * Fully recursive template renderer.
+ * Preserves the behavior of your original renderTemplate().
+ *
+ * @param string $comment
+ * @param array $dataSet
+ * @param string $template
+ * @param int|null $tenantId
+ * @param array $stack Internal: used to prevent infinite recursion
+ * @param array $config Generic configuration array for nested templates
+ * @return string
+ */
+function renderTemplateRecursive($comment, $dataSet, $template, $tenantId = null, $stack = [], $config = []) {
+    // Prevent infinite recursion
+    if (in_array($template, $stack, true)) {
+        return '[Recursive template detected]';
+    }
+    $stack[] = $template;
+
+    // Expand <template token="..."/> tags recursively
+    if (strpos($template, '<template token=') !== false) {
+        $template = preg_replace_callback('/<template\s+token="([^"]+)"(?:\s*\/>|[^>]*>)/', function($matches) use ($tenantId, $stack, $config) {
+            $token = $matches[1];
+
+            // Fetch template by token
+            $templateRecord = fetchTemplateByToken($token, $tenantId);
+            if (!$templateRecord) {
+                return ''; // missing template
+            }
+
+            // Render nested template with the same config
+            return renderTemplateRecursive('_', $config, $templateRecord['content'], $tenantId, $stack, $config);
+        }, $template);
+    }
+
+    // Call the original renderTemplate to handle loops, conditionals, variables
+    return renderTemplate($comment, $dataSet, $template);
+}
+
+/**
+ * Fetch a template by token from the database
+ *
+ * @param string $token
+ * @param int|null $tenantId
+ * @return array|null
+ */
+function fetchTemplateByToken($token, $tenantId = null) {
+    global $conn;
+    $sql = "SELECT * FROM code_template WHERE token = '" . mysqli_real_escape_string($conn, $token) . "' AND enabled = 1";
+    if ($tenantId !== null) {
+        $sql .= " AND tenant_id = " . intval($tenantId);
+    }
+    $sql .= " LIMIT 1";
+    
+    $result = mysqli_query($conn, $sql);
+    if($result){
+      $records = $result->fetch_assoc();
+      if(count($records) > 0) {
+        $record = $records[0];
+        return $record;
+      }
+    }
+}
+
 function renderTemplate($comment, $dataSet, $template) {
     if (isset($dataSet[0]) && is_array($dataSet[0])) {
         $dataSet = [$comment === "" ? '_' : $comment => $dataSet];
