@@ -11,8 +11,6 @@ if(array_key_exists( "deviceId", $_REQUEST)) {
 <html>
 <head>
   <title>Inverter Information</title>
-  <!--For offline ESP graphs see this tutorial https://circuits4you.com/2018/03/10/esp8266-jquery-and-ajax-web-server/ -->
-  <!--<script src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.min.js"></script>--> 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <script>
@@ -24,6 +22,7 @@ if(array_key_exists( "deviceId", $_REQUEST)) {
   <script src='tool.js'></script>
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
 </head>
+
 <body>
 <?php
 	$out .= topmostNav();
@@ -48,6 +47,7 @@ if(array_key_exists( "deviceId", $_REQUEST)) {
 		//$out .= "<div class='innercontent'>";
 		echo $out; 
   ?>
+
     <div style="text-align:center;"><b><span id='greatestTime'></span></b></div>
 		<div class="chart-container" style="width: 100%; height: 70vh;">
 			<canvas id="Chart"></canvas>
@@ -69,5 +69,8 @@ if(array_key_exists( "deviceId", $_REQUEST)) {
 </div>
 <script src='energy.js'></script>
 </body>
+
 </html>
+ 
+
  
