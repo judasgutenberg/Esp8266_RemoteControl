@@ -903,6 +903,9 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
             $inputJavascript = "onchange=\"document.getElementById('_new_password').checked=true\"";
           }
           $out .= "<input " . $inputJavascript  . " " . $validationString . " style='width:" . $width . "px;accent-color:" . $accentColor . "' " . $idString. " " . $specialNumberAttribs . "  name='" . $name . "' value=\"" .  $value . "\" type='" . $type . "'/>\n";
+          if($type == "file") {
+            $out .= $value;
+          }
           if($type == "plaintext_password") {
             $out .= "<input id='_new_password' name='_new_password' value='1' type='checkbox'>\n password not yet encrypted";
           }
