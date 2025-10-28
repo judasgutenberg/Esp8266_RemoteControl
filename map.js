@@ -1,5 +1,5 @@
 let maxRecorded = "";
- 
+let map;
 
 function clearMap() {
     map = new google.maps.Map(document.getElementById('map'), {
@@ -133,6 +133,10 @@ window.initMap = async function () {
             lng: parseFloat(loc.longitude)
           };
           const deviceFound = findObjectByColumn(devices, "device_id", loc.device_id);
+          let thumbnail = "";
+          if(deviceFound["thumbnail"]) {
+            thumbnail = buildUploadPath("device", loc.device_id, deviceFound["thumbnail"])
+          }
           // draw small circle instead of marker
           let circle =  new google.maps.Circle({
             strokeWeight: 0,
@@ -145,6 +149,7 @@ window.initMap = async function () {
           
           const content = `
             <div style="font-size: 12px; line-height: 1.4;">
+              <img src='./${thumbnail}' width=100>
               <strong>Recorded:</strong> ${loc.recorded}<br>
               (${timeAgo(loc.recorded,  null, false)}) <br>
               <strong>Speed:</strong> ${loc.wind_speed} m/s<br>

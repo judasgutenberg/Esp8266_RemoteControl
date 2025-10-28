@@ -212,6 +212,7 @@ if($_REQUEST) {
 				$elevation = "NULL";
 				$velocity = "NULL";
 				$uncertainty = "NULL";
+				$slaveMillis = "NULL";
 				$pinValuesKnownToDevice = [];
 				$specificPin = -1;
 				$saveDeviceInfo = false;
@@ -241,6 +242,7 @@ if($_REQUEST) {
             $elevation = arrayDefaultFailDown($whereAndWhen, 6, "NULL");
             $velocity = arrayDefaultFailDown($whereAndWhen, 7, "NULL");
             $uncertainty = arrayDefaultFailDown($whereAndWhen, 8, "NULL");
+            $slaveMillis = arrayDefaultFailDown($whereAndWhen, 9, "NULL");
             $latency = time() - intval($transmissionTimestamp);
             if($averageLatency) {
               writeMemoryCache("latency-" . $deviceId, $averageLatency);
@@ -620,7 +622,7 @@ if($_REQUEST) {
                 wind_direction,  wind_speed, wind_increment, 
                 precipitation, 
                 reserved1, reserved2, reserved3, reserved4,
-                sensor_id, weather_condition_id, digest, voltage, ampage, latitude, longitude, elevation, millis, data_hash) 
+                sensor_id, weather_condition_id, digest, voltage, ampage, latitude, longitude, elevation, millis, slave_millis, data_hash) 
               VALUES (" . 
               mysqli_real_escape_string($conn, $locationId) . "," .
               mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
@@ -645,7 +647,8 @@ if($_REQUEST) {
               mysqli_real_escape_string($conn, $latitude)  . "," .
               mysqli_real_escape_string($conn, $longitude) . "," .
               mysqli_real_escape_string($conn, $elevation) . "," .
-              mysqli_real_escape_string($conn, $millis)  . ",'" .
+              mysqli_real_escape_string($conn, $millis)  . "," .
+              mysqli_real_escape_string($conn, $slaveMillis)  . ",'" .
               mysqli_real_escape_string($conn, $hashedData) .
               "')";
 						}
@@ -1607,7 +1610,7 @@ function setMessageReceived($messageId, $loraId, $deviceId, $manufactureId) {
 function getMessagesForLoRa($tenantId) {
   //pick up any web-produced messages and send via lora
   global $conn;
-  $sql = "SELECT * from message where tenant_id=" . $tenantId  . " AND received <> 1 AND lora_id IS NULL ORDER BY recorded ASC LIMIT 0,1";
+  $sql = "SELECT * FROM message m LEFT JOIN device d ON m.target_device_id=d.device_id AND m.tenant_id=d.tenant_id WHERE m.tenant_id=" . $tenantId  . " AND received <> 1 AND lora_id IS NULL ORDER BY recorded ASC LIMIT 0,1";
   $result = mysqli_query($conn, $sql);
   if($result) {
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);

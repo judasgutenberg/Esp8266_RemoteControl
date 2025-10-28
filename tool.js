@@ -2192,6 +2192,15 @@ function formatSQL(sql) {
   
   }
   
+  function buildUploadPath(table, pkValue, filename) {
+    // Extract the file extension (including the dot, e.g., ".jpg")
+    const dotIndex = filename.lastIndexOf('.');
+    const extension = dotIndex !== -1 ? filename.slice(dotIndex) : '';
+
+    // Construct and return the path
+    return `uploads/${table}/${pkValue}${extension}`;
+  }
+  
 
   function createTimescalePeriodDropdown(scales, thisPeriod, scaleName, currentStartDate, event, eventAction, tableName, deviceId) {
     const scale = scales.find(s => s.value === scaleName);

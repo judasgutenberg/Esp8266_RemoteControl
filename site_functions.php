@@ -525,17 +525,45 @@ function genericEntityForm($tenantId, $table, $errors){
 function genericEntitySave($user, $table) {
   global $conn;
   global $encryptionPassword;
+  $tempFile  = "";
+  $extension = "";
+  $filename = "";
   $tenantId = $user["tenant_id"];
   $tablesThatRequireUser = tablesThatRequireUser();
+  
   //$data = schemaArrayFromSchema($table, $pk);
   $pk = $table . "_id";
   $data = $_POST;
+  //var_dump($_POST);
   if(array_key_exists("password", $data) &&  (array_key_exists("_new_password", $data) &&  gvfa("_new_password", $data) == true)){
     $data["password"] =  crypt($data["password"], $encryptionPassword);
   }
   if(in_array($table, $tablesThatRequireUser)){
-    $data["user_id"] = $user["user_id"];
+    $data["user_id"] = $uWWer["user_id"];
   }
+  $fileField = "";
+  
+  if($_FILES) {
+    foreach($_FILES as $datum => $value) {
+      //echo "1" .  $datum ;
+      if(array_key_exists($datum, $_FILES)) {
+        //echo "2";
+        $tempFile = $_FILES[$datum]["tmp_name"];
+        $fileField = $datum;
+        
+        if($tempFile) {
+          //echo "3";
+          $extension = pathinfo($_FILES[$fileField]["name"], PATHINFO_EXTENSION);
+          $filename = $_FILES[$fileField]["name"];
+          $data[$datum] = $filename;
+          //$data["thumbnail"] = $filename; //must revisit!!!
+        }
+      }
+    }
+  }
+  
+
+  $savedPk = gvfw($pk);
   unset($data['action']);
   unset($data[$pk]);
   unset($data['created']);
@@ -545,7 +573,7 @@ function genericEntitySave($user, $table) {
     //unset($data["tenant_id"]);
   }
  
-  $sql = insertUpdateSql($conn, $table, array($pk => gvfw($table . '_id')), $data);
+  $sql = insertUpdateSql($conn, $table, array($pk => gvfw($pk)), $data);
   //echo $sql;
   //die();
   $error = mysqli_error($conn);
@@ -582,12 +610,37 @@ function genericEntitySave($user, $table) {
   if($deviceId && $table != "device"){
     $url .=  "&device_id=" . $deviceId;
   }
+  
+  //die($tempFile . "===<BR>" );
+  if($tempFile != "") {
+    //die($id . "*" . $savedPk);
+    if(!$id) {
+      $id = $savedPk;
+    }
+    $assetFilePath  = uploadPath($table, $id, $extension);
+    //die($tempFile . "*" . $assetFilePath);
+    copy($tempFile, $assetFilePath);
+  }
   /*
   echo "<P>";
   echo $error;
   die();
   */
   header("Location: " . $url);
+}
+
+function uploadPath($table, $pkVal, $extension) {
+   $uploadsDir = "uploads";
+   if(!is_dir($uploadsDir)){
+      mkdir($uploadsDir);
+    }
+    $tableUploadsPath = $uploadsDir . "/" . $table;
+    if(!is_dir($tableUploadsPath)){
+      mkdir($tableUploadsPath);
+    }
+ 
+    $assetFilePath = $tableUploadsPath . "/" . $pkVal . "." . $extension;
+    return $assetFilePath;
 }
 
 function updateDataWithRows($data, $thisDataRows) {

@@ -1629,6 +1629,13 @@ function editDevice($error,  $user) {
 	    'value' => gvfa("description", $source), 
       'error' => gvfa('description', $error)
 	  ],
+		[
+	    'label' => 'thumbnail',
+      'name' => 'thumbnail',
+      'type' => 'file',
+	    'value' => gvfa("thumbnail", $source), 
+      'error' => gvfa('thumbnail', $error)
+	  ],
     [
 	    'label' => 'created',
       'name' => 'created',

@@ -256,7 +256,7 @@ window.initMap =   function () {
     xhr.open('GET', url);
     xhr.onload = function () {
         if (xhr.status === 200) {
-            const locations = JSON.parse(xhr.responseText);
+           const locations = JSON.parse(xhr.responseText);
 
             if (locations.points.length > 0) {
                 const bounds = L.latLngBounds();
@@ -264,7 +264,10 @@ window.initMap =   function () {
                 locations.points.forEach((loc, i) => {
                     const latLng = [parseFloat(loc.latitude), parseFloat(loc.longitude)];
                     const deviceFound = findObjectByColumn(locations.devices, "device_id", loc.device_id);
-
+                    let thumbnail = "";
+                    if(deviceFound["thumbnail"]) {
+                       thumbnail = buildUploadPath("device", loc.device_id, deviceFound["thumbnail"])
+                     }
                     // Small circle marker
                     const circle = L.circle(latLng, {
                         radius: 10,
@@ -276,6 +279,7 @@ window.initMap =   function () {
                     // Popup info
                     const content = `
                         <div style="font-size:12px; line-height:1.4;">
+                            <img src='./${thumbnail}' width=100><br/>
                             <strong>Recorded:</strong> ${loc.recorded}<br>
                             (${timeAgo(loc.recorded, null, false)})<br>
                             <strong>Speed:</strong> ${loc.wind_speed} m/s<br>
