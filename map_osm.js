@@ -260,7 +260,7 @@ window.initMap =   function () {
 
             if (locations.points.length > 0) {
                 const bounds = L.latLngBounds();
-
+                const latestRecorded = Math.max(...locations.points.map(p => new Date(p.recorded)));
                 locations.points.forEach((loc, i) => {
                     const latLng = [parseFloat(loc.latitude), parseFloat(loc.longitude)];
                     const deviceFound = findObjectByColumn(locations.devices, "device_id", loc.device_id);
@@ -269,17 +269,49 @@ window.initMap =   function () {
                        thumbnail = buildUploadPath("device", loc.device_id, deviceFound["thumbnail"])
                      }
                     // Small circle marker
-                    const circle = L.circle(latLng, {
-                        radius: 10,
-                        fillColor: deviceFound.color,
-                        fillOpacity: 0.7,
-                        stroke: false
-                    }).addTo(map);
+
+
+                    let marker;
+                    const isLatest = new Date(loc.recorded).getTime() === latestRecorded;
+
+                    if (isLatest && thumbnail) {
+                        // Circular image marker for latest point
+                        const html = `
+                            <div style="
+                                width: 40px;
+                                height: 40px;
+                                border-radius: 50%;
+                                overflow: hidden;
+                                border: 2px solid white;
+                                box-shadow: 0 0 6px rgba(0,0,0,0.5);
+                            ">
+                                <img src='./${thumbnail}' style="width: 100%; height: 100%; object-fit: cover;">
+                            </div>
+                        `;
+
+                        const icon = L.divIcon({
+                            html,
+                            className: '', // remove default leaflet styles
+                            iconSize: [40, 40]
+                        });
+
+                        marker = L.marker(latLng, { icon }).addTo(map);
+                    } else {
+                        // Normal small circle for other points
+                        marker = L.circle(latLng, {
+                            radius: 10,
+                            fillColor: deviceFound.color,
+                            fillOpacity: 0.7,
+                            stroke: false
+                        }).addTo(map);
+                    }
+
+
 
                     // Popup info
                     const content = `
                         <div style="font-size:12px; line-height:1.4;">
-                            <img src='./${thumbnail}' width=100><br/>
+                            <!--<img src='./${thumbnail}' width=100><br/>-->
                             <strong>Recorded:</strong> ${loc.recorded}<br>
                             (${timeAgo(loc.recorded, null, false)})<br>
                             <strong>Speed:</strong> ${loc.wind_speed} m/s<br>
@@ -287,7 +319,7 @@ window.initMap =   function () {
                             <strong>Battery:</strong> ${loc.voltage}%
                         </div>
                     `;
-                    circle.bindPopup(content);
+                    marker.bindPopup(content);
 
                     // Polyline to next point
                     if (i < locations.points.length - 1) {
