@@ -909,7 +909,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
             $possibleImagePath = "./" . buildUploadPath($guessAtTable, $guessAtPk, $name, $extension);
             //echo $possibleImagePath;
             if(file_exists($possibleImagePath) && isImage($possibleImagePath)) {
-              $out .= "<img style='width:100px;padding-left:10px;' src='" . $possibleImagePath  . "'/>\n";
+              $out .= "<a href='" .$possibleImagePath  . "' target='_new'><img style='width:100px;padding-left:10px;' src='" . $possibleImagePath  . "'/></a>\n";
             }
           }
           if($type == "plaintext_password") {
