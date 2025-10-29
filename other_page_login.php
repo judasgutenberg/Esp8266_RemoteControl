@@ -7,7 +7,7 @@ include("device_functions.php");
 //ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
 
-$version = 1.1;
+$version = 1.2;
 $poser = null;
 $poserString = "";
 $out = "";

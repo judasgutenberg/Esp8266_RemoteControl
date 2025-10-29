@@ -266,7 +266,7 @@ window.initMap =   function () {
                     const deviceFound = findObjectByColumn(locations.devices, "device_id", loc.device_id);
                     let thumbnail = "";
                     if(deviceFound["thumbnail"]) {
-                       thumbnail = buildUploadPath("device", loc.device_id, deviceFound["thumbnail"])
+                       thumbnail = buildUploadPath("device", loc.device_id, "thumbnail", deviceFound["thumbnail"])
                      }
                     // Small circle marker
 

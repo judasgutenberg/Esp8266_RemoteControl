@@ -525,8 +525,7 @@ function genericEntityForm($tenantId, $table, $errors){
 function genericEntitySave($user, $table) {
   global $conn;
   global $encryptionPassword;
-  $tempFile  = "";
-  $extension = "";
+ 
   $filename = "";
   $tenantId = $user["tenant_id"];
   $tablesThatRequireUser = tablesThatRequireUser();
@@ -541,21 +540,14 @@ function genericEntitySave($user, $table) {
   if(in_array($table, $tablesThatRequireUser)){
     $data["user_id"] = $uWWer["user_id"];
   }
-  $fileField = "";
-  
+ 
+  //need data from the $_FILES collection for their database fields, mostly just to know the extension but also the original file name
   if($_FILES) {
     foreach($_FILES as $datum => $value) {
-      //echo "1" .  $datum ;
       if(array_key_exists($datum, $_FILES)) {
-        //echo "2";
         $tempFile = $_FILES[$datum]["tmp_name"];
-        $fileField = $datum;
-        
         if($tempFile) {
-          //echo "3";
-          $extension = pathinfo($_FILES[$fileField]["name"], PATHINFO_EXTENSION);
-          $filename = $_FILES[$fileField]["name"];
-          $data[$datum] = $filename;
+          $data[$datum] = $_FILES[$datum]["name"];
           //$data["thumbnail"] = $filename; //must revisit!!!
         }
       }
@@ -612,14 +604,19 @@ function genericEntitySave($user, $table) {
   }
   
   //die($tempFile . "===<BR>" );
-  if($tempFile != "") {
-    //die($id . "*" . $savedPk);
-    if(!$id) {
-      $id = $savedPk;
+  //copy any uploaded files to their proper home
+  if($_FILES) {
+    foreach($_FILES as $datum => $value) {
+      $extension = pathinfo($_FILES[$datum]["name"], PATHINFO_EXTENSION);
+      //die($id . "*" . $savedPk);
+      if(!$id) {
+        $id = $savedPk;
+      }
+      $assetFilePath  = buildUploadPath($table, $id, $datum, $extension);
+      //die($tempFile . "*" . $assetFilePath);
+      copy($tempFile, $assetFilePath);
+ 
     }
-    $assetFilePath  = uploadPath($table, $id, $extension);
-    //die($tempFile . "*" . $assetFilePath);
-    copy($tempFile, $assetFilePath);
   }
   /*
   echo "<P>";
@@ -629,7 +626,7 @@ function genericEntitySave($user, $table) {
   header("Location: " . $url);
 }
 
-function uploadPath($table, $pkVal, $extension) {
+function buildUploadPath($table, $pkVal, $fieldName, $extension) {
    $uploadsDir = "uploads";
    if(!is_dir($uploadsDir)){
       mkdir($uploadsDir);
@@ -639,7 +636,7 @@ function uploadPath($table, $pkVal, $extension) {
       mkdir($tableUploadsPath);
     }
  
-    $assetFilePath = $tableUploadsPath . "/" . $pkVal . "." . $extension;
+    $assetFilePath = $tableUploadsPath . "/" . $fieldName . "-" . $pkVal . "." . $extension;
     return $assetFilePath;
 }
 
@@ -674,6 +671,8 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
   if(!$data){
     return;
   }
+  $guessAtTable = "";
+  $guessAtPk = "";
 	foreach($data as &$datum) {
 		$label = gvfa("label", $datum);
     $frontendValidation = gvfa("frontend_validation", $datum);
@@ -691,10 +690,10 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
     //echo $name .  " " . $accentColor . "<BR>";
     $width = 200;
  
- 
-    
-    if(endsWith($name, "_id") && $columnCount == 0  && ($type == "" || $type == "number")) { //make first column read-only if it's an _id
+    if(endsWith($name, "_id") && $columnCount == 0  && ($type == "" || $type == "number" || $type == "int" || $type == "read_only")) { //make first column read-only if it's an _id
       $type = "read_only";
+      $guessAtTable = str_replace("_id", "", $name);
+      $guessAtPk = $value;
     }
  
     if(gvfa("width", $datum)){
@@ -905,6 +904,13 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
           $out .= "<input " . $inputJavascript  . " " . $validationString . " style='width:" . $width . "px;accent-color:" . $accentColor . "' " . $idString. " " . $specialNumberAttribs . "  name='" . $name . "' value=\"" .  $value . "\" type='" . $type . "'/>\n";
           if($type == "file") {
             $out .= $value;
+            $extension = pathinfo($value, PATHINFO_EXTENSION);
+            //if only we knew $table and pkValue, we could display a thumbnail.  we can kinda figure it out in most cases
+            $possibleImagePath = "./" . buildUploadPath($guessAtTable, $guessAtPk, $name, $extension);
+            //echo $possibleImagePath;
+            if(file_exists($possibleImagePath) && isImage($possibleImagePath)) {
+              $out .= "<img style='width:100px;padding-left:10px;' src='" . $possibleImagePath  . "'/>\n";
+            }
           }
           if($type == "plaintext_password") {
             $out .= "<input id='_new_password' name='_new_password' value='1' type='checkbox'>\n password not yet encrypted";
@@ -1742,6 +1748,13 @@ if (!function_exists('array_is_list')) {
       return array_keys($arr) === range(0, count($arr) - 1);
   }
 }
+
+function isImage($path) {
+    $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'svg'];
+    return in_array($extension, $imageExtensions, true);
+}
+
 
 function gvfw($name, $fail = false){ //get value from wherever
   $out = gvfa($name, $_REQUEST, $fail);

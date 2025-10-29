@@ -2192,13 +2192,13 @@ function formatSQL(sql) {
   
   }
   
-  function buildUploadPath(table, pkValue, filename) {
+  function buildUploadPath(table, pkValue,  fieldName, filename) {
     // Extract the file extension (including the dot, e.g., ".jpg")
     const dotIndex = filename.lastIndexOf('.');
     const extension = dotIndex !== -1 ? filename.slice(dotIndex) : '';
 
     // Construct and return the path
-    return `uploads/${table}/${pkValue}${extension}`;
+    return `uploads/${table}/${fieldName}-${pkValue}${extension}`;
   }
   
 
