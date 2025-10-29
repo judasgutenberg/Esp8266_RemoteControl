@@ -752,8 +752,12 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
           $rangeParts = explode("...", $range);
           $bottomRangePart = $rangeParts[0];
           $topRangePart = $rangeParts[1];
+          $increment = 1;
+          if(count($rangeParts) > 2) {
+            $increment = intval($rangeParts[2]);
+          }
           $values = [];
-          for($rangeCounter = intval($bottomRangePart); $rangeCounter <= $topRangePart; $rangeCounter++) {
+          for($rangeCounter = intval($bottomRangePart); $rangeCounter <= $topRangePart; $rangeCounter =  $rangeCounter + $increment) {
             $values[] = $rangeCounter;
           }
         }

@@ -269,8 +269,6 @@ window.initMap =   function () {
                        thumbnail = buildUploadPath("device", loc.device_id, "thumbnail", deviceFound["thumbnail"])
                      }
                     // Small circle marker
-
-
                     let marker;
                     const isLatest = new Date(loc.recorded).getTime() === latestRecorded;
 
@@ -305,8 +303,6 @@ window.initMap =   function () {
                             stroke: false
                         }).addTo(map);
                     }
-
-
 
                     // Popup info
                     const content = `
