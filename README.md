@@ -112,7 +112,7 @@ As parameters are changed on the pages showing weather and inverter graphical da
 
 ## Maps
 
-There is also a Maps tab to display devices with device_log data containing varying GPS coordinates that can be plotted on a map. Any device with a can_move set to 1 can be viewed in Maps.  The plotted map points are broken up according to the same start date and timespan picker used by the graphing tabs and you cam mouse-over the points for detailed information collected from the device at that moment.
+There is also a Maps tab to display devices with device_log data containing varying GPS coordinates that can be plotted on a map. Any device with a can_move set to 1 can be viewed in Maps.  The plotted map points are broken up according to the same start date and timespan picker used by the graphing tabs and you can mouse-over the points for detailed information collected from the device at that moment.  The most recent map location will feature the thumbnail of the device (your dog, say) on the map.
 
 ![alt text](maps.jpg?raw=true)
 
