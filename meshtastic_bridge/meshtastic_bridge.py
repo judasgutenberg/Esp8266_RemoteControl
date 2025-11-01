@@ -2,9 +2,11 @@
 import meshtastic
 from types import SimpleNamespace
 import meshtastic.serial_interface
+import math
 import random
 import subprocess
 import json
+import struct
 import time
 import re
 import sqlite3
@@ -13,7 +15,7 @@ import time
 from urllib.parse import quote
 import requests
 from pubsub import pub
-
+import binascii  
 # -------------------------------
 # Load configuration
 # -------------------------------
@@ -72,6 +74,12 @@ def countSetBitsInString(s: str) -> int:
             bit_count += v & 1
             v >>= 1
     return bit_count % 256
+    
+    
+ 
+ 
+ 
+ 
 
 # -------------------------------
 # Core encryption/decryption
@@ -160,8 +168,25 @@ def flattenDecoded(decoded):
 # Build delimited string
 # -------------------------------
 def buildDelimitedDataString(decoded, columnList):
-    keys = columnList.split(",")
-    return "*".join(str(decoded.get(k, "")) for k in keys)
+    def toCamelCase(snake):
+        parts = snake.split("_")
+        return parts[0] + "".join(p.capitalize() for p in parts[1:])
+    
+    result = []
+    for key in columnList.split(","):
+        key = key.strip()
+        camel_key = toCamelCase(key)
+        
+        if key in decoded:
+            value = decoded[key]
+        elif camel_key in decoded:
+            value = decoded[camel_key]
+        else:
+            value = ""
+        
+        result.append(str(value))
+    
+    return "*".join(result)
 
 
 MAX_RETRIES = 10
@@ -293,6 +318,7 @@ def updateLostAndFoundCoordinates(flat_obj):
     Returns the updated flat_obj.
     """
     text = flat_obj.get("text")
+    
     if not text:
         return flat_obj
     if "I'm lost!" in flat_obj.get("text", ""):
@@ -304,7 +330,9 @@ def updateLostAndFoundCoordinates(flat_obj):
     return flat_obj
 
 def buildUrl(flat, loraNodeId, loraMessageId, messageId = 0):
+    payload = ""
     if flat:
+        payload = flat.get("payload")
         weatherDataString = buildDelimitedDataString(flat, weatherDataColumnList)
         whereAndWhenString = buildDelimitedDataString(flat, whereAndWhenDataColumnList)
         energyString = buildDelimitedDataString(flat, energyDataColumnList)
@@ -315,7 +343,7 @@ def buildUrl(flat, loraNodeId, loraMessageId, messageId = 0):
     encryption_scheme_int = int(CONFIG['encryption_scheme'], 16)
     encryptedStoragePassword = encryptStoragePassword( dataToSend, CONFIG['storage_password'], encryption_scheme_int)
     loraMessageIdStr = str(loraMessageId)
-    url = f"http://{CONFIG['host_get']}{CONFIG['url_get']}?k2={encryptedStoragePassword}&manufacture_id={loraNodeId}&mode=saveData&data={quote(dataToSend)}&lora_id={quote(loraMessageIdStr)}"
+    url = f"http://{CONFIG['host_get']}{CONFIG['url_get']}?k2={encryptedStoragePassword}&manufacture_id={loraNodeId}&mode=saveData&data={quote(dataToSend)}&lora_id={quote(loraMessageIdStr)}&payload=" + payload
     if flat:
         if "text" in flat:
           url = url + "&message=" + quote(flat["text"])
@@ -344,9 +372,14 @@ def onReceive(packet, interface):
                 messageId = pendingAcks[loraMessageId]
                 sendWithRetries("", nodeId, loraMessageId, messageId)
         else:
-            loraMessageId = packet_safe.get('id')
             flat = flattenDecoded(decoded)
+         
+            loraMessageId = packet_safe.get('id')
+            
             flat = updateLostAndFoundCoordinates(flat)
+  
+            if decoded is not False:
+                flat.update(decoded)
             print("\n\nDecoded from node", nodeId, ":", flat)
             sendWithRetries(flat, nodeId, loraMessageId)
 
