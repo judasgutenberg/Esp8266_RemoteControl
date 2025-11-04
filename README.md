@@ -133,7 +133,7 @@ Management_rules can be edited in the management_rule editor, which looks like t
 
 ![alt text](managementrule.jpg?raw=true)
 
-At the bottom is a tool you can use to automatically construct a value token to place in conditions.  Treat these as variables in an expression to be evaluated as true or false.  You can use multiple tokens, parentheses, arithmatic operators, and scalar numbers in such expressions.
+At the bottom is a tool you can use to automatically construct a value token (which will resemble a self-closing XML tag) to place in conditions.  Treat these as variables in an expression to be evaluated as true or false.  You can use multiple tokens, parentheses, arithmatic operators, and scalar numbers in such expressions.
 Since manual changes to the status of device_features are usually at odds with automation, whenever a manual change to a device_feature is made, automation is automatically suspended for restore_automation_after hours, starting at the instant of the manual change.
 
 ## Commands
