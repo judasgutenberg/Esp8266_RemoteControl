@@ -2,7 +2,7 @@
 ## Overview
 If you need complete control of all the code of a robust multi-user/multi-tenant remote-control, automation and weather data logging system without infuriating compilation and dependency headaches (in Javascript or PHP), you might be interested in this system. I developed it to more efficiently use solar energy at my off-grid Adirondack cabin while also keeping the internet accessible and the pipes from freezing and no existing software really fit the bill.  This started out as a simple multi-probe weather monitoring system (<a href=https://github.com/judasgutenberg/ESP8266-Micro-Weather target=esp>ESP8266 MicroWeather</a>) to which I first added reliability automation (<a href=https://github.com/judasgutenberg/Hotspot-Watchdog  target=hot>Hotspot-Watchdog</a>), then remote control, then solar inverter monitoring, then cabin automation, and finally a multi-tenant security model (so others can use the same server installation as a backend).  
 
-For monitoring multiple weather sensors (placed, say, in various places inside and outside a building), there is a multi-plot graph.
+For monitoring multiple weather sensors (placed, say, in various places inside and outside a building), there's a multi-plot graph.
 ![alt text](weathergraph.png?raw=true)
 
 There's also a page to show data from your solar inverter if you happen to be using the one I know about (SolArk), which can be logged either from the cloud via an API or from a special <a href=https://github.com/judasgutenberg/SolArk_Copilot targtet=solark>SolArk Copilot</a> attached directly to the inverter:
