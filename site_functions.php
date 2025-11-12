@@ -1740,17 +1740,31 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
 
       //echo $value . "=<P>";
       if (gvfa("changeable", $headerItem)) {
+        $includeForInsert = gvfa("include_for_insert", $headerItem);
+        $includeForInsertArray = explode(",", $includeForInsert);
+        $extraForInsert = "";
+        foreach($includeForInsertArray as $specificIncludeForInsert) {
+          $specificIncludeForInsert = trim($specificIncludeForInsert);
+          if($specificIncludeForInsert) { 
+            if(strpos($specificIncludeForInsert, ":") !== false) { 
+              $extraForInsert .=  $specificIncludeForInsert . ",";
+            } else {
+              $extraForInsert .=  $specificIncludeForInsert . ":" . intval($row[$specificIncludeForInsert]) . ",";
+            }
+          }
+        }
+        $extraForInsert = substr($extraForInsert, 0, -1);
+
         if($row[$name] == 1){
           $checkedString = " checked ";
           
         }
-
         if(($type == "color"  || $type == "text"  || $type == "number" || $type == "string") &&  $primaryKeyName != $name){
           $hashedEntities =  hash_hmac('sha256', $name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
-          $out .= "<input style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",  this.value ,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\")' value='" . $value . "'  name='" . $name . "' type='" . $type . "' />\n";
+          $out .= "<input class='noupdate' style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",  this.value ,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\",\"" . $extraForInsert . "\")' value='" . $value . "'  name='" . $name . "' type='" . $type . "' />\n";
         } else if(($type == "checkbox" || $type == "bool")  &&  $primaryKeyName != $name) {
           $hashedEntities =  hash_hmac('sha256', $name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
-          $out .= "<input style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",this.checked,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\")' name='" . $name . "' type='checkbox' value='1' " . $checkedString . "/>\n";
+          $out .= "<input class='noupdate' style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",this.checked,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\",\"" . $extraForInsert . "\")' name='" . $name . "' type='checkbox' value='1' " . $checkedString . "/>\n";
         } else {
           $out .= $row[$name];
         }

@@ -29,6 +29,7 @@ $tenantId = gvfa("tenant_id", $user);
 $deviceId = gvfw('device_id');
 $userId = gvfa("user_id", $user);
 $outputFormat = gvfw("output_format");
+$forceUpdate = gvfw("_forceupdate");
 //used to impersonate another user
 
 $poser = getImpersonator(false);
@@ -110,7 +111,7 @@ if($_POST || gvfw("table")) { //gvfw("table")
     //oh, we're a utility, though we never get here
   } else if(beginsWith(strtolower($action), "save") || beginsWith(strtolower($action), "create")) {
     if($user["role"] != "viewer" && ($table != "user"  &&  $table != "report") || $user["role"] == "super") {
-      $errors = genericEntitySave($user, $table);
+      $errors = genericEntitySave($user, $table, $forceUpdate);
     } else {
       $out.= "You lack permissions to make changes to a " . $table . ".";
     }
@@ -208,6 +209,7 @@ if ($user) {
     $table = gvfa('table', $_POST);
     $componentsOfHash = $name . $table . $primaryKeyName . $primaryKeyValue;
     //echo "***" . $componentsOfHash;
+    $extraForInsert = gvfa('extra_for_insert', $_POST);
     $whatHashedEntitiesShouldBe =  hash_hmac('sha256', $componentsOfHash, $encryptionPassword);
     if($hashedEntities != $whatHashedEntitiesShouldBe){
       echo $hashedEntities. " " . $whatHashedEntitiesShouldBe . "\n";
@@ -228,9 +230,27 @@ if ($user) {
     if(in_array($table, tablesThatRequireModified())){
       $userClause = ", modified='" . $formattedDateTime . "'";
     }
-    $sql = "UPDATE ". filterStringForSqlEntities($table, true) . " SET " . filterStringForSqlEntities($name, true) . "='" .  mysqli_real_escape_string($conn, $value) . "' " . $userClause . " WHERE tenant_id=" . intval($tenantId) . " AND " . filterStringForSqlEntities($primaryKeyName, true) . "='" . intval($primaryKeyValue) . "'";
-
+    if($extraForInsert && !$primaryKeyValue) {
+      $initialExtraArray = explode(",", $extraForInsert);
+      $extraColumns = "";
+      $extraValues = "";
+      foreach($initialExtraArray as $extraItem) {
+        $extraParts = explode(":", $extraItem);
+        $extraColumns .= filterStringForSqlEntities($extraParts[0]) . ",";
+        $particularValue = $extraParts[1];
+        $particularValue = str_replace("<now/>", $formattedDateTime, $particularValue);
+        $extraValues .= "'" . mysqli_real_escape_string($conn, $particularValue) . "',";
+      }
+      $extraColumns = substr($extraColumns, 0, -1);
+      $extraValues = substr($extraValues, 0, -1);
+      
+      $extraArray = explode(":", $extraForInsert);
+      $sql = "INSERT INTO ". filterStringForSqlEntities($table, true) . "(" . $extraColumns ."," .  filterStringForSqlEntities($name) . ",tenant_id) VALUES(" . $extraValues  .",'" . mysqli_real_escape_string($conn, $value) . "','" . intval($tenantId) ."')";
+    } else {
+      $sql = "UPDATE ". filterStringForSqlEntities($table, true) . " SET " . filterStringForSqlEntities($name, true) . "='" .  mysqli_real_escape_string($conn, $value) . "' " . $userClause . " WHERE tenant_id=" . intval($tenantId) . " AND " . filterStringForSqlEntities($primaryKeyName, true) . "='" . intval($primaryKeyValue) . "'";
+    }
     if($user["role"] != "viewer" && ($table != "user"  &&  $table != "report") || $user["role"] == "super") { //can't have just anybody do this
+      //echo "$$$$";
       $result = mysqli_query($conn, $sql); 
     } else {
       echo "You lack permissions.<br/>";
@@ -430,6 +450,12 @@ if ($user) {
       $out .=  editDevice($errors,  $user);
     } else {
      $out .= devices($user);
+    }
+	} else if($table == "configuration_value") {
+    if ($action == "startcreate") {
+      $out .= genericEntityForm($tenantId, $table, $errors);
+    } else {
+      $out .= configurationValues($user);
     }
 	} else if($table == "code_template") {
     if ($action == "startcreate" || gvfw("code_template_id") != "") {

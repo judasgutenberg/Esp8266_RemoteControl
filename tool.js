@@ -276,7 +276,7 @@
 	  return template;
   }
   
-  //update the genericTable data
+ //update the genericTable data
 function autoUpdate(encryptedSql, headerData, tableId, doNotDoAgain) {
   const decodedHeaderData = JSON.parse(headerData);
   const xmlhttp = new XMLHttpRequest();
@@ -330,13 +330,23 @@ function autoUpdate(encryptedSql, headerData, tableId, doNotDoAgain) {
           const span = spans[cellIndex];
           const input = span.querySelector("input, select, textarea");
           if (input) {
-            if (input.value !== newColumnData) {
-              input.value = newColumnData;
-             }
-          } else {
-            if (span.textContent !== newColumnData) {
-              span.textContent = newColumnData;
+            // Skip updating if a .noupdate input is focused
+            if (input.classList.contains("noupdate") && document.activeElement === input) {
+              continue; // skip this input entirely
             }
+
+            if (input.type === "checkbox") {
+              const newChecked = newColumnData === true || newColumnData === 1 || newColumnData === "1" || newColumnData === "true";
+              if (input.checked !== newChecked) input.checked = newChecked;
+            } else if (input.tagName === "SELECT") {
+              if (input.value !== newColumnData) input.value = newColumnData;
+            } else if (input.tagName === "TEXTAREA" || input.type === "text" || input.type === "number" || input.type === "hidden") {
+              if (input.value !== newColumnData) input.value = newColumnData;
+            } else {
+              input.value = newColumnData;
+            }
+          } else {
+            if (span.textContent !== newColumnData) span.textContent = newColumnData;
           }
           if(input) {
             if (input.type === "checkbox") {
@@ -385,37 +395,37 @@ function autoUpdate(encryptedSql, headerData, tableId, doNotDoAgain) {
 		}, 7000);
 	}
   
+}
+
+function copyManyToMany(sourceId, destinationId){
+  let source = document.getElementById(sourceId);
+  let dest = document.getElementById(destinationId);
+  for(var i = source.options.length - 1; i >= 0; i--) {
+    var option = source.options[i];
+    if(option.selected) {
+      dest.appendChild(option.cloneNode(true)); // Clone the option before appending
+      source.remove(i);
+    }
   }
-  
-  function copyManyToMany(sourceId, destinationId){
-	let source = document.getElementById(sourceId);
-	let dest = document.getElementById(destinationId);
-	for(var i = source.options.length - 1; i >= 0; i--) {
-	  var option = source.options[i];
-	  if(option.selected) {
-		  dest.appendChild(option.cloneNode(true)); // Clone the option before appending
-		  source.remove(i);
-	  }
-	}
-	return false;
+  return false;
+}
+
+function copy(id){
+  var href = document.getElementById("href" + id.toString());
+  var contentDiv = document.getElementById("clip" + id.toString());
+  var clipContent = "";
+  if(href) {
+    clipContent = href.innerHTML;
+  } else if(contentDiv) {
+    clipContent = contentDiv.innerHTML;
   }
-  
-  function copy(id){
-	var href = document.getElementById("href" + id.toString());
-	var contentDiv = document.getElementById("clip" + id.toString());
-	var clipContent = "";
-	if(href) {
-	  clipContent = href.innerHTML;
-	} else if(contentDiv) {
-	  clipContent = contentDiv.innerHTML;
-	}
-	if(clipContent) {
-	  copyHack(clipContent);
-	  var backgroundColor = document.body.style.backgroundColor;
-	  document.body.style.backgroundColor = '#ccffcc';
-	  setTimeout(function () {document.body.style.backgroundColor = backgroundColor}, 200);
-	}
+  if(clipContent) {
+    copyHack(clipContent);
+    var backgroundColor = document.body.style.backgroundColor;
+    document.body.style.backgroundColor = '#ccffcc';
+    setTimeout(function () {document.body.style.backgroundColor = backgroundColor}, 200);
   }
+}
   
   function copyHack(value){ //such a hack!!
 	  var copyTextarea = document.createElement("textarea");
@@ -579,7 +589,8 @@ function genericListActionBackend(
   tableName,
   primaryKeyName,
   primaryKeyValue,
-  hashedEntities
+  hashedEntities,
+  extraForInsert
 ) {
   // -------------------------------
   // 1.  Build the JSON payload
@@ -591,6 +602,7 @@ function genericListActionBackend(
     primary_key_value: primaryKeyValue,
     name,
     value,
+    extra_for_insert: extraForInsert,
     hashed_entities: hashedEntities
   };
 

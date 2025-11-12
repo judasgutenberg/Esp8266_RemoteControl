@@ -13,7 +13,7 @@ if($user){
 		}
 	}
 }
- 
+
 function multiDevicePicker($tenantId, $devices) {
 	
 	$out = "";

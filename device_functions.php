@@ -253,8 +253,9 @@ function devices($user) {
 	  ],
     );
     $toolsTemplate = "<div class='listtools' style='border-color:<color/>'>";
-    $toolsTemplate .= "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Info</a> ";
-    $toolsTemplate .= " | <a href='?table=device_feature&device_id=<" . $table . "_id/>'>Device Features</a>";
+    $toolsTemplate .= "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit</a> ";
+    $toolsTemplate .= " | <a href='?table=device_feature&device_id=<" . $table . "_id/>'>Features</a>";
+    $toolsTemplate .= " | <a href='?table=configuration_value&device_id=<" . $table . "_id/>'>Config</a>";
     $toolsTemplate .= " | <a href='index.php?location_id=<" . $table . "_id/>'>Weather Graph</a>";
     $toolsTemplate .= " | <a href='?table=device_column_map&device_id=<" . $table . "_id/>'>Graph Columns</a>";
     $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
@@ -1578,6 +1579,56 @@ function editReport($error,  $user) {
   $form = genericForm($formData, $submitLabel);
   return $form;
 }
+
+function configurationValues($user) {
+  $table = "configuration_value";
+  $sql = "SELECT  device_id,  co.option_number, name, value, default_value, configuration_option_id, configuration_value_id FROM configuration_option co LEFT JOIN configuration_value cv ON co.option_number=cv.option_number AND co.tenant_id=cv.tenant_id  WHERE co.tenant_id=<tenant_id/> AND (cv.device_id='" . intval($_GET["device_id"]) . "' OR cv.device_id IS NULL) ORDER BY option_number ASC";
+  //echo $sql;
+  $result = replaceTokensAndQuery($sql, $user);
+  $out = "";
+  $out .= "<div class='listtitle'>Your " . $table . "s</div>\n";
+  $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a new " . $table  . "</div>\n";
+  
+  //$out .= "<hr style='width:100px;margin:0'/>\n";
+  $headerData = array(
+    [
+	    'label' => 'id',
+      'name' => $table . "_id"
+	  ],
+    [
+      'label' => 'option number',
+      'name' => 'option_number' 
+    ],
+    [
+      'label' => 'name',
+      'name' => 'name' 
+    ],
+    [
+      'label' => 'default value',
+      'name' => 'default_value' 
+    ],
+    [
+      'label' => 'value',
+      'name' => 'value',
+      'changeable' => true, 
+      'include_for_insert'=>'created:<now/>,option_number,device_id:' . intval($_GET["device_id"])
+    ] 
+    );
+    $toolsTemplate = "<div class='listtools' style='border-color:<color/>'>";
+    $toolsTemplate .= "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Configuration Value</a> ";
+ 
+    $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
+    $toolsTemplate .= "</div>";
+    if($result) {
+      $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+      if($rows) {
+        $out .= genericTable($rows, $headerData, $toolsTemplate, null,  $table, $table . "_id", $sql);
+      }
+    }
+    return $out;
+
+}
+  
 
 function editDevice($error,  $user) {
   $table = "device";

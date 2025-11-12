@@ -60,6 +60,7 @@ if($_REQUEST) {
 	$periodAgo = 0;
 	$scale = "day";
 	$loraId = gvfw("lora_id");
+	$payload = gvfw("payload"); //for debugging
 	//i may end up deciding that locationId and deviceId are the same thing, and for now they are
 	//but maybe some day they will be different things
 	if(array_key_exists("locationId", $_REQUEST)) {
@@ -599,8 +600,8 @@ if($_REQUEST) {
               if($consolidateAllSensorsToOneRecord){
                 $deviceFeatureId = "NULL";
               } else {
-                if(count($arrWeatherData)>13) {
-                  $deviceFeatureId = $arrWeatherData[13];
+                if(count($arrWeatherData)>17) {
+                  $deviceFeatureId = $arrWeatherData[17];
                 } else {
                   $deviceFeatureId = "NULL";
                 }
@@ -622,7 +623,7 @@ if($_REQUEST) {
                 wind_direction,  wind_speed, wind_increment, 
                 precipitation, 
                 reserved1, reserved2, reserved3, reserved4,
-                sensor_id, weather_condition_id, digest, voltage, ampage, latitude, longitude, elevation, millis, slave_millis, data_hash) 
+                sensor_id, weather_condition_id, digest, voltage, ampage, latitude, longitude, elevation, velocity, uncertainty, millis, slave_millis, data_hash, payload) 
               VALUES (" . 
               mysqli_real_escape_string($conn, $locationId) . "," .
               mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
@@ -647,9 +648,12 @@ if($_REQUEST) {
               mysqli_real_escape_string($conn, $latitude)  . "," .
               mysqli_real_escape_string($conn, $longitude) . "," .
               mysqli_real_escape_string($conn, $elevation) . "," .
+              mysqli_real_escape_string($conn, $velocity) . "," .
+              mysqli_real_escape_string($conn, $uncertainty) . "," .
               mysqli_real_escape_string($conn, $millis)  . "," .
               mysqli_real_escape_string($conn, $slaveMillis)  . ",'" .
-              mysqli_real_escape_string($conn, $hashedData) .
+              mysqli_real_escape_string($conn, $hashedData) . "','" .
+              mysqli_real_escape_string($conn, $payload) .  
               "')";
 						}
 					}
@@ -1295,8 +1299,28 @@ function sqlForStartOfPeriodScale($periodScale, $now) {
 	return $startOfPeriod;
 }
 
+function normalizeCommandText($commandText, $tenantId) {
+    global $conn;
+    $parts = preg_split('/\s+/', trim($commandText));
+
+    // Only proceed if there's at least two parts and the first is get/set
+    if (count($parts) >= 2 && in_array(strtolower($parts[0]), ['get', 'set'])) {
+        $command = strtolower($parts[0]);
+        $optionName = $parts[1];
+        // Prepare and execute the lookup query
+        $sql = "SELECT option_number FROM configuration_option WHERE LOWER(name) = LOWER('" . mysqli_real_escape_string($conn, $optionName) . "') AND tenant_id=" . intval($tenantId) . " LIMIT 1";
+        $result = mysqli_query($conn, $sql);
+        $row = mysqli_fetch_array($result, MYSQLI_ASSOC);
+        if ($row) {
+            $parts[1] = $row['option_number'];
+        }
+        return implode(' ', $parts);
+    }
+    return $commandText;
+}
+
 function getLatestCommandData($deviceId, $tenantId){
-	Global $conn;
+	global $conn;
 	//old way, from before we had command_log:
 	/*
 	$possibleTemporaryCommandFileName = "instant_command_" . $deviceId . ".txt";
@@ -1329,8 +1353,8 @@ function getLatestCommandData($deviceId, $tenantId){
   if($result) {
     $row = mysqli_fetch_array($result);
     if($row) {
-    //var_dump($row);
-      return array("command_id"=> -2 , "command" => $row["command_text"], "value" => $row["command_data"], "command_log_id" => $row["command_log_id"]);
+      //var_dump($row);
+      return array("command_id"=> -2 , "command" => normalizeCommandText($row["command_text"], $tenantId), "value" => $row["command_data"], "command_log_id" => $row["command_log_id"]);
     }
 	}
 	$sql = "SELECT * FROM command c JOIN command_type t ON c.command_type_id=t.command_type_id AND c.tenant_id=t.tenant_id WHERE device_id=" . intval($deviceId) . " AND c.tenant_id=" . $tenantId . " AND done=0 ORDER BY command_id ASC LIMIT 0,1";
