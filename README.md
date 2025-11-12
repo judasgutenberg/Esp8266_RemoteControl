@@ -5,7 +5,7 @@ If you need complete control of all the code of a robust multi-user/multi-tenant
 For monitoring multiple weather sensors (placed, say, in various places inside and outside a building), there's a multi-plot graph.
 ![alt text](weathergraph.png?raw=true)
 
-There's also a page to show data from your solar inverter if you happen to be using the one I know about (SolArk), which can be logged either from the cloud via an API or from a special <a href=https://github.com/judasgutenberg/SolArk_Copilot targtet=solark>SolArk Copilot</a> attached directly to the inverter:
+There is also a page to show data from your solar inverter if you happen to be using the one I know about (SolArk), which can be logged either from the cloud via an API or from a special <a href=https://github.com/judasgutenberg/SolArk_Copilot targtet=solark>SolArk Copilot</a> attached directly to the inverter:
 ![alt text](invertergraph.png?raw=true)
 
 But the main feature in this system is that it allows you to remotely control devices across the internet and also supports automation based on the values of sensors known to the central database.  It does this using a server reachable via the internet running PHP/MySQL.  There is no server-side or Javascript compilation and relatively few dependencies:  PHP, MySQL, APCu, the Chart.js 3.7 graphing library, and a variety of Arduino sensor libraries, so this is not much trouble to get working on just about any server where you have a reasonable amount of control. (There is also some Python code to support a Meshtastic integration.)
