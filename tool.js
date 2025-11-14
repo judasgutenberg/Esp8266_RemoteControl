@@ -277,7 +277,7 @@
   }
   
  //update the genericTable data
-function autoUpdate(encryptedSql, headerData, tableId, doNotDoAgain) {
+function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotDoAgain) {
   const decodedHeaderData = JSON.parse(headerData);
   const xmlhttp = new XMLHttpRequest();
 
@@ -317,6 +317,9 @@ function autoUpdate(encryptedSql, headerData, tableId, doNotDoAgain) {
         for (let cellIndex = 0; cellIndex < decodedHeaderData.length; cellIndex++) {
           const column = decodedHeaderData[cellIndex];
           const key = column["name"];
+          const hashedEntities = dataRecord["_hashed_entities"];
+          //console.log(dataRecord["_components"]);
+          const pk = dataRecord[pkName];
           let newColumnData = dataRecord[key];
 
           if ("function" in column) {
@@ -345,6 +348,7 @@ function autoUpdate(encryptedSql, headerData, tableId, doNotDoAgain) {
             } else {
               input.value = newColumnData;
             }
+            updateGenericListHandler(input, pk, hashedEntities); //update the instant update form, particularly if we have a pk that didn't exist before
           } else {
             if (span.textContent !== newColumnData) span.textContent = newColumnData;
           }
@@ -383,7 +387,8 @@ function autoUpdate(encryptedSql, headerData, tableId, doNotDoAgain) {
 	params.append("action", "runencryptedsql");
 	params.append("headerData",  headerData.replace(/'/g, "\\'"));
 	params.append("value",  encryptedSql);
-  
+  params.append("pk",  pkName);
+  params.append("table",  tableName);
 	let url = "tool.php"; 
 	//console.log(url);
 	xmlhttp.open("POST", url, true);
@@ -391,10 +396,36 @@ function autoUpdate(encryptedSql, headerData, tableId, doNotDoAgain) {
 	xmlhttp.send(params);
 	if(!doNotDoAgain){
 		setTimeout(function() { 
-		autoUpdate(encryptedSql, headerData, tableId);
+		autoUpdate(encryptedSql, headerData, tableId, tableName, pkName);
 		}, 7000);
 	}
   
+}
+
+function updateGenericListHandler(inputElement, newPk, newHash) {
+    // Extract current handler text
+    let handlerText = inputElement.getAttribute("onchange");
+
+    if (!handlerText) return;
+
+    // Extract argument list inside parentheses
+    const match = handlerText.match(/genericListActionBackend\s*\((.*)\)/);
+    if (!match) return;
+
+    // Now split arguments safely
+    // This supports strings containing commas if quoted
+    let args = match[1].match(/(".*?"|'.*?'|[^,]+)(?=\s*,|\s*$)/g);
+
+    if (!args || args.length < 6) return;
+
+    // Update arguments
+    args[4] = `"${newPk}"`;    // primary key
+    args[5] = `"${newHash}"`;  // hash
+
+    // Rebuild
+    const newCall = `genericListActionBackend(${args.join(", ")})`;
+
+    inputElement.setAttribute("onchange", newCall);
 }
 
 function copyManyToMany(sourceId, destinationId){
@@ -592,6 +623,9 @@ function genericListActionBackend(
   hashedEntities,
   extraForInsert
 ) {
+  if(primaryKeyValue == "null" || primaryKeyValue == null) {
+    primaryKeyValue = "";
+  }
   // -------------------------------
   // 1.  Build the JSON payload
   // -------------------------------

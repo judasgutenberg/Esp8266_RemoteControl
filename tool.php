@@ -207,13 +207,13 @@ if ($user) {
     $primaryKeyValue = gvfa('primary_key_value', $_POST);
     $hashedEntities = gvfa('hashed_entities', $_POST);
     $table = gvfa('table', $_POST);
-    $componentsOfHash = $name . $table . $primaryKeyName . $primaryKeyValue;
+    $componentsOfHash = $table . $primaryKeyName . emptyIfNull($primaryKeyValue);
     //echo "***" . $componentsOfHash;
     $extraForInsert = gvfa('extra_for_insert', $_POST);
     $whatHashedEntitiesShouldBe =  hash_hmac('sha256', $componentsOfHash, $encryptionPassword);
     if($hashedEntities != $whatHashedEntitiesShouldBe){
       echo $hashedEntities. " " . $whatHashedEntitiesShouldBe . "\n";
-      die("Data appears to have been tampered with.");
+      die("Data appears to have been tampered with (2).");
     }
     //echo $value . "\n";
     if($value === false){
@@ -221,6 +221,7 @@ if ($user) {
     } else if($value === true){
       $value = "1";
     }
+ 
     //echo $value . "\n";
     //a little safer only because it allows a user to screw up records connected to their tenantId but mabe revisit!!!
     $userClause = "";
@@ -267,7 +268,7 @@ if ($user) {
   } else if ($action == "runencryptedsql") { //this is secure because the sql is very hard to decrypt if you don't know the encryption key
  
     $headerData = json_decode(gvfw('headerData'), true);
-   
+    
     $currentSortColumn = gvfw('sortColumn');
     $sortClause = "";
     if($currentSortColumn  > -1){
@@ -286,6 +287,12 @@ if ($user) {
     $result = replaceTokensAndQuery($sql, $user);
     if($result) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+      foreach ($rows as &$row) {
+          $componentsOfHash = gvfw("table") . gvfw("pk") . $row[gvfw("pk")];
+          $row['_components'] = $componentsOfHash;
+          $row['_hashed_entities'] = hash_hmac('sha256', $componentsOfHash, $encryptionPassword);
+      }
+      unset($row); 
       echo json_encode($rows);
       die();
     } else {
@@ -397,7 +404,7 @@ if ($user) {
     $whatHashedEntitiesShouldBe =  hash_hmac('sha256', $table . $pkName . $pkValue, $encryptionPassword);
     //die( $table . $pkName . $pkValue . "*" . $hashedEntities . "*" . $whatHashedEntitiesShouldBe);
     if($hashedEntities != $whatHashedEntitiesShouldBe){
-      die("Data appears to have been tampered with.");
+      die("Data appears to have been tampered with (1).");
     }
     //echo "SUCCESS";
     //die($sql);
@@ -410,7 +417,8 @@ if ($user) {
         $name = "*";
       }
       $pkPhrase = "";
-      $pkValue =  gvfw($table . "_id");
+      $primaryKeyName = $table . "_id"; //for now assuming non-composite PK
+      $pkValue =  gvfw($primaryKeyName);
       if($pkValue) {
         $pkPhrase =  $table . "_id='" . intval(gvfw($table . "_id")) . "'";
       }
@@ -425,6 +433,12 @@ if ($user) {
       $result = mysqli_query($conn, $sql);
       if($result) {
         $valueArray = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        //also include the hashedentities for that sort of thing
+        foreach ($valueArray as &$row) {
+            $componentsOfHash = $table . $primaryKeyName . $row[$primaryKeyName];
+            $row['_hashed_entities'] = hash_hmac('sha256', $componentsOfHash, $encryptionPassword);
+        }
+        unset($row);
         if($pkValue && $valueArray) {
           $valueArray = $valueArray[0];
         }

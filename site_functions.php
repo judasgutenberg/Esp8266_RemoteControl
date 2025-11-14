@@ -1530,130 +1530,6 @@ function etcTabNav($user) {
     return $out;
 
 }
-
-//a work in progress:
-function genericTableViaJs($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools = '') { //aka genericList
-  Global $encryptionPassword;
-  if($headerData == NULL  && $rows  && $rows[0]) {
-    $headerData = [];
-    foreach(array_keys($rows[0]) as &$key) {
-      array_push($headerData, array("label"=>$key, "name"=>$key));
-    }
-  }
-  if(!$headerData){
-    $headerData = [];
-  }
-  $out = "";
-
-  if($searchData) {
-    $out .= "<script>\n";
-    $out .= "let rows = " . json_encode($rows) . ";";
-    $out .= "</script>\n";
-    $out .=  "<form>\n";
-    $out .=  "<input type='hidden' id='action' name='action' value='" . $searchData["action"] . "' />\n";
-    $out .=  "<input type='hidden' name='table' value='" . $searchData["table"] . "' />\n";
-    //"extraData" => array("word_list_id"=>$wordListId)
-    if($searchData["extraData"]){
-      foreach($searchData["extraData"] as $key=>$value){
-        $out .=  "<input type='hidden' name='" . htmlspecialchars($key) . "' value='" . htmlspecialchars($value). "' />\n";
-      }
-      
-    }
-    $out .= " Search: <input value='" . htmlspecialchars(gvfw($searchData["searchTerm"])) . "' id='" . $searchData["searchTerm"] . "' name='" . $searchData["searchTerm"] . "' onkeyup=\"" . str_replace("<id/>", "document.getElementById('" . $searchData["searchTerm"] . "').value", $searchData["onkeyup"] ). "\"></form>"; 
-
-  }
-  $tableId = "list-" . $tableName;
-  $out .= "<div class='list' id='" . $tableId . "'>\n";
-
-  $out .="<div class='listheader'>\n";
-  $cellNumber = 0;
- 
-  foreach($headerData as &$headerCell) {
-  	$out.= "<span class='headerlink' onclick='sortTable(event, " . $cellNumber . ")'>" . $headerCell['label'] . "</span>\n";
-    $cellNumber++;
-  }
-  $out.= "<span class='headertool'>" .  $tableTools . "</span>\n";
-  if($toolsTemplate) {
-  
-    $out .= "<span></span>\n";
-  }
-  $out .= "</div>\n";
-  //$out .= "<div class='listbody' id='listbody'>\n";
-  for($rowCount = 0; $rowCount< count($rows); $rowCount++) {
-    $row = $rows[$rowCount]; 
-    $out .= "<div class='listrow'>\n";
-    foreach($headerData as &$headerItem) {
-      //var_dump($headerItem);
-      $name = gvfa("name", $headerItem);
-      $label = gvfa("label", $headerItem);
-      $accentColor = gvfa("accent_color", $headerItem, "#66eeee");
-      $function = gvfa("function", $headerItem);
-      if (array_key_exists("type", $headerItem)){
-        $type = $headerItem["type"];
-      } else {
-        $type = "text";
-      }
-      if (array_key_exists("template", $headerItem)){  //useful for having links outside the toolsTemplate section. we can ignore toolsTemplate in some situations
-        $template = $headerItem["template"];
-      } else {
-        $template = "";
-      }
-      $out .= "<span>";
-      $checkedString = " ";
-      $value = $row[$name];
-      if($function){ //allows us to have columns with values that are calculated from PHP
-      
-        $function =  tokenReplace($function, $row, $tableName) . ";"; 
-        //echo $function . "<P>";
-        try{
-          eval('$value = ' . $function);
-        }
-        catch(Exception  $err){
-          //echo $err;
-
-        }
-      }
-      if (gvfa("changeable", $headerItem)) {
-        if($row[$name] == 1){
-          $checkedString = " checked ";
-          
-        }
-
-        if(($type == "color"  || $type == "text"  || $type == "number" || $type == "string") &&  $primaryKeyName != $name){
-          $hashedEntities = hash_hmac('sha256', $name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
-          $out .= "<input style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",  this.value ,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\")' value='" . $value . "'  name='" . $name . "' type='" . $type . "' />\n";
-        } else if(($type == "checkbox" || $type == "bool")  &&  $primaryKeyName != $name) {
-          $hashedEntities =  hash_hmac('sha256', $name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
-          $out .= "<input style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",this.checked,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\")' name='" . $name . "' type='checkbox' value='1' " . $checkedString . "/>\n";
-        } else {
-          $out .= $row[$name];
-        }
-      } else {
-        if($template != "") {
-          $out .=  "<a href=\"" . tokenReplace($template, $row, $tableName) . "\">" . htmlspecialchars($value) . "</a>";
-        } else {
-          $out .=  htmlspecialchars($value);
-        }
-        
-      }
-      $out .= "</span>\n";
-    }
-    if($toolsTemplate) {
-      
-      $out .= "<span>" . tokenReplace($toolsTemplate,  $row, $tableName) . "</span>\n";
-    }
-    $out .= "</div>\n";
-  }
-  //$out .= "</div>\n";
-  $out .= "</div>\n";
-  if($autoRefreshSql) {
-    $encryptedSql = encryptLongString($autoRefreshSql, $encryptionPassword);
-    $out .= "<script>\nfunction updateGridNow(doNotDoAgain){\nautoUpdate('" . $encryptedSql . "','" . addslashes(json_encode($headerData)) . "','" . $tableId . "',doNotDoAgain)\n};\nupdateGridNow();\n</script>";
-
-  }
-  return $out;
-}
-
  
 
 function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools = '') { //aka genericList
@@ -1759,12 +1635,12 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
           $checkedString = " checked ";
           
         }
+        $hashedEntities =  hash_hmac('sha256', $tableName . $primaryKeyName . $row[$primaryKeyName], $encryptionPassword);
+        $elementId = $tableName  . "-" . $row[$primaryKeyName];
         if(($type == "color"  || $type == "text"  || $type == "number" || $type == "string") &&  $primaryKeyName != $name){
-          $hashedEntities =  hash_hmac('sha256', $name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
-          $out .= "<input class='noupdate' style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",  this.value ,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\",\"" . $extraForInsert . "\")' value='" . $value . "'  name='" . $name . "' type='" . $type . "' />\n";
+          $out .= "<input id='" . $elementId  .  "' class='noupdate' style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",  this.value ,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\",\"" . $extraForInsert . "\")' value='" . $value . "'  name='" . $name . "' type='" . $type . "' />\n";
         } else if(($type == "checkbox" || $type == "bool")  &&  $primaryKeyName != $name) {
-          $hashedEntities =  hash_hmac('sha256', $name . $tableName .$primaryKeyName  . $row[$primaryKeyName] , $encryptionPassword);
-          $out .= "<input class='noupdate' style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",this.checked,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\",\"" . $extraForInsert . "\")' name='" . $name . "' type='checkbox' value='1' " . $checkedString . "/>\n";
+          $out .= "<input id='" . $elementId  .  "' class='noupdate' style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",this.checked,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\",\"" . $extraForInsert . "\")' name='" . $name . "' type='checkbox' value='1' " . $checkedString . "/>\n";
         } else {
           $out .= $row[$name];
         }
@@ -1789,7 +1665,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
   //var_dump(count($rows));
   if($autoRefreshSql) {
     $encryptedSql = encryptLongString($autoRefreshSql, $encryptionPassword);
-    $out .= "<script>\nfunction updateGridNow(doNotDoAgain){\nautoUpdate('" . $encryptedSql . "','" . addslashes(json_encode($headerData)) . "','" . $tableId . "',doNotDoAgain)\n};\nupdateGridNow();\n</script>";
+    $out .= "<script>\nfunction updateGridNow(doNotDoAgain){\nautoUpdate('" . $encryptedSql . "','" . addslashes(json_encode($headerData)) . "','" . $tableId . "','" . $tableName . "','" . $primaryKeyName . "',doNotDoAgain)\n};\nupdateGridNow();\n</script>";
 
   }
   return $out;
@@ -3275,6 +3151,13 @@ function arrayDefaultFailDown($array, $index, $second="", $third="", $fourth="")
   if($fourth){
     return $fourth;
   }
+}
+
+function emptyIfNull($in){
+  if($in == "null") {
+    return "";
+  }
+  return $in;
 }
 
 function checkPhpFunctionCallIsBogus($str){
