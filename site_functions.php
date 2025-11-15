@@ -508,12 +508,16 @@ function genericEntityList($tenantId, $table, $outputFormat = "html") {
   return $out;
 }
 
-function populateDictionaryFromSource($keys, $source) {
+function populateDictionaryFromSource($keys, $source, $user) {
   $out = [];
   //var_dump($source);
   foreach($keys as $key) {
     //var_dump($key);
-    $out[$key] = gvfa($key, $source);
+    if($key == "tenant_id") {
+      $out[$key] = $user["tenant_id"];
+    } else {
+      $out[$key] = gvfa($key, $source);
+    }
     //echo "<HR>";
     //echo $source["device_id"];
     //var_dump($out);
@@ -527,9 +531,13 @@ function genericEntityForm($tenantId, $table, $errors){
   $whereClause = "";
   foreach($pk as $thisPk) {
     $pkValue =  gvfa($thisPk, $_GET);
-    $whereClause .= $thisPk . " = '" . $pkValue . "' AND";
+    if($thisPk == "tenant_id") {
+      $pkValue = $tenantId;
+    }
+    $whereClause .= $thisPk . " = '" . $pkValue . "' AND ";
+
   }
-  $whereClause = substr($whereClause, 0, -3);
+  $whereClause = substr($whereClause, 0, -4);
   $thisDataSql = "SELECT * FROM " . $table . " WHERE " .$whereClause;
   //echo $table;
   //var_dump($data);
@@ -587,7 +595,7 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
   }
   
   //$pk is now an array
-  $pkSpec = populateDictionaryFromSource($pk, $_GET);
+  $pkSpec = populateDictionaryFromSource($pk, $_POST, $user);
   //var_dump($pkSpec);
   /*
   if(!is_array($pk)) {
@@ -597,14 +605,21 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
  
   $savedPk = implode("-", array_values($pkSpec));
   //die($savedPk );
+  
   unset($data['action']);
+ 
+ 
   foreach($pk as $thisPk) {
     $pkRecord = findRecordByKey($tableSpec, "name",  $thisPk);
+    //var_dump($pkRecord);
     if(gvfa("extra", $pkRecord) == "auto_increment"  || $forceUpdate) {
       unset($data[$thisPk]);
- 
+    } else {
+      unset($pkSpec[$thisPk]);
     }
   }
+  //var_dump($data);
+  //die();
   unset($data['created']);
   if($table != "user"  && $table != "tenant") {
     $data["tenant_id"] = $tenantId;
@@ -613,11 +628,11 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
   }
  
   $sql = insertUpdateSql($conn, $table, $pkSpec, $data);
+
+  
+
   //echo $sql;
   //die();
-  $error = mysqli_error($conn);
-
-
   if (mysqli_multi_query($conn, $sql)) {
     do {
       // Store first result set
@@ -640,6 +655,13 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
       }
        //Prepare next result set
     } while (mysqli_next_result($conn));
+  } else {
+      $error = mysqli_error($conn);
+      if($error != ""){
+        echo $sql;
+        echo "\n<hr/>\n";
+        die($error);
+      }
   }
 
   //die($sql);
@@ -1372,7 +1394,7 @@ function topmostNav() {
 }
 
 function tabNav($user) {
-  $etcTables = array("configuration_option", "configuration_value", "sensor",  "device_type", "feature_type", "device_type_feature", "management_rule", "weather_condition", "ir_pulse_sequence","command","command_type","tenant", "user");
+  $etcTables = array("configuration_option",  "sensor",  "device_type", "feature_type", "device_type_feature", "management_rule", "weather_condition", "ir_pulse_sequence","command","command_type","tenant", "user");
 	$tabData = array(
  
   [
@@ -1466,10 +1488,6 @@ function etcTabNav($user) {
     [
       'label' => 'Device Options',
       'table' => 'configuration_option' 
-    ],
-    [
-      'label' => 'Device Option Values',
-      'table' => 'configuration_value' 
     ],
     [
       'label' => 'Sensors',
@@ -1583,6 +1601,10 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
     $out .= "<div class='listrow'>\n";
     foreach($headerData as &$headerItem) {
       //var_dump($headerItem);
+      $width = gvfa("width", $headerItem);
+      if(!$width) {
+        $width = 55;
+      }
       $name = gvfa("name", $headerItem);
       $label = gvfa("label", $headerItem);
       $accentColor = gvfa("accent_color", $headerItem, "#66eeee");
@@ -1638,9 +1660,9 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
         $hashedEntities =  hash_hmac('sha256', $tableName . $primaryKeyName . $row[$primaryKeyName], $encryptionPassword);
         $elementId = $tableName  . "-" . $row[$primaryKeyName];
         if(($type == "color"  || $type == "text"  || $type == "number" || $type == "string") &&  $primaryKeyName != $name){
-          $out .= "<input id='" . $elementId  .  "' class='noupdate' style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",  this.value ,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\",\"" . $extraForInsert . "\")' value='" . $value . "'  name='" . $name . "' type='" . $type . "' />\n";
+          $out .= "<input id='" . $elementId  .  "' class='noupdate' style='width:" . $width  . "px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",  this.value ,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\",\"" . $extraForInsert . "\")' value='" . $value . "'  name='" . $name . "' type='" . $type . "' />\n";
         } else if(($type == "checkbox" || $type == "bool")  &&  $primaryKeyName != $name) {
-          $out .= "<input id='" . $elementId  .  "' class='noupdate' style='width:55px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",this.checked,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\",\"" . $extraForInsert . "\")' name='" . $name . "' type='checkbox' value='1' " . $checkedString . "/>\n";
+          $out .= "<input id='" . $elementId  .  "' class='noupdate' style='width:" . $width  . "px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",this.checked,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\",\"" . $extraForInsert . "\")' name='" . $name . "' type='checkbox' value='1' " . $checkedString . "/>\n";
         } else {
           $out .= $row[$name];
         }
@@ -2284,7 +2306,7 @@ function deleteLink($table, $pkName, $extraData = "") {
   if($extraData  && !beginsWith($extraData, "&")){
     $extraData = "&" . $extraData;
   }
-  $out = "<a href='#' onclick='deleteEntity(\"" . $table . "\",\"" . $pkName . "\",\"<" . $pkName . "/>\",\"<hashed_entities/>\",\"" . $extraData . "\")'>Delete</a>";
+  $out = "<a id='delete:" . $table . "-" .$pkName . "-<" . $pkName . "/>' href='#' onclick='deleteEntity(\"" . $table . "\",\"" . $pkName . "\",\"<" . $pkName . "/>\",\"<hashed_entities/>\",\"" . $extraData . "\")'>Delete</a>";
   //$out = "<a onclick='return confirm(\"Are you sure you want to delete this " . $table . "?\")' href='?table=" . $table . "&action=delete&" . $pkName . "=<" . $pkName . "/>&hashed_entities=<hashed_entities/>" . $extraData ."'>Delete</a>";
   return $out;
 }

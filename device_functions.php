@@ -1580,13 +1580,15 @@ function editReport($error,  $user) {
   return $form;
 }
 
+//this is an unusual lister function in that it leans on another table for display names and even allows for record inserts from the list view
+//the key to make this magic happen is include_for_insert and also a way to dynamically update the params for a JS autoUpdate() call
 function configurationValues($user) {
   $table = "configuration_value";
   $sql = "SELECT  device_id,  co.option_number, name, value, default_value, configuration_option_id, configuration_value_id FROM configuration_option co LEFT JOIN configuration_value cv ON co.option_number=cv.option_number AND co.tenant_id=cv.tenant_id  WHERE co.tenant_id=<tenant_id/> AND (cv.device_id='" . intval($_GET["device_id"]) . "' OR cv.device_id IS NULL) ORDER BY option_number ASC";
   //echo $sql;
   $result = replaceTokensAndQuery($sql, $user);
   $out = "";
-  $out .= "<div class='listtitle'>Your " . $table . "s</div>\n";
+  $out .= "<div class='listtitle'>Your Device Configurations</div>\n";
   $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a new " . $table  . "</div>\n";
   
   //$out .= "<hr style='width:100px;margin:0'/>\n";
@@ -1610,14 +1612,15 @@ function configurationValues($user) {
     [
       'label' => 'value',
       'name' => 'value',
+      'width' => 150,
       'changeable' => true, 
       'include_for_insert'=>'created:<now/>,option_number,device_id:' . intval($_GET["device_id"])
     ] 
     );
     $toolsTemplate = "<div class='listtools' style='border-color:<color/>'>";
-    $toolsTemplate .= "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Configuration Value</a> ";
- 
-    $toolsTemplate .= " | " . deleteLink($table, $table. "_id" ); 
+    //$toolsTemplate .=  "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit Configuration Value</a> ";
+    //$toolsTemplate .= " | "; 
+    $toolsTemplate .=   deleteLink($table, $table. "_id" ); 
     $toolsTemplate .= "</div>";
     if($result) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);

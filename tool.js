@@ -313,13 +313,14 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
         const htmlRow = updatedRows[rowIndex];
         const dataRecord = data[rowIndex];
         const spans = htmlRow.getElementsByTagName("span");
-
+        const pk = dataRecord[pkName];
+        const hashedEntities = dataRecord["_hashed_entities"];
         for (let cellIndex = 0; cellIndex < decodedHeaderData.length; cellIndex++) {
           const column = decodedHeaderData[cellIndex];
           const key = column["name"];
-          const hashedEntities = dataRecord["_hashed_entities"];
+          
           //console.log(dataRecord["_components"]);
-          const pk = dataRecord[pkName];
+          
           let newColumnData = dataRecord[key];
 
           if ("function" in column) {
@@ -348,9 +349,14 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
             } else {
               input.value = newColumnData;
             }
-            updateGenericListHandler(input, pk, hashedEntities); //update the instant update form, particularly if we have a pk that didn't exist before
+            if(hashedEntities && pk) { //if we have a compound pk or a multi-table query, this could fail. but we'd probably also have no inputs
+              updateGenericListHandler(input, pk, hashedEntities); //update the instant update form, particularly if we have a pk that didn't exist before
+              
+            }
           } else {
-            if (span.textContent !== newColumnData) span.textContent = newColumnData;
+            if (span.textContent !== newColumnData) {
+              span.textContent = newColumnData;
+            }
           }
           if(input) {
             if (input.type === "checkbox") {
@@ -375,6 +381,11 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
 
           
         }
+        let span = spans[decodedHeaderData.length];
+        let links = span.querySelectorAll("a");
+        console.log(links);
+        const match = Array.from(links).find(a => a.textContent.trim() === "Delete");
+        updateDeleteEntityHandler(match, pk, hashedEntities);
       }
     }
   };
@@ -426,6 +437,33 @@ function updateGenericListHandler(inputElement, newPk, newHash) {
     const newCall = `genericListActionBackend(${args.join(", ")})`;
 
     inputElement.setAttribute("onchange", newCall);
+}
+
+function updateDeleteEntityHandler(deleteHref, newPk, newHash) {
+    // Extract the handler text (deleteEntity is usually onclick)
+    let handlerText = deleteHref.getAttribute("onclick");
+
+    if (!handlerText) return;
+
+    // Match deleteEntity(...) and capture argument list
+    const match = handlerText.match(/deleteEntity\s*\((.*)\)/);
+    if (!match) return;
+
+    // Split arguments safely, keeping quoted strings intact
+    let args = match[1].match(/(".*?"|'.*?'|[^,]+)(?=\s*,|\s*$)/g);
+
+    // Expecting: table, pkName, pkValue, hashedEntities
+    if (!args || args.length < 4) return;
+
+    // Replace the primary key value and the hash
+    args[2] = `"${newPk}"`;
+    args[3] = `"${newHash}"`;
+
+    // Rebuild the function call
+    const newCall = `deleteEntity(${args.join(", ")})`;
+
+    // Write it back
+    deleteHref.setAttribute("onclick", newCall);
 }
 
 function copyManyToMany(sourceId, destinationId){
