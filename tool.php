@@ -200,15 +200,16 @@ if ($user) {
     die(json_encode($out));  
   } else if($action == "genericformsave") { //this should be pretty secure now that i am hashing all the descriptive information to make sure it isn't tampered with
     //mostly works for numbers, colors, and checkboxes
-
+    
     $name = filterStringForSqlEntities(gvfa('name', $_POST));
     $value = gvfa('value', $_POST);
-    $primaryKeyName = filterStringForSqlEntities(gvfa('primary_key_name', $_POST), true);
+    $primaryKeyName = filterStringForSqlEntities(gvfa('primary_key_name', $_POST), false);
     $primaryKeyValue = gvfa('primary_key_value', $_POST);
     $hashedEntities = gvfa('hashed_entities', $_POST);
     $table = gvfa('table', $_POST);
+    $tableSpec = schemaArrayFromSchema($table, $knownPk);
     $componentsOfHash = $table . $primaryKeyName . emptyIfNull($primaryKeyValue);
-    //echo "***" . $componentsOfHash;
+    //echo "***" . $componentsOfHash . "\n<br>";
     $extraForInsert = gvfa('extra_for_insert', $_POST);
     $whatHashedEntitiesShouldBe =  hash_hmac('sha256', $componentsOfHash, $encryptionPassword);
     if($hashedEntities != $whatHashedEntitiesShouldBe){
@@ -221,7 +222,19 @@ if ($user) {
     } else if($value === true){
       $value = "1";
     }
- 
+    $pkSpecString = filterStringForSqlEntities($primaryKeyName, false) . "='" . intval($primaryKeyValue) . "'";
+    if(count($knownPk)>1) { //ugh, this sure is ugly. but it allows me to edit data in a mapping table unrelated to the actual mapping
+      $pkVals = explode("-", $primaryKeyValue);
+      $pkKeys = explode("-", $primaryKeyName);
+      $pkSpecString  = "";
+      $pkIndex = 0;
+      foreach($pkKeys as $pkKey) {
+        $pkVal = $pkVals[$pkIndex];
+        $pkSpecString.= filterStringForSqlEntities($pkKey, false) . "='" . intval($pkVal) . "' AND ";
+        $pkIndex++;
+      }
+      $pkSpecString = substr($pkSpecString, 0, -4);
+    }
     //echo $value . "\n";
     //a little safer only because it allows a user to screw up records connected to their tenantId but mabe revisit!!!
     $userClause = "";
@@ -248,7 +261,7 @@ if ($user) {
       $extraArray = explode(":", $extraForInsert);
       $sql = "INSERT INTO ". filterStringForSqlEntities($table, true) . "(" . $extraColumns ."," .  filterStringForSqlEntities($name) . ",tenant_id) VALUES(" . $extraValues  .",'" . mysqli_real_escape_string($conn, $value) . "','" . intval($tenantId) ."')";
     } else {
-      $sql = "UPDATE ". filterStringForSqlEntities($table, true) . " SET " . filterStringForSqlEntities($name, true) . "='" .  mysqli_real_escape_string($conn, $value) . "' " . $userClause . " WHERE tenant_id=" . intval($tenantId) . " AND " . filterStringForSqlEntities($primaryKeyName, true) . "='" . intval($primaryKeyValue) . "'";
+      $sql = "UPDATE ". filterStringForSqlEntities($table, true) . " SET " . filterStringForSqlEntities($name, true) . "='" .  mysqli_real_escape_string($conn, $value) . "' " . $userClause . " WHERE tenant_id=" . intval($tenantId) . " AND " . $pkSpecString;
     }
     if($user["role"] != "viewer" && ($table != "user"  &&  $table != "report") || $user["role"] == "super") { //can't have just anybody do this
       //echo "$$$$";
@@ -411,19 +424,32 @@ if ($user) {
     $result = mysqli_query($conn, $sql);
     //header('Location: '.$_SERVER['PHP_SELF'] . "?table=" . $table . "&device_id=" . $deviceId);
   } elseif($action == "json"){
-    if($table!= "user" || $user["role"]  == "super") {
+    if ($table!= "user" || $user["role"]  == "super") {
       $name = filterStringForSqlEntities(gvfw('name')); 
       if($name == "") {
         $name = "*";
       }
       $pkPhrase = "";
-      $primaryKeyName = $table . "_id"; //for now assuming non-composite PK
-      $pkValue =  gvfw($primaryKeyName);
-      if($pkValue) {
-        $pkPhrase =  $table . "_id='" . intval(gvfw($table . "_id")) . "'";
+      $tableSpec = schemaArrayFromSchema($table, $pk);
+      $userForSpec = $user;
+      if($table == "tenant") {
+        $userForSpec  = null;
       }
+      $pkSpec = populateDictionaryFromSource($pk, $_GET, $userForSpec);
+      //var_dump($pkSpec);
+      $pkPhrase = pkSpecToWhereClause($pkSpec);
+      
+      //echo $pkPhrase;
+      $primaryKeyName = implode("-", $pk); //how we handle composite pks in a way that allows the old single-pk-only system to work
+      $pkValue = implode("-", array_values($pkSpec)); 
+      //var_dump($pkValue);
+      //$primaryKeyName = $table . "_id"; //for now assuming non-composite PK
+      //$pkValue =  gvfw($primaryKeyName);
+      //if($pkValue) {
+      //  $pkPhrase =  $table . "_id='" . intval(gvfw($table . "_id")) . "'";
+      //}
       $sql = "SELECT " . $name . " FROM " .  $table  . " WHERE " . $pkPhrase;
-      if($pkPhrase != "") {
+      if($pkPhrase != "" && !($table == "tenant" || $table == "user")) {
         $sql .= " AND ";
       }
       if($table != "tenant" && $table != "user"){
@@ -435,7 +461,8 @@ if ($user) {
         $valueArray = mysqli_fetch_all($result, MYSQLI_ASSOC);
         //also include the hashedentities for that sort of thing
         foreach ($valueArray as &$row) {
-            $componentsOfHash = $table . $primaryKeyName . $row[$primaryKeyName];
+            $componentsOfHash = $table . $primaryKeyName . $pkValue;
+            //echo $componentsOfHash;
             $row['_hashed_entities'] = hash_hmac('sha256', $componentsOfHash, $encryptionPassword);
         }
         unset($row);

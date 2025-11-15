@@ -1760,7 +1760,7 @@ function editDevice($error,  $user) {
       'counting_column' => NULL,
 	    'value' => gvfa("sensor_id", $source), 
       'error' => gvfa("sensor_id", $error),
-      "item_tool" => 'genericManyToManyTool("device_sensor","{\"sensor_id\":\"<sensor_id/>\", \"device_id\":\"<device_id/>\"}")',
+      "item_tool" => 'genericManyToManyTool("device_sensor","{\"sensor_id\":" + this.value + ", \"device_id\":\"'  . gvfa("device_id", $_GET)  . '\"}")',
  
       'values' => "SELECT 
                       s.sensor_id, 

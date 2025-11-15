@@ -15,18 +15,21 @@
 	}
 	
   function genericManyToManyTool(table, pkSpecString) {
-    console.log(pkSpecString);
+    //console.log(pkSpecString);
     let pkSpec = JSON.parse(pkSpecString);
     const params = new URLSearchParams(pkSpec).toString();
 		let xmlhttp = new XMLHttpRequest();
 		xmlhttp.onreadystatechange = function() {
-			console.log(xmlhttp.responseText);
-			let data = JSON.parse(xmlhttp.responseText);
-			showDataInPanelTool(data);
+      if(xmlhttp.responseText) {
+        let data = JSON.parse(xmlhttp.responseText);
+        if(data) {
+          editDataInPanelTool(data, table, pkSpec);
+        }
+			}
 			//console.log(data);
 		}
 
-		let url = "?table=" + table + "&action=json" + params;
+		let url = "?table=" + table + "&action=json&" + params;
 		xmlhttp.open("GET", url, true);
 		xmlhttp.send();
 	}
@@ -60,79 +63,78 @@
   }
   
   function formSubmitTasks() {
-	if(onSubmitManyToManyItems){
-	  for(const item of onSubmitManyToManyItems){
-		if(document.getElementById("dest_" + item)){
-		  for(const option of document.getElementById("dest_" + item).options) {
-			//values.push(option.value);
-			option.selected = true;
-			console.log(option);
-		  }
-		}
-	  }
-	}
-	
+    if(onSubmitManyToManyItems){
+      for(const item of onSubmitManyToManyItems){
+      if(document.getElementById("dest_" + item)){
+        for(const option of document.getElementById("dest_" + item).options) {
+        //values.push(option.value);
+        option.selected = true;
+        console.log(option);
+        }
+      }
+      }
+    }
   }
   
   function valueExistsElsewhere(table, formElementName, pkName, pkValue, nameColumnName) {
-	// Generalize the selector to handle input, select, and textarea
-	const inputElement = document.querySelector(`input[name="${formElementName}"], select[name="${formElementName}"], textarea[name="${formElementName}"]`);
-	
-	if (!inputElement) {
-	  console.warn(`Form element with name "${formElementName}" not found.`);
-	  return;
-	}
-	const value = inputElement.value;
-	const params = new URLSearchParams();
-	params.append("table", table);
-	params.append("value", value);
-	params.append("column_name", formElementName);
-	params.append("name_column_name", nameColumnName);
-	params.append("pk_name", pkName);
-	params.append("pk_value", pkValue);
-	params.append("action", "valueexistselsewhere");
-  
-	const xmlhttp = new XMLHttpRequest();
-	xmlhttp.onreadystatechange = function() {
-	  if (xmlhttp.readyState === XMLHttpRequest.DONE) {
-		if (xmlhttp.status === 200) {
-		  const data = JSON.parse(xmlhttp.responseText.trim());
-		  console.log(data);
-  
-		  // Look for error div above the input
-		  let currentElement = inputElement.previousElementSibling;
-		  let errorDiv = null;
-		  while (currentElement) {
-			if (currentElement.classList && currentElement.classList.contains('genericformerror')) {
-			  errorDiv = currentElement;
-			  break;
-			}
-			currentElement = currentElement.previousElementSibling;
-		  }
-		  let error = null;
-		  if(data) {
-			  if(!nameColumnName){
-				  nameColumnName  = "name";
-			  }
-			error = formElementName + " of " + data[formElementName] + " is used in " + data[nameColumnName] + ".";
-		  }
-		  if (errorDiv) {
-			if(error) {
-			  errorDiv.textContent = error;
-			} else {
-			  console.log("bleep");
-			  errorDiv.textContent = "";
-			}
-		  } else {
-			console.log('Error div with class "genericformerror" not found.');
-		  }
-		}
-	  }
-	};
-  
-	xmlhttp.open("POST", "tool.php", true);
-	xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-	xmlhttp.send(params);
+    // Generalize the selector to handle input, select, and textarea
+    const inputElement = document.querySelector(`input[name="${formElementName}"], select[name="${formElementName}"], textarea[name="${formElementName}"]`);
+    
+    if (!inputElement) {
+      console.warn(`Form element with name "${formElementName}" not found.`);
+      return;
+    }
+    const value = inputElement.value;
+    const params = new URLSearchParams();
+    params.append("table", table);
+    params.append("value", value);
+    params.append("column_name", formElementName);
+    params.append("name_column_name", nameColumnName);
+    params.append("pk_name", pkName);
+    params.append("pk_value", pkValue);
+    params.append("action", "valueexistselsewhere");
+    
+    const xmlhttp = new XMLHttpRequest();
+    xmlhttp.onreadystatechange = function() {
+      if (xmlhttp.readyState === XMLHttpRequest.DONE) {
+      if (xmlhttp.status === 200) {
+        const data = JSON.parse(xmlhttp.responseText.trim());
+        console.log(data);
+    
+        // Look for error div above the input
+        let currentElement = inputElement.previousElementSibling;
+        let errorDiv = null;
+        while (currentElement) {
+        if (currentElement.classList && currentElement.classList.contains('genericformerror')) {
+          errorDiv = currentElement;
+          break;
+        }
+        currentElement = currentElement.previousElementSibling;
+        }
+        let error = null;
+        if(data) {
+          if(!nameColumnName){
+            nameColumnName  = "name";
+          }
+        error = formElementName + " of " + data[formElementName] + " is used in " + data[nameColumnName] + ".";
+        }
+        if (errorDiv) {
+        if(error) {
+          errorDiv.textContent = error;
+        } else {
+          console.log("bleep");
+          errorDiv.textContent = "";
+        }
+        } else {
+        console.log('Error div with class "genericformerror" not found.');
+        }
+      }
+      }
+    };
+    
+    xmlhttp.open("POST", "tool.php", true);
+    xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+    xmlhttp.send(params);
   }
   
   
@@ -253,19 +255,51 @@
   }
   
   function showDataInPanelTool(data){
-	let html = "<div class='list'>";
-	let panelId = "";
-	for (let key in data) {
-	  console.log(key);
-	  html += "<div class='listrow'><span><b>" + key + "</b></span><span>" + escapeHTML(data[key]) + "</span></div>";
-	  if(document.getElementById("panel_" + key)) {
-		panelId = "panel_" + key;
-	  }
-	}
-	html += "</div>";
-	if(panelId){
-		document.getElementById(panelId).innerHTML = html;
-	}
+    let html = "<div class='list'>";
+    let panelId = "";
+    for (let key in data) {
+      if(key.substring(0,1) != "_") {
+        console.log(key);
+        html += "<div class='listrow'><span><b>" + key + "</b></span><span>" + escapeHTML(data[key]) + "</span></div>";
+        if(document.getElementById("panel_" + key)) {
+          panelId = "panel_" + key;
+        }
+      }
+    }
+    html += "</div>";
+    if(panelId){
+      document.getElementById(panelId).innerHTML = html;
+    }
+  }
+  
+  function editDataInPanelTool(data, table, pkSpec){
+    let html = "<div class='list'>";
+    let panelId = "";
+    let hash = data["_hashed_entities"];
+    const sortedPk = Object.keys(pkSpec)
+      .sort()                         // alphabetical
+      .reduce((acc, key) => {
+        acc[key] = pkSpec[key];
+        return acc;
+      }, {});
+    //let pkName = Object.keys(pkSpec)[0]; //doesn't work for compound pks!
+    //let pkValue = Object.values(pkSpec)[0]; //doesn't work for compound pks!
+    const pkName   = Object.keys(sortedPk).join("-");
+    const pkValue = Object.values(sortedPk).join("-");
+    for (let key in data) {
+      
+      if(key.substring(0,1) != "_") {
+        console.log(key);
+        html += "<div class='listrow'><span><b>" + key + "</b></span><span><input onchange='genericListActionBackend(\"" + key + "\",  this.value ,\"" + table +"\",\"" + pkName + "\",\"" + pkValue + "\",\""  + hash + "\",\"\")'  name='" + key + "' value='" + escapeHTML(data[key]) + "'/></span></div>";
+        if(document.getElementById("panel_" + key)) {
+          panelId = "panel_" + key;
+        }
+      }
+    }
+    html += "</div>";
+    if(panelId){
+      document.getElementById(panelId).innerHTML = html;
+    }
   }
   
   function tokenReplace(template, data, strDelimiterBegin = "<", strDelimiterEnd = "/>") {
@@ -535,47 +569,47 @@ function copy(id){
   }
   
   function getFormValues(formId) {
-	var form = document.getElementById(formId);
-	var formData = {};
-  
-	if (form) {
-		var elements = form.elements;
-  
-		for (var i = 0; i < elements.length; i++) {
-			var element = elements[i];
-			var elementType = element.type;
-			var elementName = element.name;
-  
-			if (elementName) {
-				switch (elementType) {
-					case 'select-one':
-						formData[elementName] = element.options[element.selectedIndex].value;
-						break;
-					case 'select-multiple':
-						formData[elementName] = getSelectedOptions(element);
-						break;
-					case 'checkbox':
-					case 'radio':
-						formData[elementName] = element.checked ? element.value : null;
-						break;
-					default:
-						formData[elementName] = element.value;
-				}
-			}
-		}
-	}
-  
-	return formData;
+    var form = document.getElementById(formId);
+    var formData = {};
+    
+    if (form) {
+      var elements = form.elements;
+    
+      for (var i = 0; i < elements.length; i++) {
+        var element = elements[i];
+        var elementType = element.type;
+        var elementName = element.name;
+    
+        if (elementName) {
+          switch (elementType) {
+            case 'select-one':
+              formData[elementName] = element.options[element.selectedIndex].value;
+              break;
+            case 'select-multiple':
+              formData[elementName] = getSelectedOptions(element);
+              break;
+            case 'checkbox':
+            case 'radio':
+              formData[elementName] = element.checked ? element.value : null;
+              break;
+            default:
+              formData[elementName] = element.value;
+          }
+        }
+      }
+    }
+    
+    return formData;
   }
   
   function getSelectedOptions(selectElement) {
-	var selectedOptions = [];
-	for (var i = 0; i < selectElement.options.length; i++) {
-		if (selectElement.options[i].selected) {
-			selectedOptions.push(selectElement.options[i].value);
-		}
-	}
-	return selectedOptions;
+    var selectedOptions = [];
+    for (var i = 0; i < selectElement.options.length; i++) {
+      if (selectElement.options[i].selected) {
+        selectedOptions.push(selectElement.options[i].value);
+      }
+    }
+    return selectedOptions;
   }
   
   function startWaiting(message){
@@ -638,11 +672,11 @@ function copy(id){
   }
   
   function deleteListRows(idOfParent, classToKill) { //thanks chatgpt!
-	var parentDiv = document.getElementById(idOfParent); 
-	var listRows = parentDiv.getElementsByClassName(classToKill);
-	while (listRows.length > 0) {
-		parentDiv.removeChild(listRows[0]);
-	}
+    var parentDiv = document.getElementById(idOfParent); 
+    var listRows = parentDiv.getElementsByClassName(classToKill);
+    while (listRows.length > 0) {
+      parentDiv.removeChild(listRows[0]);
+    }
   }
   
   function findObjectByName(array, nameValue) {
@@ -729,22 +763,22 @@ function genericListActionBackend(
 }
   
   function genericSelect(id, name, defaultValue, data, event = "", handler = "") {
-	let out = "";
-	out += `<select name="${name}" id="${id}" ${event}="${handler}">\n`;
-	out += "<option></option>";
-	console.log(data);
-	data.forEach(datum => {
-		let value = datum.value !== undefined ? datum.value : datum;
-		let text = datum.text !== undefined ? datum.text : datum;
-		let selected = defaultValue == value ? " selected='true'" : "";
-  
-		out += `<option${selected} value="${value}">`;
-		out += text;
-		out += "</option>";
-	});
-  
-	out += "</select>";
-	return out;
+    let out = "";
+    out += `<select name="${name}" id="${id}" ${event}="${handler}">\n`;
+    out += "<option></option>";
+    console.log(data);
+    data.forEach(datum => {
+      let value = datum.value !== undefined ? datum.value : datum;
+      let text = datum.text !== undefined ? datum.text : datum;
+      let selected = defaultValue == value ? " selected='true'" : "";
+    
+      out += `<option${selected} value="${value}">`;
+      out += text;
+      out += "</option>";
+    });
+    
+    out += "</select>";
+    return out;
   }
   
   function getValuesFromCommandTypeTable(sourceCommandTypeIdName, destColumnInputName) {

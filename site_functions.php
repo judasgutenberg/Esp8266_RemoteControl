@@ -513,7 +513,7 @@ function populateDictionaryFromSource($keys, $source, $user) {
   //var_dump($source);
   foreach($keys as $key) {
     //var_dump($key);
-    if($key == "tenant_id") {
+    if($key == "tenant_id" && $user) {
       $out[$key] = $user["tenant_id"];
     } else {
       $out[$key] = gvfa($key, $source);
@@ -522,6 +522,18 @@ function populateDictionaryFromSource($keys, $source, $user) {
     //echo $source["device_id"];
     //var_dump($out);
   }
+  return $out;
+}
+
+function pkSpecToWhereClause($pkSpec) {
+  $out = "";
+  foreach($pkSpec as $key=>$value) {
+    if($value !== "") {
+      $out .= $key . "=" . urlencode($value) . " AND ";
+    }
+  }
+  $out = substr($out, 0, -4);
+  //die($out);
   return $out;
 }
 
@@ -890,6 +902,9 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         $result = mysqli_query($conn, $values); //REALLY NEED TO SANITIZE $values since it contains RAW SQL!!!
         $rows = null;
         $itemTool = gvfa("item_tool", $datum);
+        //might want to do this at some point:
+        //$itemTool =  tokenReplace($itemTool, $row, $guessAtTable) . ";"; 
+        
         $itemToolString = "";
         if($itemTool){
           $itemToolString = " onmouseup='" . $itemTool . "(this)' ";
