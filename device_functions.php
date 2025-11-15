@@ -243,7 +243,7 @@ function devices($user) {
     [
       'label' => 'last poll',
       'name' => 'last_poll',
-       'function' => 'timeAgo("<last_poll/>")'
+      'function' => 'timeAgo("<last_poll/>")'
     ],
     [
 	    'label' => 'color',
@@ -1760,9 +1760,8 @@ function editDevice($error,  $user) {
       'counting_column' => NULL,
 	    'value' => gvfa("sensor_id", $source), 
       'error' => gvfa("sensor_id", $error),
-      'item_tool' => null,
-      //SELECT m.management_rule_id, name as 'text', (d.device_feature_id IS NOT NULL) AS has FROM management_rule m LEFT JOIN device_feature_management_rule d ON m.management_rule_id=d.management_rule_id AND   m.tenant_id=d.tenant_id WHERE d.device_feature_id IS NULL OR d.device_feature_id=3 AND m.tenant_id='1'  ORDER BY m.name ASC
-      //SELECT m.management_rule_id, name as 'text', (d.device_feature_id = 3) AS has FROM management_rule m LEFT JOIN device_feature_management_rule d ON m.management_rule_id=d.management_rule_id AND   m.tenant_id=d.tenant_id group by m.management_rule_id, name   ORDER BY m.name ASC 
+      "item_tool" => 'genericManyToManyTool("device_sensor","{\"sensor_id\":\"<sensor_id/>\", \"device_id\":\"<device_id/>\"}")',
+ 
       'values' => "SELECT 
                       s.sensor_id, 
                       s.name AS 'text', 

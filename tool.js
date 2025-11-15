@@ -12,7 +12,23 @@
 		let url = "?table=management_rule&action=json&management_rule_id=" + item.value;
 		xmlhttp.open("GET", url, true);
 		xmlhttp.send();
+	}
+	
+  function genericManyToManyTool(table, pkSpecString) {
+    console.log(pkSpecString);
+    let pkSpec = JSON.parse(pkSpecString);
+    const params = new URLSearchParams(pkSpec).toString();
+		let xmlhttp = new XMLHttpRequest();
+		xmlhttp.onreadystatechange = function() {
+			console.log(xmlhttp.responseText);
+			let data = JSON.parse(xmlhttp.responseText);
+			showDataInPanelTool(data);
+			//console.log(data);
+		}
 
+		let url = "?table=" + table + "&action=json" + params;
+		xmlhttp.open("GET", url, true);
+		xmlhttp.send();
 	}
   
   function tenantTool(item) {
@@ -381,11 +397,14 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
 
           
         }
-        let span = spans[decodedHeaderData.length];
-        let links = span.querySelectorAll("a");
-        console.log(links);
-        const match = Array.from(links).find(a => a.textContent.trim() === "Delete");
-        updateDeleteEntityHandler(match, pk, hashedEntities);
+        if(decodedHeaderData.length > spans.length) {
+          let span = spans[decodedHeaderData.length];
+          let links = span.querySelectorAll("a");
+          if(links) {
+            const match = Array.from(links).find(a => a.textContent.trim() === "Delete");
+            updateDeleteEntityHandler(match, pk, hashedEntities);
+          }
+        }
       }
     }
   };
@@ -915,34 +934,34 @@ function genericListActionBackend(
   }
   
   function managementRuleColumnChange() {
-	managementToolColumnName = document.getElementById("columnNameForManagementRule")[document.getElementById("columnNameForManagementRule").selectedIndex].value;
-	let xmlhttp = new XMLHttpRequest();
-	let mrLocation =  document.getElementById("mr_location");
-	if(!managementToolTableHasLocationIdColumn){
-	  tag = "<"  + managementToolTableName + "[]." + managementToolColumnName + "/>";
-	  managementRuleDisplayTag(tag);
-	} else {
-	  xmlhttp.onreadystatechange = function() {
-		if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
-		  console.log(xmlhttp.responseText);
-		  let crudeLocations = JSON.parse(xmlhttp.responseText);
-		  let locations = crudeLocations.map(row => {
-			return {
-				value: row.device_id,
-				text: row.name
-			};
-		  });
-		  let lastTagScript =  "makeManagementRuleTagFromLocation(document.getElementById('locationForManagementRule')[document.getElementById('locationForManagementRule').selectedIndex].value)";
-		  mrLocation.innerHTML = "<span>Location:</span><span>" + genericSelect("locationForManagementRule", "locationForManagementRule", "",  locations, "onchange", lastTagScript ) + "</span>";
-  
-		}
-	  }
-  
-	  let url = "?action=getdevices"; 
-	  xmlhttp.open("GET", url, true);
-	  xmlhttp.send();
-  
-	}
+    managementToolColumnName = document.getElementById("columnNameForManagementRule")[document.getElementById("columnNameForManagementRule").selectedIndex].value;
+    let xmlhttp = new XMLHttpRequest();
+    let mrLocation =  document.getElementById("mr_location");
+    if(!managementToolTableHasLocationIdColumn){
+      tag = "<"  + managementToolTableName + "[]." + managementToolColumnName + "/>";
+      managementRuleDisplayTag(tag);
+    } else {
+      xmlhttp.onreadystatechange = function() {
+      if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+        console.log(xmlhttp.responseText);
+        let crudeLocations = JSON.parse(xmlhttp.responseText);
+        let locations = crudeLocations.map(row => {
+        return {
+          value: row.device_id,
+          text: row.name
+        };
+        });
+        let lastTagScript =  "makeManagementRuleTagFromLocation(document.getElementById('locationForManagementRule')[document.getElementById('locationForManagementRule').selectedIndex].value)";
+        mrLocation.innerHTML = "<span>Location:</span><span>" + genericSelect("locationForManagementRule", "locationForManagementRule", "",  locations, "onchange", lastTagScript ) + "</span>";
+    
+      }
+      }
+    
+      let url = "?action=getdevices"; 
+      xmlhttp.open("GET", url, true);
+      xmlhttp.send();
+    
+    }
   
   }
   
