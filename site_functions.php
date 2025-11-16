@@ -539,10 +539,10 @@ function pkSpecToWhereClause($pkSpec) {
 
 function genericEntityForm($tenantId, $table, $errors){
   Global $conn;
-  $data = schemaArrayFromSchema($table, $pk);
+  $schema = schemaArrayFromSchema($table, $pk);
   if($errors) {
-    setValuesInSchema($_POST, $data);
-    setErrorsInSchema($errors, $data);
+    setValuesInSchema($_POST, $schema);
+    setErrorsInSchema($errors, $schema);
   }
   $whereClause = "";
   foreach($pk as $thisPk) {
@@ -567,33 +567,31 @@ function genericEntityForm($tenantId, $table, $errors){
     
     $thisDataRows = mysqli_fetch_all($thisDataResult, MYSQLI_ASSOC);
     if($thisDataRows && count($thisDataRows) > 0) {
-      $data = updateDataWithRows($data, $thisDataRows[0]);
+      $schema = setValuesInSchema($thisDataRows[0], $schema);
       $forceUpdate = true;
     }
   }
   //function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user = null, $onload = "") { //$data also includes any errors
  
-  return genericForm($data, "Save " . $table, "Saving...", null, "", $forceUpdate);
+  return genericForm($schema, "Save " . $table, "Saving...", null, "", $forceUpdate);
+}
+
+function setPropertyInSchema($data, &$schema, $property){
+  foreach($data as $key=>$value) {
+    $index = findRecordIndexByKey($schema, "name",  $key);
+    if ($index !== null) {
+        $schema[$index][$property] = $value;   // <-- update the real item
+    }
+  }
+  return $schema;
 }
 
 function setValuesInSchema($data, &$schema){
-  foreach($data as $key=>$value) {
-    $index = findRecordIndexByKey($schema, "name",  $key);
-    if ($index !== null) {
-        $schema[$index]["value"] = $value;   // <-- update the real item
-    }
-  }
-  return $schema;
+  return setPropertyInSchema($data, $schema, "value");
 }
 
 function setErrorsInSchema($data, &$schema){
-  foreach($data as $key=>$value) {
-    $index = findRecordIndexByKey($schema, "name",  $key);
-    if ($index !== null) {
-        $schema[$index]["error"] = $value;   // <-- update the real item
-    }
-  }
-  return $schema;
+  return setPropertyInSchema($data, $schema, "error");
 }
  
 function genericEntitySave($user, $table, $forceUpdate = false) {
@@ -603,9 +601,7 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
   $filename = "";
   $tenantId = $user["tenant_id"];
   $tablesThatRequireUser = tablesThatRequireUser();
-  
-  
-  //$pk = $table . "_id";
+ 
   $tableSpec = schemaArrayFromSchema($table, $pk);
   $data = $_POST;
   //var_dump($_POST);
@@ -629,18 +625,8 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
     }
   }
   
-  //$pk is now an array
   $pkSpec = populateDictionaryFromSource($pk, $_POST, $user);
-  //var_dump($pkSpec);
-  /*
-  if(!is_array($pk)) {
-    $savedPk = gvfw($pk);
-  }
-  */
- 
   $savedPk = implode("-", array_values($pkSpec));
-  //die($savedPk );
-  
   unset($data['action']);
  
  
@@ -664,10 +650,6 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
  
   $sql = insertUpdateSql($conn, $table, $pkSpec, $data);
 
-  
-
-  //echo $sql;
-  //die();
   if (mysqli_multi_query($conn, $sql)) {
     do {
       // Store first result set
@@ -745,23 +727,6 @@ function buildUploadPath($table, $pkVal, $fieldName, $extension) {
  
     $assetFilePath = $tableUploadsPath . "/" . $fieldName . "-" . $pkVal . "." . $extension;
     return $assetFilePath;
-}
-
-function updateDataWithRows($data, $thisDataRows) {
-  // Iterate over each row in $thisDataRows
-  foreach ($thisDataRows as $key => $value) {
-      // Iterate over each associative array in $data
-      foreach ($data as &$item) {
-          // Check if the "name" key in the current item matches the key in $thisDataRows
-          if (isset($item['name']) && $item['name'] == $key) {
-              // Set the "value" of the current item to the value in $thisDataRows
-              $item['value'] = $value;
-              // Break out of the inner loop since we found a match
-              break;
-          }
-      }
-  }
-  return $data;
 }
 
 function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user = null, $onload = "", $forceUpdate = false) { //$data also includes any errors
