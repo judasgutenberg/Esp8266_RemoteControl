@@ -540,6 +540,10 @@ function pkSpecToWhereClause($pkSpec) {
 function genericEntityForm($tenantId, $table, $errors){
   Global $conn;
   $data = schemaArrayFromSchema($table, $pk);
+  if($errors) {
+    setValuesInSchema($_POST, $data);
+    setErrorsInSchema($errors, $data);
+  }
   $whereClause = "";
   foreach($pk as $thisPk) {
     $pkValue =  gvfa($thisPk, $_GET);
@@ -572,6 +576,25 @@ function genericEntityForm($tenantId, $table, $errors){
   return genericForm($data, "Save " . $table, "Saving...", null, "", $forceUpdate);
 }
 
+function setValuesInSchema($data, &$schema){
+  foreach($data as $key=>$value) {
+    $index = findRecordIndexByKey($schema, "name",  $key);
+    if ($index !== null) {
+        $schema[$index]["value"] = $value;   // <-- update the real item
+    }
+  }
+  return $schema;
+}
+
+function setErrorsInSchema($data, &$schema){
+  foreach($data as $key=>$value) {
+    $index = findRecordIndexByKey($schema, "name",  $key);
+    if ($index !== null) {
+        $schema[$index]["error"] = $value;   // <-- update the real item
+    }
+  }
+  return $schema;
+}
  
 function genericEntitySave($user, $table, $forceUpdate = false) {
   global $conn;
@@ -655,6 +678,7 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
         mysqli_free_result($result);
         $error = mysqli_error($conn);
 				if($error != ""){
+          return array($pk[0]=>$error, "_sql"=>$sql);
           echo $sql;
           echo "\n<hr/>\n";
 					die($error);
@@ -670,6 +694,7 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
   } else {
       $error = mysqli_error($conn);
       if($error != ""){
+        return array($pk[0]=>$error, "_sql"=>$sql);
         echo $sql;
         echo "\n<hr/>\n";
         die($error);
@@ -3145,6 +3170,15 @@ function normalizePostData() {
             $_POST = $json;
         }
     }
+}
+
+function findRecordIndexByKey($schema, $field, $value) {
+    foreach ($schema as $i => $row) {
+        if ($row[$field] === $value) {
+            return $i;
+        }
+    }
+    return null;
 }
 
 function findRecordByKey($records, $keyName, $value) {

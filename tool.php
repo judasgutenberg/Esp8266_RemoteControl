@@ -222,7 +222,7 @@ if ($user) {
     } else if($value === true){
       $value = "1";
     }
-    $pkSpecString = filterStringForSqlEntities($primaryKeyName, false) . "='" . intval($primaryKeyValue) . "'";
+    $pkSpecString = filterStringForSqlEntities($primaryKeyName, false) . "='" . intval($primaryKeyValue) . "'"; //this only works for singular pks
     if(count($knownPk)>1) { //ugh, this sure is ugly. but it allows me to edit data in a mapping table unrelated to the actual mapping
       $pkVals = explode("-", $primaryKeyValue);
       $pkKeys = explode("-", $primaryKeyName);

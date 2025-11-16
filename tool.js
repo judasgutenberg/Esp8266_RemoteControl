@@ -431,7 +431,7 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
 
           
         }
-        if(decodedHeaderData.length > spans.length) {
+        if(decodedHeaderData.length < spans.length) {
           let span = spans[decodedHeaderData.length];
           let links = span.querySelectorAll("a");
           if(links) {
