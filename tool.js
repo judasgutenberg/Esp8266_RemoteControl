@@ -14,16 +14,17 @@
 		xmlhttp.send();
 	}
 	
-  function genericManyToManyTool(table, pkSpecString) {
+  function genericManyToManyTool(table, pkSpecString, columnConfigString) {
     //console.log(pkSpecString);
     let pkSpec = JSON.parse(pkSpecString);
+    let columnConfig = JSON.parse(columnConfigString);
     const params = new URLSearchParams(pkSpec).toString();
 		let xmlhttp = new XMLHttpRequest();
 		xmlhttp.onreadystatechange = function() {
       if(xmlhttp.responseText) {
         let data = JSON.parse(xmlhttp.responseText);
         if(data) {
-          editDataInPanelTool(data, table, pkSpec);
+          editDataInPanelTool(data, table, pkSpec, columnConfig);
         }
 			}
 			//console.log(data);
@@ -272,7 +273,7 @@
     }
   }
   
-  function editDataInPanelTool(data, table, pkSpec){
+  function editDataInPanelTool(data, table, pkSpec, columnConfig){
     let html = "<div class='list'>";
     let panelId = "";
     let hash = data["_hashed_entities"];
@@ -287,10 +288,20 @@
     const pkName   = Object.keys(sortedPk).join("-");
     const pkValue = Object.values(sortedPk).join("-");
     for (let key in data) {
-      
       if(key.substring(0,1) != "_") {
-        console.log(key);
-        html += "<div class='listrow'><span><b>" + key + "</b></span><span><input onchange='genericListActionBackend(\"" + key + "\",  this.value ,\"" + table +"\",\"" + pkName + "\",\"" + pkValue + "\",\""  + hash + "\",\"\")'  name='" + key + "' value='" + escapeHTML(data[key]) + "'/></span></div>";
+ 
+        let columnRecord = findObjectByName(columnConfig, key);
+        //console.log(columnRecord);
+        if(columnRecord ) {
+ 
+          let label = columnRecord["name"];
+          if(columnRecord["label"]) {
+            label = columnRecord["label"];
+          }
+    
+          //console.log(label);
+          html += "<div class='listrow'><span><b>" + label + "</b></span><span><input onchange='genericListActionBackend(\"" + key + "\",  this.value ,\"" + table +"\",\"" + pkName + "\",\"" + pkValue + "\",\""  + hash + "\",\"\")'  name='" + key + "' value='" + escapeHTML(data[key]) + "'/></span></div>";
+        }
         if(document.getElementById("panel_" + key)) {
           panelId = "panel_" + key;
         }
@@ -519,15 +530,33 @@ function updateDeleteEntityHandler(deleteHref, newPk, newHash) {
     deleteHref.setAttribute("onclick", newCall);
 }
 
-function copyManyToMany(sourceId, destinationId){
+ 
+
+function copyManyToMany(sourceId, destinationId){ 
+  let rootId = destinationId;
+ 
+  if(rootId.slice(0, 7) == "source_") {
+    rootId = sourceId;
+  }
+ 
+  let existingIdsInput = document.getElementById("_" + rootId + "_old_many_to_many");
   let source = document.getElementById(sourceId);
   let dest = document.getElementById(destinationId);
-  for(var i = source.options.length - 1; i >= 0; i--) {
-    var option = source.options[i];
+
+  if(existingIdsInput.value == "") {
+    for(let i = dest.options.length - 1; i >= 0; i--) {
+      let option = dest.options[i];
+      existingIdsInput.value += option.value + ",";
+    }
+    existingIdsInput.value = existingIdsInput.value.slice(0, -1);
+  }
+  for(let i = source.options.length - 1; i >= 0; i--) {
+    let option = source.options[i];
     if(option.selected) {
       dest.appendChild(option.cloneNode(true)); // Clone the option before appending
       source.remove(i);
     }
+    document.getElementById("havechangedmanytomany").value = 1;
   }
   return false;
 }

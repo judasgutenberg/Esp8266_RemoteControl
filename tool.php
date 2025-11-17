@@ -292,7 +292,6 @@ if ($user) {
         $sortClause .= " DESC";
       }
     }
- 
     $sql = decryptLongString(gvfw('value'), $encryptionPassword);
     $sql = setOrderByClause($sql, $sortClause);
     //echo $sql . "\n\n";
@@ -326,9 +325,7 @@ if ($user) {
       $path = gvfa("path", $foundData);
       $friendlyName = gvfa("friendly_name", $foundData);
       $outputFormat = gvfa("output_format", $foundData);
-  
       if($_POST && (gvfa("action", $foundData) || $outputFormat)) { // ||  (gvfa("action", $foundData) && gvfa("form", $foundData))
- 
         $out .= "<div class='issuesheader'>" .  gvfa("label", $foundData)  . "</div>";
         //dealing with a utility that has a form
         $role = gvfa("role", $foundData);
@@ -388,9 +385,7 @@ if ($user) {
           }
         }
       } else if ($action) {
- 
         if (!gvfa("form", $foundData) && !gvfa("front_end_js", $foundData)){
-
           $out .= "<div class='issuesheader'>" .  gvfa("label", $foundData)  . "</div>";
           $out .= "<form method='post'><input name='run' type='submit' value='run'/></form>"; //make a quick and dirty form
         } else {
@@ -436,10 +431,7 @@ if ($user) {
         $userForSpec  = null;
       }
       $pkSpec = populateDictionaryFromSource($pk, $_GET, $userForSpec);
-      //var_dump($pkSpec);
       $pkPhrase = pkSpecToWhereClause($pkSpec);
-      
-      //echo $pkPhrase;
       $primaryKeyName = implode("-", $pk); //how we handle composite pks in a way that allows the old single-pk-only system to work
       $pkValue = implode("-", array_values($pkSpec)); 
       //var_dump($pkValue);

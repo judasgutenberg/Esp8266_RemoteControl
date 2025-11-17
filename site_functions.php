@@ -625,14 +625,13 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
     }
   }
   
-  $pkSpec = populateDictionaryFromSource($pk, $_POST, $user);
+  $pkSpec = populateDictionaryFromSource($pk, $_REQUEST, $user); //this used to work from $_POST but no longer does
+  //var_dump($_POST);
   $savedPk = implode("-", array_values($pkSpec));
   unset($data['action']);
  
- 
   foreach($pk as $thisPk) {
     $pkRecord = findRecordByKey($tableSpec, "name",  $thisPk);
-    //var_dump($pkRecord);
     if(gvfa("extra", $pkRecord) == "auto_increment"  || $forceUpdate) {
       unset($data[$thisPk]);
     } else {
@@ -713,20 +712,6 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
   die();
   */
   header("Location: " . $url);
-}
-
-function buildUploadPath($table, $pkVal, $fieldName, $extension) {
-   $uploadsDir = "uploads";
-   if(!is_dir($uploadsDir)){
-      mkdir($uploadsDir);
-    }
-    $tableUploadsPath = $uploadsDir . "/" . $table;
-    if(!is_dir($tableUploadsPath)){
-      mkdir($tableUploadsPath);
-    }
- 
-    $assetFilePath = $tableUploadsPath . "/" . $fieldName . "-" . $pkVal . "." . $extension;
-    return $assetFilePath;
 }
 
 function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user = null, $onload = "", $forceUpdate = false) { //$data also includes any errors
@@ -897,7 +882,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         
         $itemToolString = "";
         if($itemTool){
-          $itemToolString = " onmouseup='" . $itemTool . "(this)' ";
+          $itemToolString = " onmouseup='" . $itemTool . "' ";
         }
         if($result) {
           $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
@@ -907,7 +892,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         if($height == ""){
           $height = 5;
         }
-        $out .= "<select " . str_replace("onblur=", "onchange=", $validationString) . " style='accent-color:" .  $accentColor . "'  multiple='multiple' name='" . $name . "[]' id='dest_" . $name . "' size='" . intval($height) . "'/>";
+        $out .= "<select " . str_replace("onblur=", "onchange=", $validationString) . " style='accent-color:" .  $accentColor . "'  multiple='multiple' name='" . $name . "[]' id='dest_" . $name . "' size='" . intval($height) . "'>";
         if($rows) {
           foreach($rows as $row){
             $selected = "";
@@ -920,7 +905,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
             }
 
             if($row["has"] ){
-              $out .= "<option " . $itemToolString . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>\n";
+              $out .= "<option " . $itemToolString . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option>\n";
             }
 
           }
@@ -929,6 +914,8 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         $onSubmitManyToManyItems[] = $name;
         $out .= "</div>\n"; 
         $out .= "<div class='manytomanytools'>\n";
+        $out .= "<input id='havechangedmanytomany' name='_have_changed_many_to_many' value=0 type='hidden' />";
+        $out .= "<input id='_dest_" . $name ."_old_many_to_many' name='_dest" . $name ."_old_many_to_many' value='' type='hidden' />";
         $out .= "<button onclick='return copyManyToMany(\"source_" . $name ."\", \"dest_" . $name ."\")'>&lt;</button>";
         $out .= "<button onclick='return copyManyToMany(\"dest_" . $name ."\", \"source_" . $name ."\")'>&gt;</button>";
         $out .= "</div>\n"; 
@@ -1884,6 +1871,19 @@ function userList(){
   return $rows;
 }
 
+function buildUploadPath($table, $pkVal, $fieldName, $extension) {
+   $uploadsDir = "uploads";
+   if(!is_dir($uploadsDir)){
+      mkdir($uploadsDir);
+    }
+    $tableUploadsPath = $uploadsDir . "/" . $table;
+    if(!is_dir($tableUploadsPath)){
+      mkdir($tableUploadsPath);
+    }
+    $assetFilePath = $tableUploadsPath . "/" . $fieldName . "-" . $pkVal . "." . $extension;
+    return $assetFilePath;
+}
+
 function download($path, $friendlyName, $content = ""){
     header("Cache-Control: no-cache private");
     header("Content-Description: File Transfer");
@@ -1898,9 +1898,7 @@ function download($path, $friendlyName, $content = ""){
       header('Content-Length: '. strlen($content));
       echo $content;
     }
- 
     exit;
- 
 }
 
 function genericSelect($id, $name, $defaultValue, $data, $event = "", $handler= "") {
@@ -1941,11 +1939,9 @@ function timeDifferenceInMinutes($datetimeOld, $datetimeNew) {
 function stringToAscii($input) {
   $asciiCodes = [];
   $length = strlen($input);
-
   for ($i = 0; $i < $length; $i++) {
       echo $input[$i]  . " " . ord($input[$i]) . "<br>";
   }
-
   return $asciiCodes;
 }
 
@@ -2084,10 +2080,13 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
           $value = $formatedDateTime;
         }
         //echo  $column . "=" . $value . ", " . $type . "<BR>";
-        if($type == "many-to-many") {
+        if($type == "many-to-many"  &&  gvfw("_have_changed_many_to_many") == 1) {
           $mappingTable = gvfa("mapping_table", $datum);
           $countingColumn = gvfa("counting_column", $datum);
+          $existingIds = gvfw("_dest" . column . "_old_many_to_many");
+          //need to calculate $goneIds and $newIds
           $laterSql .= "\nDELETE FROM " . $mappingTable . " WHERE <whereclause/> ";
+          //$laterSql .= " AND " . $column . " IN (" . $goneIds . ")";
           if($tableName  != "user" &&  $tableName  != "tenant"){
             $laterSql .= "AND tenant_id='".  $data["tenant_id"] .  "'"; 
           }
@@ -2126,7 +2125,9 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
             $sanitized = 'NULL';
           } else {
             //echo $column .  "*" . $value . "<BR>";
-            $sanitized = "'" . mysqli_real_escape_string($conn, $value) . "'";
+            if(!is_array($value)) {
+              $sanitized = "'" . mysqli_real_escape_string($conn, $value) . "'";
+            }
           }
 
           $updateFields[] = "`$column` =  $sanitized";
