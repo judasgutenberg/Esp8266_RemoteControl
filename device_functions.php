@@ -2003,8 +2003,10 @@ function getCurrentWeatherConditionId($tenant) {
     $apiKey = $credential["password"];
     $weatherData = getWeatherDataByCoordinates($tenant["latitude"], $tenant["longitude"], $apiKey);
     //var_dump($weatherData);
-    $weatherDescription = $weatherData["weather"][0]["description"];
-    writeMemoryCache($weatherDescriptionKey, $weatherDescription);
+    if($weatherData) {
+      $weatherDescription = $weatherData["weather"][0]["description"];
+      writeMemoryCache($weatherDescriptionKey, $weatherDescription);
+    }
     //a little hook here to do unrelated things on a regular basis, that is, every ten minutes
     doVariousThingsRegularly($tenant);
   }
@@ -2380,44 +2382,42 @@ function managementRuleTools() {
 }
 
 function getWeatherDataByCoordinates($latitude, $longitude, $apiKey) {
-  $baseUrl = "https://api.openweathermap.org/data/2.5/weather";
-  $query = http_build_query([
-      'lat' => $latitude,
-      'lon' => $longitude,
-      'appid' => $apiKey,
-      'units' => 'metric' // Use 'imperial' for Fahrenheit
-  ]);
-  $url = "$baseUrl?$query";
+    $baseUrl = "https://api.openweathermap.org/data/2.5/weather";
+    $query = http_build_query([
+        'lat' => $latitude,
+        'lon' => $longitude,
+        'appid' => $apiKey,
+        'units' => 'metric'
+    ]);
+    $url = "$baseUrl?$query";
 
-  // Initialize a cURL session
-  $ch = curl_init();
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-  // Set the URL and options
-  curl_setopt($ch, CURLOPT_URL, $url);
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    // Set a timeout of 5 seconds (adjust as needed)
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
 
-  // Execute the cURL session
-  $response = curl_exec($ch);
+    $response = curl_exec($ch);
 
-  // Check for errors
-  if ($response === false) {
-      $error = curl_error($ch);
-      curl_close($ch);
-      throw new Exception("cURL Error: $error");
-  }
+    if ($response === false) {
+        $error = curl_error($ch);
+        curl_close($ch);
 
-  // Close the cURL session
-  curl_close($ch);
+        // Instead of throwing, just log and return null
+        error_log("Weather API cURL error: $error");
+        return null;  // <-- safely return instead of crashing
+    }
 
-  // Decode the JSON response
-  $weatherData = json_decode($response, true);
+    curl_close($ch);
 
-  // Check for JSON decode errors
-  if (json_last_error() !== JSON_ERROR_NONE) {
-      throw new Exception("JSON Decode Error: " . json_last_error_msg());
-  }
+    $weatherData = json_decode($response, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        error_log("Weather API JSON decode error: " . json_last_error_msg());
+        return null; // safely return null
+    }
 
-  return $weatherData;
+    return $weatherData;
 }
 
 

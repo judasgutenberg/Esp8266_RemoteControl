@@ -1042,6 +1042,7 @@ if($_REQUEST) {
 								$sqlToUpdateDeviceFeature = removeTrailingChar($sqlToUpdateDeviceFeature, ",", 3);
 								//echo $sqlToUpdateDeviceFeature. "<BR>";
 								$updateResult = mysqli_query($conn, $sqlToUpdateDeviceFeature);
+								//echo "<BR>" . $sqlToUpdateDeviceFeature;
 								$error = mysqli_error($conn);
 								if($error != ""){
 									$badSql = $sqlToUpdateDeviceFeature;
