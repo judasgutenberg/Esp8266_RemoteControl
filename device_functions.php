@@ -2003,10 +2003,8 @@ function getCurrentWeatherConditionId($tenant) {
     $apiKey = $credential["password"];
     $weatherData = getWeatherDataByCoordinates($tenant["latitude"], $tenant["longitude"], $apiKey);
     //var_dump($weatherData);
-    if($weatherData) {
-      $weatherDescription = $weatherData["weather"][0]["description"];
-      writeMemoryCache($weatherDescriptionKey, $weatherDescription);
-    }
+    $weatherDescription = $weatherData["weather"][0]["description"];
+    writeMemoryCache($weatherDescriptionKey, $weatherDescription);
     //a little hook here to do unrelated things on a regular basis, that is, every ten minutes
     doVariousThingsRegularly($tenant);
   }
@@ -2079,9 +2077,9 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
 
 
 //reads data from the cloud about our particular solar installation, which is great if you don't have a solark copilot
-function getCurrentSolarDataFromCloud($tenant) {
+function getCurrentSolarDataFromCloud($tenant, $alwaysReturnData = false) {
   global $conn, $timezone;
-  if (random_int(1, 10) !== 1) { //keeps it from happening multiple times
+  if (!$alwaysReturnData   && random_int(1, 10) !== 1) { //keeps it from happening multiple times
     if(!gvfw("solarkapitest") ){
       return;
     }
@@ -2172,15 +2170,9 @@ function getCurrentSolarDataFromCloud($tenant) {
       "Authorization: Bearer " . $access_token,  //had been sending the token in the querystring, but that stopped working the morning of April 9, 2024
       "Accept: application/json",
     ));
-
     $dataResponse = curl_exec($ch);
     curl_close($ch);
     
-    
-    
-    
-    
-
     $dataBody = json_decode($dataResponse, true);
     if(gvfw("solarkapitest")){
       var_dump($dataBody);
@@ -2203,17 +2195,20 @@ function getCurrentSolarDataFromCloud($tenant) {
     $dataRealtime = $dataBodyRealtime["data"];
     $pac = $dataRealtime["pac"];
     $pvPower = $data["pvPower"];
-    if($pac > $pvPower) {
+    if($pvPower == 0) {
       $pvPower = $pac;
     }
     if(gvfw("solarkapitest")){
       echo "<p>\n";
       var_dump($dataBodyRealtime);
     }
+    $batteryPower = $data["battPower"];
+    if($data["toBat"] == true) {
+      $batteryPower = -$batteryPower;
+    }
 
-    
-    saveSolarData($tenant, $data["gridOrMeterPower"], $data["soc"],  $data["battPower"], $data["loadOrEpsPower"] , 
-      intval($$pvPower)/2, intval($pvPower)/2, NULL, 
+    saveSolarData($tenant, $data["gridOrMeterPower"], $data["soc"],  $batteryPower, $data["loadOrEpsPower"] , 
+      intval($pvPower)/2, intval($pvPower)/2, NULL, 
       NULL,
       NULL,
       NULL,
@@ -2225,8 +2220,8 @@ function getCurrentSolarDataFromCloud($tenant) {
       NULL,
       NULL
     );
-    $out = Array("tenant_id"=>$tenant["tenant_id"], "recorded" => $formatedDateTime, "solar_power" => $data["pvPower"], "load_power" => $data["loadOrEpsPower"] ,
-    "grid_power" =>  $data["gridOrMeterPower"], "battery_percentage" => $data["soc"], "battery_power" => $data["battPower"]); 
+    $out = Array("tenant_id"=>$tenant["tenant_id"], "recorded" => $formatedDateTime, "solar_power" => $pvPower, "load_power" => $data["loadOrEpsPower"] ,
+    "grid_power" =>  $data["gridOrMeterPower"], "battery_percentage" => $data["soc"], "battery_power" => $batteryPower); 
     //var_dump($out);
     return $out;
   } else {
@@ -2382,42 +2377,44 @@ function managementRuleTools() {
 }
 
 function getWeatherDataByCoordinates($latitude, $longitude, $apiKey) {
-    $baseUrl = "https://api.openweathermap.org/data/2.5/weather";
-    $query = http_build_query([
-        'lat' => $latitude,
-        'lon' => $longitude,
-        'appid' => $apiKey,
-        'units' => 'metric'
-    ]);
-    $url = "$baseUrl?$query";
+  $baseUrl = "https://api.openweathermap.org/data/2.5/weather";
+  $query = http_build_query([
+      'lat' => $latitude,
+      'lon' => $longitude,
+      'appid' => $apiKey,
+      'units' => 'metric' // Use 'imperial' for Fahrenheit
+  ]);
+  $url = "$baseUrl?$query";
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  // Initialize a cURL session
+  $ch = curl_init();
 
-    // Set a timeout of 5 seconds (adjust as needed)
-    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+  // Set the URL and options
+  curl_setopt($ch, CURLOPT_URL, $url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-    $response = curl_exec($ch);
+  // Execute the cURL session
+  $response = curl_exec($ch);
 
-    if ($response === false) {
-        $error = curl_error($ch);
-        curl_close($ch);
+  // Check for errors
+  if ($response === false) {
+      $error = curl_error($ch);
+      curl_close($ch);
+      throw new Exception("cURL Error: $error");
+  }
 
-        // Instead of throwing, just log and return null
-        error_log("Weather API cURL error: $error");
-        return null;  // <-- safely return instead of crashing
-    }
+  // Close the cURL session
+  curl_close($ch);
 
-    curl_close($ch);
+  // Decode the JSON response
+  $weatherData = json_decode($response, true);
 
-    $weatherData = json_decode($response, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        error_log("Weather API JSON decode error: " . json_last_error_msg());
-        return null; // safely return null
-    }
+  // Check for JSON decode errors
+  if (json_last_error() !== JSON_ERROR_NONE) {
+      throw new Exception("JSON Decode Error: " . json_last_error_msg());
+  }
 
-    return $weatherData;
+  return $weatherData;
 }
 
 

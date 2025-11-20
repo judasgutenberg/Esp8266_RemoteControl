@@ -355,20 +355,23 @@ if($_REQUEST) {
 							$changer5 = $arrEnergyData[15];
 							$changer6 = $arrEnergyData[16];
 							$changer7 = $arrEnergyData[17];
+							/*
+							//solark broke this shit:
               $energyInfo = saveSolarData($tenant, $gridPower, $batteryPercent,  
-							$batteryPower, $loadPower, $solarString1, $solarString2, 
-							$batteryVoltage, 
-							$mysteryValue3,
-							$mysteryValue1,
-							$mysteryValue2,
-							$changer1,
-							$changer2,
-							$changer3,
-							$changer4,
-							$changer5,
-							$changer6,
-							$changer7
-						);
+                $batteryPower, $loadPower, $solarString1, $solarString2, 
+                $batteryVoltage, 
+                $mysteryValue3,
+                $mysteryValue1,
+                $mysteryValue2,
+                $changer1,
+                $changer2,
+                $changer3,
+                $changer4,
+                $changer5,
+                $changer6,
+                $changer7
+              );
+              */
 					}	
 				} else {
 					$weatherInfoString = $lines[0];
@@ -1156,7 +1159,7 @@ function deriveTenantFromStoragePassword($storagePassword) {
 function logPost($post){
 	//return; //for when you don't actually want to log
 	global $formattedDateTime;
-	//$myfile = file_put_contents('post.txt', "\n\n" . $formattedDateTime . ": " . $post, FILE_APPEND | LOCK_EX);
+	$myfile = file_put_contents('solarkdata.txt', $post, FILE_APPEND | LOCK_EX);
 }
 
 function logSql($sql){
