@@ -2015,6 +2015,156 @@ function getCurrentWeatherConditionId($tenant) {
   return $weatherConditionId;
 }
 
+function processRawSolArkFile() {
+
+    $sourceFile = "solarkdata.txt";
+    $outputFile = "solarkdata_processed.txt";
+
+    if (!file_exists($sourceFile)) {
+        return false;
+    }
+
+    // ---- Byte readers ----
+    $read_le16 = function($low, $high) {
+        return hexdec($low) + (hexdec($high) << 8);
+    };
+    $read_be16 = function($high, $low) {
+        return (hexdec($high) << 8) + hexdec($low);
+    };
+
+    $read_le16_signed = function($low, $high) {
+        $val = hexdec($low) + (hexdec($high) << 8);
+        return ($val >= 0x8000) ? $val - 0x10000 : $val;
+    };
+    $read_be16_signed = function($high, $low) {
+        $val = (hexdec($high) << 8) + hexdec($low);
+        return ($val >= 0x8000) ? $val - 0x10000 : $val;
+    };
+
+    // ---- CONFIG with multipliers and endianness ----
+
+    $config = [
+
+        // CHARACTERISTIC #2
+        "char2" => [
+            "start" => "Characteristic #2 10s_1 (1)",
+            "end"   => "0x3ffbb61c",
+            "lines" => [
+
+                "0x3ffbb5fc" => [
+                    [ 'key' => 'battery_percentage', 'offsets' => [4], 'type' => 'u8',  'multiplier' => 1 ],
+
+                    [ 'key' => 'load_power',         'offsets' => [6,7],  'type' => 'u16', 'endian'=>'little', 'multiplier'=>1 ],
+                    [ 'key' => 'solar_power1',       'offsets' => [8,9],  'type' => 'u16', 'endian'=>'little', 'multiplier'=>1 ],
+                    [ 'key' => 'solar_power2',       'offsets' => [10,11],'type' => 'u16', 'endian'=>'little', 'multiplier'=>1 ],
+                ],
+
+                "0x3ffbb60c" => [
+                    [ 'key' => 'battery_power', 'offsets' => [2,3], 'type'=>'s16', 'endian'=>'little', 'multiplier'=>1 ]
+                ],
+            ]
+        ],
+
+        // CHARACTERISTIC #7 — includes your battery voltage ×100
+        "char7" => [
+            "start" => "Characteristic #7 30s_2 (2)",
+            "end"   => "I (318800102)",
+            "lines" => [
+                "0x3ffbb5bc" => [
+                    [
+                        'key' => 'battery_voltage',
+                        'offsets' => [6,7],
+                        'type' => 'u16',
+                        'endian' => 'little',   // or 'big' depending on what you observed
+                        'multiplier' => 0.01    // <-- divide by 100 right here
+                    ]
+                ]
+            ]
+        ]
+    ];
+
+    // ---- Initialize results ----
+
+    $results = [];
+    foreach ($config as $characteristic) {
+        foreach ($characteristic['lines'] as $addr => $fields) {
+            foreach ($fields as $field) {
+                $results[$field['key']] = null;
+            }
+        }
+    }
+
+    // ---- File parsing loop ----
+
+    $fh = fopen($sourceFile, "r");
+    if (!$fh) return false;
+
+    $currentBlock = null;
+
+    while (($line = fgets($fh)) !== false) {
+
+        // Detect block start
+        foreach ($config as $blockKey => $blockConf) {
+            if (strpos($line, $blockConf['start']) !== false) {
+                $currentBlock = $blockKey;
+                continue 2;
+            }
+        }
+        if ($currentBlock === null)
+            continue;
+        // Detect block end
+        if (strpos($line, $config[$currentBlock]['end']) !== false) {
+            $currentBlock = null;
+            continue;
+        }
+        // Process matching lines
+        foreach ($config[$currentBlock]['lines'] as $addr => $fields) {
+            if (strpos($line, $addr) === false) continue;
+            if (!preg_match_all('/\b[0-9a-fA-F]{2}\b/', $line, $m)) continue;
+            $bytes = $m[0];
+            foreach ($fields as $field) {
+
+                $key   = $field['key'];
+                $off   = $field['offsets'];
+                $type  = $field['type'];
+                $multi = $field['multiplier'] ?? 1;
+                $end   = $field['endian'] ?? 'little';
+
+                switch ($type) {
+                    case 'u8':
+                        $value = hexdec($bytes[$off[0]]);
+                        break;
+
+                    case 'u16':
+                        if ($end === 'big') {
+                            $value = $read_be16($bytes[$off[0]], $bytes[$off[1]]);
+                        } else {
+                            $value = $read_le16($bytes[$off[0]], $bytes[$off[1]]);
+                        }
+                        break;
+
+                    case 's16':
+                        if ($end === 'big') {
+                            $value = $read_be16_signed($bytes[$off[0]], $bytes[$off[1]]);
+                        } else {
+                            $value = $read_le16_signed($bytes[$off[0]], $bytes[$off[1]]);
+                        }
+                        break;
+                }
+
+                // Apply multiplier
+                $results[$key] = ($value) * $multi;
+            }
+        }
+    }
+    fclose($fh);
+    file_put_contents($outputFile, json_encode($results) . "\n", FILE_APPEND);
+    unlink($sourceFile);
+    return $results;
+}
+
+
+
 function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $loadPower, 
   $solarString1, $solarString2, $batteryVoltage, 
   $mysteryValue3,
