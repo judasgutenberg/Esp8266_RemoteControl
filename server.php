@@ -262,7 +262,9 @@ if($_REQUEST) {
 						if(count($extraInfo)>0){
 							$lastCommandId = $extraInfo[0];
 							markCommandDone($lastCommandId, $tenantId);
-							$specificPin = $extraInfo[1]; //don't do this if $nonJsonPinData
+							if(count($extraInfo)>1){
+                $specificPin = $extraInfo[1]; //don't do this if $nonJsonPinData
+							}
 						}
 						//apparently we do not care about pinCursor:
 						//var_dump($extraInfo);
@@ -336,42 +338,43 @@ if($_REQUEST) {
 						//the first item will be energy data;  all subsequent items will be weather
 						$energyInfoString = array_shift($multipleSensorArray);
 						//var_dump($energyInfoString );
+						/*
+						//solark broke this shit:
 						$arrEnergyData = explode("*", $energyInfoString);
-							$inverterSnapshotTime = $arrEnergyData[0];
-							$gridPower = $arrEnergyData[1];
-							$batteryPercent = $arrEnergyData[2];
-							$batteryPower  = $arrEnergyData[3];
-							$loadPower = $arrEnergyData[4];
-							$solarString1 = $arrEnergyData[5];
-							$solarString2 = $arrEnergyData[6];
-							$batteryVoltage = intval($arrEnergyData[7])/100;
-							$mysteryValue3 =  $arrEnergyData[8];
-							$mysteryValue1 = $arrEnergyData[9];
-							$mysteryValue2 = $arrEnergyData[10];
-							$changer1 = $arrEnergyData[11];
-							$changer2 = $arrEnergyData[12];
-							$changer3 = $arrEnergyData[13];
-							$changer4 = $arrEnergyData[14];
-							$changer5 = $arrEnergyData[15];
-							$changer6 = $arrEnergyData[16];
-							$changer7 = $arrEnergyData[17];
-							/*
-							//solark broke this shit:
-              $energyInfo = saveSolarData($tenant, $gridPower, $batteryPercent,  
-                $batteryPower, $loadPower, $solarString1, $solarString2, 
-                $batteryVoltage, 
-                $mysteryValue3,
-                $mysteryValue1,
-                $mysteryValue2,
-                $changer1,
-                $changer2,
-                $changer3,
-                $changer4,
-                $changer5,
-                $changer6,
-                $changer7
-              );
-              */
+            $inverterSnapshotTime = $arrEnergyData[0];
+            $gridPower = $arrEnergyData[1];
+            $batteryPercent = $arrEnergyData[2];
+            $batteryPower  = $arrEnergyData[3];
+            $loadPower = $arrEnergyData[4];
+            $solarString1 = $arrEnergyData[5];
+            $solarString2 = $arrEnergyData[6];
+            $batteryVoltage = intval($arrEnergyData[7])/100;
+            $mysteryValue3 =  $arrEnergyData[8];
+            $mysteryValue1 = $arrEnergyData[9];
+            $mysteryValue2 = $arrEnergyData[10];
+            $changer1 = $arrEnergyData[11];
+            $changer2 = $arrEnergyData[12];
+            $changer3 = $arrEnergyData[13];
+            $changer4 = $arrEnergyData[14];
+            $changer5 = $arrEnergyData[15];
+            $changer6 = $arrEnergyData[16];
+            $changer7 = $arrEnergyData[17];
+
+            $energyInfo = saveSolarData($tenant, $gridPower, $batteryPercent,  
+              $batteryPower, $loadPower, $solarString1, $solarString2, 
+              $batteryVoltage, 
+              $mysteryValue3,
+              $mysteryValue1,
+              $mysteryValue2,
+              $changer1,
+              $changer2,
+              $changer3,
+              $changer4,
+              $changer5,
+              $changer6,
+              $changer7
+            );
+            */
 					}	
 				} else {
 					$weatherInfoString = $lines[0];
@@ -653,8 +656,8 @@ if($_REQUEST) {
               mysqli_real_escape_string($conn, $elevation) . "," .
               mysqli_real_escape_string($conn, $velocity) . "," .
               mysqli_real_escape_string($conn, $uncertainty) . "," .
-              mysqli_real_escape_string($conn, $millis)  . "," .
-              mysqli_real_escape_string($conn, $slaveMillis)  . ",'" .
+              mysqli_real_escape_string($conn, abs(intval($millis) & 0xFFFFFFFF))  . "," .
+              mysqli_real_escape_string($conn, abs(intval($slaveMillis)  & 0xFFFFFFFF))  . ",'" .
               mysqli_real_escape_string($conn, $hashedData) . "','" .
               mysqli_real_escape_string($conn, $payload) .  
               "')";

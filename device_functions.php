@@ -2060,7 +2060,7 @@ function processRawSolArkFile() {
                 ],
 
                 "0x3ffbb60c" => [
-                    [ 'key' => 'battery_power', 'offsets' => [2,3], 'type'=>'s16', 'endian'=>'little', 'multiplier'=>1 ]
+                    [ 'key' => 'battery_power', 'offsets' => [0,1], 'type'=>'s16', 'endian'=>'little', 'multiplier'=>1 ]
                 ],
             ]
         ],
@@ -2080,7 +2080,52 @@ function processRawSolArkFile() {
                     ]
                 ]
             ]
-        ]
+        ],
+        
+        
+            // CHARACTERISTIC #8 — PV voltages and currents (example)
+      "char8" => [
+          "start" => "Characteristic #8 30s_3 (3)",
+          "end"   => "0x3ffbb62c",
+          "lines" => [
+              "0x3ffbb60c" => [
+                  [ 'key' => 'pv1_voltage', 'offsets' => [0,1], 'type'=>'u16','endian'=>'little','multiplier'=>0.1 ],
+                  [ 'key' => 'pv2_voltage', 'offsets' => [2,3], 'type'=>'u16','endian'=>'little','multiplier'=>0.1 ],
+                  [ 'key' => 'pv1_current', 'offsets' => [4,5], 'type'=>'u16','endian'=>'little','multiplier'=>0.01 ],
+                  [ 'key' => 'pv2_current', 'offsets' => [6,7], 'type'=>'u16','endian'=>'little','multiplier'=>0.01 ]
+              ]
+          ]
+      ],
+
+      // CHARACTERISTIC #9 — grid and AC
+      "char9" => [
+          "start" => "Characteristic #9 30s_4 (4)",
+          "end"   => "0x3ffbb64c",
+          "lines" => [
+              "0x3ffbb62c" => [
+                  [ 'key' => 'grid_power', 'offsets' => [0,1], 'type'=>'s16','endian'=>'little','multiplier'=>1 ],
+                  [ 'key' => 'ac_load',    'offsets' => [2,3], 'type'=>'s16','endian'=>'little','multiplier'=>1 ],
+                  [ 'key' => 'ac_voltage', 'offsets' => [4,5], 'type'=>'u16','endian'=>'little','multiplier'=>0.1 ],
+                  [ 'key' => 'ac_current', 'offsets' => [6,7], 'type'=>'u16','endian'=>'little','multiplier'=>0.01 ]
+              ]
+          ]
+      ],
+
+      // CHARACTERISTIC #10 — battery temperature, internal temps
+      "char10" => [
+          "start" => "Characteristic #10 30s_5 (5)",
+          "end"   => "0x3ffbb66c",
+          "lines" => [
+              "0x3ffbb64c" => [
+                  [ 'key' => 'battery_temp',  'offsets' => [0,1], 'type'=>'s16','endian'=>'little','multiplier'=>0.1 ],
+                  [ 'key' => 'inverter_temp', 'offsets' => [2,3], 'type'=>'s16','endian'=>'little','multiplier'=>0.1 ],
+                  [ 'key' => 'pcb_temp',      'offsets' => [4,5], 'type'=>'s16','endian'=>'little','multiplier'=>0.1 ]
+              ]
+          ]
+      ]
+ 
+
+
     ];
 
     // ---- Initialize results ----
@@ -2102,7 +2147,7 @@ function processRawSolArkFile() {
     $currentBlock = null;
 
     while (($line = fgets($fh)) !== false) {
-
+        echo $line . "<br>";
         // Detect block start
         foreach ($config as $blockKey => $blockConf) {
             if (strpos($line, $blockConf['start']) !== false) {
@@ -2153,7 +2198,11 @@ function processRawSolArkFile() {
                 }
 
                 // Apply multiplier
-                $results[$key] = ($value) * $multi;
+                echo  $key . "=" . $value . "<br>";
+                if(!gvfa($key, $results)) {
+                  $results[$key] = ($value) * $multi;
+                }
+                $results["inverter_vampire"]  = $results["solar_power2"] + $results["solar_power1"] - $results["load_power"] + $results["battery_power"];
             }
         }
     }
