@@ -6,7 +6,6 @@ $database = "remote";
 $password = "your_awesome_password";
 $salt = "another random string";
 $encryptionScheme = '1234567890ABCDEF';
-
 $timezone = "America/New_York";
 $encryptionPassword = "your secret just for you";
 $cookiename = "email";
