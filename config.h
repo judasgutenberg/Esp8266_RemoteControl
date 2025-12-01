@@ -1,52 +1,62 @@
- 
-  
-extern const char* wifi_ssid; //mine was Moxee Hotspot83_2.4G
-extern const char* wifi_password;
-extern const char* storage_password; //to ensure someone doesn't store bogus data on your server. should match value in config.php
-extern const unsigned long long encryption_scheme;
-//data posted to remote server so we can keep a historical record
-//url will be in the form: http://your-server.com:80/weather/data.php?data=
-extern const char* url_get;
-extern const char* host_get;
-extern const char* sensor_config_string;
-extern const int sensor_id; //SENSORS! -- we support these: 7410 for ADT7410, 2320 for AHT20, 75 for LM75, 85 for BMP085, 180 for BMP180, 2301 for DHT 2301, 680 for BME680.  0 for no sensor. Multiple sensors are possible.
-extern const int sensor_i2c;
-extern const int consolidate_all_sensors_to_one_record;
-extern const int device_id; //3 really is watchdog
-extern int polling_granularity; //how often to poll backend in seconds, 4 makes sense
-extern int data_logging_granularity; //how often to store data in backend, 300 makes sense
-extern int offline_log_granularity; //will usually be paired with a value in fram_address
-extern int wifi_timeout;
-extern int offline_reconnect_interval;
-extern const int fram_index_size;
-extern const int fram_log_top;
+#ifndef CONFIG_H
+#define CONFIG_H
+// ===== AUTO-GENERATED CONFIGURATION INDEX DEFINITIONS =====
 
-extern const int connection_failure_retry_seconds;
-extern const int connection_retry_number;
+// String configuration options (0–11)
+#define STORAGE_PASSWORD 0
+#define URL_GET 1
+#define HOST_GET 2
+#define ENCRYPTION_SCHEME 3
+#define SENSOR_CONFIG_STRING 4
+#define PINS_TO_START_LOW 5
+#define WIFI_SSID 6
+#define WIFI_PASSWORD 7
+#define WIFI_SSID_1 8
+#define WIFI_PASSWORD_1 9
+#define WIFI_SSID_2 10
+#define WIFI_PASSWORD_2 11
 
-extern const int granularity_when_in_moxee_phase_0; //phase 0 is when it's just showing battery levels and is useless. reboot immediately!
-extern const int granularity_when_in_moxee_phase_1; //phase 1 is operational.  let it linger when failed
-extern const int number_of_hotspot_reboots_over_limited_timeframe_before_esp_reboot; //reboots moxee four times in 340 seconds (number below) and then reboots itself
-extern const int hotspot_limited_time_frame; //seconds
+// Integer configuration options (12+)
+#define SENSOR_ID 16
+#define SENSOR_I2C 17
+#define CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD 18
+#define DEVICE_ID 19
+#define POLLING_GRANULARITY 20
+#define DATA_LOGGING_GRANULARITY 21
+#define OFFLINE_LOG_GRANULARITY 22
+#define WIFI_TIMEOUT 23
+#define OFFLINE_RECONNECT_INTERVAL 24
+#define FRAM_INDEX_SIZE 25
+#define FRAM_LOG_TOP 26
+#define CONNECTION_FAILURE_RETRY_SECONDS 27
+#define CONNECTION_RETRY_NUMBER 28
+#define GRANULARITY_WHEN_IN_MOXEE_PHASE_0  29
+#define GRANULARITY_WHEN_IN_MOXEE_PHASE_1  30
 
-extern const int moxee_power_switch; //usually 14
-extern int deep_sleep_time_per_loop; //seconds. 
-extern int light_sleep_time_per_loop;
+#define NUMBER_OF_HOTSPOT_REBOOTS_OVER_LIMITED_TIMEFRAME_BEFORE_ESP_REBOOT 31
+#define HOTSPOT_LIMITED_TIME_FRAME 32
+#define MOXEE_POWER_SWITCH 33
+#define DEEP_SLEEP_TIME_PER_LOOP 34
+#define LIGHT_SLEEP_TIME_PER_LOOP 35
+#define SENSOR_DATA_PIN 36
+#define SENSOR_POWER_PIN 37
+#define SENSOR_SUB_TYPE 38
+#define IR_PIN 39
+#define INA219_ADDRESS 40
+#define FRAM_ADDRESS 41
+#define RTC_ADDRESS 42
+#define SLAVE_I2C 43
+#define SLAVE_PET_WATCHDOG_COMMAND 44
 
-extern const int sensor_data_pin;  
-extern const int sensor_power_pin;  
-// #define dhType DHT11 // DHT 11
-// #define dhType DHT22 // DHT 22, AM2302, AM2321
-extern const int sensor_sub_type;
+#define CONFIG_STRING_COUNT 16
+#define CONFIG_TOTAL_COUNT 45
+// ==========================================================
 
-extern const char pins_to_start_low[];
 
-extern const int ir_pin; 
-extern const int ina219_address;
-extern const int fram_address; //will usually be paired with a value in offline_log_granularity as a way to store offline log data
+extern char* cs[CONFIG_STRING_COUNT]; // string configuration values
+extern int ci[CONFIG_TOTAL_COUNT];    // integer configuration values
 
-extern const int rtc_address;
+void initConfig(void);
 
-extern int slave_i2c;
-extern const int slave_pet_watchdog_command;
 
+#endif
