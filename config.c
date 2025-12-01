@@ -1,5 +1,5 @@
 
-const char* wifi_ssid = "your-ssid"; //mine was Moxee Hotspot83_2.4G
+const char* wifi_ssid = "your-ssid"; //mine was Moxee Hotspot83_2.4G, or maybe cricket-g
 const char* wifi_password = "your-wifi-password";
 const char* storage_password = "your-storage-password"; //to ensure someone doesn't store bogus data on your server. should match value in the storage_password column in you user table for your user
 const unsigned long long encryption_scheme = 0x1234567890ABCDEF; //formerly called "salt"
