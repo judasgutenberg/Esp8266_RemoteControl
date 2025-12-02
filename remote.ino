@@ -1,4 +1,3 @@
- 
 /*
  * ESP8266 Remote Control. Also sends weather data from multiple kinds of sensors (configured in config.c) 
  * originally built on the basis of something I found on https://circuits4you.com
@@ -7,6 +6,7 @@
  * since those do not include watchdog behaviors
  */
  
+#include "config.h"
 
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
@@ -23,7 +23,6 @@
 #include <WiFiUdp.h>
 #include <SimpleMap.h>
  
-#include "config.h"
 
 #include "Zanshin_BME680.h"  // Include the BME680 Sensor library
 #include <DHT.h>
@@ -36,9 +35,11 @@
 
 #include <tuple>
 #include <cmath> 
- 
+#include <math.h> // for isnan, NAN
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
+
+
 
 //i created 12 of each sensor object in case we added lots more sensors via device_features
 //amusingly, this barely ate into memory at all
@@ -52,20 +53,14 @@ BME680_Class BME680[2];
 Adafruit_BMP085 BMP085d[2];
 Generic_LM75 LM75[2];
 Adafruit_BMP280 BMP280[2];
-IRsend irsend(ir_pin);
+IRsend irsend(ci[IR_PIN]);
 Adafruit_INA219* ina219;
-
 Adafruit_VL53L0X lox[4];
-
 Adafruit_FRAM_I2C fram;
 
-
-
- 
 uint16_t framIndexAddress = 0;   
 uint16_t  currentRecordCount = 0;
 
- 
 WiFiUDP ntpUDP; //i guess i need this for time lookup
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
@@ -103,6 +98,7 @@ bool debug = true;
 uint8_t outputMode = 0;
 String responseBuffer = "";
 static unsigned long lastPet = 0;
+int currentWifiIndex = 0;
 
 //https://github.com/spacehuhn/SimpleMap
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
@@ -125,7 +121,7 @@ char * deferredCommand = "";
 bool onePinAtATimeMode = false; //used when the server starts gzipping data and we can't make sense of it
 char requestNonJsonPinInfo = 1; //use to get much more compressed data double-delimited data from data.php if 1, otherwise if 0 it requests JSON
 int pinCursor = -1;
-bool connectionFailureMode = true;  //when we're in connectionFailureMode, we check connection much more than polling_granularity. otherwise, we check it every polling_granularity
+bool connectionFailureMode = true;  //when we're in connectionFailureMode, we check connection much more than ci[POLLING_GRANULARITY]. otherwise, we check it every ci[POLLING_GRANULARITY]
 
 int knownMoxeePhase = -1;  //-1 is unknown. 0 is stupid "show battery level", 1 is operational
 int moxeePhaseChangeCount = 0;
@@ -140,7 +136,7 @@ void handleRoot() {
 }
 
 void lookupLocalPowerData() {//sets the globals with the current reading from the ina219
-  if(ina219_address < 1) { //if we don't have a ina219 then do not bother
+  if(ci[INA219_ADDRESS] < 1) { //if we don't have a ina219 then do not bother
     return;
   }
   float shuntvoltage = 0;
@@ -159,226 +155,204 @@ void lookupLocalPowerData() {//sets the globals with the current reading from th
 
 }
 
-//returns a "*"-delimited string containing weather data, starting with temperature and ending with deviceFeatureId,    a url-encoded sensorName, and consolidateAllSensorsToOneRecord
-//we might send multiple-such strings (separated by "!") to the backend for multiple sensors on an ESP8266
-//i've made this to handle all the weather sensors i have so i can mix and match, though of course there are many others
-String weatherDataString(int sensor_id, int sensor_sub_type, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName, int ordinalOfOverwrite, int consolidateAllSensorsToOneRecord) {
-  double humidityValue = NULL;
-  double temperatureValue = NULL;
-  double pressureValue = NULL;
-  double gasValue = NULL;
-  int32_t humidityRaw = NULL;
-  int32_t temperatureRaw = NULL;
-  int32_t pressureRaw = NULL;
-  int32_t gasRaw = NULL;
-  int32_t alt  = NULL;
-  static char buf[16];
-  static uint16_t loopCounter = 0;  
-  String transmissionString = "";
-  String sensorValue;
-  double humidityFromSensor = NULL;
-  double temperatureFromSensor = NULL;
-  double pressureFromSensor = NULL;
-  double gasFromSensor = NULL;
- 
-  if(deviceFeatureId == NULL) {
-    objectCursor = 0;
+
+
+// helper: append either blank if value is NaN or the formatted number
+static int appendNullOrNumber(char *buf, size_t bufSize, size_t pos, double val, const char *fmt) {
+  if (pos >= (int)bufSize) return pos;
+  if (isnan(val)) {
+    // append nothing (empty field)
+    return pos; 
+  } else {
+    int n = snprintf(buf + pos, bufSize - pos, fmt, val);
+    if (n < 0) return pos;
+    pos += n;
+    return pos;
   }
-  if(sensor_id == 1) { //simple analog input. we can use subType to decide what kind of sensor it is!
-    //an even smarter system would somehow be able to put together multiple analogReads here
-    if(powerPin > -1) {
-      digitalWrite(powerPin, HIGH); //turn on sensor power. 
-    }
+}
+
+// helper: integer variant (prints nothing if val < 0)
+static int appendNullOrInt(char *buf, size_t bufSize, size_t pos, long val) {
+  if (pos >= (int)bufSize) return pos;
+  if (val < 0) {
+    return pos;
+  } else {
+    int n = snprintf(buf + pos, bufSize - pos, "%ld", val);
+    if (n < 0) return pos;
+    pos += n;
+    return pos;
+  }
+}
+
+// Safe, non-fragmenting rewrite of weatherDataString()
+// NOTE: This returns a String at the end only to keep compatibility with the rest of your code.
+// That single String alloc does not fragment the heap like repeated concatenations did.
+String weatherDataString(
+  int sensorId, int sensorSubtype, int dataPin, int powerPin, int i2c,
+  int deviceFeatureId, char objectCursor, String sensorName,
+  int ordinalOfOverwrite, int consolidateAllSensorsToOneRecord
+) {
+  // --- locals ---
+  double humidityFromSensor = NAN;
+  double temperatureFromSensor = NAN;
+  double pressureFromSensor = NAN;
+  double gasFromSensor = NAN;
+  String sensorValueStr = "";
+
+  if (deviceFeatureId == 0) objectCursor = 0;
+  
+  // sensor-reading branches (unchanged)
+  if (ci[SENSOR_ID] == 1) {
+    if (powerPin > -1) digitalWrite(powerPin, HIGH);
     delay(10);
-    double value = NULL;
-    if(i2c){
-      //i forget how we read a pin on an i2c slave. lemme see:
-      sensorValue = String(getPinValueOnSlave((char)i2c, (char)dataPin));
-    } else {
-      sensorValue = String(analogRead(dataPin));
-    }
-    /*
-    for(char i=0; i<12; i++){ //we have 12 separate possible sensor functions:
-      //temperature*pressure*humidity*gas*windDirection*windSpeed*windIncrement*precipitation*reserved1*reserved2*reserved3*reserved4
-      //if you have some particular sensor communicating through a pin and want it to be one of these
-      //you set sensor_sub_type to be the 0-based value in that *-delimited string
-      //i'm thinking i don't bother defining the reserved ones and just let them be application-specific and different in different implementations
-      //a good one would be radioactive counts per unit time
-      if((int)i == ordinalOfOverwrite) { //had been using sensor_sub_type
-        transmissionString = transmissionString + nullifyOrNumber(value);
-      }
-      transmissionString = transmissionString + "*";
-    }
-    */
-    //note, if temperature ends up being NULL, the record won't save. might want to tweak data.php to save records if it contains SOME data
-    
-    if(powerPin > -1) {
-      digitalWrite(powerPin, LOW);
-    }
-  } else if (sensor_id == 53) { //distance sensor, does not produce weather data
+    if (i2c) sensorValueStr = String(getPinValueOnSlave((char)i2c, (char)dataPin));
+    else sensorValueStr = String(analogRead(dataPin));
+    if (powerPin > -1) digitalWrite(powerPin, LOW);
+  } else if (ci[SENSOR_ID] == 53) {
     VL53L0X_RangingMeasurementData_t measure;
-    lox[objectCursor].rangingTest(&measure, false); // pass in 'true' to get debug data printout!
-    if (measure.RangeStatus != 4) {  // phase failures have incorrect data
-      sensorValue = String(measure.RangeMilliMeter);
-    } else {
-      sensorValue = "-1";
-    }
-    
-  } else if (sensor_id == 680) { //this is the primo sensor chip, so the trouble is worth it
-    //BME680 code:
+    lox[objectCursor].rangingTest(&measure, false);
+    if (measure.RangeStatus != 4) sensorValueStr = String(measure.RangeMilliMeter);
+    else sensorValueStr = "-1";
+  } else if (sensorId == 680) {
+    int32_t humidityRaw = 0, temperatureRaw = 0, pressureRaw = 0, gasRaw = 0;
     BME680[objectCursor].getSensorData(temperatureRaw, humidityRaw, pressureRaw, gasRaw);
-    //i'm not sure what all this is about, since i just copied it from the BME680 example:
-    sprintf(buf, "%4d %3d.%02d", (loopCounter - 1) % 9999,  // Clamp to 9999,
-            (int8_t)(temperatureRaw / 100), (uint8_t)(temperatureRaw % 100));   // Temp in decidegrees
-    sprintf(buf, "%3d.%03d", (int8_t)(humidityRaw / 1000),
-            (uint16_t)(humidityRaw % 1000));  // Humidity milli-pct
-    sprintf(buf, "%7d.%02d", (int16_t)(pressureRaw / 100),
-            (uint8_t)(pressureRaw % 100));  // Pressure Pascals
-    sprintf(buf, "%4d.%02d\n", (int16_t)(gasRaw / 100), (uint8_t)(gasRaw % 100));  // Resistance milliohms
-    humidityFromSensor = (double)humidityRaw/1000;
-    temperatureFromSensor = (double)temperatureRaw/100;
-    pressureFromSensor = (double)pressureRaw/100;
-    gasFromSensor = (double)gasRaw/100;  //all i ever get for this is 129468.6 and 8083.7
-  } else if (sensor_id == 2301) { //i love the humble DHT
-    if(powerPin > -1) {
-      digitalWrite(powerPin, HIGH); //turn on DHT power, in case you're doing that. 
-    }
+    humidityFromSensor = (double)humidityRaw / 1000.0;
+    temperatureFromSensor = (double)temperatureRaw / 100.0;
+    pressureFromSensor = (double)pressureRaw / 100.0;
+    gasFromSensor = (double)gasRaw / 100.0;
+  } else if (sensorId == 2301) {
+    if (powerPin > -1) digitalWrite(powerPin, HIGH);
     delay(10);
     humidityFromSensor = (double)dht[objectCursor]->readHumidity();
     temperatureFromSensor = (double)dht[objectCursor]->readTemperature();
-    if(powerPin > -1) {
-      digitalWrite(powerPin, LOW);//turn off DHT power. maybe it saves energy, and that's why MySpool did it this way
-    }
-  } else if(sensor_id == 280) {
+    if (powerPin > -1) digitalWrite(powerPin, LOW);
+  } else if (sensorId == 280) {
     temperatureFromSensor = BMP280[objectCursor].readTemperature();
-    pressureFromSensor = BMP280[objectCursor].readPressure()/100;
-  } else if(sensor_id == 2320) { //AHT20
-    sensors_event_t humidity, temp;
-    AHT[objectCursor].getEvent(&humidity, &temp);
-    humidityFromSensor = humidity.relative_humidity;
-    temperatureFromSensor = temp.temperature;
-  } else if(sensor_id == 7410) {  
+    pressureFromSensor = BMP280[objectCursor].readPressure() / 100.0;
+  } else if (sensorId == 2320) {
+    sensors_event_t humidityEvent, tempEvent;
+    AHT[objectCursor].getEvent(&humidityEvent, &tempEvent);
+    humidityFromSensor = humidityEvent.relative_humidity;
+    temperatureFromSensor = tempEvent.temperature;
+  } else if (sensorId == 7410) {
     temperatureFromSensor = adt7410[objectCursor].readTempC();
-  } else if(sensor_id == 180) { //so much trouble for a not-very-good sensor 
-    char status;
-    double p0,a;
-    status = BMP180[objectCursor].startTemperature();
-    if (status != 0)
-    {
-      // Wait for the measurement to complete:
-      delay(status);   
-      // Retrieve the completed temperature measurement:
-      // Note that the measurement is stored in the variable T.
-      // Function returns 1 if successful, 0 if failure.
-      status = BMP180[objectCursor].getTemperature(temperatureFromSensor);
-      if (status != 0)
-      {
-        status = BMP180[objectCursor].startPressure(3);
-        if (status != 0)
-        {
-          // Wait for the measurement to complete:
+  } else if (sensorId == 180) {
+    char status = BMP180[objectCursor].startTemperature();
+    if (status != 0) {
+      delay(status);
+      if (BMP180[objectCursor].getTemperature(temperatureFromSensor) != 0) {
+        if (BMP180[objectCursor].startPressure(3) != 0) {
           delay(status);
-          // Retrieve the completed pressure measurement:
-          // Note that the measurement is stored in the variable P.
-          // Note also that the function requires the previous temperature measurement (temperatureValue).
-          // (If temperature is stable, you can do one temperature measurement for a number of pressure measurements.)
-          // Function returns 1 if successful, 0 if failure.
-          status = BMP180[objectCursor].getPressure(pressureFromSensor,temperatureFromSensor);
-          if (status == 0) {
-            //Serial.println("error retrieving pressure measurement\n");
-          }
-        } else {
-          //Serial.println("error starting pressure measurement\n");
+          BMP180[objectCursor].getPressure(pressureFromSensor, temperatureFromSensor);
         }
-      } else {
-        //Serial.println("error retrieving temperature measurement\n");
       }
-    } else {
-      //Serial.println("error starting temperature measurement\n");
     }
-  } else if (sensor_id == 85) {
-    //https://github.com/adafruit/Adafruit-BMP085-Library
+  } else if (sensorId == 85) {
     temperatureFromSensor = BMP085d[objectCursor].readTemperature();
-    pressureFromSensor = BMP085d[objectCursor].readPressure()/100; //to get millibars!
-  } else if (sensor_id == 75) { //LM75, so ghetto
-    //https://electropeak.com/learn/interfacing-lm75-temperature-sensor-with-arduino/
+    pressureFromSensor = BMP085d[objectCursor].readPressure() / 100.0;
+  } else if (sensorId == 75) {
     temperatureFromSensor = LM75[objectCursor].readTemperatureC();
-  } else { //either sensor_id is NULL or 0
-    //no sensor at all
-  }
-  //ordinalOfOverwrite allows us to take the temperature (and other values) from one of the previous sensors and place it in an arbitrary position of the delimited string
-  if(ordinalOfOverwrite < 0) {
-    temperatureValue = temperatureFromSensor;
-    pressureValue = pressureFromSensor;
-    humidityValue = humidityFromSensor;
-    gasValue = gasFromSensor;
   } else {
-    if(sensorValue == NULL) {
-      if(sensor_sub_type == 1){
-        sensorValue = String(pressureFromSensor);
-      } else if (sensor_sub_type == 2){
-        sensorValue = String(humidityFromSensor);
-      } else if (sensor_sub_type == 3){
-        sensorValue = String(gasFromSensor);
-      } else {
-        sensorValue = String(temperatureFromSensor); 
-      }
+    // no sensor
+  }
+
+  // --- Move big buffers out of stack into static storage ---
+  const int FIELDS = 12;
+  const int FIELD_MAX = 48;   // reduced per-field size; adjust if you expect big fields
+  static char fields[FIELDS][FIELD_MAX];
+  for (int i = 0; i < FIELDS; ++i) fields[i][0] = '\0';
+
+  // fill fields (check bounds)
+  if (!isnan(temperatureFromSensor)) snprintf(fields[0], FIELD_MAX, "%.2f", temperatureFromSensor);
+  if (!isnan(pressureFromSensor))    snprintf(fields[1], FIELD_MAX, "%.2f", pressureFromSensor);
+  if (!isnan(humidityFromSensor))    snprintf(fields[2], FIELD_MAX, "%.2f", humidityFromSensor);
+  if (!isnan(gasFromSensor))         snprintf(fields[3], FIELD_MAX, "%.2f", gasFromSensor);
+
+  if (ordinalOfOverwrite >= 0 && ordinalOfOverwrite < FIELDS) {
+    String useVal = sensorValueStr;
+    if (useVal.length() == 0) {
+      if (sensorSubtype == 1) useVal = String(pressureFromSensor);
+      else if (sensorSubtype == 2) useVal = String(humidityFromSensor);
+      else if (sensorSubtype == 3) useVal = String(gasFromSensor);
+      else useVal = String(temperatureFromSensor);
     }
-    
+    strncpy(fields[ordinalOfOverwrite], useVal.c_str(), FIELD_MAX - 1);
+    fields[ordinalOfOverwrite][FIELD_MAX - 1] = '\0';
   }
-  //
-  if(sensor_id > 0) {
 
-    
-    transmissionString = nullifyOrNumber(temperatureValue) + "*" + nullifyOrNumber(pressureValue);
-    transmissionString = transmissionString + "*" + nullifyOrNumber(humidityValue);
-    transmissionString = transmissionString + "*" + nullifyOrNumber(gasValue);
-    transmissionString = transmissionString + "*************"; //for esoteric weather sensors that measure wind and precipitation.  the last four are reserved for now
+  // big transmission buffer (static)
+  static char tx[1600]; // increase if required
+  size_t pos = 0;
+  const size_t bufSize = sizeof(tx);
 
-    if(offlineMode) {
-      if(millis() - lastOfflineLog > 1000 * offline_log_granularity) {
-        unsigned long millisVal = millis();
-        //store that data in the FRAM:
-        if(fram_address > 0) {
-          std::vector<std::tuple<uint8_t, uint8_t, double>> framWeatherRecord;
-          addOfflineRecord(framWeatherRecord, 0, 5, temperatureValue); 
-          addOfflineRecord(framWeatherRecord, 1, 5, pressureValue); 
-          addOfflineRecord(framWeatherRecord, 2, 5, humidityValue); 
-          //addOfflineRecord(framWeatherRecord, 28, 2, (double)millis()); 
-          if(rtc_address > 0) {
-            addOfflineRecord(framWeatherRecord, 32, 2, currentRTCTimestamp());
-            Serial.println(currentRTCTimestamp());
-          } else {
-            addOfflineRecord(framWeatherRecord, 32, 2, timeClient.getEpochTime());
-            
-          }
-          //addOfflineRecord(framWeatherRecord, 8, 6, 3.141592653872233); 
-          writeRecordToFRAM(framWeatherRecord);
-          Serial.println("Saved a record to FRAM.");
-          Serial.print(transmissionString);
-          Serial.println(millisVal);
-          //Serial.println("stored millis:");
-          //printHexBytes(millisVal);
+  // append first 4 fields with '*' delimiter, safe checks after every write
+  for (int i = 0; i < 4; ++i) {
+    if (i > 0) {
+      if (pos + 1 < bufSize) tx[pos++] = '*';
+      else { tx[bufSize - 1] = '\0'; return String(tx); }
+    }
+    if (fields[i][0] != '\0') {
+      int n = snprintf(tx + pos, bufSize - pos, "%s", fields[i]);
+      if (n < 0) { tx[bufSize - 1] = '\0'; return String(tx); }
+      pos += (size_t)n;
+      if (pos >= bufSize) { tx[bufSize - 1] = '\0'; return String(tx); }
+    }
+  }
+
+  // append reserved stars (13 chars)
+  if (pos + 13 < bufSize) {
+    memcpy(tx + pos, "*************", 13);
+    pos += 13;
+  } else {
+    tx[bufSize - 1] = '\0';
+    return String(tx);
+  }
+
+  // offline FRAM logging (keeps existing behavior)
+  if (offlineMode) {
+    if (millis() - lastOfflineLog > 1000 * ci[OFFLINE_LOG_GRANULARITY]) {
+      unsigned long millisVal = millis();
+      if (ci[FRAM_ADDRESS] > 0) {
+        std::vector<std::tuple<uint8_t, uint8_t, double>> framWeatherRecord;
+        if (!isnan(temperatureFromSensor)) addOfflineRecord(framWeatherRecord, 0, 5, temperatureFromSensor);
+        if (!isnan(pressureFromSensor))    addOfflineRecord(framWeatherRecord, 1, 5, pressureFromSensor);
+        if (!isnan(humidityFromSensor))    addOfflineRecord(framWeatherRecord, 2, 5, humidityFromSensor);
+        if (ci[RTC_ADDRESS] > 0) {
+          addOfflineRecord(framWeatherRecord, 32, 2, currentRTCTimestamp());
+          Serial.println(currentRTCTimestamp());
+        } else {
+          addOfflineRecord(framWeatherRecord, 32, 2, timeClient.getEpochTime());
         }
-        lastOfflineLog = millis();
+        writeRecordToFRAM(framWeatherRecord);
+        Serial.println("Saved a record to FRAM.");
+        // print trimmed tx for info
+        tx[(pos < bufSize - 1) ? pos : bufSize - 1] = '\0';
+        Serial.print(tx);
+        Serial.println(millisVal);
       }
-    } 
+      lastOfflineLog = millis();
+    }
   }
-  //using delimited data instead of JSON to keep things simple
-  transmissionString = transmissionString + nullifyOrInt(sensor_id) + "*" + nullifyOrInt(deviceFeatureId) + "*" + sensorName + "*" + nullifyOrInt(consolidateAllSensorsToOneRecord); 
-  if(ordinalOfOverwrite > -1) {
-    transmissionString = replaceNthElement(transmissionString, ordinalOfOverwrite, String(sensorValue), '*');
-    //Serial.println("ORDINAL OF OVERWRITE EFFECTS!");
-    //Serial.println(transmissionString);
+
+  // append sensor id, device feature id, name, consolidate flag
+  int n = snprintf(tx + pos, bufSize - pos, "%ld*%d*%s*%d",
+                   (long)ci[SENSOR_ID], deviceFeatureId, sensorName.c_str(), consolidateAllSensorsToOneRecord);
+  if (n > 0) {
+    pos += (size_t)n;
+    if (pos >= bufSize) pos = bufSize - 1;
   }
-  return transmissionString;
+
+  tx[(pos < bufSize) ? pos : (bufSize - 1)] = '\0';
+  return String(tx); // single String allocation only
 }
+
+
 
 void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int pinNumber, int powerPin) {
   //i've made all these inputs generic across different sensors, though for now some apply and others do not on some sensors
   //for example, you can set the i2c address of a BME680 or a BMP280 but not a BMP180.  you can specify any GPIO as a data pin for a DHT
   int objectCursor = 0;
-  if(sensorObjectCursor->has((String)sensor_id)) {
+  if(sensorObjectCursor->has((String)ci[SENSOR_ID])) {
     objectCursor = sensorObjectCursor->get((String)sensorIdLocal);;
   } 
   if(sensorIdLocal == 1) { //simple analog input
@@ -448,154 +422,231 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
     }
   }
 
-  sensorObjectCursor->put((String)sensorIdLocal, objectCursor + 1); //we keep track of how many of a particular sensor_id we use
+  sensorObjectCursor->put((String)sensorIdLocal, objectCursor + 1); //we keep track of how many of a particular ci[SENSOR_ID] we use
 }
 
 void handleWeatherData() {
-  String transmissionString = weatherDataString(sensor_id, sensor_sub_type, sensor_data_pin, sensor_power_pin, sensor_i2c, NULL, 0, deviceName, -1, consolidate_all_sensors_to_one_record);
+  String transmissionString = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, -1, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
   server.send(200, "text/plain", transmissionString); //Send values only to client ajax request
 }
 
-void compileAndSendDeviceData(String weatherData, String whereWhenData, String powerData, bool doPinCursorChanges, uint16_t fRAMOrdinal) {
-  String transmissionString = "";
-  if(weatherData != "") {
-    transmissionString = weatherData;
-  } else {
-    if(sensor_id > -1) {
-      transmissionString = weatherDataString(sensor_id, sensor_sub_type, sensor_data_pin, sensor_power_pin, sensor_i2c, NULL, 0, deviceName, -1, consolidate_all_sensors_to_one_record);
+void compileAndSendDeviceData(
+    const String& weatherData,
+    const String& whereWhenData,
+    const String& powerData,
+    bool doPinCursorChanges,
+    uint16_t fRAMOrdinal
+) {
+    // Large fixed buffer (adjust as needed)
+    static char tx[2048];
+    int pos = 0;
+
+    // --- WEATHER DATA -------------------------------------------------
+    if (weatherData.length() > 0) {
+        pos += snprintf(tx + pos, sizeof(tx) - pos, "%s", weatherData.c_str());
+    } else if (ci[SENSOR_ID] > -1) {
+        String s = weatherDataString(
+            ci[SENSOR_ID], ci[SENSOR_SUB_TYPE],
+            ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN],
+            ci[SENSOR_I2C], NULL, 0,
+            deviceName, -1, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]
+        );
+        pos += snprintf(tx + pos, sizeof(tx) - pos, "%s", s.c_str());
     }
-  }
-  //add the data for any additional sensors, delimited by '!' for each sensor
-  String additionalSensorData = handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), false);
-  if(transmissionString == "") {
-    additionalSensorData = additionalSensorData.substring(1); //trim off leading "!" if there is no default sensor data
-  }
-  transmissionString = transmissionString + additionalSensorData;
-  //here we need whereandwhen
-  if(whereWhenData != "") {
-    transmissionString = transmissionString + "|" + whereWhenData;
-  } else {
-    transmissionString = transmissionString + "|" +  "*" + millis() + "*" + timeClient.getEpochTime() + "*";
-  }
-  if(latencyCount > 0) {
-      transmissionString = transmissionString + (1000 * latencySum)/latencyCount;
-  };
-  transmissionString = transmissionString + "*****"; //this is where latitude*longitude*elevation*velocity*uncertainty go.
-  if(slave_i2c > 0) {
-    transmissionString = transmissionString + "*" + slaveData();     
-  }
-  
-  //where devicepowerinfo goes:
-  if(powerData != "") {
-    transmissionString = transmissionString + "|" + powerData;
-  } else {
-    transmissionString = transmissionString + "|" + "*" + measuredVoltage + "*" + measuredAmpage;
-  }
 
-  
-  //future expansion:
-  transmissionString = transmissionString + "|||";
-  //extraInfo:
-  transmissionString = transmissionString + "|";
+    // --- ADDITIONAL SENSOR DATA ---------------------------------------
+    String additionalSensor = handleDeviceNameAndAdditionalSensors(
+        (char*)additionalSensorInfo.c_str(), false
+    );
 
-  if(ipAddress.indexOf(' ') > 0) { //i was getting HTML header info mixed in for some reason
-    ipAddress = ipAddress.substring(0, ipAddress.indexOf(' '));
-  }
-  String ipAddressToUse = ipAddress;
-  if(ipAddressAffectingChange != "") {
-     ipAddressToUse = ipAddressAffectingChange;
-     changeSourceId = 1;
-  }
-
-  if(onePinAtATimeMode) {
-    if(doPinCursorChanges) {
-      pinCursor++;
-      if(pinCursor >= pinTotal) {
-        pinCursor = 0;
-      }
+    if (pos == 0 && additionalSensor.startsWith("!")) {
+        additionalSensor.remove(0, 1);   // strip leading !
     }
-  }
-  transmissionString = transmissionString + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddressToUse + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson + "*" + changeSourceId;
-  //pin state info:
-  transmissionString = transmissionString + "|" + joinMapValsOnDelimiter(pinMap, "*"); //also send pin as they are known back to the server
-  //moxee reboot info:
-  transmissionString = transmissionString + "|" + joinValsOnDelimiter(moxeeRebootTimes, "*", 10);
-  //other server-relevant info as needed, delimited by *
-  //transmissionString = transmissionString + "|" + lastCommandId + "*" + pinCursor + "*" + (int)localSource + "*" + ipAddressToUse + "*" + (int)requestNonJsonPinInfo + "*" + (int)justDeviceJson + "*" + changeSourceId + "*" + timeClient.getEpochTime();
 
+    pos += snprintf(tx + pos, sizeof(tx) - pos, "%s", additionalSensor.c_str());
 
-  
-  if(!offlineMode) {
-    sendRemoteData(transmissionString, "getDeviceData", fRAMOrdinal); //if fRAMOrdinal == 0xFFFF then don't worry about FRAM
-  }
+    // --- WHERE / WHEN -------------------------------------------------
+    if (whereWhenData.length() > 0) {
+        pos += snprintf(tx + pos, sizeof(tx) - pos, "|%s", whereWhenData.c_str());
+    } else {
+        pos += snprintf(tx + pos, sizeof(tx) - pos, "|*%lu*%lu*",
+                        millis(), timeClient.getEpochTime());
+    }
+
+    // latency
+    if (latencyCount > 0) {
+        pos += snprintf(tx + pos, sizeof(tx) - pos, "%u",
+                        (1000 * latencySum) / latencyCount);
+    }
+
+    // latitude*longitude*elevation*velocity*uncertainty placeholder
+    pos += snprintf(tx + pos, sizeof(tx) - pos, "*****");
+
+    // slave I2C data
+    if (ci[SLAVE_I2C] > 0) {
+        String s = slaveData();
+        pos += snprintf(tx + pos, sizeof(tx) - pos, "*%s", s.c_str());
+    }
+
+    // --- POWER DATA ----------------------------------------------------
+    if (powerData.length() > 0) {
+        pos += snprintf(tx + pos, sizeof(tx) - pos, "|%s", powerData.c_str());
+    } else {
+        pos += snprintf(tx + pos, sizeof(tx) - pos, "|*%f*%f",
+                        measuredVoltage, measuredAmpage);
+    }
+
+    // future expansion
+    pos += snprintf(tx + pos, sizeof(tx) - pos, "|||");
+
+    // --- EXTRA INFO ----------------------------------------------------
+    pos += snprintf(tx + pos, sizeof(tx) - pos, "|");
+
+    // clean up IP address
+    String ipToUse = ipAddress;
+    int sp = ipToUse.indexOf(' ');
+    if (sp > 0) ipToUse.remove(sp);
+
+    if (ipAddressAffectingChange.length() > 0) {
+        ipToUse = ipAddressAffectingChange;
+        changeSourceId = 1;
+    }
+
+    // pin cursor update
+    if (onePinAtATimeMode && doPinCursorChanges) {
+        pinCursor++;
+        if (pinCursor >= pinTotal) pinCursor = 0;
+    }
+
+    pos += snprintf(tx + pos, sizeof(tx) - pos,
+        "%d*%d*%d*%s*%d*%d*%d",
+        lastCommandId, pinCursor, (int)localSource,
+        ipToUse.c_str(), (int)requestNonJsonPinInfo,
+        (int)justDeviceJson, changeSourceId
+    );
+
+    // pinMap
+    {
+        String s = joinMapValsOnDelimiter(pinMap, "*");
+        pos += snprintf(tx + pos, sizeof(tx) - pos, "|%s", s.c_str());
+    }
+
+    // moxee reboot info
+    {
+        String s = joinValsOnDelimiter(moxeeRebootTimes, "*", 10);
+        pos += snprintf(tx + pos, sizeof(tx) - pos, "|%s", s.c_str());
+    }
+
+    // --- SEND OUT ------------------------------------------------------
+    if (!offlineMode) {
+        sendRemoteData(String(tx), "getDeviceData", fRAMOrdinal);
+    }
 }
 
+
 void wiFiConnect() {
-  lastOfflineReconnectAttemptTime = millis();
+  const int NUM_WIFI_CREDENTIALS = 5;
   unsigned long lastDotTime = 0;
+  unsigned long lastOfflineReconnectAttemptTime = millis();
+  bool connected = false;
+
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
   WiFi.setAutoReconnect(false);
-  WiFi.persistent(false); //hopefully keeps my flash from being corrupted, see: https://rayshobby.net/wordpress/esp8266-reboot-cycled-caused-by-flash-memory-corruption-fixed/
-  WiFi.begin(wifi_ssid, wifi_password);    
-  Serial.println();
-  // Wait for connection
-  int wiFiSeconds = 0;
-  bool initialAttemptPhase = true;
-  while (WiFi.status() != WL_CONNECTED) {
-     if (millis() - lastOfflineReconnectAttemptTime > 10000) { // 10s timeout
-      WiFi.disconnect();
-      WiFi.begin(wifi_ssid, wifi_password);
-      lastOfflineReconnectAttemptTime = millis();
-      Serial.print("*");
+  WiFi.persistent(false);
+
+  for (int attempt = 0; attempt < NUM_WIFI_CREDENTIALS; attempt++) {
+    int ssidIndex = (currentWifiIndex + attempt) % NUM_WIFI_CREDENTIALS;
+    const char* wifiSsid = cs[WIFI_SSID + ssidIndex * 2];
+    const char* wifiPassword = cs[WIFI_PASSWORD + ssidIndex * 2];
+
+    Serial.printf("\nAttempting WiFi connection to: %s\n", wifiSsid);
+
+    WiFi.disconnect(true);
+    unsigned long disconnectTime = millis();
+    // short wait for disconnect to take effect (non-blocking)
+    while (millis() - disconnectTime < 100) {
+      yield();
     }
-    if (WiFi.status() == WL_NO_SSID_AVAIL) {
-      Serial.println("SSID not found.");
-      if (fram_address > 0) {
+
+    WiFi.begin(wifiSsid, wifiPassword);
+
+    int wiFiSeconds = 0;
+    bool initialAttemptPhase = true;
+    lastOfflineReconnectAttemptTime = millis();
+
+    while (WiFi.status() != WL_CONNECTED) {
+      unsigned long now = millis();
+
+      // print dot every second
+      if (now - lastDotTime >= 1000) {
+        Serial.print(".");
+        lastDotTime = now;
+        wiFiSeconds++;
+      }
+
+      // print asterisk and retry every 10 seconds
+      if (now - lastOfflineReconnectAttemptTime > 10000) {
+        WiFi.disconnect();
+        WiFi.begin(wifiSsid, wifiPassword);
+        lastOfflineReconnectAttemptTime = now;
+        Serial.print("*");
+      }
+
+      if (WiFi.status() == WL_NO_SSID_AVAIL) {
+        Serial.printf("\nSSID not found: %s\n", wifiSsid);
+        break; // try next SSID
+      }
+
+      // timeout handling
+      uint32_t wifiTimeoutToUse = ci[WIFI_TIMEOUT];
+      if (knownMoxeePhase == 0)
+        wifiTimeoutToUse = ci[GRANULARITY_WHEN_IN_MOXEE_PHASE_0];
+      else
+        wifiTimeoutToUse = ci[GRANULARITY_WHEN_IN_MOXEE_PHASE_1];
+
+      if (wiFiSeconds > wifiTimeoutToUse) {
+        Serial.println("");
+        Serial.println("WiFi taking too long");
+        if(ci[MOXEE_POWER_SWITCH] > 0) {
+          Serial.println(", rebooting Moxee");
+          rebootMoxee();
+        }
+        Serial.println(", trying another");
+        wiFiSeconds = 0;
+        initialAttemptPhase = false;
+        break; // move to next SSID
+      }
+
+      if (!initialAttemptPhase &&
+          wiFiSeconds > (ci[WIFI_TIMEOUT] / 2) &&
+          ci[FRAM_ADDRESS] > 0) {
         offlineMode = true;
+        haveReconnected = false;
         return;
       }
+
+      yield(); // keep Wi-Fi background tasks alive
     }
-    if (millis() - lastDotTime >= 1000) {
-      Serial.print(".");
-      lastDotTime = millis();
-      wiFiSeconds++;
+
+    if (WiFi.status() == WL_CONNECTED) {
+      connected = true;
+      currentWifiIndex = (ssidIndex + 1) % NUM_WIFI_CREDENTIALS; // next SSID next time
+      Serial.printf("\nConnected to %s, IP: %s\n", wifiSsid,
+                    WiFi.localIP().toString().c_str());
+      break;
     }
-    uint32_t wifiTimeoutToUse = wifi_timeout;
-    if(knownMoxeePhase == 0) {
-      wifiTimeoutToUse = granularity_when_in_moxee_phase_0;// used to be granularity_when_in_connection_failure_mode;
-    } else { //if unknown or operational, let's go slowly!
-      wifiTimeoutToUse = granularity_when_in_moxee_phase_1;
-    }
-    if(wiFiSeconds > wifiTimeoutToUse) {
-      Serial.println("");
-      Serial.println("WiFi taking too long, rebooting Moxee");
-      rebootMoxee();
-      WiFi.begin(wifi_ssid, wifi_password);  
-      wiFiSeconds = 0; //if you don't do this, you'll be stuck in a rebooting loop if WiFi fails once
-      initialAttemptPhase = false;
-    }
-    if(!initialAttemptPhase && wiFiSeconds > (wifi_timeout/2)  && fram_address > 0) {
-      //give up for the time being
-      offlineMode = true;
-      haveReconnected = false;
-      Serial.print("Entering offline mode...");
-      return;
-    }
-    yield();
   }
-  wifiOnTime = millis();
-  if(offlineMode){
+
+  if (!connected) {
+    Serial.println("\nAll WiFi attempts failed.");
+    if (ci[FRAM_ADDRESS] > 0)
+      offlineMode = true;
+    haveReconnected = false;
+  } else {
+    offlineMode = false;
     haveReconnected = true;
   }
-  knownMoxeePhase = 1;
-  offlineMode = false;
-  Serial.println("");
-  Serial.print("Connected to ");
-  Serial.println(wifi_ssid);
-  Serial.print("IP address: ");
-  ipAddress =  WiFi.localIP().toString();
-  Serial.println(WiFi.localIP());  //IP address assigned to your ESP
 }
 
 //SEND DATA TO A REMOTE SERVER TO STORE IN A DATABASE----------------------------------------------------
@@ -606,7 +657,7 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
   //String mode = "getDeviceData";
   //most of the time we want to getDeviceData, not saveData. the former picks up remote control activity. the latter sends sensor data
   if(mode == "getDeviceData") {
-    if(millis() - lastDataLogTime > data_logging_granularity * 1000 || lastDataLogTime == 0) {
+    if(millis() - lastDataLogTime > ci[DATA_LOGGING_GRANULARITY] * 1000 || lastDataLogTime == 0) {
       mode = "saveData";
     }
     if(deviceName == "") {
@@ -615,14 +666,14 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
   }
 
   String encryptedStoragePassword = encryptStoragePassword(datastring);
-  url = (String)url_get + "?k2=" + encryptedStoragePassword + "&device_id=" + device_id + "&mode=" + mode + "&data=" + urlEncode(datastring, true);
+  url = (String)cs[URL_GET] + "?k2=" + encryptedStoragePassword + "&device_id=" + ci[DEVICE_ID] + "&mode=" + mode + "&data=" + urlEncode(datastring, true);
  
   if(debug) {
     Serial.println("\r>>> Connecting to host: ");
   }
-  //Serial.println(host_get);
+  //Serial.println(cs[HOST_GET]);
   int attempts = 0;
-  while(!clientGet.connect(host_get, httpGetPort) && attempts < connection_retry_number) {
+  while(!clientGet.connect(cs[HOST_GET], httpGetPort) && attempts < ci[CONNECTION_RETRY_NUMBER]) {
     attempts++;
     cleanup();
     delay(200);
@@ -633,14 +684,14 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
     Serial.println();
   }
   cleanup();
-  if (attempts >= connection_retry_number) {
+  if (attempts >= ci[CONNECTION_RETRY_NUMBER]) {
     Serial.print("Connection failed, moxee rebooted: ");
     connectionFailureTime = millis();
     connectionFailureMode = true;
     rebootMoxee();
 
     if(debug) {
-      Serial.print(host_get);
+      Serial.print(cs[HOST_GET]);
       Serial.println();
     }
  
@@ -653,7 +704,7 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
      }
      clientGet.println("GET " + url + " HTTP/1.1");
      clientGet.print("Host: ");
-     clientGet.println(host_get);
+     clientGet.println(cs[HOST_GET]);
      clientGet.println("User-Agent: ESP8266/1.0");
      clientGet.println("Accept-Encoding: identity");
      clientGet.println("Connection: close\r\n\r\n");
@@ -662,10 +713,10 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
        if (millis() - timeoutP > 10000) {
         //let's try a simpler connection and if that fails, then reboot moxee
         //clientGet.stop();
-        if(clientGet.connect(host_get, httpGetPort)){
+        if(clientGet.connect(cs[HOST_GET], httpGetPort)){
          clientGet.println("GET / HTTP/1.1");
          clientGet.print("Host: ");
-         clientGet.println(host_get);
+         clientGet.println(cs[HOST_GET]);
          clientGet.println("User-Agent: ESP8266/1.0");
          clientGet.println("Accept-Encoding: identity");
          clientGet.println("Connection: close\r\n\r\n");
@@ -736,9 +787,9 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
           Serial.println(retLine);
         }
         //set the global string; we'll just use that to store our data about addtional sensors
-        if(sensor_config_string != "") {
-          retLine = replaceFirstOccurrenceAtChar(retLine, String(sensor_config_string), '|');
-          //retLine = retLine + "|" + String(sensor_config_string); //had been doing it this way; not as good!
+        if(cs[SENSOR_CONFIG_STRING] != "") {
+          retLine = replaceFirstOccurrenceAtChar(retLine, String(cs[SENSOR_CONFIG_STRING]), '|');
+          //retLine = retLine + "|" + String(cs[SENSOR_CONFIG_STRING]); //had been doing it this way; not as good!
         }
         additionalSensorInfo = retLine;
         //once we have it
@@ -807,12 +858,12 @@ void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
     if(fRAMordinal != 0xFFFF) {
       dumpMemoryStats(99);
       yield();
-      if(fram_address > 0) {
+      if(ci[FRAM_ADDRESS] > 0) {
         changeDelimiterOnRecord(fRAMordinal, 0xFE);
       }
     }
    
-  } //if (attempts >= connection_retry_number)....else....    
+  } //if (attempts >= ci[CONNECTION_RETRY_NUMBER])....else....    
   clientGet.stop();
 }
 
@@ -828,7 +879,7 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
   int consolidateAllSensorsToOneRecord = 0;
   String out = "";
   int objectCursor = 0;
-  int oldsensor_id = -1;
+  int oldSensorId = -1;
   int ordinalOfOverwrite = 0;
   String sensorName;
   splitString(sensorData, '|', additionalSensorArray, 12);
@@ -848,10 +899,10 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
       sensorName = specificSensorData[6];
       ordinalOfOverwrite = specificSensorData[7].toInt();
       consolidateAllSensorsToOneRecord = specificSensorData[8].toInt();
-      if(oldsensor_id != sensorIdLocal) { //they're sorted by sensor_id, so the objectCursor needs to be set to zero if we're seeing the first of its type
+      if(oldSensorId != sensorIdLocal) { //they're sorted by ci[SENSOR_ID], so the objectCursor needs to be set to zero if we're seeing the first of its type
         objectCursor = 0;
       }
-      if(sensorIdLocal == sensor_id) { //this particular additional sensor is the same type as the base (non-additional) sensor, so we have to pre-start it higher
+      if(sensorIdLocal == ci[SENSOR_ID]) { //this particular additional sensor is the same type as the base (non-additional) sensor, so we have to pre-start it higher
         objectCursor++;
       }
       if(intialize) {
@@ -861,7 +912,7 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
         out = out + "!" + weatherDataString(sensorIdLocal, sensorSubTypeLocal, pinNumber, powerPin, i2c, deviceFeatureId, objectCursor, sensorName, ordinalOfOverwrite, consolidateAllSensorsToOneRecord);
       }
       objectCursor++;
-      oldsensor_id = sensorIdLocal;
+      oldSensorId = sensorIdLocal;
     }
   }
  return out;
@@ -1138,8 +1189,8 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
   if(commandId) {
     //Serial.println(command);
     if (command == "reboot slave") {
-      if(slave_i2c > 0) {
-        requestLong(slave_i2c, 128);
+      if(ci[SLAVE_I2C] > 0) {
+        requestLong(ci[SLAVE_I2C], 128);
         textOut("Slave rebooted\n");
       }
     } else if(command.indexOf("reboot") > -1){
@@ -1152,8 +1203,8 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
         textOut("Rebooting... \n");
       } else {
         if(command.indexOf("watchdog") > -1){
-          if(slave_i2c > 0) {
-            requestLong(slave_i2c, 134);
+          if(ci[SLAVE_I2C] > 0) {
+            requestLong(ci[SLAVE_I2C], 134);
           }
         } else {
          rebootEsp();
@@ -1164,52 +1215,52 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
     } else if(command == "one pin at a time") {
       onePinAtATimeMode = (boolean)commandData.toInt(); //setting a global.
     } else if(command == "sleep seconds per loop") {
-      deep_sleep_time_per_loop = commandData.toInt(); //setting a global.
+      ci[DEEP_SLEEP_TIME_PER_LOOP] = commandData.toInt(); //setting a global.
     } else if(command == "snooze seconds per loop") {
-      light_sleep_time_per_loop = commandData.toInt(); //setting a global.
+      ci[LIGHT_SLEEP_TIME_PER_LOOP] = commandData.toInt(); //setting a global.
     } else if(command == "polling granularity") {
-      polling_granularity = commandData.toInt(); //setting a global.
+      ci[POLLING_GRANULARITY] = commandData.toInt(); //setting a global.
     } else if(command == "logging granularity") {
-      data_logging_granularity = commandData.toInt(); //setting a global.
+      ci[DATA_LOGGING_GRANULARITY] = commandData.toInt(); //setting a global.
     } else if(command == "clear latency average") {
       latencyCount = 0;
       latencySum = 0;
     } else if(command == "ir") {
       sendIr(commandData); //ir data must be comma-delimited
     } else if(command == "clear fram") {
-      if(fram_address > 0) {
+      if(ci[FRAM_ADDRESS] > 0) {
         clearFramLog(); 
       }
     } else if(command == "dump fram") {
-      if(fram_address > 0) {
+      if(ci[FRAM_ADDRESS] > 0) {
         displayAllFramRecords(); 
       }
     } else if(command == "dump fram hex") {
-      if(fram_address > 0) {
+      if(ci[FRAM_ADDRESS] > 0) {
         if(!commandData || commandData == "") {
-          hexDumpFRAM(2 * fram_index_size, lastRecordSize, 15);
+          hexDumpFRAM(2 * ci[FRAM_INDEX_SIZE], lastRecordSize, 15);
         } else {
           hexDumpFRAM(commandData.toInt(), lastRecordSize, 15);
         }
       }
     } else if(command == "dump fram hex#") {
-      if(fram_address > 0) {
+      if(ci[FRAM_ADDRESS] > 0) {
         hexDumpFRAMAtIndex(commandData.toInt(), lastRecordSize, 15);
       }
     } else if(command == "swap fram") {
-      if(fram_address > 0) {
-        swapFRAMContents(fram_index_size * 2, 554, lastRecordSize);
+      if(ci[FRAM_ADDRESS] > 0) {
+        swapFRAMContents(ci[FRAM_INDEX_SIZE] * 2, 554, lastRecordSize);
       }
     } else if(command == "dump fram record") {
-      if(fram_address > 0) {
+      if(ci[FRAM_ADDRESS] > 0) {
         displayFramRecord((uint16_t)commandData.toInt()); 
       }
     } else if(command == "dump fram index") {
-      if(fram_address > 0) {
+      if(ci[FRAM_ADDRESS] > 0) {
         dumpFramRecordIndexes();
       }
     } else if (command == "set date") {
-      if(rtc_address > 0) {
+      if(ci[RTC_ADDRESS] > 0) {
         String dateArray[7];
         splitString(commandData, ',', dateArray, 7);
         setDateDs1307((byte) dateArray[0].toInt(), 
@@ -1222,21 +1273,21 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       }
                    
     } else if (command ==  "get date") {
-      if(rtc_address > 0) {
+      if(ci[RTC_ADDRESS] > 0) {
         printRTCDate();
       }
 
     } else if(command == "get watchdog info") {
-      if(slave_i2c > 0) {
-        long ms      = requestLong(slave_i2c, 129); // millis
-        long lastReboot = requestLong(slave_i2c, 130); // last watchdog reboot time
-        long rebootCount  = requestLong(slave_i2c, 131); // reboot count
-        long lastWePetted  = requestLong(slave_i2c, 132);
-        long lastPetAtBite  = requestLong(slave_i2c, 133);
+      if(ci[SLAVE_I2C] > 0) {
+        long ms      = requestLong(ci[SLAVE_I2C], 129); // millis
+        long lastReboot = requestLong(ci[SLAVE_I2C], 130); // last watchdog reboot time
+        long rebootCount  = requestLong(ci[SLAVE_I2C], 131); // reboot count
+        long lastWePetted  = requestLong(ci[SLAVE_I2C], 132);
+        long lastPetAtBite  = requestLong(ci[SLAVE_I2C], 133);
         textOut("Watchdog millis: " + String(ms) + "; Last reboot at: " + String(lastReboot) + " (" + msTimeAgo(ms, lastReboot) + "); Reboot count: " + String(rebootCount) + "; Last petted: " + String(lastWePetted) + " (" + msTimeAgo(ms, lastWePetted) + "); Bit " + String(lastPetAtBite) + " seconds after pet\n"); 
       }
     } else if(command == "get watchdog data") {
-      if(slave_i2c > 0) {
+      if(ci[SLAVE_I2C] > 0) {
         textOut(slaveData() + "\n");
       } 
       
@@ -1254,6 +1305,47 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       debug = true;
     } else if (command == "clear debug") {
       debug = false;
+    } else if (command.startsWith("set")) { //setting items in the configuration
+      String rest = command.substring(3);  // 3 = length of "set"
+      rest.trim(); 
+      String key, value;
+      int spaceIndex = rest.indexOf(' '); // find first space
+      if (spaceIndex != -1) {
+        key = rest.substring(0, spaceIndex);        // everything before space
+        value = rest.substring(spaceIndex + 1);    // everything after space
+        value.trim(); // remove extra spaces
+      } else {
+        key = rest;   // no space found, all is key
+        value = "";   // no value
+      }   
+      if(isInteger(key)) {
+        int configIndex = key.toInt();
+        if(configIndex>=CONFIG_STRING_COUNT) {
+          ci[configIndex] = value.toInt();
+        } else {   
+          char buffer[50];    
+          value.toCharArray(buffer, sizeof(buffer));
+          cs[configIndex] = strdup(buffer); 
+        }
+        textOut("Configuration set to: " + value + "\n");
+      } else {
+        textOut("Configuration '" + key + "' does not exist:\n");
+      }
+    } else if (command.startsWith("get")) { //getting items in the configuration
+      String rest = command.substring(3);  // 3 = length of "set"
+      rest.trim(); 
+      if(isInteger(rest)) {
+        int configIndex = rest.toInt();
+        String value;
+        if(configIndex>=CONFIG_STRING_COUNT) {
+          value = String(ci[configIndex]);
+        } else {
+          value = String(cs[configIndex]);
+        }
+        textOut("Sought configuration: " + value + "\n");
+      } else {
+        textOut("Configuration '" + rest + "' does not exist:\n");
+      }
     } else {
       //lastCommandLogId = 0; //don't do this!!
     }
@@ -1261,6 +1353,24 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       lastCommandId = commandId;
     }
   }
+}
+
+bool isInteger(const String &s) {
+  if (s.length() == 0) return false;
+
+  unsigned int i = 0;
+
+  // Optional sign
+  if (s[0] == '-' || s[0] == '+') {
+    if (s.length() == 1) return false; // String is only "+" or "-"
+    i = 1;
+  }
+
+  for (; i < s.length(); i++) {
+    if (!isDigit(s[i])) return false;
+  }
+
+  return true;
 }
 
 void sendIr(String rawDataStr) {
@@ -1293,11 +1403,11 @@ void sendIr(String rawDataStr) {
 }
 
 String slaveData() {
-    long ms      = requestLong(slave_i2c, 129); // millis
-    long lastReboot = requestLong(slave_i2c, 130); // last watchdog reboot time
-    long rebootCount  = requestLong(slave_i2c, 131); // reboot count
-    long lastWePetted  = requestLong(slave_i2c, 132);
-    long lastPetAtBite  = requestLong(slave_i2c, 133);
+    long ms      = requestLong(ci[SLAVE_I2C], 129); // millis
+    long lastReboot = requestLong(ci[SLAVE_I2C], 130); // last watchdog reboot time
+    long rebootCount  = requestLong(ci[SLAVE_I2C], 131); // reboot count
+    long lastWePetted  = requestLong(ci[SLAVE_I2C], 132);
+    long lastPetAtBite  = requestLong(ci[SLAVE_I2C], 133);
     return String(ms) + "*" + String(lastReboot) + "*" + String(rebootCount) + "*" + String(lastWePetted) + "*" + String(lastPetAtBite);
 }
 
@@ -1307,10 +1417,10 @@ void rebootEsp() {
 }
 
 void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so here i have a little algorithm to reboot it.
-  if(moxee_power_switch > -1) {
-    digitalWrite(moxee_power_switch, LOW);
+  if(ci[MOXEE_POWER_SWITCH] > -1) {
+    digitalWrite(ci[MOXEE_POWER_SWITCH], LOW);
     delay(7000);
-    digitalWrite(moxee_power_switch, HIGH);
+    digitalWrite(ci[MOXEE_POWER_SWITCH], HIGH);
   }
   delay(5000);
   if(knownMoxeePhase == 0) {
@@ -1329,28 +1439,45 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
   //be out of phase with the cellular hotspot
   shiftArrayUp(moxeeRebootTimes,  timeClient.getEpochTime(), 10);
   moxeeRebootCount++;
-  if(moxeeRebootCount > 9 && fram_address > 0) { //don't bother with offline mode if we can't log data
+  if(moxeeRebootCount > 9 && ci[FRAM_ADDRESS] > 0) { //don't bother with offline mode if we can't log data
     offlineMode = true;
     moxeeRebootCount = 0;
-  } else if(moxeeRebootCount > number_of_hotspot_reboots_over_limited_timeframe_before_esp_reboot) { //kind of a watchdog
+  } else if(moxeeRebootCount > ci[NUMBER_OF_HOTSPOT_REBOOTS_OVER_LIMITED_TIMEFRAME_BEFORE_ESP_REBOOT]) { //kind of a watchdog
     rebootEsp();
   }
 }
 
+int splitAndParseInts(const char* input, int* outputArray, int maxCount) {
+  int count = 0;
+  char buffer[128]; // adjust to max expected string length
+  strncpy(buffer, input, sizeof(buffer) - 1);
+  buffer[sizeof(buffer) - 1] = '\0'; // ensure null termination
+
+  char* token = strtok(buffer, ",");
+  while (token != nullptr && count < maxCount) {
+    outputArray[count++] = atoi(token);
+    token = strtok(nullptr, ",");
+  }
+
+  return count;
+}
+
 //SETUP----------------------------------------------------
 void setup(void){
-  
+  initConfig();
   //set specified pins to start low immediately, keeping devices from turning on
-  for(int i=0; i<10; i++) {
-    if((int)pins_to_start_low[i] == -1) {
+  int pinsToStartLow[10];
+  int numToStartLow = splitAndParseInts(cs[PINS_TO_START_LOW], pinsToStartLow, 10);
+  for(int i=0; i<numToStartLow; i++) {
+    if((int)pinsToStartLow[i] == -1) {
       break;
     }
-    pinMode((int)pins_to_start_low[i], OUTPUT);
-    digitalWrite((int)pins_to_start_low[i], LOW);
+    pinMode((int)pinsToStartLow[i], OUTPUT);
+    digitalWrite(pinsToStartLow[i], LOW);
   }
-  if(moxee_power_switch > -1) {
-    pinMode(moxee_power_switch, OUTPUT);
-    digitalWrite(moxee_power_switch, HIGH);
+  if(ci[MOXEE_POWER_SWITCH] > -1) {
+    pinMode(ci[MOXEE_POWER_SWITCH], OUTPUT);
+    digitalWrite(ci[MOXEE_POWER_SWITCH], HIGH);
   }
   Serial.begin(115200, SERIAL_8N1, SERIAL_FULL);
   Serial.setRxBufferSize(256);  
@@ -1360,7 +1487,7 @@ void setup(void){
  
   Wire.begin();
   //Wire.setClock(50000); // Set I2C speed to 100kHz (default is 400kHz)
-  startWeatherSensors(sensor_id,  sensor_sub_type, sensor_i2c, sensor_data_pin, sensor_power_pin);
+  startWeatherSensors(ci[SENSOR_ID],  ci[SENSOR_SUB_TYPE], ci[SENSOR_I2C], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN]);
   wiFiConnect();
   server.on("/", handleRoot);      //Displays a form where devices can be turned on and off and the outputs of sensors
   server.on("/readLocalData", localShowData);
@@ -1377,16 +1504,16 @@ void setup(void){
   // GMT -1 = -3600
   // GMT 0 = 0
   timeClient.setTimeOffset(0);
-  if(ina219_address > 0) {
-    ina219 = new Adafruit_INA219(ina219_address);
+  if(ci[INA219_ADDRESS] > 0) {
+    ina219 = new Adafruit_INA219(ci[INA219_ADDRESS]);
     if (!ina219->begin()) {
       Serial.println("Failed to find INA219 chip");
     } else {
       ina219->setCalibration_16V_400mA();
     }
   }
-  if(fram_address > 0) {
-    if (!fram.begin(fram_address)) {
+  if(ci[FRAM_ADDRESS] > 0) {
+    if (!fram.begin(ci[FRAM_ADDRESS])) {
       Serial.println("Could not find FRAM (or EEPROM).");
     } else {
       Serial.println("FRAM or EEPROM found");
@@ -1396,7 +1523,7 @@ void setup(void){
         lastRecordSize = getRecordSizeFromFRAM(0xFFFF);
       }
   }
-  if(ir_pin > -1) {
+  if(ci[IR_PIN] > -1) {
     //irsend.begin(); //do this elsewhere?
   }
 
@@ -1415,10 +1542,10 @@ void loop(){
   unsigned long nowTime = millis() + timeOffset;
 
 
-  if (slave_pet_watchdog_command > 0 && (nowTime - lastPet) > 20000) { 
+  if (ci[SLAVE_PET_WATCHDOG_COMMAND] > 0 && (nowTime - lastPet) > 20000) { 
   
-    Wire.beginTransmission(slave_i2c);
-    Wire.write((uint8_t)slave_pet_watchdog_command);  // command ID for "pet watchdog"
+    Wire.beginTransmission(ci[SLAVE_I2C]);
+    Wire.write((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND]);  // command ID for "pet watchdog"
     Wire.endTransmission();
     yield();
     //feedbackPrint("pet\n");
@@ -1471,16 +1598,16 @@ void loop(){
   }
   timeClient.update();
   
-  int granularityToUse = polling_granularity;
+  int granularityToUse = ci[POLLING_GRANULARITY];
   if(connectionFailureMode) {
     if(knownMoxeePhase == 0) {
-      granularityToUse = granularity_when_in_moxee_phase_0;// used to be granularity_when_in_connection_failure_mode;
+      granularityToUse = ci[GRANULARITY_WHEN_IN_MOXEE_PHASE_0];// used to be granularity_when_in_connection_failure_mode;
     } else { //if unknown or operational, let's go slowly!
-      granularityToUse = granularity_when_in_moxee_phase_1;
+      granularityToUse = ci[GRANULARITY_WHEN_IN_MOXEE_PHASE_1];
     }
   }
   //if we've been up for a week or there have been lots of moxee reboots in a short period of time, reboot esp8266
-  if(nowTime > 1000 * 86400 * 7 || nowTime < hotspot_limited_time_frame * 1000  && moxeeRebootCount >= number_of_hotspot_reboots_over_limited_timeframe_before_esp_reboot) {
+  if(nowTime > 1000 * 86400 * 7 || nowTime < ci[HOTSPOT_LIMITED_TIME_FRAME] * 1000  && moxeeRebootCount >= ci[NUMBER_OF_HOTSPOT_REBOOTS_OVER_LIMITED_TIMEFRAME_BEFORE_ESP_REBOOT]) {
     //let's not do this anymore
     //Serial.print("MOXEE REBOOT COUNT: ");
     //Serial.print(moxeeRebootCount);
@@ -1490,11 +1617,11 @@ void loop(){
   //Serial.print(granularityToUse);
   //Serial.print(" ");
   //Serial.println(connectionFailureTime);
-  if(nowTime < granularityToUse * 1000 || (nowTime - lastPoll)/1000 > granularityToUse || connectionFailureTime>0 && connectionFailureTime + connection_failure_retry_seconds * 1000 > nowTime) {  //send data to backend server every <polling_granularity> seconds or so
+  if(nowTime < granularityToUse * 1000 || (nowTime - lastPoll)/1000 > granularityToUse || connectionFailureTime>0 && connectionFailureTime + ci[CONNECTION_FAILURE_RETRY_SECONDS] * 1000 > nowTime) {  //send data to backend server every <ci[POLLING_GRANULARITY]> seconds or so
     //Serial.print("Connection failure time: ");
     //Serial.println(connectionFailureTime);
     //Serial.print("  Connection failure calculation: ");
-    //Serial.print(connectionFailureTime>0 && connectionFailureTime + connection_failure_retry_seconds * 1000);
+    //Serial.print(connectionFailureTime>0 && connectionFailureTime + ci[CONNECTION_FAILURE_RETRY_SECONDS] * 1000);
     //Serial.println("Epoch time:");
     //Serial.println(timeClient.getEpochTime());
 
@@ -1505,8 +1632,8 @@ void loop(){
 
   lookupLocalPowerData();
 
-  if(offlineMode || fram_address < 1){
-    if(nowTime - lastOfflineReconnectAttemptTime > 1000 * offline_reconnect_interval) {
+  if(offlineMode || ci[FRAM_ADDRESS] < 1){
+    if(nowTime - lastOfflineReconnectAttemptTime > 1000 * ci[OFFLINE_RECONNECT_INTERVAL]) {
       //time to attempt a reconnection
      if(WiFi.status() != WL_CONNECTED) {
       wiFiConnect();
@@ -1514,7 +1641,7 @@ void loop(){
       
     }
   } else {
-    if(rtc_address > 0) { //if we have an RTC and we are not offline, sync RTC
+    if(ci[RTC_ADDRESS] > 0) { //if we have an RTC and we are not offline, sync RTC
       if (nowTime - lastRtcSyncTime > 86400000 || lastRtcSyncTime == 0) {
         syncRTCWithNTP();
         lastRtcSyncTime = nowTime;
@@ -1523,7 +1650,7 @@ void loop(){
   }
   if(haveReconnected) {
     //try to send stored records to the backend
-    if(fram_address > 0){
+    if(ci[FRAM_ADDRESS] > 0){
       //dumpMemoryStats(101);
       sendAStoredRecordToBackend();
     } else {
@@ -1533,14 +1660,14 @@ void loop(){
 
   if(canSleep) {
     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
-    if(deep_sleep_time_per_loop > 0) {
+    if(ci[DEEP_SLEEP_TIME_PER_LOOP] > 0) {
       textOut("sleeping...\n");
-      ESP.deepSleep(deep_sleep_time_per_loop * 1e6); 
+      ESP.deepSleep(ci[DEEP_SLEEP_TIME_PER_LOOP] * 1e6); 
     }
      //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
-    if(light_sleep_time_per_loop > 0) {
+    if(ci[LIGHT_SLEEP_TIME_PER_LOOP] > 0) {
       textOut("snoozing...\n");
-      sleepForSeconds(light_sleep_time_per_loop);
+      sleepForSeconds(ci[LIGHT_SLEEP_TIME_PER_LOOP]);
       textOut("awakening...\n");
       wiFiConnect();
     }
@@ -1847,7 +1974,7 @@ void setDateDs1307(byte second,        // 0-59
   Serial.print(dayOfWeek);
   Serial.println(" ");
    */
-   Wire.beginTransmission(rtc_address);
+   Wire.beginTransmission(ci[RTC_ADDRESS]);
    Wire.write(0);
    Wire.write(decToBcd(second));    // 0 to bit 7 starts the clock
    Wire.write(decToBcd(minute));
@@ -1870,11 +1997,11 @@ void getDateDs1307(byte *second,
           byte *year)
 {
   // Reset the register pointer
-  Wire.beginTransmission(rtc_address);
+  Wire.beginTransmission(ci[RTC_ADDRESS]);
   Wire.write(0);
   Wire.endTransmission();
   
-  Wire.requestFrom(rtc_address, 7);
+  Wire.requestFrom(ci[RTC_ADDRESS], 7);
 
   // A few of these need masks because certain bits are control bits
   *second     = bcdToDec(Wire.read() & 0x7f);
@@ -1923,11 +2050,11 @@ void cleanup(){
 
 void writeRecordToFRAM(const std::vector<std::tuple<uint8_t, uint8_t, double>>& record) {
   //Serial.println(currentRecordCount);
-  if (currentRecordCount >= fram_index_size) {
+  if (currentRecordCount >= ci[FRAM_INDEX_SIZE]) {
     currentRecordCount = 0;
   }
   uint16_t recordStartAddress = (currentRecordCount == 0) 
-    ? framIndexAddress + (fram_index_size * 2)  // Leave space for the index table
+    ? framIndexAddress + (ci[FRAM_INDEX_SIZE] * 2)  // Leave space for the index table
     : read16(framIndexAddress + uint16_t((currentRecordCount -1) * 2)) + lastRecordSize + 1; //record.size is 4 now?
 
   //Serial.println(record.size());
@@ -2013,7 +2140,7 @@ void writeRecordToFRAM(const std::vector<std::tuple<uint8_t, uint8_t, double>>& 
 uint16_t readLastFramRecordSentIndex() {
   uint8_t countBytes[2];
   noInterrupts();
-  fram.read(fram_log_top + 2, countBytes, 2); // Read 2 bytes from address fram_log_top + 2
+  fram.read(ci[FRAM_LOG_TOP] + 2, countBytes, 2); // Read 2 bytes from address ci[FRAM_LOG_TOP] + 2
   interrupts();
   delay(10);
   // Reassemble the uint16_t from the high and low bytes
@@ -2025,7 +2152,7 @@ uint16_t readLastFramRecordSentIndex() {
 uint16_t readRecordCountFromFRAM() {
   uint8_t countBytes[2];
   noInterrupts();
-  fram.read(fram_log_top, countBytes, 2); // Read 2 bytes from address fram_log_top
+  fram.read(ci[FRAM_LOG_TOP], countBytes, 2); // Read 2 bytes from address ci[FRAM_LOG_TOP]
   interrupts();
   delay(10);
   // Reassemble the uint16_t from the high and low bytes
@@ -2044,8 +2171,8 @@ void writeLastFRAMRecordSentIndex(uint16_t index) {
   uint8_t low = countBytes[1];
   noInterrupts();
   delay(100);
-  fram.write(fram_log_top + 2, &hi, 1); // Write 2 bytes 
-  fram.write(fram_log_top + 3, &low, 1); // Write 2 bytes 
+  fram.write(ci[FRAM_LOG_TOP] + 2, &hi, 1); // Write 2 bytes 
+  fram.write(ci[FRAM_LOG_TOP] + 3, &low, 1); // Write 2 bytes 
   interrupts();
 }
 
@@ -2059,12 +2186,12 @@ void writeRecordCountToFRAM(uint16_t recordCount) {
   uint8_t low = countBytes[1];
   noInterrupts();
   delay(5);
-  fram.write(fram_log_top, &hi, 1); // Write 2 bytes 
-  fram.write(fram_log_top + 1, &low, 1); // Write 2 bytes 
+  fram.write(ci[FRAM_LOG_TOP], &hi, 1); // Write 2 bytes 
+  fram.write(ci[FRAM_LOG_TOP] + 1, &low, 1); // Write 2 bytes 
   interrupts(); 
   //when we do this, we ALSO want to update lastFramRecordSentIndex so that it will point to the record immediately after the one we just saved so that we can maximize rescued data should we lose the internet
   uint16_t nextRecord = recordCount+1;
-  if(nextRecord >= fram_index_size)
+  if(nextRecord >= ci[FRAM_INDEX_SIZE])
   {
     nextRecord = 0;
   }
@@ -2081,7 +2208,7 @@ void sendAStoredRecordToBackend() {
   String weatherDataRowString = makeAsteriskString(19);
   String whereWhenDataRowString = makeAsteriskString(8);
   String powerDataRowString = makeAsteriskString(2);
-  if(positionInFram >= fram_index_size){ //it might be too big if it overflows or way off if it was never written
+  if(positionInFram >= ci[FRAM_INDEX_SIZE]){ //it might be too big if it overflows or way off if it was never written
     positionInFram = 0;
   }
   //Serial.println(positionInFram);
@@ -2110,9 +2237,9 @@ void sendAStoredRecordToBackend() {
     compileAndSendDeviceData(weatherDataRowString, whereWhenDataRowString, powerDataRowString, true, positionInFram);
   } else {
     positionInFram++;
-    //now save the ordinal in fram_log_top + 2
+    //now save the ordinal in ci[FRAM_LOG_TOP] + 2
     fRAMRecordsSkipped++;
-    if(fRAMRecordsSkipped > fram_index_size) {
+    if(fRAMRecordsSkipped > ci[FRAM_INDEX_SIZE]) {
       fRAMRecordsSkipped = 0;
       haveReconnected = false; //we sent all the stored records, so we're all done being reconnected
     }
@@ -2145,14 +2272,14 @@ void changeDelimiterOnRecord(uint16_t index, uint8_t newDelimiter) {
   fram.write(location, buffer, bytesPerLine); 
   interrupts();
   //index++;
-  //now save the ordinal in fram_log_top + 2
+  //now save the ordinal in ci[FRAM_LOG_TOP] + 2
   writeLastFRAMRecordSentIndex(index + 1);
 }
 
 //FRAM MEMORY MAP:
 /*
-fram_log_top: number of FRAM records
-fram_log_top + 2: ordinal of last FRAM record sent to backend
+ci[FRAM_LOG_TOP]: number of FRAM records
+ci[FRAM_LOG_TOP] + 2: ordinal of last FRAM record sent to backend
 */
 
 uint16_t read16(uint16_t addr) {
@@ -2168,7 +2295,7 @@ void readRecordFromFRAM(uint16_t recordIndex, std::vector<std::tuple<uint8_t, ui
   record.clear();
   record.reserve(200);
   uint16_t addr = recordStartAddress;
-  while (addr < fram_log_top) {
+  while (addr < ci[FRAM_LOG_TOP]) {
     uint8_t ordinal;
     uint8_t type;
     fram.read(addr, &ordinal, 1); // Read 1 byte for the ordinal
@@ -2227,7 +2354,7 @@ uint16_t getRecordSizeFromFRAM(uint16_t recordStartAddress) {
     recordStartAddress = read16(indexAddress);
   }
   uint16_t size = 0;
-  while (size + recordStartAddress < fram_log_top) {
+  while (size + recordStartAddress < ci[FRAM_LOG_TOP]) {
     yield();
     uint8_t readBytes[2];
     fram.read(recordStartAddress + size, readBytes, 2); // Read ordinal (1 byte)
@@ -2623,7 +2750,7 @@ String oldEncryptStoragePassword(String datastring) {
   itoa(timeStamp, buffer, 10);  // Base 10 conversion
   String timestampString = String(buffer);
   byte checksum = calculateChecksum(datastring);
-  String encryptedStoragePassword = urlEncode(simpleEncrypt(simpleEncrypt((String)storage_password, timestampString.substring(1,9), salt), String((char)countSetBitsInString(datastring)), String((char)checksum)), false);
+  String encryptedStoragePassword = urlEncode(simpleEncrypt(simpleEncrypt((String)cs[STORAGE_PASSWORD], timestampString.substring(1,9), salt), String((char)countSetBitsInString(datastring)), String((char)checksum)), false);
   return encryptedStoragePassword;
 }
 */
@@ -2636,25 +2763,25 @@ uint8_t rotateRight(uint8_t value, uint8_t count) {
     return (value >> count) | (value << (8 - count));
 }
 
-//let's define how encryption_scheme works:
-//a data_string is passed in as is the storage_password.  we want to be able to recreate the storage_password server-side, so no can be lossy on the storage_password
+//let's define how cs[ENCRYPTION_SCHEME] works:
+//a data_string is passed in as is the cs[STORAGE_PASSWORD].  we want to be able to recreate the cs[STORAGE_PASSWORD] server-side, so no can be lossy on the cs[STORAGE_PASSWORD]
 //it's all based on nibbles. two operations are performed by byte from these two nibbles, upper nibble first, then lower nibble
 //00: do nothing (byte unchanged)
-//01: xor storage_password at this position with count_of_zeroes in dataString
-//02: xor between storage_password at this position and timestampString at this position.
-//03: xor between storage_password at this position and data_string  at this position.
-//04: xor storage_password with ROL data_string at this position
-//05: xor storage_password with ROR data_string at this position
-//06: xor storage_password with checksum of entire data_string;
-//07: xor storage_password with checksum of entire stringified timestampString
-//08: xor storage_password with set_bits of entire data_string
-//09  xor storage_password with set_bits in entire timestampString
-//10: ROL this position of storage_password 
-//11: ROR this position of storage_password 
-//12: ROL this position of storage_password twice
-//13: ROR this position of storage_password twice
-//14: invert byte of storage_password at this position (zeroes become ones and ones become zeroes)
-//15: xor storage_password at this position with count_of_zeroes in full timestampString
+//01: xor cs[STORAGE_PASSWORD] at this position with count_of_zeroes in dataString
+//02: xor between cs[STORAGE_PASSWORD] at this position and timestampString at this position.
+//03: xor between cs[STORAGE_PASSWORD] at this position and data_string  at this position.
+//04: xor cs[STORAGE_PASSWORD] with ROL data_string at this position
+//05: xor cs[STORAGE_PASSWORD] with ROR data_string at this position
+//06: xor cs[STORAGE_PASSWORD] with checksum of entire data_string;
+//07: xor cs[STORAGE_PASSWORD] with checksum of entire stringified timestampString
+//08: xor cs[STORAGE_PASSWORD] with set_bits of entire data_string
+//09  xor cs[STORAGE_PASSWORD] with set_bits in entire timestampString
+//10: ROL this position of cs[STORAGE_PASSWORD] 
+//11: ROR this position of cs[STORAGE_PASSWORD] 
+//12: ROL this position of cs[STORAGE_PASSWORD] twice
+//13: ROR this position of cs[STORAGE_PASSWORD] twice
+//14: invert byte of cs[STORAGE_PASSWORD] at this position (zeroes become ones and ones become zeroes)
+//15: xor cs[STORAGE_PASSWORD] at this position with count_of_zeroes in full timestampString
 String encryptStoragePassword(String datastring) {
     int timeStamp = timeClient.getEpochTime();
     char buffer[10];
@@ -2664,10 +2791,19 @@ String encryptStoragePassword(String datastring) {
     //Serial.print(timestampString);
     //Serial.println("<=known to frontend");
     //timestampString = "0123227";
-    // Convert encryption_scheme into an array of nibbles
-    uint8_t nibbles[16];  // 64-bit number has 16 nibbles
+    // Convert cs[ENCRYPTION_SCHEME] into an array of nibbles
+    uint8_t nibbles[16];  // 16 hex characters → 16 nibbles
+    
     for (int i = 0; i < 16; i++) {
-        nibbles[i] = (encryption_scheme >> (4 * (15 - i))) & 0xF;  // Extract nibble
+        char c = cs[ENCRYPTION_SCHEME][i];
+        if (c >= '0' && c <= '9')
+            nibbles[i] = c - '0';
+        else if (c >= 'A' && c <= 'F')
+            nibbles[i] = 10 + (c - 'A');
+        else if (c >= 'a' && c <= 'f')
+            nibbles[i] = 10 + (c - 'a');
+        else
+            nibbles[i] = 0; // or handle invalid char
     }
     // Process nibbles
     String processedString = "";
@@ -2682,8 +2818,7 @@ String encryptStoragePassword(String datastring) {
     uint8_t timestampStringSetBits = countSetBitsInString(timestampString);
     uint8_t dataStringZeroCount = countZeroes(datastring);
     uint8_t timestampStringZeroCount = countZeroes(timestampString);
-    for (int i = 0; i < strlen(storage_password) * 2; i++) {
-  
+    for (int i = 0; i < strlen(cs[STORAGE_PASSWORD]) * 2; i++) {
         thisByteOfDataString = datastring[counter % datastring.length()];
         thisByteOfTimestampString = timestampString[counter % timestampString.length()];
         /*
@@ -2695,8 +2830,9 @@ String encryptStoragePassword(String datastring) {
         Serial.print(":");
         Serial.println(counter % timestampString.length());
         */
+        
         if(i % 2 == 0) {
-          thisByteOfStoragePassword = storage_password[counter];
+          thisByteOfStoragePassword = cs[STORAGE_PASSWORD][counter];
         } else {
           thisByteOfStoragePassword = thisByteResult;
         }
@@ -2733,6 +2869,8 @@ String encryptStoragePassword(String datastring) {
           thisByteResult = ~thisByteOfStoragePassword; //invert the byte
         } else if(nibble == 15) { 
           thisByteResult = thisByteOfStoragePassword ^ timestampStringZeroCount;
+        } else {
+          thisByteResult = thisByteOfStoragePassword;
         }
         
         // Advance the counter every other nibble
@@ -2742,6 +2880,7 @@ String encryptStoragePassword(String datastring) {
             sprintf(hexStr, "%02X", thisByteResult); 
             String paddedHexStr = String(hexStr); 
             processedString += paddedHexStr;  // Append nibble as hex character
+             
             /*
             Serial.print("%");
             Serial.print(thisByteOfStoragePassword);
