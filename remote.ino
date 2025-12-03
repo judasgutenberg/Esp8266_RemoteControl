@@ -1476,24 +1476,6 @@ int splitAndParseInts(const char* input, int* outputArray, int maxCount) {
   return count;
 }
 
-bool waitForSlaveReady() {
-    for (int i = 0; i < 200; i++) {
-        Wire.beginTransmission(ci[SLAVE_I2C]);
-        uint8_t result = Wire.endTransmission();  // no data written
-
-        if (result == 0) {
-            Serial.println("Slave ACKed address!");
-            return true;
-        } else {
-            Serial.print("No ACK, code = ");
-            Serial.println(result);
-        }
-
-        delay(50);
-    }
-    return false;
-}
-
 //SETUP----------------------------------------------------
 void setup(){
   delay(55);
@@ -1505,6 +1487,8 @@ void setup(){
   if(!loadAllConfigFromEEPROM(false)) {
     Serial.println("No config found in EEPROM");
     //initConfig();
+  } else {
+    Serial.println("Configuration retrieved from slave EEPROM");
   }
   //set specified pins to start low immediately, keeping devices from turning on
   int pinsToStartLow[10];
