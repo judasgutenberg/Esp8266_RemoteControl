@@ -1,0 +1,20 @@
+#ifndef EEPROM_CONFIG_H
+#define EEPROM_CONFIG_H
+
+#include <stdint.h>
+#include <Wire.h>
+#include "config.h"     // <-- gives access to ci[] and cs[]
+
+void saveAllConfigToEEPROM();
+bool loadAllConfigFromEEPROM(bool justDisplay);
+
+int readIntFromEEPROM(uint16_t addr);
+long readLongFromEEPROM(uint16_t addr);
+void writeIntToEEPROM(uint16_t addr, int value);
+void writeStringToEEPROM(uint16_t addr, const char* s);
+void testWrite();
+void testRead();
+void setAddress(uint16_t addr);
+void readStringFromSlaveEEPROM(uint16_t addr, char* buffer, size_t maxLen);
+void readBytesFromSlaveEEPROM(uint16_t addr, char* buffer, size_t maxLen);
+#endif
