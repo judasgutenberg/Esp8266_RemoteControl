@@ -6,7 +6,8 @@
  * since those do not include watchdog behaviors
  */
  
-#include "config.h"
+#include "i2cslave.h"
+
 
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
@@ -649,6 +650,7 @@ void wiFiConnect() {
   }
 }
 
+
 //SEND DATA TO A REMOTE SERVER TO STORE IN A DATABASE----------------------------------------------------
 void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
   WiFiClient clientGet;
@@ -1290,7 +1292,15 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       if(ci[SLAVE_I2C] > 0) {
         textOut(slaveData() + "\n");
       } 
-      
+    } else if (command ==  "save entire config") {
+      if(ci[SLAVE_I2C] > 0) {
+        saveAllConfigToEEPROM();
+        textOut("Configuration saved\n");
+      }
+    } else if (command ==  "init config") {
+      if(ci[SLAVE_I2C] > 0) {
+        initConfig();
+      }
     } else if (command ==  "get uptime") {
       textOut("Last booted: " + timeAgo("") + "\n");
     } else if (command ==  "get wifi uptime") {
@@ -1305,6 +1315,10 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       debug = true;
     } else if (command == "clear debug") {
       debug = false;
+    } else if (command.startsWith("readeeprom")) {
+      char buffer[500]; 
+      readBytesFromSlaveEEPROM((uint16_t)commandData.toInt(), buffer, 500);
+      textOut(String(buffer));
     } else if (command.startsWith("set")) { //setting items in the configuration
       String rest = command.substring(3);  // 3 = length of "set"
       rest.trim(); 
@@ -1439,7 +1453,7 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
   //be out of phase with the cellular hotspot
   shiftArrayUp(moxeeRebootTimes,  timeClient.getEpochTime(), 10);
   moxeeRebootCount++;
-  if(moxeeRebootCount > 9 && ci[FRAM_ADDRESS] > 0) { //don't bother with offline mode if we can't log data
+  if(moxeeRebootCount > 9 && ci[FRAM_ADDRESS] > 0) { //don't bother with offlineode if we cat log data
     offlineMode = true;
     moxeeRebootCount = 0;
   } else if(moxeeRebootCount > ci[NUMBER_OF_HOTSPOT_REBOOTS_OVER_LIMITED_TIMEFRAME_BEFORE_ESP_REBOOT]) { //kind of a watchdog
@@ -1462,9 +1476,36 @@ int splitAndParseInts(const char* input, int* outputArray, int maxCount) {
   return count;
 }
 
+bool waitForSlaveReady() {
+    for (int i = 0; i < 200; i++) {
+        Wire.beginTransmission(ci[SLAVE_I2C]);
+        uint8_t result = Wire.endTransmission();  // no data written
+
+        if (result == 0) {
+            Serial.println("Slave ACKed address!");
+            return true;
+        } else {
+            Serial.print("No ACK, code = ");
+            Serial.println(result);
+        }
+
+        delay(50);
+    }
+    return false;
+}
+
 //SETUP----------------------------------------------------
-void setup(void){
+void setup(){
+  delay(55);
+  Wire.begin();
+  delay(55);
+  yield();    
+
   initConfig();
+  if(!loadAllConfigFromEEPROM(false)) {
+    Serial.println("No config found in EEPROM");
+    //initConfig();
+  }
   //set specified pins to start low immediately, keeping devices from turning on
   int pinsToStartLow[10];
   int numToStartLow = splitAndParseInts(cs[PINS_TO_START_LOW], pinsToStartLow, 10);
@@ -1481,11 +1522,10 @@ void setup(void){
   }
   Serial.begin(115200, SERIAL_8N1, SERIAL_FULL);
   Serial.setRxBufferSize(256);  
- 
   Serial.setDebugOutput(false);
   textOut("\n\nJust started up...\n");
  
-  Wire.begin();
+  
   //Wire.setClock(50000); // Set I2C speed to 100kHz (default is 400kHz)
   startWeatherSensors(ci[SENSOR_ID],  ci[SENSOR_SUB_TYPE], ci[SENSOR_I2C], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN]);
   wiFiConnect();
@@ -1528,11 +1568,14 @@ void setup(void){
   }
 
   //clearFramLog();
- //displayAllFramRecords();
-  
+  //displayAllFramRecords();
+ 
 }
+
 //LOOP----------------------------------------------------
 void loop(){
+ 
+
   //Serial.println("");
   //Serial.print("KNOWN MOXEE PHASE: ");
   //Serial.println(knownMoxeePhase);
@@ -1540,7 +1583,6 @@ void loop(){
   //Serial.println(lastCommandLogId);
 
   unsigned long nowTime = millis() + timeOffset;
-
 
   if (ci[SLAVE_PET_WATCHDOG_COMMAND] > 0 && (nowTime - lastPet) > 20000) { 
   
