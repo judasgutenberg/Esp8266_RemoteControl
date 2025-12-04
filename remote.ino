@@ -5,6 +5,13 @@
  * Also resets a Moxee Cellular hotspot if there are network problems
  * since those do not include watchdog behaviors
  */
+
+ //note:  this needs to be compiled in the Arduino environment alongside:
+ //config.cpp
+ //config.h
+ //i2cslave.cpp
+ //i2cslave.h
+ //index.h
  
 #include "i2cslave.h"
 
