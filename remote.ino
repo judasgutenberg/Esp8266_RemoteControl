@@ -145,7 +145,6 @@ void lookupLocalPowerData() {//sets the globals with the current reading from th
   float current_mA = 0;
   float loadvoltage = 0;
   float power_mW = 0;
-
   shuntvoltage = ina219->getShuntVoltage_mV();
   busvoltage = ina219->getBusVoltage_V();
   current_mA = ina219->getCurrent_mA();
@@ -154,35 +153,6 @@ void lookupLocalPowerData() {//sets the globals with the current reading from th
   measuredVoltage = loadvoltage;
   measuredAmpage = current_mA;
 
-}
-
-
-
-// helper: append either blank if value is NaN or the formatted number
-static int appendNullOrNumber(char *buf, size_t bufSize, size_t pos, double val, const char *fmt) {
-  if (pos >= (int)bufSize) return pos;
-  if (isnan(val)) {
-    // append nothing (empty field)
-    return pos; 
-  } else {
-    int n = snprintf(buf + pos, bufSize - pos, fmt, val);
-    if (n < 0) return pos;
-    pos += n;
-    return pos;
-  }
-}
-
-// helper: integer variant (prints nothing if val < 0)
-static int appendNullOrInt(char *buf, size_t bufSize, size_t pos, long val) {
-  if (pos >= (int)bufSize) return pos;
-  if (val < 0) {
-    return pos;
-  } else {
-    int n = snprintf(buf + pos, bufSize - pos, "%ld", val);
-    if (n < 0) return pos;
-    pos += n;
-    return pos;
-  }
 }
 
 // Safe, non-fragmenting rewrite of weatherDataString()
@@ -2546,12 +2516,8 @@ void swapFRAMContents(uint16_t location1, uint16_t location2, uint16_t length) {
     textOut("Invalid length: 0\n");
     return;
   }
-
-  // Allocate a buffer to temporarily store data
   uint8_t buffer1[length];
   uint8_t buffer2[length];
-
-  // Read data from the two locations
   fram.read(location1, buffer1, length); // Read `length` bytes from location1 into buffer1
   fram.read(location2, buffer2, length); // Read `length` bytes from location2 into buffer2
 
@@ -2569,6 +2535,13 @@ void addOfflineRecord(std::vector<std::tuple<uint8_t, uint8_t, double>>& record,
 }
 
 /////////////////////////////////////////////
+//processor-specific
+/////////////////////////////////////////////
+int freeMemory() {
+    return ESP.getFreeHeap();
+}
+
+/////////////////////////////////////////////
 //utility functions
 /////////////////////////////////////////////
 void textOut(String data){
@@ -2580,11 +2553,6 @@ void textOut(String data){
   }
 }
 
-
-int freeMemory() {
-    return ESP.getFreeHeap();
-}
-
 String makeAsteriskString(uint8_t number){
   String out = "";
   for(uint8_t i=0; i<number; i++) {
@@ -2592,7 +2560,6 @@ String makeAsteriskString(uint8_t number){
   }
   return out;
 }
-
 
 void dumpMemoryStats(int marker){
   char buffer[80]; 
@@ -2643,6 +2610,31 @@ String joinMapValsOnDelimiter(SimpleMap<String, int> *pinMap, String delimiter) 
     }
   }
   return out;
+}
+
+static int appendNullOrNumber(char *buf, size_t bufSize, size_t pos, double val, const char *fmt) {
+  if (pos >= (int)bufSize) return pos;
+  if (isnan(val)) {
+    // append nothing (empty field)
+    return pos; 
+  } else {
+    int n = snprintf(buf + pos, bufSize - pos, fmt, val);
+    if (n < 0) return pos;
+    pos += n;
+    return pos;
+  }
+}
+
+static int appendNullOrInt(char *buf, size_t bufSize, size_t pos, long val) {
+  if (pos >= (int)bufSize) return pos;
+  if (val < 0) {
+    return pos;
+  } else {
+    int n = snprintf(buf + pos, bufSize - pos, "%ld", val);
+    if (n < 0) return pos;
+    pos += n;
+    return pos;
+  }
 }
 
 String nullifyOrNumber(double inVal) {
@@ -2729,7 +2721,6 @@ String replaceNthElement(const String& input, int n, const String& replacement, 
   return result;
 }
 
-
 byte calculateChecksum(String input) {
     byte checksum = 0;
     for (int i = 0; i < input.length(); i++) {
@@ -2768,18 +2759,6 @@ byte countZeroes(const String &input) {
     }
     return zeroCount;
 }
-
-/*
-String oldEncryptStoragePassword(String datastring) {
-  int timeStamp = timeClient.getEpochTime();
-  char buffer[10];
-  itoa(timeStamp, buffer, 10);  // Base 10 conversion
-  String timestampString = String(buffer);
-  byte checksum = calculateChecksum(datastring);
-  String encryptedStoragePassword = urlEncode(simpleEncrypt(simpleEncrypt((String)cs[STORAGE_PASSWORD], timestampString.substring(1,9), salt), String((char)countSetBitsInString(datastring)), String((char)checksum)), false);
-  return encryptedStoragePassword;
-}
-*/
 
 uint8_t rotateLeft(uint8_t value, uint8_t count) {
     return (value << count) | (value >> (8 - count));
