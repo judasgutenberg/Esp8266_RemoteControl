@@ -484,7 +484,7 @@ void compileAndSendDeviceData(
     String ipToUse = ipAddress;
     int sp = ipToUse.indexOf(' ');
     if (sp > 0) ipToUse.remove(sp);
-
+ 
     if (ipAddressAffectingChange.length() > 0) {
         ipToUse = ipAddressAffectingChange;
         changeSourceId = 1;
@@ -612,6 +612,7 @@ void wiFiConnect() {
       currentWifiIndex = (ssidIndex + 1) % NUM_WIFI_CREDENTIALS; // next SSID next time
       Serial.printf("\nConnected to %s, IP: %s\n", wifiSsid,
                     WiFi.localIP().toString().c_str());
+      ipAddress = WiFi.localIP().toString();
       break;
     }
   }
@@ -1296,6 +1297,11 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       char buffer[500]; 
       readBytesFromSlaveEEPROM((uint16_t)commandData.toInt(), buffer, 500);
       textOut(String(buffer));
+    } else if (command.startsWith("getslave")) { //setting items in the configuration
+      String rest = command.substring(8);  // 8 = length of "getslave"
+      rest.trim(); 
+      long result = requestLong(ci[SLAVE_I2C], rest.toInt()); 
+      textOut("Slave data for command " + rest + ": " + (String)result + "\n");
     } else if (command.startsWith("set")) { //setting items in the configuration
       String rest = command.substring(3);  // 3 = length of "set"
       rest.trim(); 
@@ -1459,13 +1465,13 @@ void setup(){
   Wire.begin();
   delay(55);
   yield();    
-
+  Serial.begin(115200, SERIAL_8N1, SERIAL_FULL);
   initConfig();
   if(!loadAllConfigFromEEPROM(false)) {
-    Serial.println("No config found in EEPROM");
+    Serial.println("\nNo config found in EEPROM");
     //initConfig();
   } else {
-    Serial.println("Configuration retrieved from slave EEPROM");
+    Serial.println("\nConfiguration retrieved from slave EEPROM");
   }
   //set specified pins to start low immediately, keeping devices from turning on
   int pinsToStartLow[10];
@@ -1481,7 +1487,7 @@ void setup(){
     pinMode(ci[MOXEE_POWER_SWITCH], OUTPUT);
     digitalWrite(ci[MOXEE_POWER_SWITCH], HIGH);
   }
-  Serial.begin(115200, SERIAL_8N1, SERIAL_FULL);
+  
   Serial.setRxBufferSize(256);  
   Serial.setDebugOutput(false);
   textOut("\n\nJust started up...\n");
