@@ -1,3 +1,4 @@
+//header for a library of functions to communicate with the i2cslave
 #ifndef EEPROM_CONFIG_H
 #define EEPROM_CONFIG_H
 
@@ -17,4 +18,10 @@ void testRead();
 void setAddress(uint16_t addr);
 void readStringFromSlaveEEPROM(uint16_t addr, char* buffer, size_t maxLen);
 void readBytesFromSlaveEEPROM(uint16_t addr, char* buffer, size_t maxLen);
+size_t readBytesFromSlaveSerial( char* buffer, size_t maxLen);
+void sendSlaveSerial(String inVal);
+void normalSlaveMode();
+void enableSlaveSerial();
+
+
 #endif
