@@ -1,3 +1,5 @@
+//a library of functions to communicate with the i2cslave
+
 #include <Wire.h>
 #include "i2cslave.h"
 #include <Arduino.h>
@@ -6,6 +8,12 @@
 #define COMMAND_EEPROM_WRITE   151
 #define COMMAND_EEPROM_READ    152
 #define COMMAND_EEPROM_NORMAL  153
+
+//serial commands
+#define COMMAND_SERIAL_SET_BAUD_RATE 170
+#define COMMAND_RETRIEVE_SERIAL_BUFFER 171
+#define COMMAND_POPULATE_SERIAL_BUFFER 172
+
 #define EEPROM_MARKER_ADDR 0
 #define EEPROM_INT_BASE    4   // ints start immediately after "DATA"
 
@@ -397,4 +405,76 @@ void testRead() {
     Wire.beginTransmission(ci[SLAVE_I2C]);
     Wire.write(COMMAND_EEPROM_NORMAL);
     Wire.endTransmission();
+}
+
+size_t readBytesFromSlaveSerial( char* buffer, size_t maxLen) {
+    enableSlaveSerial();
+    // Put slave into serial-read mode
+    Wire.beginTransmission(ci[SLAVE_I2C]);
+    Wire.write(COMMAND_RETRIEVE_SERIAL_BUFFER);
+    Wire.write(maxLen);
+    Wire.endTransmission();
+
+    size_t count = 0;
+    const uint8_t blockSize = 32;
+
+    while (count < maxLen -1) {   // reserve space for hex + null
+
+        // Request a block of bytes
+        uint8_t received = Wire.requestFrom(ci[SLAVE_I2C], blockSize);
+        if (received == 0) break;  // no more data from slave
+        while (Wire.available() && count < maxLen - 1) {
+            char b = Wire.read();
+            //Serial.println(b);
+            if (b == 0) {          // null terminator from slave
+                //Serial.println("endieooo");
+                buffer[count] = '\0';
+                goto finished;
+            }
+
+            // Convert byte to two hex characters
+            buffer[count++] = b;
+        }
+
+        // If fewer than blockSize bytes were returned, slave is out of data
+        if (received < blockSize) break;
+    }
+    
+    finished:
+      //buffer[count] = '\0';
+      // Tell slave to return to normal mode
+      normalSlaveMode();
+      return count;
+      //Serial.println(buffer);
+}
+
+void sendSlaveSerial(String inVal) {
+  inVal.trim(); 
+  char buffer[50];    
+  inVal.toCharArray(buffer, sizeof(buffer));
+  enableSlaveSerial();
+  delay(5);
+  Wire.beginTransmission(ci[SLAVE_I2C]);
+  Wire.write(COMMAND_POPULATE_SERIAL_BUFFER);
+  int stringLen = inVal.length();
+  if(stringLen > 30) {
+    stringLen = 30;
+  }
+  Wire.write(buffer, stringLen); 
+  Wire.endTransmission();
+  delay(5);
+  normalSlaveMode();
+}
+
+void normalSlaveMode() {
+  Wire.beginTransmission(ci[SLAVE_I2C]);
+  Wire.write(COMMAND_EEPROM_NORMAL);
+  Wire.endTransmission();
+}
+
+void enableSlaveSerial() {
+  Wire.beginTransmission(ci[SLAVE_I2C]);
+  Wire.write(COMMAND_SERIAL_SET_BAUD_RATE); //set baud rate
+  Wire.write(9); //set slave serial to 115200
+  Wire.endTransmission();
 }
