@@ -1297,6 +1297,17 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       char buffer[500]; 
       readBytesFromSlaveEEPROM((uint16_t)commandData.toInt(), buffer, 500);
       textOut(String(buffer));
+    } else if (command.startsWith("sendslaveserial")) { //setting items in the configuration
+      String rest = command.substring(15);  // 15 = length of "sendslaveserial"
+      sendSlaveSerial(rest);
+      textOut("Serial data sent to slave: " + rest + "\n");
+    } else if (command.startsWith("getslaveserial")) { //setting items in the configuration
+      char buffer[500]; 
+      int count = readBytesFromSlaveSerial(buffer, 500);
+      String result = String(buffer).substring(0, count);
+      Serial.println(count);
+      Serial.println(result);
+      textOut(result);
     } else if (command.startsWith("getslave")) { //setting items in the configuration
       String rest = command.substring(8);  // 8 = length of "getslave"
       rest.trim(); 
@@ -2940,7 +2951,7 @@ String encryptStoragePassword(String datastring) {
     return processedString;
 }
 
-
+//slave functions
 long requestLong(byte slaveAddress, byte command) {
   Wire.beginTransmission(slaveAddress);
   Wire.write(command);    // send the command
@@ -2957,4 +2968,76 @@ long requestLong(byte slaveAddress, byte command) {
     value |= ((long)buffer[j] << (8 * j));
   }
   return value;
+}
+  
+void sendSlaveSerial(String inVal) {
+  inVal.trim(); 
+  char buffer[50];    
+  inVal.toCharArray(buffer, sizeof(buffer));
+  enableSlaveSerial();
+  delay(5);
+  Wire.beginTransmission(ci[SLAVE_I2C]);
+  Wire.write(172);
+  int stringLen = inVal.length();
+  if(stringLen > 30) {
+    stringLen = 30;
+  }
+  Wire.write(buffer, stringLen); 
+  Wire.endTransmission();
+  delay(5);
+  Wire.beginTransmission(ci[SLAVE_I2C]);
+  Wire.write(153);
+  Wire.endTransmission();
+}
+
+size_t readBytesFromSlaveSerial( char* buffer, size_t maxLen) {
+    enableSlaveSerial();
+    // Put slave into serial-read mode
+    Wire.beginTransmission(ci[SLAVE_I2C]);
+    Wire.write(171);
+    Wire.write(maxLen);
+    Wire.endTransmission();
+
+    size_t count = 0;
+    const uint8_t blockSize = 32;
+
+    while (count < maxLen -1) {   // reserve space for hex + null
+
+        // Request a block of bytes
+        uint8_t received = Wire.requestFrom(ci[SLAVE_I2C], blockSize);
+        if (received == 0) break;  // no more data from slave
+        while (Wire.available() && count < maxLen - 1) {
+            char b = Wire.read();
+            //Serial.println(b);
+            if (b == 0) {          // null terminator from slave
+                //Serial.println("endieooo");
+                buffer[count] = '\0';
+                goto finished;
+            }
+
+            // Convert byte to two hex characters
+            buffer[count++] = b;
+        }
+
+        // If fewer than blockSize bytes were returned, slave is out of data
+        if (received < blockSize) break;
+    }
+    
+    finished:
+      //buffer[count] = '\0';
+      // Tell slave to return to normal mode
+      Wire.beginTransmission(ci[SLAVE_I2C]);
+      Wire.write(153);
+      Wire.endTransmission();
+      return count;
+      //Serial.println(buffer);
+}
+
+
+
+void enableSlaveSerial() {
+  Wire.beginTransmission(ci[SLAVE_I2C]);
+  Wire.write(170); //set baud rate
+  Wire.write(9); //set slave serial to 115200
+  Wire.endTransmission();
 }
