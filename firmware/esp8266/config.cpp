@@ -1,4 +1,5 @@
 #include "config.h"
+#include "globals.h"
 char* cs[CONFIG_STRING_COUNT]; //used for string configurations
 int ci[CONFIG_TOTAL_COUNT]; //used for int configurations
 
