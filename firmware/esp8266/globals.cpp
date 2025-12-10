@@ -22,6 +22,23 @@ Adafruit_INA219* ina219;
 Adafruit_VL53L0X lox[4];
 Adafruit_FRAM_I2C fram;
 
+
+
+//SEND DATA TO A REMOTE SERVER TO STORE IN A DATABASE----------------------------------------------------
+// ---------- Non-blocking sendRemoteData() state machine -------------
+//
+// Usage:
+//   startRemoteTask(datastring, mode, fRAMordinal);
+//   // call runRemoteTask() frequently from loop()
+// ---------------------------------------------------------------------
+
+// Configurable timings (tweak as desired)
+const unsigned long CONNECT_RETRY_SPACING_MS = 200;   // spacing between connect attempts (non-blocking)
+const unsigned long CONNECT_TIMEOUT_MS = 5000;       // per-connection wait for server (was ~10s, shortened)
+const unsigned long REPLY_AVAIL_TIMEOUT_MS = 10000;  // wait for first byte from server
+const unsigned long MAX_RESPONSE_SIZE = 32 * 1024UL; // safety cap to avoid runaway memory use
+
+
 uint16_t framIndexAddress = 0;   
 uint16_t  currentRecordCount = 0;
 
