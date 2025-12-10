@@ -46,4 +46,5 @@ void initConfig(void) {
   ci[RTC_ADDRESS] = 0x68;
   ci[SLAVE_I2C] = 0;
   ci[SLAVE_PET_WATCHDOG_COMMAND] = 0;
+    ci[DEBUG] = 1;
 }
