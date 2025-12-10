@@ -34,6 +34,28 @@ extern Adafruit_INA219* ina219;
 extern Adafruit_VL53L0X lox[4];
 extern Adafruit_FRAM_I2C fram;
 
+//state machine globals
+
+enum RemoteState {
+  RS_IDLE,
+  RS_PREPARE,            // construct URL + init
+  RS_CONNECTING,
+  RS_CONNECT_WAIT,       // spacing between connect attempts
+  RS_SENDING_REQUEST,
+  RS_WAITING_FOR_REPLY,  // waiting for any data (with timeout)
+  RS_READING_REPLY,      // drain available bytes into buffer
+  RS_SOCKET_CLOSED,      // socket closed by remote or finished reading
+  RS_PROCESSING_REPLY,   // now do the heavy processing (commands, FRAM, etc.)
+  RS_DONE
+};
+
+
+extern const unsigned long CONNECT_RETRY_SPACING_MS;
+extern const unsigned long CONNECT_TIMEOUT_MS;
+extern const unsigned long REPLY_AVAIL_TIMEOUT_MS;
+extern const unsigned long MAX_RESPONSE_SIZE;
+
+
 // Other globals
 extern uint16_t framIndexAddress;
 extern uint16_t currentRecordCount;
