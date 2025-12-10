@@ -49,6 +49,66 @@
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
 
+//SEND DATA TO A REMOTE SERVER TO STORE IN A DATABASE----------------------------------------------------
+// ---------- Non-blocking sendRemoteData() state machine -------------
+//
+// Usage:
+//   startRemoteTask(datastring, mode, fRAMordinal);
+//   // call runRemoteTask() frequently from loop()
+// ---------------------------------------------------------------------
+
+enum RemoteState {
+  RS_IDLE,
+  RS_PREPARE,            // construct URL + init
+  RS_CONNECTING,
+  RS_CONNECT_WAIT,       // spacing between connect attempts
+  RS_SENDING_REQUEST,
+  RS_WAITING_FOR_REPLY,  // waiting for any data (with timeout)
+  RS_READING_REPLY,      // drain available bytes into buffer
+  RS_SOCKET_CLOSED,      // socket closed by remote or finished reading
+  RS_PROCESSING_REPLY,   // now do the heavy processing (commands, FRAM, etc.)
+  RS_DONE
+};
+
+static RemoteState remoteState = RS_IDLE;
+static WiFiClient clientGet;
+static String remoteDatastring;      // original datastring param
+static String remoteMode;            // mode param
+static uint16_t remoteFRAMordinal;   // fRAMordinal param
+static String remoteURL;             // final GET URL
+static unsigned long stateStartMs = 0;
+static unsigned long connectBackoffUntil = 0;
+static int attemptCount = 0;
+static String responseBufferSM;      // accumulate response
+static uint32_t taskStartTimeMs = 0; // logging timer
+
+// Configurable timings (tweak as desired)
+const unsigned long CONNECT_RETRY_SPACING_MS = 200;   // spacing between connect attempts (non-blocking)
+const unsigned long CONNECT_TIMEOUT_MS = 5000;       // per-connection wait for server (was ~10s, shortened)
+const unsigned long REPLY_AVAIL_TIMEOUT_MS = 10000;  // wait for first byte from server
+const unsigned long MAX_RESPONSE_SIZE = 32 * 1024UL; // safety cap to avoid runaway memory use
+
+// Start a new remote task (replacement for original sendRemoteData)
+void startRemoteTask(const String& datastring, const String& mode, uint16_t fRAMordinal) {
+  if(remoteState != RS_IDLE) {
+    // Already running a task. You could choose to queue multiple, but for now bail.
+    // If you want to always start a new one, consider returning or queueing.
+    return;
+  }
+
+  remoteDatastring = datastring;
+  remoteMode = mode;
+  remoteFRAMordinal = fRAMordinal;
+  responseBufferSM = "";
+  attemptCount = 0;
+  taskStartTimeMs = millis();
+  stateStartMs = millis();
+  connectBackoffUntil = 0;
+  remoteURL = ""; // will be built in RS_PREPARE
+  remoteState = RS_PREPARE;
+}
+
+
 //ESP8266's home page:----------------------------------------------------
 void handleRoot() {
  String s = MAIN_page; //Read HTML contents
@@ -429,7 +489,7 @@ void compileAndSendDeviceData(
 
     // --- SEND OUT ------------------------------------------------------
     if (!offlineMode) {
-        sendRemoteData(String(tx), "getDeviceData", fRAMOrdinal);
+        startRemoteTask(String(tx), "getDeviceData", fRAMOrdinal);
     }
 }
 
@@ -541,223 +601,333 @@ void wiFiConnect() {
 }
 
 
-//SEND DATA TO A REMOTE SERVER TO STORE IN A DATABASE----------------------------------------------------
-void sendRemoteData(String datastring, String mode, uint16_t fRAMordinal) {
-  WiFiClient clientGet;
-  const int httpGetPort = 80;
-  String url;
-  //String mode = "getDeviceData";
-  //most of the time we want to getDeviceData, not saveData. the former picks up remote control activity. the latter sends sensor data
-  if(mode == "getDeviceData") {
-    if(millis() - lastDataLogTime > ci[DATA_LOGGING_GRANULARITY] * 1000 || lastDataLogTime == 0) {
-      mode = "saveData";
-    }
-    if(deviceName == "") {
-      mode = "getInitialDeviceInfo";
-    }
-  }
 
-  String encryptedStoragePassword = encryptStoragePassword(datastring);
-  url = (String)cs[URL_GET] + "?k2=" + encryptedStoragePassword + "&device_id=" + ci[DEVICE_ID] + "&mode=" + mode + "&data=" + urlEncode(datastring, true);
- 
-  if(debug) {
-    Serial.println("\r>>> Connecting to host: ");
-  }
-  //Serial.println(cs[HOST_GET]);
-  int attempts = 0;
-  while(!clientGet.connect(cs[HOST_GET], httpGetPort) && attempts < ci[CONNECTION_RETRY_NUMBER]) {
-    attempts++;
-    cleanup();
-    delay(200);
-  }
-  if(debug) {
-    Serial.print("Connection attempts:  ");
-    Serial.print(attempts);
-    Serial.println();
-  }
-  cleanup();
-  if (attempts >= ci[CONNECTION_RETRY_NUMBER]) {
-    Serial.print("Connection failed, moxee rebooted: ");
-    connectionFailureTime = millis();
-    connectionFailureMode = true;
-    rebootMoxee();
 
-    if(debug) {
-      Serial.print(cs[HOST_GET]);
-      Serial.println();
-    }
- 
-  } else {
+// Call this frequently from loop()
+void runRemoteTask() {
+  switch(remoteState) {
 
-     connectionFailureTime = 0;
-     connectionFailureMode = false;
-     if(debug) {
-      Serial.println(url);
-     }
-     clientGet.println("GET " + url + " HTTP/1.1");
-     clientGet.print("Host: ");
-     clientGet.println(cs[HOST_GET]);
-     clientGet.println("User-Agent: ESP8266/1.0");
-     clientGet.println("Accept-Encoding: identity");
-     clientGet.println("Connection: close\r\n\r\n");
-     unsigned long timeoutP = millis();
-     while (clientGet.available() == 0) {
-       if (millis() - timeoutP > 10000) {
-        //let's try a simpler connection and if that fails, then reboot moxee
-        //clientGet.stop();
-        if(clientGet.connect(cs[HOST_GET], httpGetPort)){
-         clientGet.println("GET / HTTP/1.1");
-         clientGet.print("Host: ");
-         clientGet.println(cs[HOST_GET]);
-         clientGet.println("User-Agent: ESP8266/1.0");
-         clientGet.println("Accept-Encoding: identity");
-         clientGet.println("Connection: close\r\n\r\n");
-        }//if (clientGet.connect(
-        //clientGet.stop();
-        return;
-       } //if( millis() -  
-     }
-    yield();
-    delay(1); //see if this improved data reception. OMG IT TOTALLY WORKED!!!
-    bool receivedData = false;
-    bool receivedDataJson = false;
-    if(clientGet.available() && ipAddressAffectingChange != "") { //don't turn these globals off until we have data back from the server
-       ipAddressAffectingChange = "";
-       changeSourceId = 0;
-    }
-    while(clientGet.available()){
-      receivedData = true;
-      yield();
-      String retLine = clientGet.readStringUntil('\n');
-      retLine.trim();
-      //Here the code is designed to be able to handle either JSON or double-delimited data from data.php
-      //I started with just JSON, but that's a notoriously bulky data format, what with the names of all the
-      //entities embedded and the overhead of quotes and brackets.  This is a problem because when the 
-      //amount of data being sent by my server reached some critical threshold (I'm not sure what it is!)
-      //it automatically gzipped the data, which I couldn't figure out how to unzip on a ESP8266.
-      //So then I made a system of sending only some of the data at a time via JSON.  That introduced a lot of
-      //complexity and also made the system less responsive, since you now had to wait for the device_feature to
-      //get its turn in a fairly slow round-robin (on a slow internet connection, it would take ten seconds per item).
-      //So that's why I implemented the non-JSON data format, which can easily specify the values for all 
-      //device_features in one data object (assuming it's not too big). The ESP8266 still can respond to data in the
-      //JSON format, which it will assume if the first character of the data is a '{' -- but if the first character
-      //is a '|' then it assumes the data is non-JSON. Otherwise it assumes it's HTTP boilerplate and ignores it.
-      if(retLine.indexOf("\"error\":") < 0 && (mode == "saveData" || mode=="commandout") && (retLine.charAt(0)== '{' || retLine.charAt(0)== '*' || retLine.charAt(0)== '|')) {
-        if(debug) {
-          Serial.println("can sleep because: ");
-          Serial.println(retLine);
-          Serial.println(retLine.indexOf("error:"));
+    case RS_IDLE:
+      return;
+
+    // -------------------- prepare the URL and initial decisions --------------------
+    case RS_PREPARE: {
+      // Reproduce the decision logic in your original function:
+      // decide if mode should become saveData etc
+      if(remoteMode == "getDeviceData") {
+        if(millis() - lastDataLogTime > ci[DATA_LOGGING_GRANULARITY] * 1000UL || lastDataLogTime == 0) {
+          remoteMode = "saveData";
         }
-        lastDataLogTime = millis();
-        moxeeRebootCount = 0; //might as well reset this
-        for (int i = 0; i < 11; i++) {
-            moxeeRebootTimes[i] = 0;//and these
+        if(deviceName == "") {
+          remoteMode = "getInitialDeviceInfo";
         }
-        //Serial.print("last command log id (before sleep test): ");
-        //Serial.println(lastCommandLogId);
-        if(lastCommandLogId == 0 && responseBuffer == "" && outputMode == 0) {
-          //Serial.println("can sleep!!");
-          canSleep = true; //canSleep is a global and will not be set until all the tasks of the device are finished.
-        }  
-        if(mode=="commandout"  || outputMode == 2) {
-          lastCommandLogId = 0;
-        }
-        if(deferredCommand != "") {  //here is where we run commands we cannot recover from
-          //deferred command has everything we need to reboot or whatever
-          runCommandsFromNonJson(deferredCommand, true);
-        }
-        
- 
-        //also we can switch outputMode to 0 and clear responseBuffer
-        outputMode = 0;
-        responseBuffer = "";
-        //responseBuffer.reserve(0);
       }
-      if(retLine.charAt(0) == '*') { //getInitialDeviceInfo
-        if(debug) {
-          Serial.print("Initial Device Data: ");
-          Serial.println(retLine);
+
+      String encryptedStoragePassword = encryptStoragePassword(remoteDatastring);
+      // build URL exactly like before
+      remoteURL = String(cs[URL_GET]) + "?k2=" + encryptedStoragePassword + "&device_id=" + ci[DEVICE_ID] + "&mode=" + remoteMode + "&data=" + urlEncode(remoteDatastring, true);
+      if(debug) {
+        Serial.println(remoteURL);
+      }
+      // initialize connect attempt spacing
+      connectBackoffUntil = 0;
+      attemptCount = 0;
+      stateStartMs = millis();
+      remoteState = RS_CONNECTING;
+      return;
+    }
+
+    // -------------------- attempt non-blocking connect --------------------
+    case RS_CONNECTING: {
+      // space out attempts by CONNECT_RETRY_SPACING_MS without blocking
+      if(millis() < connectBackoffUntil) {
+        // still waiting to try again
+        remoteState = RS_CONNECT_WAIT;
+        return;
+      }
+
+      if (clientGet.connected()) {
+        // should not be connected here, but if it is, go send request
+        remoteState = RS_SENDING_REQUEST;
+        stateStartMs = millis();
+        return;
+      }
+
+      // Try to connect once
+      if(clientGet.connect(cs[HOST_GET], 80)) {
+        remoteState = RS_SENDING_REQUEST;
+        stateStartMs = millis();
+      } else {
+        attemptCount++;
+        connectBackoffUntil = millis() + CONNECT_RETRY_SPACING_MS;
+        // If we've exceeded retries, treat as failure (same reaction as original)
+        if (attemptCount >= ci[CONNECTION_RETRY_NUMBER]) {
+          // connection failed permanently; set failure globals and reboot moxee
+          connectionFailureTime = millis();
+          connectionFailureMode = true;
+          rebootMoxee();
+          if(debug) {
+            Serial.println();
+            Serial.print("Connection failed (host): ");
+            Serial.println(cs[HOST_GET]);
+          }
+          // finish the task
+          remoteState = RS_DONE;
+        } else {
+          // wait for next attempt
+          remoteState = RS_CONNECT_WAIT;
         }
-        //set the global string; we'll just use that to store our data about addtional sensors
-        if(cs[SENSOR_CONFIG_STRING] != "") {
-          retLine = replaceFirstOccurrenceAtChar(retLine, String(cs[SENSOR_CONFIG_STRING]), '|');
-          //retLine = retLine + "|" + String(cs[SENSOR_CONFIG_STRING]); //had been doing it this way; not as good!
+      }
+      return;
+    }
+
+    case RS_CONNECT_WAIT: {
+      // just transition back to CONNECTING when time has passed
+      if(millis() >= connectBackoffUntil) {
+        remoteState = RS_CONNECTING;
+      }
+      return;
+    }
+
+    // -------------------- send the HTTP request (non-blocking single-shot) --------------------
+    case RS_SENDING_REQUEST: {
+      // send the GET request in one go (small, so ok)
+      clientGet.println("GET " + remoteURL + " HTTP/1.1");
+      clientGet.print("Host: ");
+      clientGet.println(cs[HOST_GET]);
+      clientGet.println("User-Agent: ESP8266/1.0");
+      clientGet.println("Accept-Encoding: identity");
+      clientGet.println("Connection: close");
+      clientGet.println();
+      remoteState = RS_WAITING_FOR_REPLY;
+      return;
+    }
+
+    // -------------------- wait for any reply (with timeout) --------------------
+    case RS_WAITING_FOR_REPLY: {
+      if(clientGet.available() > 0) {
+        // Got first bytes — start reading
+        remoteState = RS_READING_REPLY;
+        stateStartMs = millis();
+        return;
+      }
+      // timeout for first response byte
+      if(millis() - stateStartMs > REPLY_AVAIL_TIMEOUT_MS) {
+        // try a simpler connection as your original attempted; here we simply abort and finish
+        // Close socket and mark done (original did some attempt, then returned)
+        clientGet.stop();
+        remoteState = RS_DONE;
+        return;
+      }
+      // otherwise keep waiting (non-blocking)
+      return;
+    }
+
+    // -------------------- drain the socket into responseBufferSM (non-blocking) --------------------
+    case RS_READING_REPLY: {
+      // Read everything currently available; do not block waiting for more
+      while (clientGet.available() > 0) {
+        char c = clientGet.read();
+        responseBufferSM += c;
+        // protect memory: if it's huge, stop reading further to avoid OOM
+        if(responseBufferSM.length() > (int)MAX_RESPONSE_SIZE) {
+          // we reached a safety cap; break and close socket
+          break;
         }
-        additionalSensorInfo = retLine;
-        //once we have it
-        handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), true);
-        break;
-      } else if(retLine.charAt(0) == '{') {
-        if(debug) {
-          Serial.print("JSON: ");
-          Serial.println(retLine);
+        // yield rarely is not needed inside here, but we return below to keep loop small
+      }
+
+      // If remote closed or we've read a lot and connection is no longer active, move to processing
+      if (!clientGet.connected()) {
+        // remote closed gracefully — good time to process
+        clientGet.stop();
+        remoteState = RS_PROCESSING_REPLY;
+        stateStartMs = millis();
+        return;
+      }
+
+      // If buffer is huge enough to process now, close and process
+      if(responseBufferSM.length() > 4096) {
+        clientGet.stop();
+        remoteState = RS_PROCESSING_REPLY;
+        stateStartMs = millis();
+        return;
+      }
+
+      // If we've been waiting too long since first byte, close and process what we have
+      if (millis() - stateStartMs > CONNECT_TIMEOUT_MS) {
+        clientGet.stop();
+        remoteState = RS_PROCESSING_REPLY;
+        stateStartMs = millis();
+        return;
+      }
+
+      // else continue reading later (non-blocking)
+      return;
+    }
+
+    // -------------------- process the response AFTER socket is closed --------------------
+    case RS_PROCESSING_REPLY: {
+      // This is where we port your parsing & action logic but run it in small micro-steps if necessary.
+      // For clarity and parity, we'll mostly follow your original flow but doing it all here, after socket closed.
+
+      bool receivedData = false;
+      bool receivedDataJson = false;
+
+      // if ipAddressAffectingChange logic: only clear after we have data from server
+      if(responseBufferSM.length() > 0 && ipAddressAffectingChange != "") {
+        ipAddressAffectingChange = "";
+        changeSourceId = 0;
+      }
+
+      // We'll parse responseBufferSM line-by-line similar to previous readStringUntil('\n')
+      // but using index scanning to avoid extra allocations.
+      int len = responseBufferSM.length();
+      int pos = 0;
+      while(pos < len) {
+        // read a line until '\n' or end
+        int nextNL = responseBufferSM.indexOf('\n', pos);
+        String retLine;
+        if(nextNL == -1) {
+          retLine = responseBufferSM.substring(pos);
+          pos = len;
+        } else {
+          retLine = responseBufferSM.substring(pos, nextNL);
+          pos = nextNL + 1;
         }
-        //setLocalHardwareToServerStateFromJson((char *)retLine.c_str());
-        receivedDataJson = true;
-        break; 
-      } else if(retLine.charAt(0) == '|') { 
-        if(debug) {
-          Serial.print("delimited: ");
-          Serial.println(retLine);
+        retLine.trim();
+        if(retLine.length() == 0) continue;
+
+        // ---- reproduce original parsing logic ----
+        // skip error lines (your logic tested indexOf("\"error\":") < 0 etc)
+        if(retLine.indexOf("\"error\":") < 0 && (remoteMode == "saveData" || remoteMode == "commandout") && (retLine.charAt(0)== '{' || retLine.charAt(0)== '*' || retLine.charAt(0)== '|')) {
+          lastDataLogTime = millis();
+          moxeeRebootCount = 0;
+          for (int i = 0; i < 11; i++) moxeeRebootTimes[i] = 0;
+
+          if(lastCommandLogId == 0 && responseBuffer == "" && outputMode == 0) {
+            canSleep = true;
+          }
+
+          if(remoteMode == "commandout" || outputMode == 2) {
+            lastCommandLogId = 0;
+          }
+          // If deferredCommand exists, run it (this is allowed post-socket)
+          if(deferredCommand != "") {
+            yield();
+            runCommandsFromNonJson(deferredCommand, true);
+          }
+
+          // clear outputMode/responses like before
+          outputMode = 0;
+          responseBuffer = "";
         }
-        String serverCommandParts[3];
-        splitString(retLine, '!', serverCommandParts, 3);
-        setLocalHardwareToServerStateFromNonJson((char *)serverCommandParts[0].c_str());
-        if(retLine.indexOf("!") > -1) {
-          if(serverCommandParts[1].length()>5) { //just has latency data
-            if(debug) {
-              Serial.print("COMMAND (beside pin data): ");
-              Serial.println(serverCommandParts[1]);
+
+        // special handling of first-char markers
+        char first = retLine.charAt(0);
+        if(first == '*') {
+          // getInitialDeviceInfo
+          if(debug) {
+            Serial.println("Initial: " + retLine);
+          }
+          if(cs[SENSOR_CONFIG_STRING] != "") {
+            retLine = replaceFirstOccurrenceAtChar(retLine, String(cs[SENSOR_CONFIG_STRING]), '|');
+          }
+          additionalSensorInfo = retLine;
+          handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), true);
+          break; // original code broke on this
+        } else if(first == '{') {
+          // JSON
+          if(debug) {
+            Serial.println("JSON: " + retLine);
+          }
+          receivedDataJson = true;
+          // you previously setLocalHardwareToServerStateFromJson here; add if exists
+          // setLocalHardwareToServerStateFromJson((char *)retLine.c_str());
+          break;
+        } else if(first == '|') {
+          // delimited format
+          // Note: original splitString(retLine, '!', serverCommandParts, 3);
+          String serverCommandParts[3];
+          splitString(retLine, '!', serverCommandParts, 3);
+          yield();
+          if(debug) {
+            Serial.println("delimited: " + retLine);
+          }
+          setLocalHardwareToServerStateFromNonJson((char *)serverCommandParts[0].c_str());
+          if(retLine.indexOf("!") > -1) {
+            if(serverCommandParts[1].length()>5) {
+              if(debug) {
+                Serial.print("COMMAND (beside pin data): ");
+                Serial.println(serverCommandParts[1]);
+              }
             }
-          } 
-          if(lastCommandLogId == 0) {
-            lastCommandLogId = strtoul(serverCommandParts[2].c_str(), NULL, 10);
-            //Serial.print("last command log id: ");
-            //Serial.println(lastCommandLogId);
-            if(lastCommandLogId > 0) {
-              canSleep = false; //now we have a pending command, cannot sleep!
-              deferredCanSleep = true;
-            } else if (deferredCanSleep) {
-              canSleep = true; 
-              deferredCanSleep = false;
+            if(lastCommandLogId == 0) {
+              lastCommandLogId = strtoul(serverCommandParts[2].c_str(), NULL, 10);
+              if(lastCommandLogId > 0) {
+                canSleep = false;
+                deferredCanSleep = true;
+              } else if (deferredCanSleep) {
+                canSleep = true;
+                deferredCanSleep = false;
+              }
+              runCommandsFromNonJson((char *)("!" + serverCommandParts[1]).c_str(), false);
             }
-            runCommandsFromNonJson((char *)("!" + serverCommandParts[1]).c_str(), false);
+          }
+          receivedDataJson = true;
+          break; // original code broke here
+        } else if(first == '!') {
+          // command line
+          runCommandsFromNonJson((char *)retLine.c_str(), false);
+          break;
+        } else {
+          if(debug) {
+            Serial.print("web data: ");
+            Serial.println(retLine);
           }
         }
-        receivedDataJson = true;
-        break;              
-      } else if(retLine.charAt(0) == '!') { //it's a command, so an exclamation point seems right
-        if(debug) {
-          Serial.print("COMMAND: ");
-          Serial.println(retLine);
-        }
-        runCommandsFromNonJson((char *)retLine.c_str(), false);
-        break;      
-      } else {
-        if(debug) {
-          Serial.print("web data: ");
-          Serial.println(retLine);
+        receivedData = true;
+      } // end while-lines
+
+      if(receivedData && !receivedDataJson) {
+        onePinAtATimeMode = true;
+      }
+
+      // Now: handle FRAM ordinal change, deferred tasks, etc (do these AFTER parsing)
+      if(remoteFRAMordinal != 0xFFFF) {
+        dumpMemoryStats(99);
+        yield();
+        if(ci[FRAM_ADDRESS] > 0) {
+          changeDelimiterOnRecord(remoteFRAMordinal, 0xFE);
         }
       }
+
+      // connection success clears failure markers
+      connectionFailureTime = 0;
+      connectionFailureMode = false;
+
+  
+
+      // Finally flag done
+      remoteState = RS_DONE;
+      return;
     }
-    if(receivedData && !receivedDataJson) { //an indication our server is gzipping data needed for remote control.  So instead pull it down one pin at a time and hopefully get under the gzip cutoff
-      onePinAtATimeMode = true;
+
+    // -------------------- finish and reset state --------------------
+    case RS_DONE: {
+      // clean up and go idle. clientGet should already be stopped in prior steps, but be safe:
+      if(clientGet.connected()) clientGet.stop();
+      remoteState = RS_IDLE;
+      // keep other globals as-is (we updated them in processing)
+      return;
     }
-    if(debug) {
-      //Serial.print("Fram ordinal: ");
-      //Serial.println(fRAMordinal);
-    }
-    if(fRAMordinal != 0xFFFF) {
-      dumpMemoryStats(99);
-      yield();
-      if(ci[FRAM_ADDRESS] > 0) {
-        changeDelimiterOnRecord(fRAMordinal, 0xFE);
-      }
-    }
-   
-  } //if (attempts >= ci[CONNECTION_RETRY_NUMBER])....else....    
-  clientGet.stop();
+
+    default:
+      remoteState = RS_IDLE;
+      return;
+  } // switch
 }
+
 
 String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
   String additionalSensorArray[12];
@@ -1027,6 +1197,7 @@ void setPinValueOnSlave(char i2cAddress, char pinNumber, char pinValue) {
   Wire.write(pinNumber);
   Wire.write(pinValue);
   Wire.endTransmission();
+  yield();
 }
 
 //i don't want to use JSON because the format is too bulky:
@@ -1210,14 +1381,19 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       readBytesFromSlaveEEPROM((uint16_t)commandData.toInt(), buffer, 500);
       textOut("EEPROM data:\n");
       textOut(String(buffer));
+    } else if (command.startsWith("reset serial")) {
+      Serial.flush();
+      Serial.begin(115200, SERIAL_8N1, SERIAL_FULL); 
+      ETS_UART_INTR_DISABLE();
+      ETS_UART_INTR_ENABLE();
+      textOut("Serial reset\n");
     } else if (command.startsWith("dump slave")) {
-      //outputMode = 2;
       loadAllConfigFromEEPROM(true);
     } else if (command.startsWith("send slave serial")) { //setting items in the configuration
       String rest = command.substring(17);  // 17 = length of "sendslaveserial"
       sendSlaveSerial(rest);
       textOut("Serial data sent to slave: " + rest + "\n");
-    } else if (command.startsWith("get slave serial")) { //setting items in the configuration
+    } else if (command.startsWith("get slave serial")) { //getting any slave serial data
       char buffer[500]; 
       int count = readBytesFromSlaveSerial(buffer, 500);
       String result = String(buffer).substring(0, count);
@@ -1388,11 +1564,12 @@ int splitAndParseInts(const char* input, int* outputArray, int maxCount) {
 
 //SETUP----------------------------------------------------
 void setup(){
-  delay(55);
   Wire.begin();
-  delay(55);
   yield();    
   Serial.begin(115200, SERIAL_8N1, SERIAL_FULL);
+  Serial.setRxBufferSize(512);
+  Serial.setDebugOutput(false);
+  delay(10);
   initConfig();
   if(!loadAllConfigFromEEPROM(false)) {
     Serial.println("\nNo config found in EEPROM");
@@ -1415,7 +1592,7 @@ void setup(){
     digitalWrite(ci[MOXEE_POWER_SWITCH], HIGH);
   }
   
-  Serial.setRxBufferSize(256);  
+  //Serial.setRxBufferSize(256);  
   Serial.setDebugOutput(false);
   textOut("\n\nJust started up...\n");
  
@@ -1468,8 +1645,13 @@ void setup(){
 
 //LOOP----------------------------------------------------
 void loop(){
- 
-
+  runRemoteTask();
+  if (Serial.available()) 
+  {
+    Serial.println("*********************");
+    doSerialCommands();
+  }
+  yield();
   //Serial.println("");
   //Serial.print("KNOWN MOXEE PHASE: ");
   //Serial.println(knownMoxeePhase);
@@ -1477,7 +1659,7 @@ void loop(){
   //Serial.println(lastCommandLogId);
 
   unsigned long nowTime = millis() + timeOffset;
-
+  yield();
   if (ci[SLAVE_PET_WATCHDOG_COMMAND] > 0 && (nowTime - lastPet) > 20000) { 
   
     Wire.beginTransmission(ci[SLAVE_I2C]);
@@ -1488,12 +1670,7 @@ void loop(){
    
     lastPet = nowTime;
   }
-
- 
-  if (Serial.available()) 
-  {
-    doSerialCommands();
-  }
+  yield();
 
   /*
   uint8_t testHi = 0;//(millis() >> 8) & 0xFF;
@@ -1514,9 +1691,10 @@ void loop(){
   Serial.println(readBack, HEX);
   */
   //displayFramRecord(147);
-
+  yield();
   for(int i=0; i <4; i++) { //doing this four times here is helpful to make web service reasonably responsive. once is not enough
     server.handleClient();          //Handle client requests
+    yield();
   }
  
   //dumpMemoryStats(122);
@@ -1525,15 +1703,14 @@ void loop(){
     //WiFi.disconnect(true);
   }
   cleanup();
+  yield();
 
-
- 
   if(lastCommandLogId > 0 || responseBuffer != "") {
     String stringToSend = responseBuffer + "\n" + lastCommandLogId;
-    sendRemoteData(stringToSend, "commandout", 0xFFFF);
+    startRemoteTask(stringToSend, "commandout", 0xFFFF);
   }
   timeClient.update();
-  
+  yield();
   int granularityToUse = ci[POLLING_GRANULARITY];
   if(connectionFailureMode) {
     if(knownMoxeePhase == 0) {
@@ -1565,9 +1742,9 @@ void loop(){
     compileAndSendDeviceData("", "", "", true, 0xFFFF);
     lastPoll = nowTime;
   }
-
+  yield();
   lookupLocalPowerData();
-
+  yield();
   if(offlineMode || ci[FRAM_ADDRESS] < 1){
     if(nowTime - lastOfflineReconnectAttemptTime > 1000 * ci[OFFLINE_RECONNECT_INTERVAL]) {
       //time to attempt a reconnection
@@ -1593,7 +1770,7 @@ void loop(){
       haveReconnected = false;
     }
   }
-
+  yield();
   if(canSleep) {
     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
     if(ci[DEEP_SLEEP_TIME_PER_LOOP] > 0) {
