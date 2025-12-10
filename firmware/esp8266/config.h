@@ -48,9 +48,10 @@
 #define RTC_ADDRESS 42
 #define SLAVE_I2C 43
 #define SLAVE_PET_WATCHDOG_COMMAND 44
+#define DEBUG 45
 
 #define CONFIG_STRING_COUNT 16
-#define CONFIG_TOTAL_COUNT 45
+#define CONFIG_TOTAL_COUNT 46
 // ==========================================================
 
 
