@@ -48,28 +48,7 @@
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
-
-//SEND DATA TO A REMOTE SERVER TO STORE IN A DATABASE----------------------------------------------------
-// ---------- Non-blocking sendRemoteData() state machine -------------
-//
-// Usage:
-//   startRemoteTask(datastring, mode, fRAMordinal);
-//   // call runRemoteTask() frequently from loop()
-// ---------------------------------------------------------------------
-
-enum RemoteState {
-  RS_IDLE,
-  RS_PREPARE,            // construct URL + init
-  RS_CONNECTING,
-  RS_CONNECT_WAIT,       // spacing between connect attempts
-  RS_SENDING_REQUEST,
-  RS_WAITING_FOR_REPLY,  // waiting for any data (with timeout)
-  RS_READING_REPLY,      // drain available bytes into buffer
-  RS_SOCKET_CLOSED,      // socket closed by remote or finished reading
-  RS_PROCESSING_REPLY,   // now do the heavy processing (commands, FRAM, etc.)
-  RS_DONE
-};
-
+//static globals for the state machine
 static RemoteState remoteState = RS_IDLE;
 static WiFiClient clientGet;
 static String remoteDatastring;      // original datastring param
@@ -82,11 +61,6 @@ static int attemptCount = 0;
 static String responseBufferSM;      // accumulate response
 static uint32_t taskStartTimeMs = 0; // logging timer
 
-// Configurable timings (tweak as desired)
-const unsigned long CONNECT_RETRY_SPACING_MS = 200;   // spacing between connect attempts (non-blocking)
-const unsigned long CONNECT_TIMEOUT_MS = 5000;       // per-connection wait for server (was ~10s, shortened)
-const unsigned long REPLY_AVAIL_TIMEOUT_MS = 10000;  // wait for first byte from server
-const unsigned long MAX_RESPONSE_SIZE = 32 * 1024UL; // safety cap to avoid runaway memory use
 
 // Start a new remote task (replacement for original sendRemoteData)
 void startRemoteTask(const String& datastring, const String& mode, uint16_t fRAMordinal) {
@@ -269,16 +243,22 @@ String weatherDataString(
         if (!isnan(humidityFromSensor))    addOfflineRecord(framWeatherRecord, 2, 5, humidityFromSensor);
         if (ci[RTC_ADDRESS] > 0) {
           addOfflineRecord(framWeatherRecord, 32, 2, currentRTCTimestamp());
-          Serial.println(currentRTCTimestamp());
+          if(ci[DEBUG]) {
+            Serial.println(currentRTCTimestamp());
+          }
         } else {
           addOfflineRecord(framWeatherRecord, 32, 2, timeClient.getEpochTime());
         }
         writeRecordToFRAM(framWeatherRecord);
-        Serial.println("Saved a record to FRAM.");
+        if(ci[DEBUG]) {
+          Serial.println("Saved a record to FRAM.");
+        }
         // print trimmed tx for info
         tx[(pos < bufSize - 1) ? pos : bufSize - 1] = '\0';
-        Serial.print(tx);
-        Serial.println(millisVal);
+        if(ci[DEBUG]) {
+          Serial.print(tx);
+          Serial.println(millisVal);
+        }
       }
       lastOfflineLog = millis();
     }
@@ -321,17 +301,27 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
   */
   } else if(sensorIdLocal == 53) {
     if(!lox[objectCursor].begin(i2c)) {
-      Serial.println(F("Failed to boot VL53L0X"));
+      if(ci[DEBUG]) {
+        Serial.println(F("Failed to boot VL53L0X"));
+      }
     } else {
-      Serial.print(F("VL53L0X at "));
-      Serial.println(i2c);
+      if(ci[DEBUG]) {
+        Serial.print(F("VL53L0X at "));
+        Serial.println(i2c);
+      }
     }
   } else if(sensorIdLocal == 680) {
-    Serial.print(F("Initializing BME680 sensor...\n"));
+    if(ci[DEBUG]) {
+      Serial.print(F("Initializing BME680 sensor...\n"));
+    }
     if (!BME680[objectCursor].begin((uint8_t)i2c)) {  // Start B DHTME680 using I2C, use first device found
-      Serial.print(F(" - Unable to find BME680.\n"));
+      if(ci[DEBUG]) {
+        Serial.print(F(" - Unable to find BME680.\n"));
+      }
     } 
-    Serial.print(F("- Setting 16x oversampling for all sensors\n"));
+    if(ci[DEBUG]) {
+      Serial.print(F("- Setting 16x oversampling for all sensors\n"));
+    }
     BME680[objectCursor].setOversampling(TemperatureSensor, Oversample16);  // Use enumerated type values
     BME680[objectCursor].setOversampling(HumiditySensor, Oversample16);     // Use enumerated type values
     BME680[objectCursor].setOversampling(PressureSensor, Oversample16);     // Use enumerated type values
@@ -340,7 +330,9 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
     //Serial.print(F("- Setting gas measurement to 320\xC2\xB0\x43 for 150ms\n"));  // "?C" symbols
     BME680[objectCursor].setGas(320, 150);  // 320?c for 150 milliseconds
   } else if (sensorIdLocal == 2301) {
-    Serial.print(F("Initializing DHT AM2301 sensor at pin: "));
+    if(ci[DEBUG]) {
+      Serial.print(F("Initializing DHT AM2301 sensor at pin: "));
+    }
     if(powerPin > -1) {
       pinMode(powerPin, OUTPUT);
       digitalWrite(powerPin, LOW);
@@ -349,9 +341,13 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
     dht[objectCursor]->begin();
   } else if (sensorIdLocal == 2320) { //AHT20
     if (AHT[objectCursor].begin()) {
-      Serial.println("Found AHT20");
+      if(ci[DEBUG]) {
+        Serial.println("Found AHT20");
+      }
     } else {
-      Serial.println("Didn't find AHT20");
+      if(ci[DEBUG]) {
+        Serial.println("Didn't find AHT20");
+      }
     }  
   } else if (sensorIdLocal == 7410) { //adt7410
     adt7410[objectCursor].begin(i2c);
@@ -359,16 +355,22 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
   } else if (sensorIdLocal == 180) { //BMP180
     BMP180[objectCursor].begin();
   } else if (sensorIdLocal == 85) { //BMP085
-    Serial.print(F("Initializing BMP085...\n"));
+    if(ci[DEBUG]) {
+      Serial.print(F("Initializing BMP085...\n"));
+    }
     BMP085d[objectCursor].begin();
   } else if (sensorIdLocal == 280) {
-    Serial.print("Initializing BMP280 at i2c: ");
-    Serial.print((int)i2c);
-    Serial.print(" objectcursor:");
-    Serial.print((int)objectCursor);
-    Serial.println();
+    if(ci[DEBUG]) {
+      Serial.print("Initializing BMP280 at i2c: ");
+      Serial.print((int)i2c);
+      Serial.print(" objectcursor:");
+      Serial.print((int)objectCursor);
+      Serial.println();
+    }
     if(!BMP280[objectCursor].begin(i2c)){
-      Serial.println("Couldn't find BMX280!");
+      if(ci[DEBUG]) {
+        Serial.println("Couldn't find BMX280!");
+      }
     }
   }
 
@@ -509,8 +511,9 @@ void wiFiConnect() {
     int ssidIndex = (currentWifiIndex + attempt) % NUM_WIFI_CREDENTIALS;
     const char* wifiSsid = cs[WIFI_SSID + ssidIndex * 2];
     const char* wifiPassword = cs[WIFI_PASSWORD + ssidIndex * 2];
-
-    Serial.printf("\nAttempting WiFi connection to: %s\n", wifiSsid);
+    if(ci[DEBUG]) {
+      Serial.printf("\nAttempting WiFi connection to: %s\n", wifiSsid);
+    }
 
     WiFi.disconnect(true);
     unsigned long disconnectTime = millis();
@@ -530,7 +533,9 @@ void wiFiConnect() {
 
       // print dot every second
       if (now - lastDotTime >= 1000) {
-        Serial.print(".");
+        if(ci[DEBUG]) {
+          Serial.print(".");
+        }
         lastDotTime = now;
         wiFiSeconds++;
       }
@@ -540,11 +545,15 @@ void wiFiConnect() {
         WiFi.disconnect();
         WiFi.begin(wifiSsid, wifiPassword);
         lastOfflineReconnectAttemptTime = now;
-        Serial.print("*");
+        if(ci[DEBUG]) {
+          Serial.print("*");
+        }
       }
 
       if (WiFi.status() == WL_NO_SSID_AVAIL) {
-        Serial.printf("\nSSID not found: %s\n", wifiSsid);
+        if(ci[DEBUG]) {
+          Serial.printf("\nSSID not found: %s\n", wifiSsid);
+        }
         break; // try next SSID
       }
 
@@ -556,13 +565,19 @@ void wiFiConnect() {
         wifiTimeoutToUse = ci[GRANULARITY_WHEN_IN_MOXEE_PHASE_1];
 
       if (wiFiSeconds > wifiTimeoutToUse) {
-        Serial.println("");
-        Serial.println("WiFi taking too long");
+        if(ci[DEBUG]) {
+          Serial.println("");
+          Serial.println("WiFi taking too long");
+        }
         if(ci[MOXEE_POWER_SWITCH] > 0) {
-          Serial.println(", rebooting Moxee");
+          if(ci[DEBUG]) {
+            Serial.println(", rebooting Moxee");
+          }
           rebootMoxee();
         }
-        Serial.println(", trying another");
+        if(ci[DEBUG]) {
+          Serial.println(", trying another");
+        }
         wiFiSeconds = 0;
         initialAttemptPhase = false;
         break; // move to next SSID
@@ -582,15 +597,19 @@ void wiFiConnect() {
     if (WiFi.status() == WL_CONNECTED) {
       connected = true;
       currentWifiIndex = (ssidIndex + 1) % NUM_WIFI_CREDENTIALS; // next SSID next time
-      Serial.printf("\nConnected to %s, IP: %s\n", wifiSsid,
-                    WiFi.localIP().toString().c_str());
+      if(ci[DEBUG]) {
+        Serial.printf("\nConnected to %s, IP: %s\n", wifiSsid,
+                      WiFi.localIP().toString().c_str());
+      }
       ipAddress = WiFi.localIP().toString();
       break;
     }
   }
 
   if (!connected) {
-    Serial.println("\nAll WiFi attempts failed.");
+    if(ci[DEBUG]) {
+      Serial.println("\nAll WiFi attempts failed.");
+    }
     if (ci[FRAM_ADDRESS] > 0)
       offlineMode = true;
     haveReconnected = false;
@@ -626,7 +645,7 @@ void runRemoteTask() {
       String encryptedStoragePassword = encryptStoragePassword(remoteDatastring);
       // build URL exactly like before
       remoteURL = String(cs[URL_GET]) + "?k2=" + encryptedStoragePassword + "&device_id=" + ci[DEVICE_ID] + "&mode=" + remoteMode + "&data=" + urlEncode(remoteDatastring, true);
-      if(debug) {
+      if(ci[DEBUG]) {
         Serial.println(remoteURL);
       }
       // initialize connect attempt spacing
@@ -666,7 +685,7 @@ void runRemoteTask() {
           connectionFailureTime = millis();
           connectionFailureMode = true;
           rebootMoxee();
-          if(debug) {
+          if(ci[DEBUG]) {
             Serial.println();
             Serial.print("Connection failed (host): ");
             Serial.println(cs[HOST_GET]);
@@ -827,7 +846,7 @@ void runRemoteTask() {
         char first = retLine.charAt(0);
         if(first == '*') {
           // getInitialDeviceInfo
-          if(debug) {
+          if(ci[DEBUG]) {
             Serial.println("Initial: " + retLine);
           }
           if(cs[SENSOR_CONFIG_STRING] != "") {
@@ -838,7 +857,7 @@ void runRemoteTask() {
           break; // original code broke on this
         } else if(first == '{') {
           // JSON
-          if(debug) {
+          if(ci[DEBUG]) {
             Serial.println("JSON: " + retLine);
           }
           receivedDataJson = true;
@@ -851,13 +870,13 @@ void runRemoteTask() {
           String serverCommandParts[3];
           splitString(retLine, '!', serverCommandParts, 3);
           yield();
-          if(debug) {
+          if(ci[DEBUG]) {
             Serial.println("delimited: " + retLine);
           }
           setLocalHardwareToServerStateFromNonJson((char *)serverCommandParts[0].c_str());
           if(retLine.indexOf("!") > -1) {
             if(serverCommandParts[1].length()>5) {
-              if(debug) {
+              if(ci[DEBUG]) {
                 Serial.print("COMMAND (beside pin data): ");
                 Serial.println(serverCommandParts[1]);
               }
@@ -881,7 +900,7 @@ void runRemoteTask() {
           runCommandsFromNonJson((char *)retLine.c_str(), false);
           break;
         } else {
-          if(debug) {
+          if(ci[DEBUG]) {
             Serial.print("web data: ");
             Serial.println(retLine);
           }
@@ -1023,7 +1042,7 @@ void setLocalHardwareToServerStateFromNonJson(char * nonJsonLine){
       //Serial.println("!ABOUT TO TURN OFF localsource: " + (String)localSource +  " serverSAVED: " + (String)serverSaved);
       if(!localSource || serverSaved == 1){
         if(serverSaved == 1) {//confirmation of serverSaved, so localSource flag is no longer needed
-          if(debug) {
+          if(ci[DEBUG]) {
             Serial.println("SERVER SAVED==1!!");
           }
           localSource = false;
@@ -1372,10 +1391,6 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       textOut("Last data: " + msTimeAgo(lastDataLogTime) + "\n");
     } else if (command == "get memory") {
       dumpMemoryStats(0);
-    } else if (command == "set debug") {
-      debug = true;
-    } else if (command == "clear debug") {
-      debug = false;
     } else if (command.startsWith("read eeprom")) {
       char buffer[500]; 
       readBytesFromSlaveEEPROM((uint16_t)commandData.toInt(), buffer, 500);
@@ -1498,7 +1513,9 @@ void sendIr(String rawDataStr) {
   }
   // Send the parsed raw data
   irsend.sendRaw(rawData, rawDataLength, 38);
-  Serial.println("IR signal sent!");
+  if(ci[DEBUG]) {
+    Serial.println("IR signal sent!");
+  }
   free(rawData); // Free memory
 }
 
@@ -1572,10 +1589,14 @@ void setup(){
   delay(10);
   initConfig();
   if(!loadAllConfigFromEEPROM(false)) {
-    Serial.println("\nNo config found in EEPROM");
+    if(ci[DEBUG]) {
+      Serial.println("\nNo config found in EEPROM");
+    }
     initConfig();
   } else {
-    Serial.println("\nConfiguration retrieved from slave EEPROM");
+    if(ci[DEBUG]) {
+      Serial.println("\nConfiguration retrieved from slave EEPROM");
+    }
   }
   //set specified pins to start low immediately, keeping devices from turning on
   int pinsToStartLow[10];
@@ -1618,16 +1639,22 @@ void setup(){
   if(ci[INA219_ADDRESS] > 0) {
     ina219 = new Adafruit_INA219(ci[INA219_ADDRESS]);
     if (!ina219->begin()) {
-      Serial.println("Failed to find INA219 chip");
+      if(ci[DEBUG]) {
+        Serial.println("Failed to find INA219 chip");
+      }
     } else {
       ina219->setCalibration_16V_400mA();
     }
   }
   if(ci[FRAM_ADDRESS] > 0) {
     if (!fram.begin(ci[FRAM_ADDRESS])) {
-      Serial.println("Could not find FRAM (or EEPROM).");
+      if(ci[DEBUG]) {
+        Serial.println("Could not find FRAM (or EEPROM).");
+      }
     } else {
-      Serial.println("FRAM or EEPROM found");
+      if(ci[DEBUG]) {
+        Serial.println("FRAM or EEPROM found");
+      }
     }
       currentRecordCount = readRecordCountFromFRAM();
       if(lastRecordSize == 0) {
@@ -1645,12 +1672,16 @@ void setup(){
 
 //LOOP----------------------------------------------------
 void loop(){
-  runRemoteTask();
+  yield();
   if (Serial.available()) 
   {
-    Serial.println("*********************");
+    if(ci[DEBUG]) {
+      Serial.println("*********************");
+    }
     doSerialCommands();
   }
+  yield();
+  runRemoteTask();
   yield();
   //Serial.println("");
   //Serial.print("KNOWN MOXEE PHASE: ");
@@ -1794,7 +1825,7 @@ void doSerialCommands() {
   while(Serial.available()) {
     serialByte = Serial.read();
     if(serialByte == '\r' || serialByte == '\n') {
-      if(debug) {
+      if(ci[DEBUG]) {
         Serial.print("Serial command: ");
         Serial.println(command);
       }
@@ -1845,8 +1876,10 @@ void localSetData() {
     if(key == id) {
       pinMap->remove(key);
       pinMap->put(key, onValue);
-      Serial.print("LOCAL SOURCE TRUE :");
-      Serial.println(onValue);
+      if(ci[DEBUG]) {
+        Serial.print("LOCAL SOURCE TRUE :");
+        Serial.println(onValue);
+      }
       localSource = true; //sets the NodeMCU into a mode it cannot get out of until the server sends back confirmation it got the data
     }
   }
@@ -2329,7 +2362,7 @@ void sendAStoredRecordToBackend() {
   readRecordFromFRAM(positionInFram, record, delimiter);
   
   if(delimiter == 0xFF) { //we only send records to the backend if this is the delimiter.  after we send it, we update the delimiter to 0xFE
-    if(debug) {
+    if(ci[DEBUG]) {
       //Serial.print("Sending FRAM Record at ");
       //Serial.println(positionInFram);
     }
@@ -2365,7 +2398,7 @@ void changeDelimiterOnRecord(uint16_t index, uint8_t newDelimiter) {
   uint16_t location = read16(indexAddress);
   yield();
   uint8_t bytesPerLine = getRecordSizeFromFRAM(location);
-  if(debug) {
+  if(ci[DEBUG]) {
     Serial.print("Bytes per line: ");
     Serial.println(bytesPerLine);
     Serial.print("index in: ");
