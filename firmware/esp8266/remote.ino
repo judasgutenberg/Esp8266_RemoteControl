@@ -1049,8 +1049,8 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
     // Split nonJsonLine into |-delimited pin entries
     int foundPins = 0;
     splitStringToCharArrays(nonJsonLine, '|', nonJsonPinArray, 12); // you need a version of splitString that fills char arrays
-    int beginLoop = 1;
-    int endLoop = 12;
+    int beginLoop = 1; //4-5 is pin 3 on slave on laboratory test
+    int endLoop =  12;
     if(ci[POLLING_SKIP_LEVEL] == 16) {
       beginLoop = limitCursor;
       endLoop = limitCursor + 1;
@@ -1083,7 +1083,8 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
                 pinNumber = atoi(nonJsonPinDatum[1]);
                 i2c = 0;
             }
-
+            //---------
+         
             value = atoi(nonJsonPinDatum[2]);
             canBeAnalog = atoi(nonJsonPinDatum[3]);
             serverSaved = atoi(nonJsonPinDatum[4]);
@@ -1102,13 +1103,11 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
                     pinMap->put(nonJsonPinDatum[1], value);
                 }
             }
-
-            pinMode(pinNumber, OUTPUT);
-
             if (i2c > 0) {
                 setPinValueOnSlave(i2c, (char)pinNumber, (char)value);
                 yield();
             } else {
+                pinMode(pinNumber, OUTPUT);
                 if (canBeAnalog) {
                     analogWrite(pinNumber, value);
                 } else {
@@ -1117,6 +1116,7 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
             }
 
             foundPins++;
+ 
         }
     }
 
