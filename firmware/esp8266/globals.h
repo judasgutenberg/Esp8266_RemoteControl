@@ -93,7 +93,6 @@ extern bool haveReconnected;
 extern uint16_t fRAMRecordsSkipped;
 extern uint32_t lastRtcSyncTime;
 extern uint32_t wifiOnTime;
-extern bool debug;
 extern uint8_t outputMode;
 extern String responseBuffer;
 extern unsigned long lastPet;
@@ -120,3 +119,4 @@ extern uint32_t lastCommandLogId;
 extern ESP8266WebServer server;
 
 #endif
+
