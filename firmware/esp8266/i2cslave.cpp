@@ -394,7 +394,7 @@ void testRead() {
 }
 
 size_t readBytesFromSlaveSerial( char* buffer, size_t maxLen) {
-    enableSlaveSerial();
+ 
     // Put slave into serial-read mode
     Wire.beginTransmission(ci[SLAVE_I2C]);
     Wire.write(COMMAND_RETRIEVE_SERIAL_BUFFER);
@@ -438,7 +438,7 @@ void sendSlaveSerial(String inVal) {
   inVal.trim(); 
   char buffer[50];    
   inVal.toCharArray(buffer, sizeof(buffer));
-  enableSlaveSerial();
+ 
   delay(5);
   Wire.beginTransmission(ci[SLAVE_I2C]);
   Wire.write(COMMAND_POPULATE_SERIAL_BUFFER);
@@ -458,9 +458,9 @@ void normalSlaveMode() {
   Wire.endTransmission();
 }
 
-void enableSlaveSerial() {
+void enableSlaveSerial(int baudRateSelect) {
   Wire.beginTransmission(ci[SLAVE_I2C]);
   Wire.write(COMMAND_SERIAL_SET_BAUD_RATE); //set baud rate
-  Wire.write(9); //set slave serial to 115200
+  Wire.write(baudRateSelect); //set slave serial to 115200
   Wire.endTransmission();
 }
