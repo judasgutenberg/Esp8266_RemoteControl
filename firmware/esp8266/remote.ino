@@ -1452,6 +1452,9 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       String rest = command.substring(17);  // 17 = length of "sendslaveserial"
       sendSlaveSerial(rest);
       textOut("Serial data sent to slave: " + rest + "\n");
+    } else if (command.startsWith("init slave serial")) { //setting items in the configuration
+      enableSlaveSerial(9);
+      textOut("Serial on slave initiated\n");
     } else if (command.startsWith("get slave serial")) { //getting any slave serial data
       char buffer[500]; 
       int count = readBytesFromSlaveSerial(buffer, 500);
