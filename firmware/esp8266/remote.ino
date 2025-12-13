@@ -1340,14 +1340,6 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       rebootEsp(); //only use in extreme measures -- as an instant command will produce a booting loop until command is manually cleared
     } else if(command == "one pin at a time") {
       onePinAtATimeMode = (boolean)commandData.toInt(); //setting a global.
-    } else if(command == "sleep seconds per loop") {
-      ci[DEEP_SLEEP_TIME_PER_LOOP] = commandData.toInt(); //setting a global.
-    } else if(command == "snooze seconds per loop") {
-      ci[LIGHT_SLEEP_TIME_PER_LOOP] = commandData.toInt(); //setting a global.
-    } else if(command == "polling granularity") {
-      ci[POLLING_GRANULARITY] = commandData.toInt(); //setting a global.
-    } else if(command == "logging granularity") {
-      ci[DATA_LOGGING_GRANULARITY] = commandData.toInt(); //setting a global.
     } else if(command == "clear latency average") {
       latencyCount = 0;
       latencySum = 0;
