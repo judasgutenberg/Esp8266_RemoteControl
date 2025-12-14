@@ -9,7 +9,7 @@
 
 
 void saveAllConfigToEEPROM();
-bool loadAllConfigFromEEPROM(bool justDisplay);
+int loadAllConfigFromEEPROM(int mode);
 int readIntFromEEPROM(uint16_t addr);
 long readLongFromEEPROM(uint16_t addr);
 void writeIntToEEPROM(uint16_t addr, int value);
@@ -22,7 +22,7 @@ void readBytesFromSlaveEEPROM(uint16_t addr, char* buffer, size_t maxLen);
 size_t readBytesFromSlaveSerial( char* buffer, size_t maxLen);
 void sendSlaveSerial(String inVal);
 void normalSlaveMode();
-void enableSlaveSerial();
+void enableSlaveSerial(int baudSelector);
 
 
 #endif
