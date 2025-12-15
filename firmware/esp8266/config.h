@@ -49,16 +49,25 @@
 #define SLAVE_I2C 43
 #define SLAVE_PET_WATCHDOG_COMMAND 44
 #define DEBUG 45
+#define POLLING_SKIP_LEVEL 46
+#define LOCAL_WEB_SERVICE_RESPONSIVENESS 47
 
 #define CONFIG_STRING_COUNT 16
-#define CONFIG_TOTAL_COUNT 46
+#define CONFIG_TOTAL_COUNT 48
+
+
+#define CONFIG_SLAVE_STRING_COUNT 5 //for strings used specifically by the slave
+#define CONFIG_SLAVE_TOTAL_COUNT 10  //total config items on slave
 // ==========================================================
 
 
 extern char* cs[CONFIG_STRING_COUNT]; // string configuration values
 extern int ci[CONFIG_TOTAL_COUNT];    // integer configuration values
 
-void initConfig(void);
+extern char* css[CONFIG_SLAVE_STRING_COUNT]; // string configuration values
+extern int cis[CONFIG_SLAVE_TOTAL_COUNT];    // integer configuration values
 
+void initMasterConfig(void);
+void initSlaveConfig(void);
 
 #endif
