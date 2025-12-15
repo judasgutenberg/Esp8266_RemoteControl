@@ -22,6 +22,7 @@ static int appendNullOrInt(char *buf, size_t bufSize, size_t pos, long val);
 String nullifyOrNumber(double inVal);
 String nullifyOrInt(int inVal);
 void shiftArrayUp(uint32_t array[], uint32_t newValue, int arraySize);
+int splitStringToCharArrays(char *input, char delim, char outArray[][50], int maxParts);
 void splitString(const String& input, char delimiter, String* outputArray, int arraySize);
 String replaceFirstOccurrenceAtChar(String str1, String str2, char atChar);
 String replaceNthElement(const String& input, int n, const String& replacement, char delimiter);
@@ -32,6 +33,17 @@ uint8_t rotateLeft(uint8_t value, uint8_t count);
 uint8_t rotateRight(uint8_t value, uint8_t count);
 String encryptStoragePassword(String datastring);
 long requestLong(byte slaveAddress, byte command);
+time_t parseDateTime(String dateTime);
+String msTimeAgo(uint32_t base, uint32_t millisFromPast);
+String msTimeAgo(uint32_t millisFromPast);
+String timeAgo(String sqlDateTime);
+String timeAgo(String sqlDateTime, time_t compareTo);
+String humanReadableTimespan(uint32_t diffInSeconds);
+
+
+
+
+
 
 
 #endif
