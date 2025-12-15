@@ -1230,7 +1230,7 @@ long getPinValueOnSlave(char i2cAddress, char pinNumber) { //might want a user-f
   Wire.beginTransmission(i2cAddress);
   Wire.write(pinNumber); //addresses greater than 64 are the same as AX (AnalogX) where X is 64-value
   Wire.endTransmission();
-  delay(100); 
+  delay(10); 
   Wire.requestFrom(i2cAddress, 4); //we only ever get back four-byte long ints
   long totalValue = 0;
   int byteCursor = 1;
@@ -1408,15 +1408,28 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       if(ci[SLAVE_I2C] > 0) {
         textOut(slaveData() + "\n");
       } 
-    } else if (command ==  "save entire config") {
+    } else if (command ==  "save master config") { //master and slave configs are both stored in slave eeprom
       if(ci[SLAVE_I2C] > 0) {
-        saveAllConfigToEEPROM();
+        saveAllConfigToEEPROM(0);
         textOut("Configuration saved\n");
       }
-    } else if (command ==  "init config") {
+
+    } else if (command ==  "save slave config") {
       if(ci[SLAVE_I2C] > 0) {
-        initConfig();
+        saveAllConfigToEEPROM(512);
+        textOut("Configuration saved\n");
       }
+    } else if (command ==  "init master config") {
+      if(ci[SLAVE_I2C] > 0) {
+        initMasterConfig();
+        textOut("Master config initialized\n");
+      }
+    } else if (command ==  "init slave config") {
+      if(ci[SLAVE_I2C] > 0) {
+        initSlaveConfig();
+        textOut("Slave config initialized\n");
+      }
+      
     } else if (command ==  "get uptime") {
       textOut("Last booted: " + timeAgo("") + "\n");
     } else if (command ==  "get wifi uptime") {
@@ -1425,11 +1438,12 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       textOut("Last poll: " + msTimeAgo(lastPoll) + "\n");
     } else if (command ==  "get lastdatalog") {
       textOut("Last data: " + msTimeAgo(lastDataLogTime) + "\n");
-    } else if (command == "get memory") {
+    } else if (command == "memory") {
       dumpMemoryStats(0);
-    } else if (command.startsWith("read eeprom")) {
+    } else if (command.startsWith("read slave eeprom")) {
       char buffer[500]; 
-      readBytesFromSlaveEEPROM((uint16_t)commandData.toInt(), buffer, 500);
+      String rest = command.substring(17);  // 17 = length of "read slave eeprom"
+      readBytesFromSlaveEEPROM((uint16_t)rest.toInt(), buffer, 500);
       textOut("EEPROM data:\n");
       textOut(String(buffer));
     } else if (command.startsWith("reset serial")) {
@@ -1438,8 +1452,10 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       ETS_UART_INTR_DISABLE();
       ETS_UART_INTR_ENABLE();
       textOut("Serial reset\n");
-    } else if (command.startsWith("dump slave")) {
-      loadAllConfigFromEEPROM(true);
+    } else if (command.startsWith("dump config eeprom")) {
+      loadAllConfigFromEEPROM(1, 0);
+    } else if (command.startsWith("dump slave config eeprom")) {
+      loadAllConfigFromEEPROM(1, 512);
     } else if (command.startsWith("send slave serial")) { //setting items in the configuration
       String rest = command.substring(17);  // 17 = length of "sendslaveserial"
       sendSlaveSerial(rest);
@@ -1454,6 +1470,12 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       //Serial.println(count);
       //Serial.println(result);
       textOut(result);
+    } else if (command.startsWith("get master eeprom used")) { //getting numeric result from slave command
+      int bytesUsed = loadAllConfigFromEEPROM(2, 0);
+      textOut("Slave EEPROM bytes used for master: " + (String)bytesUsed + "\n");
+    } else if (command.startsWith("get slave eeprom used")) { //getting numeric result from slave command
+      int bytesUsed = loadAllConfigFromEEPROM(2, 512);
+      textOut("Slave EEPROM bytes used for slave: " + (String)(bytesUsed - 512) + "\n");
     } else if (command.startsWith("get slave")) { //getting numeric result from slave command
       String rest = command.substring(9);  // 9 = length of "get slave"
       rest.trim(); 
@@ -1626,12 +1648,12 @@ void setup(){
   Serial.setRxBufferSize(1024);
   //Serial.setDebugOutput(true);
   delay(10);
-  initConfig();
-  if(!loadAllConfigFromEEPROM(false)) {
+  initMasterConfig();
+  if(loadAllConfigFromEEPROM(0, 0) != 1) {
     if(ci[DEBUG] > 0) {
       Serial.println("\nNo config found in EEPROM");
     }
-    initConfig();
+    initMasterConfig();
   } else {
     if(ci[DEBUG] > 0) {
       Serial.println("\nConfiguration retrieved from slave EEPROM");
@@ -1958,83 +1980,6 @@ byte bcdToDec(byte val)
   return ( (val/16*10) + (val%16) );
 }
 
-//time functions 
- 
- 
-// Convert a SQL-style datetime string ("YYYY-MM-DD HH:MM:SS") to a Unix timestamp
-time_t parseDateTime(String dateTime) {
-    int year, month, day, hour, minute, second;
-    
-    // Convert String to C-style char* for parsing
-    if (sscanf(dateTime.c_str(), "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second) != 6) {
-        return 0; // Return 0 if parsing fails
-    }
-
-    struct tm t = {};
-    t.tm_year = year - 1900;
-    t.tm_mon = month - 1;
-    t.tm_mday = day;
-    t.tm_hour = hour;
-    t.tm_min = minute;
-    t.tm_sec = second;
-    
-    return mktime(&t); // Convert struct tm to Unix timestamp
-}
-
-
-String msTimeAgo(uint32_t base, uint32_t millisFromPast) {
-  return humanReadableTimespan((uint32_t) (base - millisFromPast)/1000);
-}
-
-String msTimeAgo(uint32_t millisFromPast) {
-  return humanReadableTimespan((uint32_t) (millis() - millisFromPast)/1000);
-}
- 
-// Overloaded version: Uses NTP time as the default comparison
-String timeAgo(String sqlDateTime) {
-    return timeAgo(sqlDateTime, timeClient.getEpochTime());
-}
-
-// Returns a human-readable "time ago" string
-String timeAgo(String sqlDateTime, time_t compareTo) {
-    time_t past;
-    time_t nowTime;
-
-    if (sqlDateTime.length() == 0) {
-        // If an empty string is passed, use millis() for uptime
-        uint32_t uptimeSeconds = millis() / 1000;
-        nowTime = uptimeSeconds;
-        past = 0;
-    } else {
-        past = parseDateTime(sqlDateTime);
-        nowTime = compareTo;
-    }
-
-    if (past == -1 || past > nowTime) {
-        return "Invalid time";
-    }
-
-    time_t diffInSeconds = nowTime - past;
-    return humanReadableTimespan((uint32_t) diffInSeconds);
-}
-
-String humanReadableTimespan(uint32_t diffInSeconds) {
-    int seconds = diffInSeconds % 60;
-    int minutes = (diffInSeconds / 60) % 60;
-    int hours = (diffInSeconds / 3600) % 24;
-    int days = diffInSeconds / 86400;
-
-    if (days > 0) {
-        return String(days) + (days == 1 ? " day ago" : " days ago");
-    }
-    if (hours > 0) {
-        return String(hours) + (hours == 1 ? " hour ago" : " hours ago");
-    }
-    if (minutes > 0) {
-        return String(minutes) + (minutes == 1 ? " minute ago" : " minutes ago");
-    }
-    return String(seconds) + (seconds == 1 ? " second ago" : " seconds ago");
-}
 
 //RTC functions
 const int _ytab[2][12] = {
