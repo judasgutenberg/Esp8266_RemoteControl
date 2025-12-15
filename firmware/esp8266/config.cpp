@@ -48,3 +48,10 @@ void initConfig(void) {
   ci[SLAVE_PET_WATCHDOG_COMMAND] = 0;
     ci[DEBUG] = 1;
 }
+
+
+void initSlaveConfig(void) {
+  css[0] = "chicken";
+  css[1] = "dog";
+  css[2] = "freedom";
+}
