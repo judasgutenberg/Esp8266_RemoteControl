@@ -8,8 +8,8 @@
 #include "utilities.h"
 
 
-void saveAllConfigToEEPROM();
-int loadAllConfigFromEEPROM(int mode);
+void saveAllConfigToEEPROM(uint16_t addr);
+int loadAllConfigFromEEPROM(int mode, uint16_t addr);
 int readIntFromEEPROM(uint16_t addr);
 long readLongFromEEPROM(uint16_t addr);
 void writeIntToEEPROM(uint16_t addr, int value);
