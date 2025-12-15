@@ -10,6 +10,13 @@
 #define COMMAND_EEPROM_READ    152
 #define COMMAND_EEPROM_NORMAL  153
 
+//housekeeping functions
+#define COMMAND_VERSION 160
+#define COMMAND_COMPILEDATETIME 161
+#define COMMAND_TEMPERATURE 162
+#define COMMAND_FREEMEMORY 163
+#define COMMAND_GET_SLAVE_CONFIG 164
+
 //serial commands
 #define COMMAND_SERIAL_SET_BAUD_RATE 170
 #define COMMAND_RETRIEVE_SERIAL_BUFFER 171
@@ -219,10 +226,23 @@ void readBytesFromSlaveEEPROM(uint16_t addr, char* buffer, size_t maxLen) {
 }
 
 
-void saveAllConfigToEEPROM() {
-    uint16_t addr = EEPROM_MARKER_ADDR;
+void saveAllConfigToEEPROM(uint16_t addr) {
     if(ci[SLAVE_I2C] < 1) {
       return;
+    }
+    int* activeCi;
+    char** activeCs;
+    
+    uint32_t slaveConfigLocation = requestLong(ci[SLAVE_I2C], COMMAND_GET_SLAVE_CONFIG);
+    int totalConfigItems = CONFIG_TOTAL_COUNT;
+    int totalStringConfigItems = CONFIG_STRING_COUNT;
+    activeCi = ci;
+    activeCs = cs;
+    if(addr >= slaveConfigLocation) {
+      totalConfigItems = CONFIG_SLAVE_TOTAL_COUNT;
+      totalStringConfigItems = CONFIG_SLAVE_STRING_COUNT;
+      activeCi = cis;
+      activeCs = css;
     }
     // ============================================================
     // 1. Write marker "DATA"
@@ -233,16 +253,16 @@ void saveAllConfigToEEPROM() {
     // ============================================================
     // 2. Write integer config array (ci[])
     // ============================================================
-    for (int i = 0; i < CONFIG_TOTAL_COUNT; i++) {
-        writeIntToEEPROM(addr, ci[i]);
+    for (int i = 0; i < totalConfigItems; i++) {
+        writeIntToEEPROM(addr, activeCi[i]);
         addr += 2;                // 2 bytes per int
     }
 
     // ============================================================
     // 3. Write strings (null-terminated)
     // ============================================================
-    for (int i = 0; i < CONFIG_STRING_COUNT; i++) {
-        const char* s = cs[i];
+    for (int i = 0; i < totalStringConfigItems; i++) {
+        const char* s = activeCs[i];
         if (s == NULL) s = "";
     
         writeStringToEEPROM(addr, s);
@@ -252,11 +272,27 @@ void saveAllConfigToEEPROM() {
 
 
 
-int loadAllConfigFromEEPROM(int mode) {
-    uint16_t addr = 0;
+int loadAllConfigFromEEPROM(int mode, uint16_t addr) { //can also be used to recover values from EEPROM
     if(ci[SLAVE_I2C] < 1) {
       return false;
     }
+    int* activeCi;
+    char** activeCs;
+    
+    uint32_t slaveConfigLocation = requestLong(ci[SLAVE_I2C], COMMAND_GET_SLAVE_CONFIG);
+    int totalConfigItems = CONFIG_TOTAL_COUNT;
+    int totalStringConfigItems = CONFIG_STRING_COUNT;
+    activeCi = ci;
+    activeCs = cs;
+    //Serial.println((int) slaveConfigLocation);
+    //Serial.println((int) addr);
+    if(addr >= slaveConfigLocation) {
+      totalConfigItems = CONFIG_SLAVE_TOTAL_COUNT;
+      totalStringConfigItems = CONFIG_SLAVE_STRING_COUNT;
+      activeCi = cis;
+      activeCs = css;
+    }
+
     // ============================================================
     // 1. Read marker (must be "DATA")
     // ============================================================
@@ -270,16 +306,17 @@ int loadAllConfigFromEEPROM(int mode) {
         // No valid data stored
         return 0;
     }
+    
 
     addr += 5;  // Skip marker + null
-
+ 
     // ============================================================
     // 2. Read all integer configs
     // ============================================================
-    for (int i = 0; i < CONFIG_TOTAL_COUNT; i++) {
+    for (int i = 0; i < totalConfigItems; i++) {
         if(mode == 0) {
-          ci[i] = readIntFromEEPROM(addr);
-        } else {
+          activeCi[i] = readIntFromEEPROM(addr);
+        } else if (mode == 1) {
           textOut(String(readIntFromEEPROM(addr)));
           textOut("\n");
           
@@ -290,36 +327,40 @@ int loadAllConfigFromEEPROM(int mode) {
     // ============================================================
     // 3. Read all string configs
     // ============================================================
-    for (int i = 0; i < CONFIG_STRING_COUNT; i++) {
-
-        // Read characters until null terminator
-        char buffer[128];  // safe max length per string
+    for (int i = 0; i < totalStringConfigItems; i++) {
+    
+        char buffer[128];
         int pos = 0;
-
-        while (pos < 127) {  // leave space for null
-            uint8_t b = (uint8_t)readByteFromEEPROM(addr); // reading 1 byte
-            addr += 1;
-            //Serial.print((char)b);
+    
+        while (pos < 127) {
+            uint8_t b = (uint8_t)readByteFromEEPROM(addr++);
             buffer[pos++] = b;
-            if (b == 0) break;   // end of string
+            if (b == 0) break;
         }
         buffer[127] = 0;
-
-        // Copy into dynamically allocated cs[i]
-        size_t len = strlen(buffer);
-        if(mode == 0) {
-          cs[i] = (char*)malloc(len + 1);
-          strcpy(cs[i], buffer);
-        } else {
-          //Serial.println(buffer);
-          textOut(buffer);
-          textOut("\n");
+    
+        if (mode == 0) {
+            size_t len = strlen(buffer);
+    
+            if (!activeCs[i]) {
+                activeCs[i] = (char*)malloc(len + 1);
+            } else if (strlen(activeCs[i]) < len) {
+                char* tmp = (char*)realloc(activeCs[i], len + 1);
+                if (tmp) activeCs[i] = tmp;
+            }
+    
+            if (activeCs[i]) {
+                memcpy(activeCs[i], buffer, len + 1);
+            }
+        } else if (mode == 1) {
+            textOut(buffer);
+            textOut("\n");
         }
-        
     }
+
     if(mode == 0) {
       return 1;
-    } else if (mode = 2) {
+    } else if (mode == 2) {
       return addr;
     }
     return 0;
