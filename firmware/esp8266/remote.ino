@@ -1460,6 +1460,14 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       String rest = command.substring(17);  // 17 = length of "sendslaveserial"
       sendSlaveSerial(rest);
       textOut("Serial data sent to slave: " + rest + "\n");
+    } else if (command.startsWith("set slave time")) { //setting items in the configuration
+      char buffer[500]; 
+      String rest = command.substring(17);  // 13 = length of "read slave eeprom"
+      sendLong(ci[SLAVE_I2C], 180, rest.toInt());
+      textOut("Slave UNIX time set to: " + rest + "\n");
+    } else if (command.startsWith("get slave time")) { //setting items in the configuration
+      uint32_t unixTime = requestLong(ci[SLAVE_I2C], 181);
+      textOut("Slave UNIX time: " + String(unixTime) + "\n");
     } else if (command.startsWith("init slave serial")) { //setting items in the configuration
       enableSlaveSerial(9);
       textOut("Serial on slave initiated\n");
@@ -1749,18 +1757,7 @@ void loop(){
 
   unsigned long nowTime = millis() + timeOffset;
   yield();
-  if (ci[SLAVE_PET_WATCHDOG_COMMAND] > 0 && (nowTime - lastPet) > 20000) { 
- 
-    Wire.beginTransmission(ci[SLAVE_I2C]);
-    Wire.write((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND]);  // command ID for "pet watchdog"
-    Wire.endTransmission();
-  
-    yield();
-    //feedbackPrint("pet\n");
-   
-    lastPet = nowTime;
-  }
-  yield();
+
  
   /*
   uint8_t testHi = 0;//(millis() >> 8) & 0xFF;
@@ -1833,6 +1830,8 @@ void loop(){
     lastPoll = nowTime;
   }
   yield();
+
+  
  
   lookupLocalPowerData();
   yield();
@@ -1852,6 +1851,17 @@ void loop(){
       }
     }
   }
+
+
+ if (ci[SLAVE_PET_WATCHDOG_COMMAND] > 0 && (nowTime - lastPet) > 20000) { 
+    petWatchDog((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND], timeClient.getEpochTime());
+    yield();
+    //feedbackPrint("pet\n");
+   
+    lastPet = nowTime;
+  }
+  yield();
+  
   if(haveReconnected) {
     //try to send stored records to the backend
     if(ci[FRAM_ADDRESS] > 0){
