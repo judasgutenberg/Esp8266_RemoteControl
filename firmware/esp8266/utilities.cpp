@@ -447,6 +447,20 @@ long requestLong(byte slaveAddress, byte command) {
 }
 
 
+void sendLong(byte slaveAddress, byte command, uint32_t value) {
+    uint8_t bytes[5];
+    bytes[0] = command;
+    bytes[1] = value & 0xFF;
+    bytes[2] = (value >> 8) & 0xFF;
+    bytes[3] = (value >> 16) & 0xFF;
+    bytes[4] = (value >> 24) & 0xFF;
+    Wire.beginTransmission(slaveAddress);
+    Wire.write(bytes, 5);
+    Wire.endTransmission();
+    delay(5);
+}
+
+
 //time functions 
  
  
@@ -524,3 +538,4 @@ String humanReadableTimespan(uint32_t diffInSeconds) {
     }
     return String(seconds) + (seconds == 1 ? " second ago" : " seconds ago");
 }
+
