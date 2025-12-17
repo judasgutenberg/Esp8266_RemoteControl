@@ -27,6 +27,9 @@
 
 // ---- Write an int (2 bytes) ----
 void writeIntToEEPROM(uint16_t addr, int value) {
+    if(ci[SLAVE_I2C] < 1) {
+      return;
+    }
     uint8_t bytes[2];
     bytes[0] = value & 0xFF;        // LSB
     bytes[1] = (value >> 8) & 0xFF; // MSB
@@ -45,6 +48,9 @@ void writeIntToEEPROM(uint16_t addr, int value) {
 }
 
 char readByteFromEEPROM(uint16_t addr) {
+    if(ci[SLAVE_I2C] < 1) {
+      return 0;
+    }
     setAddress(addr); 
 
     Wire.beginTransmission(ci[SLAVE_I2C]);
@@ -65,6 +71,9 @@ char readByteFromEEPROM(uint16_t addr) {
 
 // ---- Read an int (2 bytes) ----
 int readIntFromEEPROM(uint16_t addr) {
+    if(ci[SLAVE_I2C] < 1) {
+      return 0;
+    }
     setAddress(addr); 
 
     Wire.beginTransmission(ci[SLAVE_I2C]);
@@ -86,6 +95,9 @@ int readIntFromEEPROM(uint16_t addr) {
 
 // ---- Write a long (4 bytes) ----
 void writeLongToEEPROM(uint16_t addr, long value) {
+    if(ci[SLAVE_I2C] < 1) {
+      return;
+    }
     uint8_t bytes[4];
     bytes[0] = value & 0xFF;
     bytes[1] = (value >> 8) & 0xFF;
@@ -105,6 +117,9 @@ void writeLongToEEPROM(uint16_t addr, long value) {
 
 // ---- Read a long (4 bytes) ----
 long readLongFromEEPROM(uint16_t addr) {
+    if(ci[SLAVE_I2C] < 1) {
+      return 0;
+    }
     setAddress(addr); 
 
     Wire.beginTransmission(ci[SLAVE_I2C]);
@@ -127,6 +142,9 @@ long readLongFromEEPROM(uint16_t addr) {
 }
 
 void writeStringToEEPROM(uint16_t addr, const char* str) {
+    if(ci[SLAVE_I2C] < 1) {
+      return;
+    }
     if (!str) str = ""; // ensure non-null pointer
 
     // 1. Set EEPROM start address
@@ -163,6 +181,9 @@ void writeStringToEEPROM(uint16_t addr, const char* str) {
 
 
 void readStringFromSlaveEEPROM(uint16_t addr, char* buffer, size_t maxLen) {
+    if(ci[SLAVE_I2C] < 1) {
+      return;
+    }
     // Set EEPROM address
     setAddress(addr); 
 
@@ -188,6 +209,9 @@ void readStringFromSlaveEEPROM(uint16_t addr, char* buffer, size_t maxLen) {
 }
 
 void readBytesFromSlaveEEPROM(uint16_t addr, char* buffer, size_t maxLen) {
+    if(ci[SLAVE_I2C] < 1) {
+      return;
+    }
     // Set EEPROM address
     //Serial.println((int) addr);
     setAddress(addr); 
@@ -274,7 +298,7 @@ void saveAllConfigToEEPROM(uint16_t addr) {
 
 int loadAllConfigFromEEPROM(int mode, uint16_t addr) { //can also be used to recover values from EEPROM
     if(ci[SLAVE_I2C] < 1) {
-      return false;
+      return 0;
     }
     int* activeCi;
     char** activeCs;
@@ -367,6 +391,9 @@ int loadAllConfigFromEEPROM(int mode, uint16_t addr) { //can also be used to rec
 }
 
 void setAddress(uint16_t addr) {
+    if(ci[SLAVE_I2C] < 1) {
+      return;
+    }
     Wire.beginTransmission((uint8_t)ci[SLAVE_I2C]);
     Wire.write((uint8_t)COMMAND_EEPROM_SETADDR);
     Wire.write((uint8_t)addr & 0xFF);        // low byte
@@ -378,6 +405,9 @@ void setAddress(uint16_t addr) {
 
 
 void testWrite() {
+    if(ci[SLAVE_I2C] < 1) {
+      return;
+    }
     uint16_t addr = 100;
 
     // 1. Set address
@@ -405,6 +435,9 @@ void testWrite() {
 }
  
 void testRead() {
+    if(ci[SLAVE_I2C] < 1) {
+      return;
+    }
     uint16_t addr = 100;
     // 1. Set address for reading
     setAddress(addr);
@@ -433,7 +466,9 @@ void testRead() {
 }
 
 size_t readBytesFromSlaveSerial( char* buffer, size_t maxLen) {
- 
+    if(ci[SLAVE_I2C] < 1) {
+      return 0;
+    }
     // Put slave into serial-read mode
     Wire.beginTransmission(ci[SLAVE_I2C]);
     Wire.write(COMMAND_RETRIEVE_SERIAL_BUFFER);
@@ -474,6 +509,9 @@ size_t readBytesFromSlaveSerial( char* buffer, size_t maxLen) {
 }
 
 void sendSlaveSerial(String inVal) {
+  if(ci[SLAVE_I2C] < 1) {
+    return;
+  }
   inVal.trim(); 
   char buffer[50];    
   inVal.toCharArray(buffer, sizeof(buffer));
@@ -492,14 +530,28 @@ void sendSlaveSerial(String inVal) {
 }
 
 void normalSlaveMode() {
+  if(ci[SLAVE_I2C] < 1) {
+    return;
+  }
   Wire.beginTransmission(ci[SLAVE_I2C]);
   Wire.write(COMMAND_EEPROM_NORMAL);
   Wire.endTransmission();
 }
 
 void enableSlaveSerial(int baudRateSelect) {
+  if(ci[SLAVE_I2C] < 1) {
+    return;
+  }
   Wire.beginTransmission(ci[SLAVE_I2C]);
   Wire.write(COMMAND_SERIAL_SET_BAUD_RATE); //set baud rate
   Wire.write(baudRateSelect); //set slave serial to 115200
   Wire.endTransmission();
+}
+
+void petWatchDog(uint8_t command, uint32_t unixTime) { //also updates unix time if that is set to larger than 0
+  //Serial.println(unixTime);
+  if(ci[SLAVE_I2C] < 1) {
+    return;
+  }
+  sendLong(ci[SLAVE_I2C], command, unixTime);
 }
