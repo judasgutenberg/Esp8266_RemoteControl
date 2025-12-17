@@ -23,6 +23,6 @@ size_t readBytesFromSlaveSerial( char* buffer, size_t maxLen);
 void sendSlaveSerial(String inVal);
 void normalSlaveMode();
 void enableSlaveSerial(int baudSelector);
-
+void petWatchDog(uint8_t command, uint32_t unixTime);
 
 #endif
