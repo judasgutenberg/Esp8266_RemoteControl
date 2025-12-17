@@ -33,6 +33,7 @@ uint8_t rotateLeft(uint8_t value, uint8_t count);
 uint8_t rotateRight(uint8_t value, uint8_t count);
 String encryptStoragePassword(String datastring);
 long requestLong(byte slaveAddress, byte command);
+void sendLong(byte slaveAddress, byte command, uint32_t value);
 time_t parseDateTime(String dateTime);
 String msTimeAgo(uint32_t base, uint32_t millisFromPast);
 String msTimeAgo(uint32_t millisFromPast);
