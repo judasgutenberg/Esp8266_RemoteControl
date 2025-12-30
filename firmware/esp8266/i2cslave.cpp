@@ -18,9 +18,15 @@
 #define COMMAND_GET_SLAVE_CONFIG 164
 
 //serial commands
-#define COMMAND_SERIAL_SET_BAUD_RATE 170
-#define COMMAND_RETRIEVE_SERIAL_BUFFER 171
-#define COMMAND_POPULATE_SERIAL_BUFFER 172
+#define COMMAND_SERIAL_SET_BAUD_RATE        170
+#define COMMAND_RETRIEVE_SERIAL_BUFFER      171
+#define COMMAND_POPULATE_SERIAL_BUFFER      172
+#define COMMAND_GET_LAST_PARSE_TIME         173
+#define COMMAND_GET_PARSED_SERIAL_DATA      174
+#define CMD_SET_PARSED_OFFSET               175
+
+#define COMMAND_SET_UNIX_TIME 180
+#define COMMAND_GET_UNIX_TIME 181
 
 #define EEPROM_MARKER_ADDR 0
 #define EEPROM_INT_BASE    4   // ints start immediately after "DATA"
@@ -247,6 +253,38 @@ void readBytesFromSlaveEEPROM(uint16_t addr, char* buffer, size_t maxLen) {
     finished: 
       buffer[count] = '\0';
       normalSlaveMode();
+}
+
+void readDataParsedFromSlaveSerial() {
+    if(ci[SLAVE_I2C] < 1) {
+      return;
+    }
+    uint8_t parsedLen = 64;
+    uint8_t bytesToReceive = 30;//for now i guess
+    // Enable sequential read
+
+    
+    uint8_t  offset = 0;
+    while(offset < parsedLen) {
+      Wire.beginTransmission(ci[SLAVE_I2C]);
+      Wire.write(CMD_SET_PARSED_OFFSET);
+      Wire.write(offset);
+      Wire.beginTransmission(ci[SLAVE_I2C]);
+      Wire.write(COMMAND_GET_PARSED_SERIAL_DATA);
+      Wire.write(bytesToReceive); 
+      Wire.endTransmission();
+      uint8_t received = Wire.requestFrom(ci[SLAVE_I2C], bytesToReceive);
+      uint8_t i = 0;
+      while(Wire.available()) {
+        char b = Wire.read();
+        parsedSerialData[i] = b;
+        i++;
+      }
+      offset += bytesToReceive;
+    }
+
+
+    normalSlaveMode();
 }
 
 

@@ -49,7 +49,6 @@ enum RemoteState {
   RS_DONE
 };
 
-
 extern const unsigned long CONNECT_RETRY_SPACING_MS;
 extern const unsigned long CONNECT_TIMEOUT_MS;
 extern const unsigned long REPLY_AVAIL_TIMEOUT_MS;
@@ -116,7 +115,8 @@ extern int knownMoxeePhase;
 extern int moxeePhaseChangeCount;
 extern uint32_t lastCommandLogId;
 
+extern byte parsedSerialData[64];
+ 
 extern ESP8266WebServer server;
 
 #endif
-

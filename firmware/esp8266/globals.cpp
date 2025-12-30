@@ -80,6 +80,7 @@ String responseBuffer = "";
 unsigned long lastPet = 0;
 int currentWifiIndex = 0;
 
+
 //https://github.com/spacehuhn/SimpleMap
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
   if (a == b) return 0;      // a and b are equal
@@ -107,5 +108,6 @@ int knownMoxeePhase = -1;  //-1 is unknown. 0 is stupid "show battery level", 1 
 int moxeePhaseChangeCount = 0;
 uint32_t lastCommandLogId = 0;
 
+byte parsedSerialData[64];
+ 
 ESP8266WebServer server(80); //Server on port 80
-

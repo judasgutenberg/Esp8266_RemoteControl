@@ -32,6 +32,7 @@ byte countZeroes(const String &input);
 uint8_t rotateLeft(uint8_t value, uint8_t count);
 uint8_t rotateRight(uint8_t value, uint8_t count);
 String encryptStoragePassword(String datastring);
+uint32_t setSerialRate(byte baudRateLevel);
 long requestLong(byte slaveAddress, byte command);
 void sendLong(byte slaveAddress, byte command, uint32_t value);
 time_t parseDateTime(String dateTime);
