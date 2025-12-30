@@ -46,7 +46,10 @@ void initConfig(void) {
   ci[RTC_ADDRESS] = 0x68;
   ci[SLAVE_I2C] = 0;
   ci[SLAVE_PET_WATCHDOG_COMMAND] = 0;
-    ci[DEBUG] = 1;
+  ci[DEBUG] = 1;
+  ci[POLLING_SKIP_LEVEL] = 50;
+  ci[LOCAL_WEB_SERVICE_RESPONSIVENESS] = 1;
+  ci[BAUD_RATE_LEVEL] = 9;
 }
 
 
