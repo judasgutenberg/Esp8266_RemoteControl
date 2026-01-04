@@ -33,7 +33,7 @@ uint8_t rotateLeft(uint8_t value, uint8_t count);
 uint8_t rotateRight(uint8_t value, uint8_t count);
 String encryptStoragePassword(String datastring);
 uint32_t setSerialRate(byte baudRateLevel);
-long requestLong(byte slaveAddress, byte command);
+uint32_t requestLong(byte slaveAddress, byte command);
 void sendLong(byte slaveAddress, byte command, uint32_t value);
 time_t parseDateTime(String dateTime);
 String msTimeAgo(uint32_t base, uint32_t millisFromPast);
@@ -41,7 +41,7 @@ String msTimeAgo(uint32_t millisFromPast);
 String timeAgo(String sqlDateTime);
 String timeAgo(String sqlDateTime, time_t compareTo);
 String humanReadableTimespan(uint32_t diffInSeconds);
-
+void bytesToHex(const uint8_t* data, size_t length, char* outBuffer);
 
 
 

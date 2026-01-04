@@ -52,13 +52,17 @@
 #define POLLING_SKIP_LEVEL 46
 #define LOCAL_WEB_SERVICE_RESPONSIVENESS 47
 #define BAUD_RATE_LEVEL 48
-
+///////////////////////
 #define CONFIG_STRING_COUNT 16
 #define CONFIG_TOTAL_COUNT 49
-
-
+//////////////////////
 #define CONFIG_SLAVE_STRING_COUNT 5 //for strings used specifically by the slave
 #define CONFIG_SLAVE_TOTAL_COUNT 10  //total config items on slave
+//////////////////////
+//config parameters the slave stores locally for itself
+#define SLAVE_BAUD_RATE_LEVEL 6
+#define SLAVE_I2C_ADDRESS 7
+#define SLAVE_REBOOT_PIN 8
 // ==========================================================
 
 
@@ -68,7 +72,7 @@ extern int ci[CONFIG_TOTAL_COUNT];    // integer configuration values
 extern char* css[CONFIG_SLAVE_STRING_COUNT]; // string configuration values
 extern int cis[CONFIG_SLAVE_TOTAL_COUNT];    // integer configuration values
 
-void initMasterConfig(void);
-void initSlaveConfig(void);
+void initMasterDefaults();
+void initSlaveDefaults();
 
 #endif
