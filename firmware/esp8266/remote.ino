@@ -1489,7 +1489,7 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       readDataParsedFromSlaveSerial();
       //parsedSerialData
       //uint8_t parsedBuf[40]  = {0xF1, 0xF2, 0xD1, 0xD2, 0xC1, 0xC2, 0xB1, 0xB2};
-      bytesToHex(parsedSerialData, 64, buffer);
+      bytesToHex(parsedSerialData, 20, buffer);
       textOut("Parsed serial packet: " + String(buffer) + "\n");
     } else if (command.startsWith("get master eeprom used")) { //getting numeric result from slave command
       int bytesUsed = loadAllConfigFromEEPROM(2, 0);
@@ -1524,11 +1524,31 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
         textOut("Slave configuration #" + ordinalString + " set to: " + value + "\n");
       }
       
-    } else if (command.startsWith("get slave")) { //getting numeric result from slave command
-      String rest = command.substring(9);  // 9 = length of "get slave"
-      rest.trim(); 
-      long result = requestLong(ci[SLAVE_I2C], rest.toInt()); 
-      textOut("Slave data for command " + rest + ": " + (String)result + "\n");
+    } else if (command.startsWith("run slave")) { //getting numeric result from slave command
+      String rest = command.substring(9);  // 9 = length of "run slave"
+      rest.trim();
+      
+      int spacePos = rest.indexOf(' ');
+      
+      if (spacePos == -1) {
+        // Single parameter: current behavior
+        long result = requestLong(ci[SLAVE_I2C], rest.toInt());
+        textOut("Slave data for command " + rest + ": " + String(result) + "\n");
+      } else {
+        // Two parameters
+        String firstStr  = rest.substring(0, spacePos);
+        String secondStr = rest.substring(spacePos + 1);
+        firstStr.trim();
+        secondStr.trim();
+        byte firstParam  = (byte)firstStr.toInt();
+        long secondParam = secondStr.toInt();
+        sendLong(ci[SLAVE_I2C], firstParam, secondParam);
+        textOut(
+          "Commmand " +
+          String(firstParam) + " run on slave with value: " +
+          String(secondParam) + "\n"
+        );
+      }
     } else if (command.startsWith("set")) { //setting items in the configuration
       String rest = command.substring(3);  // 3 = length of "set"
       rest.trim(); 
