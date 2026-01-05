@@ -63,6 +63,7 @@
 #define SLAVE_BAUD_RATE_LEVEL 6
 #define SLAVE_I2C_ADDRESS 7
 #define SLAVE_REBOOT_PIN 8
+#define SLAVE_SERIAL_MODE 9
 // ==========================================================
 
 
@@ -76,3 +77,4 @@ void initMasterDefaults();
 void initSlaveDefaults();
 
 #endif
+
