@@ -9,6 +9,7 @@
 
 
 void saveAllConfigToEEPROM(uint16_t addr);
+void readDataParsedFromSlaveSerial();
 int loadAllConfigFromEEPROM(int mode, uint16_t addr);
 int readIntFromEEPROM(uint16_t addr);
 long readLongFromEEPROM(uint16_t addr);
@@ -24,5 +25,8 @@ void sendSlaveSerial(String inVal);
 void normalSlaveMode();
 void enableSlaveSerial(int baudSelector);
 void petWatchDog(uint8_t command, uint32_t unixTime);
+uint32_t getParsedSlaveDatum(uint8_t ordinal);
+uint32_t getSlaveConfigItem(uint8_t ordinal);
+void setSlaveConfigItem(uint8_t ordinal, uint16_t value);
 
 #endif
