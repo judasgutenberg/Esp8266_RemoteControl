@@ -77,4 +77,3 @@ void initMasterDefaults();
 void initSlaveDefaults();
 
 #endif
-
