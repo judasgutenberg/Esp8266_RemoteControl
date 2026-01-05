@@ -1408,25 +1408,25 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       if(ci[SLAVE_I2C] > 0) {
         textOut(slaveData() + "\n");
       } 
-    } else if (command ==  "save master config") { //master and slave configs are both stored in slave eeprom
+    } else if (command ==  "save master config") { //saves whatever the master config is to slave EEPROM
       if(ci[SLAVE_I2C] > 0) {
         saveAllConfigToEEPROM(0);
         textOut("Configuration saved\n");
       }
 
-    } else if (command ==  "save slave config") {
+    } else if (command ==  "save slave config") { //saves whatever the slave config is to slave EEPROM
       if(ci[SLAVE_I2C] > 0) {
         saveAllConfigToEEPROM(512);
         textOut("Configuration saved\n");
       }
-    } else if (command ==  "init master config") {
+    } else if (command ==  "init master defaults") { //sets the config to their hardcoded defaults
       if(ci[SLAVE_I2C] > 0) {
-        initMasterConfig();
+        initMasterDefaults();
         textOut("Master config initialized\n");
       }
-    } else if (command ==  "init slave config") {
+    } else if (command ==  "init slave defaults") { //sets the config to their hardcoded defaults
       if(ci[SLAVE_I2C] > 0) {
-        initSlaveConfig();
+        initSlaveDefaults();
         textOut("Slave config initialized\n");
       }
       
@@ -1447,8 +1447,7 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       textOut("EEPROM data:\n");
       textOut(String(buffer));
     } else if (command.startsWith("reset serial")) {
-      Serial.flush();
-      Serial.begin(115200, SERIAL_8N1, SERIAL_FULL); 
+      setSerialRate((byte)ci[BAUD_RATE_LEVEL]); 
       ETS_UART_INTR_DISABLE();
       ETS_UART_INTR_ENABLE();
       textOut("Serial reset\n");
@@ -1462,13 +1461,13 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       textOut("Serial data sent to slave: " + rest + "\n");
     } else if (command.startsWith("set slave time")) { //setting items in the configuration
       char buffer[500]; 
-      String rest = command.substring(17);  // 13 = length of "read slave eeprom"
+      String rest = command.substring(14);  // 13 = length of "read slave eeprom"
       sendLong(ci[SLAVE_I2C], 180, rest.toInt());
       textOut("Slave UNIX time set to: " + rest + "\n");
-    } else if (command.startsWith("get slave time")) { //setting items in the configuration
+    } else if (command.startsWith("get slave time")) {  
       uint32_t unixTime = requestLong(ci[SLAVE_I2C], 181);
       textOut("Slave UNIX time: " + String(unixTime) + "\n");
-    } else if (command.startsWith("init slave serial")) { //setting items in the configuration
+    } else if (command.startsWith("init slave serial")) {  
       enableSlaveSerial(9);
       textOut("Serial on slave initiated\n");
     } else if (command.startsWith("get slave serial")) { //getting any slave serial data
@@ -1478,12 +1477,53 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       //Serial.println(count);
       //Serial.println(result);
       textOut(result);
+    } else if (command.startsWith("get slave parsed datum")) { //getting a specific parsed data item
+      String rest = command.substring(22);  // 22 = length of "get slave parsed datum"
+      rest.trim();
+      uint8_t ordinal = rest.toInt();
+      uint16_t result = getParsedSlaveDatum(ordinal);
+      textOut("Parsed slave value #" + rest + ": " + result + "\n");
+
+    } else if (command == "dump parsed serial packet") { //getting a specific parsed data item
+      char buffer[128]; 
+      readDataParsedFromSlaveSerial();
+      //parsedSerialData
+      //uint8_t parsedBuf[40]  = {0xF1, 0xF2, 0xD1, 0xD2, 0xC1, 0xC2, 0xB1, 0xB2};
+      bytesToHex(parsedSerialData, 64, buffer);
+      textOut("Parsed serial packet: " + String(buffer) + "\n");
     } else if (command.startsWith("get master eeprom used")) { //getting numeric result from slave command
       int bytesUsed = loadAllConfigFromEEPROM(2, 0);
       textOut("Slave EEPROM bytes used for master: " + (String)bytesUsed + "\n");
     } else if (command.startsWith("get slave eeprom used")) { //getting numeric result from slave command
       int bytesUsed = loadAllConfigFromEEPROM(2, 512);
       textOut("Slave EEPROM bytes used for slave: " + (String)(bytesUsed - 512) + "\n");
+    } else if (command.startsWith("get slave config")) { //getting slave config value
+      String rest = command.substring(16);  // 16 = length of "get slave config"
+      rest.trim(); 
+      //Serial.println(rest);
+      uint16_t result = getSlaveConfigItem((byte)rest.toInt()); 
+      textOut("Slave config value for #" + rest + ": " + (String)result + "\n");
+    } else if (command.startsWith("set slave config")) { //setting numeric result from slave command
+      String rest = command.substring(16);  // 16 = length of "set slave config"
+      rest.trim(); 
+      //Serial.println(rest);
+      uint8_t ordinal;
+      uint16_t value;
+      String ordinalString;
+      int spaceIndex = rest.indexOf(' '); // find first space
+      if (spaceIndex != -1) {
+        ordinalString = rest.substring(0, spaceIndex);        // everything before space
+        ordinalString.trim();
+        value = rest.substring(spaceIndex + 1).toInt();    // everything after space
+        //Serial.print(ordinalString);
+        //Serial.print(" ");
+        //Serial.println(value);
+      }  
+      if(isInteger(ordinalString)) {
+        setSlaveConfigItem(ordinalString.toInt(), value);
+        textOut("Slave configuration #" + ordinalString + " set to: " + value + "\n");
+      }
+      
     } else if (command.startsWith("get slave")) { //getting numeric result from slave command
       String rest = command.substring(9);  // 9 = length of "get slave"
       rest.trim(); 
@@ -1537,24 +1577,6 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       lastCommandId = commandId;
     }
   }
-}
-
-bool isInteger(const String &s) {
-  if (s.length() == 0) return false;
-
-  unsigned int i = 0;
-
-  // Optional sign
-  if (s[0] == '-' || s[0] == '+') {
-    if (s.length() == 1) return false; // String is only "+" or "-"
-    i = 1;
-  }
-
-  for (; i < s.length(); i++) {
-    if (!isDigit(s[i])) return false;
-  }
-
-  return true;
 }
 
 void sendIr(String rawDataStr) {
@@ -1651,17 +1673,19 @@ int splitAndParseInts(const char* input, int* outputArray, int maxCount) {
 //SETUP----------------------------------------------------
 void setup(){
   Wire.begin();
-  yield();    
-  Serial.begin(115200, SERIAL_8N1, SERIAL_FULL);
-  Serial.setRxBufferSize(1024);
+  yield();
+  //Serial.begin(115200);    
+  //setSerialRate((byte)ci[BAUD_RATE_LEVEL]); 
+  //Serial.setRxBufferSize(1024);
   //Serial.setDebugOutput(true);
   delay(10);
-  initMasterConfig();
+  initMasterDefaults();
+  setSerialRate((byte)ci[BAUD_RATE_LEVEL]); 
   if(loadAllConfigFromEEPROM(0, 0) != 1) {
     if(ci[DEBUG] > 0) {
       Serial.println("\nNo config found in EEPROM");
     }
-    initMasterConfig();
+    initMasterDefaults();
   } else {
     if(ci[DEBUG] > 0) {
       Serial.println("\nConfiguration retrieved from slave EEPROM");
