@@ -53,8 +53,13 @@ void initConfig(void) {
 }
 
 
-void initSlaveConfig(void) {
-  css[0] = "chicken";
-  css[1] = "dog";
-  css[2] = "freedom";
+void initSlaveDefaults() {                                      
+  css[0] = "Characteristic #2|0x3ffbb61c|0x3ffbb5fc|4|4|6|7|8|9|10|11|0x3ffbb60c|0|1";
+  css[1] = "Characteristic #7|I (318800102)|0x3ffbb5bc|6|7";
+
+  cis[SLAVE_BAUD_RATE_LEVEL] = 9;
+  cis[SLAVE_I2C_ADDRESS] = 20;
+  cis[SLAVE_REBOOT_PIN] = 7;
+  cis[SLAVE_SERIAL_MODE] = 2;
+ 
 }
