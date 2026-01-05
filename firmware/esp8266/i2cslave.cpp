@@ -23,10 +23,14 @@
 #define COMMAND_POPULATE_SERIAL_BUFFER      172
 #define COMMAND_GET_LAST_PARSE_TIME         173
 #define COMMAND_GET_PARSED_SERIAL_DATA      174
-#define CMD_SET_PARSED_OFFSET               175
+#define COMMAND_SET_PARSED_OFFSET           175
+#define COMMAND_GET_PARSED_DATUM            176
 
-#define COMMAND_SET_UNIX_TIME 180
-#define COMMAND_GET_UNIX_TIME 181
+#define COMMAND_SET_UNIX_TIME               180
+#define COMMAND_GET_UNIX_TIME               181
+#define COMMAND_GET_CONFIG                  182
+#define COMMAND_SET_CONFIG                  183
+
 
 #define EEPROM_MARKER_ADDR 0
 #define EEPROM_INT_BASE    4   // ints start immediately after "DATA"
@@ -159,27 +163,17 @@ void writeStringToEEPROM(uint16_t addr, const char* str) {
     // 2. Send the string in chunks
     const char* p = str;
     while (true) {
+        setAddress(addr);
+
         Wire.beginTransmission(ci[SLAVE_I2C]);
         Wire.write(COMMAND_EEPROM_WRITE);
-
-        // send up to 31 bytes per transaction
-        uint8_t bytesThisChunk = 0;
-        for (; bytesThisChunk < 31; bytesThisChunk++) {
-            Wire.write(*p);
-            if (*p == 0) { // write null terminator and stop
-                break;
-            }
-            p++;
-        }
-
+        Wire.write(*p);
         Wire.endTransmission();
         delay(5);
 
-        // stop outer loop if null terminator was sent
-        if (*(p) == 0) break;
-
-        // in case the string length exceeds 31, continue in next iteration
-        p++; // move past last byte sent
+        if (*p == 0) break;
+        p++;
+        addr++;
     }
 
     normalSlaveMode();
@@ -267,8 +261,9 @@ void readDataParsedFromSlaveSerial() {
     uint8_t  offset = 0;
     while(offset < parsedLen) {
       Wire.beginTransmission(ci[SLAVE_I2C]);
-      Wire.write(CMD_SET_PARSED_OFFSET);
+      Wire.write(COMMAND_SET_PARSED_OFFSET);
       Wire.write(offset);
+      Wire.endTransmission();
       Wire.beginTransmission(ci[SLAVE_I2C]);
       Wire.write(COMMAND_GET_PARSED_SERIAL_DATA);
       Wire.write(bytesToReceive); 
@@ -277,7 +272,10 @@ void readDataParsedFromSlaveSerial() {
       uint8_t i = 0;
       while(Wire.available()) {
         char b = Wire.read();
-        parsedSerialData[i] = b;
+        //Serial.print((int)i + offset);
+        //Serial.print(": ");
+        //Serial.println((int)b);
+        parsedSerialData[i  + offset] = b;
         i++;
       }
       offset += bytesToReceive;
@@ -592,4 +590,73 @@ void petWatchDog(uint8_t command, uint32_t unixTime) { //also updates unix time 
     return;
   }
   sendLong(ci[SLAVE_I2C], command, unixTime);
+}
+
+
+uint32_t getParsedSlaveDatum(uint8_t ordinal) {
+  if(ci[SLAVE_I2C] < 1) {
+    return 0;
+  }
+  Wire.beginTransmission(ci[SLAVE_I2C]);
+  Wire.write(COMMAND_GET_PARSED_DATUM);    // send the command
+  Wire.write(ordinal);    // send the ordinal into the slave config array
+  Wire.endTransmission();
+  yield();
+  delay(1);
+  Wire.requestFrom(ci[SLAVE_I2C], 4);
+  uint32_t value = 0;
+  byte buffer[4];
+  int i = 0;
+  while (Wire.available() && i < 4) {
+    byte singleByte = Wire.read();
+    //Serial.print("byte: ");
+    //Serial.println(singleByte);
+    buffer[i++] = singleByte;
+  }
+  for (int j = 0; j < i; j++) {
+    value |= ((long)buffer[j] << (8 * j));
+  }
+  return value;
+}
+
+uint32_t getSlaveConfigItem(uint8_t ordinal) {
+  if(ci[SLAVE_I2C] < 1) {
+    return 0;
+  }
+  Wire.beginTransmission(ci[SLAVE_I2C]);
+  Wire.write(COMMAND_GET_CONFIG);    // send the command
+  Wire.write(ordinal);    // send the ordinal into the slave config array
+  Wire.endTransmission();
+  yield();
+  delay(1);
+  Wire.requestFrom(ci[SLAVE_I2C], 4);
+  uint32_t value = 0;
+  byte buffer[4];
+  int i = 0;
+  while (Wire.available() && i < 4) {
+    byte singleByte = Wire.read();
+    //Serial.print("byte: ");
+    //Serial.println(singleByte);
+    //buffer[i++] = singleByte;
+  }
+  for (int j = 0; j < i; j++) {
+    value |= ((long)buffer[j] << (8 * j));
+  }
+  return value;
+}
+
+void setSlaveConfigItem(uint8_t ordinal, uint16_t value) {
+  if(ci[SLAVE_I2C] < 1) {
+    return;
+  }
+  Wire.beginTransmission(ci[SLAVE_I2C]);
+  Wire.write(COMMAND_SET_CONFIG);    // send the command
+  Wire.write(ordinal);    // send the ordinal into the slave config array
+  uint8_t bytes[2];
+  bytes[0] = value & 0xFF;        // LSB
+  bytes[1] = (value >> 8) & 0xFF; // MSB
+  Wire.write(bytes[0]); 
+  Wire.write(bytes[1]); 
+  Wire.endTransmission();
+  yield();
 }
