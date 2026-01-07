@@ -2,7 +2,7 @@
 
 $file = __DIR__ . '/solarktestdata.txt';
 $apcuKey = 'solark_line_offset';
-$linesPerRequest = 40;
+$linesPerRequest = 22;
 
 if (!is_readable($file)) {
     http_response_code(500);
