@@ -5,34 +5,49 @@
 #include "utilities.h"
 #include <Arduino.h>
 
-#define COMMAND_EEPROM_SETADDR 150
-#define COMMAND_EEPROM_WRITE   151
-#define COMMAND_EEPROM_READ    152
-#define COMMAND_EEPROM_NORMAL  153
+#define COMMAND_REBOOT              128   //reboots the slave asynchronously using the watchdog system
+#define COMMAND_MILLIS              129   //returns the millis() value of the slave 
+#define COMMAND_LASTWATCHDOGREBOOT  130   //millis() of the last time the slave sent a reboot signal to the master
+#define COMMAND_WATCHDOGREBOOTCOUNT 131   //number of times the slave has rebooted the master since it was itself rebooted
+#define COMMAND_LASTWATCHDOGPET     132   //millis() of the last time the master petted the slave in its watchdog function
+#define COMMAND_LASTPETATBITE       133   //how many seconds late the last watchdog pet was when the slave sent a reboot signal
+#define COMMAND_REBOOTMASTER        134   //reboot the master now by asserting the reboot line
+#define COMMAND_WATCHDOGPETBASE     200   //commands above 200 are used to tell the slave how often it needs to be petted.  this command can also update the slave's unix timestamp
 
-//housekeeping functions
-#define COMMAND_VERSION 160
-#define COMMAND_COMPILEDATETIME 161
-#define COMMAND_TEMPERATURE 162
-#define COMMAND_FREEMEMORY 163
-#define COMMAND_GET_SLAVE_CONFIG 164
+// New EEPROM-style commands
+#define COMMAND_EEPROM_SETADDR      150   // set pointer for read/write
+#define COMMAND_EEPROM_WRITE        151   // sequential write mode
+#define COMMAND_EEPROM_READ         152   // sequential read mode
+#define COMMAND_EEPROM_NORMAL       153   // exit EEPROM mode, back to default behavior
+
+#define COMMAND_VERSION             160   //returns the human-updated version number of the firmware source code.  this version began at 2000
+#define COMMAND_COMPILEDATETIME     161   //unix timestamp of when the firmware was compiled
+#define COMMAND_TEMPERATURE         162   //a pseudo-random poor approximation of temperature
+#define COMMAND_FREEMEMORY          163   //returns free memory on the slave
+#define COMMAND_GET_SLAVE_CONFIG    164   //returns where in the EEPROM the slave's local configuration is persisted
 
 //serial commands
-#define COMMAND_SERIAL_SET_BAUD_RATE        170
-#define COMMAND_RETRIEVE_SERIAL_BUFFER      171
-#define COMMAND_POPULATE_SERIAL_BUFFER      172
-#define COMMAND_GET_LAST_PARSE_TIME         173
-#define COMMAND_GET_PARSED_SERIAL_DATA      174
-#define COMMAND_SET_PARSED_OFFSET           175
-#define COMMAND_GET_PARSED_DATUM            176
-#define COMMAND_GET_PARSE_CONFIG_NUMBER     177
-#define COMMAND_GET_PARSED_PACKET_SIZE      178
-#define COMMAND_SET_SERIAL_MODE             179
+#define COMMAND_PARSE_BUFFER                169   //explicitly parse data in the txBuffer using the serial parser system
+#define COMMAND_SERIAL_SET_BAUD_RATE        170   //using an ordinal to set common serial baud rates.  1 is 300, 5 is 9600, 9 is 115200
+#define COMMAND_RETRIEVE_SERIAL_BUFFER      171   //retrieves values from the serial read buffer if we are in serial mode #1
+#define COMMAND_POPULATE_SERIAL_BUFFER      172   //sets values in the serial buffer that the slave will transmit via serial
+#define COMMAND_GET_LAST_PARSE_TIME         173   //retrieves the unix time of the last serial parse, if unix time is known
+#define COMMAND_GET_PARSED_SERIAL_DATA      174   //returns a whole packet of parsed data
+#define COMMAND_SET_PARSED_OFFSET           175   //if parsed data packet is large, this will set a pointer into it for retrieval from the master
+#define COMMAND_GET_PARSED_DATUM            176   //returns a specific value found by the serial parser given an ordinal into a 16 bit sequence in the packet
+#define COMMAND_GET_PARSE_CONFIG_NUMBER     177   //returns the number of parser configs (blocks used by the serial parser, equivalent to items in css array)
+#define COMMAND_GET_PARSED_PACKET_SIZE      178   //returns the size of the parsed data packet
+#define COMMAND_SET_SERIAL_MODE             179   //sets serial mode:  
+                                                  //0 - no serial
+                                                  //1 - serial pass-through to master
+                                                  //2 - slave parses incoming values in serial and outgoing serial source is from slave
+                                                  //4 - parses incoming values in serial, though serial source is from master via I2C
+                                                  //5 - fakes the reception of data via serial using I2C data sent from master using send slave serial (command COMMAND_POPULATE_SERIAL_BUFFER)
+#define COMMAND_SET_UNIX_TIME               180   //sets unix timestamp, which the slave the automatically advances with reasonable accuracy
+#define COMMAND_GET_UNIX_TIME               181   //returns unix timestamp as known to the slave
+#define COMMAND_GET_CONFIG                  182   //gets a config item by ordinal number (from the configuration cis[] array)
+#define COMMAND_SET_CONFIG                  183   //sets a config item by ordinal and value
 
-#define COMMAND_SET_UNIX_TIME               180
-#define COMMAND_GET_UNIX_TIME               181
-#define COMMAND_GET_CONFIG                  182
-#define COMMAND_SET_CONFIG                  183
 
 
 #define EEPROM_MARKER_ADDR 0
@@ -548,25 +563,38 @@ size_t readBytesFromSlaveSerial( char* buffer, size_t maxLen) {
 }
 
 void sendSlaveSerial(String inVal) {
-  if(ci[SLAVE_I2C] < 1) {
+  if (ci[SLAVE_I2C] < 1) {
     return;
   }
-  inVal.trim(); 
-  char buffer[50];    
-  inVal.toCharArray(buffer, sizeof(buffer));
- 
-  delay(5);
-  Wire.beginTransmission(ci[SLAVE_I2C]);
-  Wire.write(COMMAND_POPULATE_SERIAL_BUFFER);
-  int stringLen = inVal.length();
-  if(stringLen > 30) {
-    stringLen = 30;
+  inVal.trim();
+  const uint8_t MAX_I2C_PAYLOAD = 31; // 32 - 1 command byte
+  char buffer[128];                  // adjust if you expect longer strings
+  int totalLen = inVal.length();
+  if (totalLen == 0) {
+    return;
   }
-  Wire.write(buffer, stringLen); 
-  Wire.endTransmission();
-  delay(5);
+  // clamp to buffer size
+  if (totalLen >= sizeof(buffer)) {
+    totalLen = sizeof(buffer) - 1;
+  }
+  inVal.toCharArray(buffer, sizeof(buffer));
+  uint16_t offset = 0;
+  while (offset < totalLen) {
+    uint8_t chunkLen = totalLen - offset;
+    if (chunkLen > MAX_I2C_PAYLOAD) {
+      chunkLen = MAX_I2C_PAYLOAD;
+    }
+    delay(5);
+    Wire.beginTransmission(ci[SLAVE_I2C]);
+    Wire.write(COMMAND_POPULATE_SERIAL_BUFFER);
+    Wire.write((uint8_t*)(buffer + offset), chunkLen);
+    Wire.endTransmission();
+    delay(5);
+    offset += chunkLen;
+  }
   normalSlaveMode();
 }
+
 
 void normalSlaveMode() {
   if(ci[SLAVE_I2C] < 1) {
@@ -640,11 +668,12 @@ uint32_t getSlaveConfigItem(uint8_t ordinal) {
     byte singleByte = Wire.read();
     //Serial.print("byte: ");
     //Serial.println(singleByte);
-    //buffer[i++] = singleByte;
+    buffer[i++] = singleByte;
   }
   for (int j = 0; j < i; j++) {
     value |= ((long)buffer[j] << (8 * j));
   }
+  //Serial.println(value);
   return value;
 }
 
