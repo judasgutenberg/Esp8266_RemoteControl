@@ -1292,7 +1292,7 @@ void runCommandsFromJson(char * json){
 }
 */
 
-void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
+void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
   //can change the default values of some config data for things like polling
   String command;
   int commandId;
@@ -1300,8 +1300,8 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
   String commandArray[4];
   int latency;
   //first get rid of the first character, since all it does is signal that we are receiving a command:
-  nonJsonLine++;
-  splitString(nonJsonLine, '|', commandArray, 3);
+  const char* cmd = nonJsonLine + 1;
+  splitString(cmd, '|', commandArray, 3);
   commandId = commandArray[0].toInt();
   command = commandArray[1];
   commandData = commandArray[2];
@@ -1322,7 +1322,7 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
     } else if(command.indexOf("reboot") > -1){
       //can't do this here, so we defer it!
       if(!deferred) {
-        nonJsonLine--; //get the ! back at the beginning
+
         size_t len = strlen(nonJsonLine);
         deferredCommand = new char[len + 1];  // +1 for null terminator
         strcpy(deferredCommand, nonJsonLine);
@@ -1456,7 +1456,7 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
     } else if (command.startsWith("dump slave config eeprom")) {
       loadAllConfigFromEEPROM(1, 512);
     } else if (command.startsWith("send slave serial")) { //setting items in the configuration
-      String rest = command.substring(17);  // 17 = length of "sendslaveserial"
+      String rest = command.substring(17);  // 17 = length of "send slave serial"
       sendSlaveSerial(rest);
       textOut("Serial data sent to slave: " + rest + "\n");
     } else if (command.startsWith("set slave time")) { //setting items in the configuration
@@ -1503,6 +1503,37 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       //Serial.println(rest);
       uint16_t result = getSlaveConfigItem((byte)rest.toInt()); 
       textOut("Slave config value for #" + rest + ": " + (String)result + "\n");
+    } else if (command.startsWith("set slave parser basis")) { //setting the master's idea of what the slave parser configs are
+      String rest = command.substring(23);  // 23 = length of "set slave parser basis"
+      //Serial.println(rest);
+      uint8_t ordinal;
+      String value;
+      String ordinalString;
+      int spaceIndex = rest.indexOf(' '); // find first space
+      if (spaceIndex != -1) {
+        ordinalString = rest.substring(0, spaceIndex);        // everything before space
+        ordinalString.trim();
+        value = rest.substring(spaceIndex + 1);    // everything after space
+        if (css[ordinal]) {
+          free(css[ordinal]);
+        }
+        css[ordinal] = strdup(value.c_str());
+        textOut("Slave parser basis #" + ordinalString + " set to " + value + "\n");
+      } 
+    } else if (command.startsWith("set slave basis")) { //setting the master's idea of what the slave parser configs are
+      String rest = command.substring(16);  // 16 = length of "set parser basis"
+      uint8_t ordinal;
+      uint16_t value;
+      String ordinalString;
+      int spaceIndex = rest.indexOf(' '); // find first space
+      if (spaceIndex != -1) {
+        ordinalString = rest.substring(0, spaceIndex);        // everything before space
+        ordinalString.trim();
+        ordinal = ordinalString.toInt();
+        value = rest.substring(spaceIndex + 1).toInt();    // everything after space
+        cis[ordinal] = value;
+        textOut("Slave basis #" + ordinalString + " set to " + String(value) + "\n");
+      } 
     } else if (command.startsWith("set slave config")) { //setting numeric result from slave command
       String rest = command.substring(16);  // 16 = length of "set slave config"
       rest.trim(); 
@@ -1510,6 +1541,7 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       uint8_t ordinal;
       uint16_t value;
       String ordinalString;
+      ordinal = ordinalString.toInt();
       int spaceIndex = rest.indexOf(' '); // find first space
       if (spaceIndex != -1) {
         ordinalString = rest.substring(0, spaceIndex);        // everything before space
@@ -1934,24 +1966,26 @@ void loop(){
 }
 
 void doSerialCommands() {
+  static String command;
   yield();
-  char serialByte;
-  String command = "!-1|";
-  while(Serial.available()) {
-    serialByte = Serial.read();
-    if(serialByte == '\r' || serialByte == '\n') {
-      if(ci[DEBUG] > 0) {
-        Serial.print("Serial command: ");
-        Serial.println(command);
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == '\r' || c == '\n') {
+      if (command.length() > 0) {
+        if (ci[DEBUG] > 0) {
+          Serial.print("Serial command: ");
+          Serial.println(command);
+        }
+        String fullCommand = "!-1|" + command;
+        runCommandsFromNonJson(fullCommand.c_str(), false);
+        command = "";   // reset AFTER parsing
       }
-      runCommandsFromNonJson((char *) command.c_str(), false);
     } else {
-      command = command + serialByte;
-      delay(10);
+      command += c;
     }
   }
-  
 }
+
 
 void sleepForSeconds(int seconds) {
     wifi_set_opmode(NULL_MODE);            // Turn off Wi-Fi for lower power
