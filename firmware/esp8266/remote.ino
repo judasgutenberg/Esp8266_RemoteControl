@@ -1,7 +1,7 @@
 /*
  * ESP8266 Remote Control. Also sends weather data from multiple kinds of sensors (configured in config.c) 
  * originally built on the basis of something I found on https://circuits4you.com
- * reorganized and extended by Gus Mueller, April 24 2022 - June 22 2024
+ * reorganized and extended by Gus Mueller, April 24 2022 - January 10 2026
  * Also resets a Moxee Cellular hotspot if there are network problems
  * since those do not include watchdog behaviors
  */
@@ -1936,14 +1936,18 @@ void loop(){
       }
     }
   }
-
-
- if (ci[SLAVE_PET_WATCHDOG_COMMAND] > 0 && (nowTime - lastPet) > 20000) { 
-    petWatchDog((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND], timeClient.getEpochTime());
-    yield();
-    //feedbackPrint("pet\n");
-   
-    lastPet = nowTime;
+  if(ci[SLAVE_PET_WATCHDOG_COMMAND] > 0) {
+    unsigned long timeoutSeconds = 1;
+    for (uint8_t i = 200; i < ci[SLAVE_PET_WATCHDOG_COMMAND]; i++) {
+      timeoutSeconds *= 10;
+    }
+    if ((nowTime - lastPet) > (timeoutSeconds * 1000UL * 9) / 10) { 
+      petWatchDog((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND], timeClient.getEpochTime());
+      yield();
+      //feedbackPrint("pet\n");
+     
+      lastPet = nowTime;
+    }
   }
   yield();
   
