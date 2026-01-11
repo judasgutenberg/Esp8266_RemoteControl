@@ -1821,13 +1821,13 @@ void setup(){
 
   //clearFramLog();
   //displayAllFramRecords();
- 
+  //do an initial pet of the watchdog just to set its unix time and make sure it does not bite us
+
 }
 
 //LOOP----------------------------------------------------
 void loop(){
   yield();
-
   doSerialCommands();
   
   yield();
@@ -1941,12 +1941,12 @@ void loop(){
     for (uint8_t i = 200; i < ci[SLAVE_PET_WATCHDOG_COMMAND]; i++) {
       timeoutSeconds *= 10;
     }
-    if ((nowTime - lastPet) > (timeoutSeconds * 1000UL * 9) / 10) { 
-      petWatchDog((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND], timeClient.getEpochTime());
+    uint32_t unixTime = timeClient.getEpochTime();
+    if ((nowTime - lastPet > timeoutSeconds * 900UL) || (unixTime > 1000 && slaveUnpetted)) { //pet every 90% of the time that will lead to a bite
+      petWatchDog((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND], unixTime);
       yield();
+      slaveUnpetted = false;
       //feedbackPrint("pet\n");
-     
-      lastPet = nowTime;
     }
   }
   yield();
