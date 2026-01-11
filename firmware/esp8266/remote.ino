@@ -1095,6 +1095,7 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
             pinName[foundPins].setCharAt(strlen(friendlyPinName), '\0'); // truncate to correct length
             pinList[foundPins] = nonJsonPinDatum[1];
             yield();
+            int existingValue = pinMap->get(nonJsonPinDatum[1]);
             if (!localSource || serverSaved == 1) {
                 if (serverSaved == 1) {
                     localSource = false;
@@ -1103,18 +1104,25 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
                     pinMap->put(nonJsonPinDatum[1], value);
                 }
             }
-            if (i2c > 0) {
-                setPinValueOnSlave(i2c, (char)pinNumber, (char)value);
-                yield();
+            if(existingValue != value) { //this should minimize i2c traffic and unnecessary digitalWrites as well
+              if (i2c > 0) {
+                  setPinValueOnSlave(i2c, (char)pinNumber, (char)value);
+                  yield();
+              } else {
+                  pinMode(pinNumber, OUTPUT);
+                  if (canBeAnalog) {
+                      analogWrite(pinNumber, value);
+                  } else {
+                      digitalWrite(pinNumber, value > 0 ? HIGH : LOW);
+                  }
+              }
+              //Serial.println("different--------------------------------------------");
             } else {
-                pinMode(pinNumber, OUTPUT);
-                if (canBeAnalog) {
-                    analogWrite(pinNumber, value);
-                } else {
-                    digitalWrite(pinNumber, value > 0 ? HIGH : LOW);
-                }
+              //Serial.print("same: ");
+              //Serial.print(existingValue);
+              //Serial.print("=?");
+              //Serial.println(value);
             }
-
             foundPins++;
  
         }
@@ -1764,6 +1772,7 @@ void setup(){
  
   
   //Wire.setClock(50000); // Set I2C speed to 100kHz (default is 400kHz)
+  //Wire.setClock(100000);
   startWeatherSensors(ci[SENSOR_ID],  ci[SENSOR_SUB_TYPE], ci[SENSOR_I2C], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN]);
   wiFiConnect();
   server.on("/", handleRoot);      //Displays a form where devices can be turned on and off and the outputs of sensors
