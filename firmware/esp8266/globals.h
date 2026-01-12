@@ -116,7 +116,8 @@ extern int moxeePhaseChangeCount;
 extern uint32_t lastCommandLogId;
 
 extern byte parsedSerialData[64];
- 
+extern bool slaveUnpetted;
+extern uint8_t lastSlavePowerMode;
 extern ESP8266WebServer server;
 
 #endif
