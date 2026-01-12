@@ -622,15 +622,8 @@ void enableSlaveSerial(int baudRateSelect) {
   Wire.endTransmission();
 }
 
-void petWatchDog(uint8_t command, uint32_t unixTime) { //also updates unix time if that is set to larger than 0
-  //Serial.println(unixTime);
-  if(ci[SLAVE_I2C] < 1) {
-    return;
-  }
-  sendLong(ci[SLAVE_I2C], command, unixTime);
-}
 
-
+//////////////////////////////////////////////////////////
 uint32_t getParsedSlaveDatum(uint8_t ordinal) {
   if(ci[SLAVE_I2C] < 1) {
     return 0;
@@ -698,4 +691,39 @@ void setSlaveConfigItem(uint8_t ordinal, uint16_t value) {
   Wire.write(bytes[1]); 
   Wire.endTransmission();
   yield();
+}
+
+
+///////////////////////////////////
+//watchdog functions
+void petWatchDog(uint8_t command, uint32_t unixTime) { //also updates unix time if that is set to larger than 0
+  //Serial.println(unixTime);
+  if(ci[SLAVE_I2C] < 1) {
+    return;
+  }
+  sendLong(ci[SLAVE_I2C], command, unixTime);
+  //set the global lastPet:
+  lastPet = millis();
+}
+
+void slaveWatchdogInfo() {
+  long ms      = requestLong(ci[SLAVE_I2C], COMMAND_MILLIS); // millis
+  long lastReboot = requestLong(ci[SLAVE_I2C], COMMAND_LASTWATCHDOGREBOOT); // last watchdog reboot time
+  long rebootCount  = requestLong(ci[SLAVE_I2C], COMMAND_WATCHDOGREBOOTCOUNT); // reboot count
+  long lastWePetted  = requestLong(ci[SLAVE_I2C], COMMAND_LASTWATCHDOGPET);
+  long lastPetAtBite  = requestLong(ci[SLAVE_I2C], COMMAND_LASTPETATBITE);
+  lastSlavePowerMode  = getSlaveConfigItem(SLAVE_POWER_MODE);
+  textOut("Watchdog millis: " + String(ms) + "; Last reboot at: " + String(lastReboot) + " (" + msTimeAgo(ms, lastReboot) + "); Reboot count: " + String(rebootCount) + "; Last petted: " + String(lastWePetted) + " (" + msTimeAgo(ms, lastWePetted) + "); Bit " + String(lastPetAtBite) + " seconds after pet\n");
+} 
+
+String slaveWatchdogData() {
+    long ms      = requestLong(ci[SLAVE_I2C], COMMAND_MILLIS); // millis
+    long lastReboot = requestLong(ci[SLAVE_I2C], COMMAND_LASTWATCHDOGREBOOT); // last watchdog reboot time
+    long rebootCount  = requestLong(ci[SLAVE_I2C], COMMAND_WATCHDOGREBOOTCOUNT); // reboot count
+    long lastWePetted  = requestLong(ci[SLAVE_I2C], COMMAND_LASTWATCHDOGPET);
+    long lastPetAtBite  = requestLong(ci[SLAVE_I2C], COMMAND_LASTPETATBITE);
+    //also set the global lastSlavePowerMode so we can dial back the calling of this function when we are in a sleep mode
+    lastSlavePowerMode  = getSlaveConfigItem(SLAVE_POWER_MODE);
+    //Serial.println(lastSlavePowerMode);
+    return String(ms) + "*" + String(lastReboot) + "*" + String(rebootCount) + "*" + String(lastWePetted) + "*" + String(lastPetAtBite);
 }
