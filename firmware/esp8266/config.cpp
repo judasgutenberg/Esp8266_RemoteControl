@@ -9,7 +9,7 @@ void initConfig(void) {
   cs[HOST_GET] = "yourwebsite.com";
   cs[ENCRYPTION_SCHEME] = "87447CBC22A95125"; // 16-char hex string
   cs[SENSOR_CONFIG_STRING] = ""; // "14*-1*2301*11*0*NULL*stank*1";
-  cs[PINS_TO_START_LOW] = ""; // encode as hex if needed
+  cs[PINS_TO_START_LOW] = ""; ; //comma-delimited integers of pins to start low, for example "12,14,1,2,6"
   cs[WIFI_SSID] = "your_ssid1";
   cs[WIFI_PASSWORD] = "12345678";
   cs[WIFI_SSID_1] = "your_ssid2";
