@@ -30,6 +30,10 @@ uint32_t getParsedSlaveDatum(uint8_t ordinal);
 uint32_t getSlaveConfigItem(uint8_t ordinal);
 void setSlaveConfigItem(uint8_t ordinal, uint16_t value);
 
+uint32_t requestLong(byte slaveAddress, byte command);
+void sendLong(byte slaveAddress, byte command, uint32_t value);
+uint32_t requestLongWithData(byte slaveAddress, byte command, uint32_t value);
+
 void petWatchDog(uint8_t command, uint32_t unixTime);
 void slaveWatchdogInfo();
 String slaveWatchdogData();

@@ -693,6 +693,66 @@ void setSlaveConfigItem(uint8_t ordinal, uint16_t value) {
   yield();
 }
 
+///////////////////////////////////////////////////////////
+//slave functions that accept any i2c address
+uint32_t requestLong(byte slaveAddress, byte command) {
+  Wire.beginTransmission(slaveAddress);
+  Wire.write(command);    // send the command
+  Wire.endTransmission();
+  yield();
+  delay(1);
+  Wire.requestFrom(slaveAddress, 4);
+  uint32_t value = 0;
+  byte buffer[4];
+  int i = 0;
+  while (Wire.available() && i < 4) {
+    buffer[i++] = Wire.read();
+  }
+  for (int j = 0; j < i; j++) {
+    value |= ((long)buffer[j] << (8 * j));
+  }
+  return value;
+}
+
+void sendLong(byte slaveAddress, byte command, uint32_t value) {
+    uint8_t bytes[5];
+    bytes[0] = command;
+    bytes[1] = value & 0xFF;
+    bytes[2] = (value >> 8) & 0xFF;
+    bytes[3] = (value >> 16) & 0xFF;
+    bytes[4] = (value >> 24) & 0xFF;
+    Wire.beginTransmission(slaveAddress);
+    Wire.write(bytes, 5);
+    Wire.endTransmission();
+    delay(5);
+}
+
+//with this you can send a parameter to a command and get back a value.  i only use this when petting the watchdog to send unixTime and get back millis
+uint32_t requestLongWithData(byte slaveAddress, byte command, uint32_t value) {
+    uint8_t bytes[5];
+    bytes[0] = command;
+    bytes[1] = value & 0xFF;
+    bytes[2] = (value >> 8) & 0xFF;
+    bytes[3] = (value >> 16) & 0xFF;
+    bytes[4] = (value >> 24) & 0xFF;
+    Wire.beginTransmission(slaveAddress);
+    Wire.write(bytes, 5);
+    Wire.endTransmission();
+    yield();
+    delay(1);
+    Wire.requestFrom(slaveAddress, 4);
+    uint32_t returnValue = 0;
+    byte buffer[4];
+    int i = 0;
+    while (Wire.available() && i < 4) {
+      buffer[i++] = Wire.read();
+    }
+    for (int j = 0; j < i; j++) {
+      returnValue |= ((long)buffer[j] << (8 * j));
+    }
+    return returnValue;
+}
+
 
 ///////////////////////////////////
 //watchdog functions
@@ -701,7 +761,16 @@ void petWatchDog(uint8_t command, uint32_t unixTime) { //also updates unix time 
   if(ci[SLAVE_I2C] < 1) {
     return;
   }
-  sendLong(ci[SLAVE_I2C], command, unixTime);
+  uint32_t slaveMillis = requestLongWithData(ci[SLAVE_I2C], command, unixTime);
+  //Serial.println("--------------------------");
+  //Serial.print(slaveMillis);
+  //Serial.print(" <? ");
+  //Serial.println(lastSlaveMillis);
+  if(slaveMillis < lastSlaveMillis) { //oh shit, the slave must've rebooted.  We need to resend pin info!
+    Serial.println("gotta resend");
+    resendSlavePinInfo = true;
+  }
+  lastSlaveMillis = slaveMillis;
   //set the global lastPet:
   lastPet = millis();
 }
