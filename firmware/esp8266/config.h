@@ -60,6 +60,8 @@
 #define CONFIG_SLAVE_TOTAL_COUNT 10  //total config items on slave
 //////////////////////
 //config parameters the slave stores locally for itself
+#define SLAVE_POWER_MODE 4
+#define SLAVE_PARSE_MODE 5
 #define SLAVE_BAUD_RATE_LEVEL 6
 #define SLAVE_I2C_ADDRESS 7
 #define SLAVE_REBOOT_PIN 8
