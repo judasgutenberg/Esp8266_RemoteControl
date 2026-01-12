@@ -109,5 +109,6 @@ int moxeePhaseChangeCount = 0;
 uint32_t lastCommandLogId = 0;
 
 byte parsedSerialData[64];
- 
+bool slaveUnpetted = true;
+uint8_t lastSlavePowerMode = 0;
 ESP8266WebServer server(80); //Server on port 80
