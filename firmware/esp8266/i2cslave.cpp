@@ -767,7 +767,7 @@ void petWatchDog(uint8_t command, uint32_t unixTime) { //also updates unix time 
   //Serial.print(" <? ");
   //Serial.println(lastSlaveMillis);
   if(slaveMillis < lastSlaveMillis) { //oh shit, the slave must've rebooted.  We need to resend pin info!
-    Serial.println("gotta resend");
+    //Serial.println("gotta resend");
     resendSlavePinInfo = true;
   }
   lastSlaveMillis = slaveMillis;
