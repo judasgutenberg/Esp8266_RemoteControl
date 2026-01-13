@@ -48,6 +48,8 @@
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
+#define version 2044
+
 //static globals for the state machine
 static RemoteState remoteState = RS_IDLE;
 static WiFiClient clientGet;
@@ -1104,7 +1106,7 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
                     pinMap->put(nonJsonPinDatum[1], value);
                 }
             }
-            if(existingValue != value) { //this should minimize i2c traffic and unnecessary digitalWrites as well
+            if(existingValue != value || resendSlavePinInfo) { //this should minimize i2c traffic and unnecessary digitalWrites as well
               if (i2c > 0) {
                   setPinValueOnSlave(i2c, (char)pinNumber, (char)value);
                   yield();
@@ -1126,8 +1128,11 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
             foundPins++;
  
         }
-    }
 
+    }
+    if(resendSlavePinInfo) {
+      resendSlavePinInfo = false;
+    }
     pinTotal = foundPins;
 }
 
@@ -1344,6 +1349,17 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
          rebootEsp();
         }
       }
+    } else if(command == "get version") {
+      uint32_t unixTime = timeClient.getEpochTime();
+      petWatchDog((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND], unixTime);
+      textOut("Version: " + String(version) + String("\n"));
+    } else if(command == "pet watchdog") {
+      uint32_t unixTime = timeClient.getEpochTime();
+      petWatchDog((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND], unixTime);
+      textOut("Watchdog petted\n");
+    } else if(command == "get weather sensors") {
+      String transmissionString = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, -1, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
+      textOut(transmissionString + "\n");
     } else if(command == "reboot now") {
       rebootEsp(); //only use in extreme measures -- as an instant command will produce a booting loop until command is manually cleared
     } else if(command == "one pin at a time") {
@@ -1701,6 +1717,7 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
   }
 }
 
+//takes "12,14,1,2,6" and returns an array of those ints
 int splitAndParseInts(const char* input, int* outputArray, int maxCount) {
   int count = 0;
   char buffer[128]; // adjust to max expected string length
