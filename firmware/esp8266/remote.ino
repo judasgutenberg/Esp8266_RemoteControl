@@ -20,6 +20,8 @@
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
+#include <ESP8266HTTPClient.h>
+#include <ESP8266httpUpdate.h>
 #include <IRremoteESP8266.h>
 #include <IRsend.h>
 #include <Adafruit_INA219.h>
@@ -591,9 +593,7 @@ void wiFiConnect() {
         break; // move to next SSID
       }
 
-      if (!initialAttemptPhase &&
-          wiFiSeconds > (ci[WIFI_TIMEOUT] / 2) &&
-          ci[FRAM_ADDRESS] > 0) {
+      if (!initialAttemptPhase && wiFiSeconds > (ci[WIFI_TIMEOUT] / 2) &&  ci[FRAM_ADDRESS] > 0) {
         offlineMode = true;
         haveReconnected = false;
         return;
@@ -1349,9 +1349,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
          rebootEsp();
         }
       }
-    } else if(command == "get version") {
-      uint32_t unixTime = timeClient.getEpochTime();
-      petWatchDog((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND], unixTime);
+    } else if(command == "version") {
       textOut("Version: " + String(version) + String("\n"));
     } else if(command == "pet watchdog") {
       uint32_t unixTime = timeClient.getEpochTime();
@@ -1360,6 +1358,20 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
     } else if(command == "get weather sensors") {
       String transmissionString = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, -1, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
       textOut(transmissionString + "\n");
+    } else if(command.startsWith("update firmware")) {//do an over-the-air update
+      String rest = command.substring(15);  // 15 = length of "update firmware"
+      rest.trim(); //this should contain a url for new firmware.  if it begins with "/" assume it is on the same host as everything else
+      String flashUrl = "";
+      if(rest.charAt(0) == '/') {
+        flashUrl = "http://" + String(cs[HOST_GET]) + rest; //my firmware has an aversion to https!
+      }
+      if(urlExists(flashUrl.c_str())){
+        t_httpUpdate_return ret = ESPhttpUpdate.update(clientGet, flashUrl.c_str());
+      } else {
+        textOut(flashUrl + " does not exist; no action taken\n");
+        
+      }
+      
     } else if(command == "reboot now") {
       rebootEsp(); //only use in extreme measures -- as an instant command will produce a booting loop until command is manually cleared
     } else if(command == "one pin at a time") {
@@ -1521,7 +1533,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       rest.trim(); 
       //Serial.println(rest);
       uint16_t result = getSlaveConfigItem((byte)rest.toInt()); 
-      textOut("Slave config value for #" + rest + ": " + (String)result + "\n");
+      textOut("Slave config value for " + rest + ": " + (String)result + "\n");
     } else if (command.startsWith("set slave parser basis")) { //setting the master's idea of what the slave parser configs are
       String rest = command.substring(23);  // 23 = length of "set slave parser basis"
       //Serial.println(rest);
