@@ -61,7 +61,7 @@ This system also requires a number of external libraries:
 <li>https://github.com/spacehuhn/SimpleMap
 </ul> 
 
-The firmware of an ESP8266 in this system can be flashed remotely over the air if a good .bin flash file (which you can get out of the Arduino IDE) is placed in the directory specified in $flash_directory in config.php and you run the command <b>update firmware [name of file]</b>. You can also update the firmware from a suitable .bin file located at any place reachable by http with the command <b>update firmware [URL]</b>.
+The firmware of an ESP8266 in this system can be flashed remotely over the air if a good .bin flash file (which you can get out of the Arduino IDE) is placed in the directory specified in $flash_directory in config.php and you run the command <b>update firmware [name of file]</b>. You can also update the firmware from a suitable .bin file located at any place reachable by http with the command <b>update firmware [URL]</b>.  Note: all web traffic from and to the ESP8266 happens via http, not https.  Security is handled in the application layer (see below).
 
 
 ## Server Setup
