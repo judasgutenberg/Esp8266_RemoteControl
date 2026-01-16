@@ -16,3 +16,4 @@ $backupLocation = "./someplace_secret_or_perhaps_not_in_your_web_tree";
 //these are for cases where you need some other server to provide send email functionality using an externalmailer
 $remoteEmailPassword = "your_external_mailer_password";
 $remoteEmailUrl = "http://your_other_domain.com/externalmailer.php";
+$flash_directory = "another_place_that_is_secret_or_perhaps_not_in_your_web_tree"
