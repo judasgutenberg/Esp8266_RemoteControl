@@ -1406,6 +1406,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
         } else {
          rebootEsp();
         }
+        deferredCommand = "";
       }
     } else if(command == "version") {
       textOut("Version: " + String(version) + String("\n"));
