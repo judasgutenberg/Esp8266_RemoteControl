@@ -59,6 +59,7 @@ String ipAddress;
 String ipAddressAffectingChange;
 int changeSourceId = 0;
 String deviceName = "";
+String architecture = "";
 String additionalSensorInfo; //we keep it stored in a delimited string just the way it came from the server and unpack it periodically to get the data necessary to read sensors
 float measuredVoltage = 0;
 float measuredAmpage = 0;
@@ -111,4 +112,7 @@ uint32_t lastCommandLogId = 0;
 byte parsedSerialData[64];
 bool slaveUnpetted = true;
 uint8_t lastSlavePowerMode = 0;
+uint32_t lastSlaveMillis = 0;
+bool resendSlavePinInfo = false;
+
 ESP8266WebServer server(80); //Server on port 80

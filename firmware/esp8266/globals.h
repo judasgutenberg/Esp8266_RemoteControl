@@ -76,6 +76,7 @@ extern String ipAddress;
 extern String ipAddressAffectingChange;
 extern int changeSourceId;
 extern String deviceName;
+extern String architecture;
 extern String additionalSensorInfo;
 extern float measuredVoltage;
 extern float measuredAmpage;
@@ -118,6 +119,9 @@ extern uint32_t lastCommandLogId;
 extern byte parsedSerialData[64];
 extern bool slaveUnpetted;
 extern uint8_t lastSlavePowerMode;
+extern uint32_t lastSlaveMillis;
+extern bool resendSlavePinInfo;
+
 extern ESP8266WebServer server;
 
 #endif
