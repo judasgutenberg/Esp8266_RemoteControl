@@ -54,7 +54,7 @@
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
-#define version 2103
+#define version 2104
 
 //static globals for the state machine
 static RemoteState remoteState = RS_IDLE;
@@ -862,6 +862,8 @@ void runRemoteTask() {
           // If deferredCommand exists, run it (this is allowed post-socket)
           if(deferredCommand != "") {
             yield();
+            //Serial.println("~~~~~~~~~~~~~~~~~~");
+            //Serial.println(deferredCommand);
             runCommandsFromNonJson(deferredCommand, true);
           }
 
@@ -1343,16 +1345,61 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
         requestLong(ci[SLAVE_I2C], 128);
         textOut("Slave rebooted\n");
       }
-    } else if(command.indexOf("reboot") > -1){
+    } else if(command.indexOf("reboot") > -1  || command.startsWith("update firmware")){
       //can't do this here, so we defer it!
+      //Serial.println("&*&*&*&");
       if(!deferred) {
-
+        //Serial.println("**********************");
+        //Serial.println(command);
         size_t len = strlen(nonJsonLine);
         deferredCommand = new char[len + 1];  // +1 for null terminator
         strcpy(deferredCommand, nonJsonLine);
-        textOut("Rebooting... \n");
-      } else {
-        if(command.indexOf("watchdog") > -1){
+        if(command.indexOf("reboot") > -1) {
+           textOut("Rebooting... \n");
+        } else if (command.startsWith("update firmware")) {
+          textOut("Attempting firmware update...\n");
+        }
+        if(commandId == -1) {
+          //our command is via serial, so call handle deferred commands immediately
+          runCommandsFromNonJson(deferredCommand, true);
+        }
+      } else { //we're deferred, so we can roll!
+        if(command.startsWith("update firmware")) {
+          String rest = command.substring(15);  // 15 = length of "update firmware"
+          rest.trim(); //this should contain a url for new firmware.  if it begins with "/" assume it is on the same host as everything else
+          String flashUrl = "";
+          if(rest.startsWith("http://")) { //if we get a full url
+            flashUrl = rest;
+          } else if(rest.charAt(0) == '/') {
+            flashUrl = "http://" + String(cs[HOST_GET]) + rest; //my firmware has an aversion to https!
+          } else { //get the flash file from the backend using its security system, pulling it from the flash update directory, wherever it happens to be
+            String encryptedStoragePassword = encryptStoragePassword(rest);
+            flashUrl = "http://" + String(cs[HOST_GET]) + String(cs[URL_GET]) + "?k2=" + encryptedStoragePassword + "&architecture=" + architecture + "&device_id=" + ci[DEVICE_ID] + "&mode=reflash&data=" + urlEncode(rest, true);  
+          }
+          if(urlExists(flashUrl.c_str())){
+             t_httpUpdate_return ret = ESPhttpUpdate.update(clientGet, flashUrl.c_str());
+             switch (ret) {
+              case HTTP_UPDATE_FAILED:
+                textOut("Update failed; error (");
+                textOut(String(ESPhttpUpdate.getLastError()));
+                textOut(") ");
+                textOut( ESPhttpUpdate.getLastErrorString());
+                textOut("\n");
+                break;
+            
+              case HTTP_UPDATE_NO_UPDATES:
+                textOut("No update available\n");
+                break;
+            
+              case HTTP_UPDATE_OK:
+                textOut("Update successful; rebooting...\n");
+                break;
+            }
+          } else {
+            textOut(flashUrl + " does not exist; no action taken\n");
+          }
+        
+        } else if(command.indexOf("watchdog") > -1){
           if(ci[SLAVE_I2C] > 0) {
             requestLong(ci[SLAVE_I2C], 134);
           }
@@ -1370,56 +1417,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       String transmissionString = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, -1, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
       textOut(transmissionString + "\n");
     } else if(command.startsWith("update firmware")) {//do an over-the-air update
-      String rest = command.substring(15);  // 15 = length of "update firmware"
-      rest.trim(); //this should contain a url for new firmware.  if it begins with "/" assume it is on the same host as everything else
-      String flashUrl = "";
-      if(rest.startsWith("http://")) { //if we get a full url
-        flashUrl = rest;
-      } else if(rest.charAt(0) == '/') {
-        flashUrl = "http://" + String(cs[HOST_GET]) + rest; //my firmware has an aversion to https!
-      } else { //get the flash file from the backend using its security system, pulling it from the flash update directory, wherever it happens to be
-        String encryptedStoragePassword = encryptStoragePassword(rest);
-        flashUrl = "http://" + String(cs[HOST_GET]) + String(cs[URL_GET]) + "?k2=" + encryptedStoragePassword + "&architecture=" + architecture + "&device_id=" + ci[DEVICE_ID] + "&mode=reflash&data=" + urlEncode(rest, true);  
-      }
-      if(urlExists(flashUrl.c_str())){
-       /*
-        HTTPClient http;
- 
-        http.begin(clientGet, flashUrl.c_str());   // initialize request
-        int httpCode = http.GET(); // send GET
-        if (httpCode > 0) {
-          Serial.printf("HTTP code: %d\n", httpCode);
-          if (httpCode == HTTP_CODE_OK) {
-            String payload = http.getString();
-            Serial.println("---- page contents ----");
-            Serial.println(payload);
-            Serial.println("-----------------------");
-          }
-        } else {
-          Serial.printf("GET failed, error: %s\n", http.errorToString(httpCode).c_str());
-        }
-        */
-         t_httpUpdate_return ret = ESPhttpUpdate.update(clientGet, flashUrl.c_str());
-         switch (ret) {
-          case HTTP_UPDATE_FAILED:
-            textOut("Update failed; error (");
-            textOut(String(ESPhttpUpdate.getLastError()));
-            textOut(") ");
-            textOut( ESPhttpUpdate.getLastErrorString());
-            textOut("\n");
-            break;
-        
-          case HTTP_UPDATE_NO_UPDATES:
-            textOut("No update available\n");
-            break;
-        
-          case HTTP_UPDATE_OK:
-            textOut("Update successful; rebooting...\n");
-            break;
-        }
-      } else {
-        textOut(flashUrl + " does not exist; no action taken\n");
-      }
+
       
     } else if(command == "reboot now") {
       rebootEsp(); //only use in extreme measures -- as an instant command will produce a booting loop until command is manually cleared
