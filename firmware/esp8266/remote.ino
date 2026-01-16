@@ -9,9 +9,13 @@
  //note:  this needs to be compiled in the Arduino environment alongside:
  //config.cpp
  //config.h
+ //globals.cpp
+ //globals.h
  //i2cslave.cpp
  //i2cslave.h
  //index.h
+ //utilities.cpp
+ //utilities.h
 
 #include "globals.h"
 #include "i2cslave.h"
@@ -50,7 +54,7 @@
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
-#define version 2044
+#define version 2103
 
 //static globals for the state machine
 static RemoteState remoteState = RS_IDLE;
@@ -843,7 +847,7 @@ void runRemoteTask() {
 
         // ---- reproduce original parsing logic ----
         // skip error lines (your logic tested indexOf("\"error\":") < 0 etc)
-        if(retLine.indexOf("\"error\":") < 0 && (remoteMode == "saveData" || remoteMode == "commandout") && (retLine.charAt(0)== '{' || retLine.charAt(0)== '*' || retLine.charAt(0)== '|')) {
+        if(retLine.indexOf("\"error\":") < 0 && (remoteMode == "saveData" || remoteMode == "commandout") && (retLine.charAt(0)== '{' || retLine.charAt(0)== '*' || retLine.charAt(0)== '|' || retLine.charAt(0)== '=')) {
           lastDataLogTime = millis();
           moxeeRebootCount = 0;
           for (int i = 0; i < 11; i++) moxeeRebootTimes[i] = 0;
@@ -975,6 +979,7 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
     return "";
   }
   String additionalSensorArray[12];
+  String deviceInfoValues[2];
   String specificSensorData[8];
   int i2c;
   int pinNumber;
@@ -984,13 +989,19 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
   int deviceFeatureId;
   int consolidateAllSensorsToOneRecord = 0;
   String out = "";
+  String deviceInfo;
   int objectCursor = 0;
   int oldSensorId = -1;
   int ordinalOfOverwrite = 0;
   String sensorName;
   splitString(sensorData, '|', additionalSensorArray, 12);
-  deviceName = additionalSensorArray[0].substring(1);
- 
+  deviceInfo = additionalSensorArray[0].substring(1);
+  splitString(deviceInfo, '*', deviceInfoValues, 2);
+  deviceName = deviceInfoValues[0];
+  architecture = deviceInfoValues[1];
+  //Serial.println(deviceInfo);
+  //Serial.println(architecture);
+  
   requestNonJsonPinInfo = 1; //set this global
   for(int i=1; i<12; i++) {
     String sensorDatum = additionalSensorArray[i];
@@ -1362,14 +1373,52 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       String rest = command.substring(15);  // 15 = length of "update firmware"
       rest.trim(); //this should contain a url for new firmware.  if it begins with "/" assume it is on the same host as everything else
       String flashUrl = "";
-      if(rest.charAt(0) == '/') {
+      if(rest.startsWith("http://")) { //if we get a full url
+        flashUrl = rest;
+      } else if(rest.charAt(0) == '/') {
         flashUrl = "http://" + String(cs[HOST_GET]) + rest; //my firmware has an aversion to https!
+      } else { //get the flash file from the backend using its security system, pulling it from the flash update directory, wherever it happens to be
+        String encryptedStoragePassword = encryptStoragePassword(rest);
+        flashUrl = "http://" + String(cs[HOST_GET]) + String(cs[URL_GET]) + "?k2=" + encryptedStoragePassword + "&architecture=" + architecture + "&device_id=" + ci[DEVICE_ID] + "&mode=reflash&data=" + urlEncode(rest, true);  
       }
       if(urlExists(flashUrl.c_str())){
-        t_httpUpdate_return ret = ESPhttpUpdate.update(clientGet, flashUrl.c_str());
+       /*
+        HTTPClient http;
+ 
+        http.begin(clientGet, flashUrl.c_str());   // initialize request
+        int httpCode = http.GET(); // send GET
+        if (httpCode > 0) {
+          Serial.printf("HTTP code: %d\n", httpCode);
+          if (httpCode == HTTP_CODE_OK) {
+            String payload = http.getString();
+            Serial.println("---- page contents ----");
+            Serial.println(payload);
+            Serial.println("-----------------------");
+          }
+        } else {
+          Serial.printf("GET failed, error: %s\n", http.errorToString(httpCode).c_str());
+        }
+        */
+         t_httpUpdate_return ret = ESPhttpUpdate.update(clientGet, flashUrl.c_str());
+         switch (ret) {
+          case HTTP_UPDATE_FAILED:
+            textOut("Update failed; error (");
+            textOut(String(ESPhttpUpdate.getLastError()));
+            textOut(") ");
+            textOut( ESPhttpUpdate.getLastErrorString());
+            textOut("\n");
+            break;
+        
+          case HTTP_UPDATE_NO_UPDATES:
+            textOut("No update available\n");
+            break;
+        
+          case HTTP_UPDATE_OK:
+            textOut("Update successful; rebooting...\n");
+            break;
+        }
       } else {
         textOut(flashUrl + " does not exist; no action taken\n");
-        
       }
       
     } else if(command == "reboot now") {
