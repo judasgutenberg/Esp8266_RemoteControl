@@ -1562,7 +1562,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       rest.trim();
       uint8_t ordinal = rest.toInt();
       uint16_t result = getParsedSlaveDatum(ordinal);
-      textOut("Parsed slave value #" + rest + ": " + result + "\n");
+      textOut("Parsed slave value " + rest + ": " + result + "\n");
 
     } else if (command == "dump parsed serial packet") { //getting a specific parsed data item
       char buffer[128]; 
@@ -1577,8 +1577,8 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
     } else if (command.startsWith("get slave eeprom used")) { //getting numeric result from slave command
       int bytesUsed = loadAllConfigFromEEPROM(2, 512);
       textOut("Slave EEPROM bytes used for slave: " + (String)(bytesUsed - 512) + "\n");
-    } else if (command.startsWith("get slave config")) { //getting slave config value
-      String rest = command.substring(16);  // 16 = length of "get slave config"
+    } else if (command.startsWith("get slave")) { //getting slave config value
+      String rest = command.substring(9);  // 9 = length of "get slave"
       rest.trim(); 
       //Serial.println(rest);
       uint16_t result = getSlaveConfigItem((byte)rest.toInt()); 
@@ -1614,8 +1614,8 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
         cis[ordinal] = value;
         textOut("Slave basis #" + ordinalString + " set to " + String(value) + "\n");
       } 
-    } else if (command.startsWith("set slave config")) { //setting numeric result from slave command
-      String rest = command.substring(16);  // 16 = length of "set slave config"
+    } else if (command.startsWith("set slave")) { //setting numeric result from slave command
+      String rest = command.substring(9);  // 9 = length of "set slave config"
       rest.trim(); 
       //Serial.println(rest);
       uint8_t ordinal;
@@ -1633,7 +1633,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       }  
       if(isInteger(ordinalString)) {
         setSlaveConfigItem(ordinalString.toInt(), value);
-        textOut("Slave configuration #" + ordinalString + " set to: " + value + "\n");
+        textOut("Slave configuration " + ordinalString + " set to: " + value + "\n");
       }
       
     } else if (command.startsWith("run slave")) { //getting numeric result from slave command
@@ -1700,9 +1700,10 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
         }
         textOut("Sought configuration: " + value + "\n");
       } else {
-        textOut("Configuration '" + rest + "' does not exist:\n");
+        textOut("Configuration '" + rest + "' does not exist\n");
       }
     } else {
+      textOut("Command '" + command + "' does not exist\n");
       //lastCommandLogId = 0; //don't do this!!
     }
     if(commandId > 0) { //don't reset lastCommandId if the command came via serial port
