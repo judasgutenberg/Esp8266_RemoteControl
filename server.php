@@ -44,6 +44,7 @@ $justGetDeviceInfo = 0;
 $storagePassword = "";
 $multipleSensorArray = [];
 $latestCommandData = null;
+$architecture = gvfw("architecture", "unknown");
 
 $user = autoLogin(); //if we are using this as a backend for the inverter or weather page, we don't need to pass the storagePassword at all.  this will only work once the user has logged in and selected a single tenant
 
@@ -221,8 +222,8 @@ if($_REQUEST) {
 				$millis = "NULL";
 				$averageLatency = "NULL";
 				$latency = 0;
-				
-			
+         
+ 
 					if(count($lines) > 1) {
 						$whereAndWhen = explode("*", $lines[1]); 
 						//$whereAndWhen: numericTimestamp|millis|transmissionTimestamp|averageLatency|latitude|longitude|elevation|velocity|uncertainty
@@ -322,6 +323,48 @@ if($_REQUEST) {
 					logSql("bad infrared data save sql:" .  $irSql);
 					$out["error"] = $error;
 				}
+			} else if ($mode=="reflash") {
+        $fileName = $data;
+        if($data == "latest") {
+          //if the user sends "latest" as the update to do, that is, no file, then we look up the file based on some criteria.
+          //we want the lastest file with the name of our board type in its file name
+          //can't do these lookups, because we do not have a logged-in user from an ESP8266:
+          //$device = getGeneric("device", $deviceId, $user);
+          //var_dump($user);
+          //var_dump(getGeneric("device_type", $device["device_type_id"], $user));
+          //clearstatcache(true, $path);
+          //$deviceType =  getGeneric("device_type", $device["device_type_id"], $user);
+          //so instead i make the microcontroller aware of what its architecture is and pass it in as a querystring variable
+          $processorName = strtolower($architecture);
+          $fileName =  getMostRecentFile($path =  "./" . $flash_directory, $processorName);
+          clearstatcache(true, $path);
+        }  
+        //$fileName = "esp8266_cabin_remote2.ino.bin";
+        $path =  "./" . $flash_directory  . "/" . $fileName;
+        //echo intval(filesize($path));
+        //die($path);
+        if(is_file($path)) {
+          //header("Content-Type: text/plain");
+          while (ob_get_level()) ob_end_clean();
+          error_reporting(0);
+          //clearstatcache(true, $path);
+          ini_set('display_errors', 0);
+          header("Content-Type: application/octet-stream");
+          header("Content-Length: " . intval(filesize($path)));
+          header("Content-Encoding: identity");
+          header("Cache-Control: no-cache");
+          //flush();
+          readfile($path);  // <- streams exact bytes
+          exit;
+        } else {
+        
+            http_response_code(404);
+            header("Content-Type: text/plain");
+            echo "Firmware not found:\n";
+            echo $path;
+            die();
+        }
+			
 			} else if ($mode=="debug") {
 			} else if ($mode=="commandout") { //if we sent an instant_command, then the ESP8266 will redirect any output it generates to sendRemoteData, sending the output in the "data" parameter
 				//old way, back when we didn't have a command_log table:
@@ -447,11 +490,12 @@ if($_REQUEST) {
 					$out["points"] = $subRows;
 				}
 			} else if ($mode=="getDeviceData" || $mode == "getInitialDeviceInfo" || $mode=="saveLocallyGatheredSolarData") {
-				$deviceSql = "SELECT name, location_name FROM device WHERE device_id = " . intval($deviceId);
+				$deviceSql = "SELECT d.name, location_name, d.device_type_id, architecture FROM device d LEFT JOIN device_type dt ON d.device_type_id=dt.device_type_id AND  d.tenant_id=dt.tenant_id  WHERE device_id = " . intval($deviceId);
 				$getDeviceResult = mysqli_query($conn, $deviceSql);
 				if($getDeviceResult) {
 					$deviceRow = mysqli_fetch_array($getDeviceResult);
 					$deviceName = deDelimitify($deviceRow["name"]);
+					$architecture = deDelimitify($deviceRow["architecture"]);
 					$out["device"] = deDelimitify($deviceName);
 				}
 			} else if ($mode=="getOfficialWeatherData") {
@@ -711,7 +755,7 @@ if($_REQUEST) {
 			}
 	 
 			if($mode == "getInitialDeviceInfo" ) { //return a double-delimited string of additional sensors, etc. this one begins with a "*" so we can identify it in the ESP8266. it will be the first data requested by the remote control
-				$outString = "*" . deDelimitify($deviceName); 
+				$outString = "*" . deDelimitify($deviceName) . "*" . deDelimitify($architecture);
 				$sensorSql = "SELECT  f.name, pin_number, power_pin, sensor_type, sensor_sub_type, via_i2c_address, device_feature_id 
 					FROM device_feature f 
 					LEFT JOIN device_type_feature t ON f.device_type_feature_id=t.device_type_feature_id 
@@ -1114,10 +1158,19 @@ if($_REQUEST) {
 		}
 		//var_dump($out);
 		//hmm, does not always work if your text is garbled
-		echo json_encode($out);
+		if(nonJsonPinData) {
+      echo "=" . join("|", array_values($out));
+		} else {
+      echo json_encode($out);
+		
+		}
 	}
 } else {
-	echo '{"message":"done", "method":"' . $method . '"}';
+  if(nonJsonPinData) {
+    echo "=done|" . $method;
+	} else {
+    echo '{"message":"done", "method":"' . $method . '"}';
+	}
 }
 
 function disable_gzip() { //i wanted this to work so the microcontroller wouldn't have to decompress data but it didn't work
@@ -1648,4 +1701,37 @@ function getMessagesForLoRa($tenantId) {
     return $rows;
   }
   
+}
+
+function getMostRecentFile($directory, $searchString) {
+  //echo $searchString;
+    // Ensure the directory exists
+    if (!is_dir($directory)) {
+        return null;
+    }
+    $mostRecentFile = null;
+    $mostRecentTime = 0;
+    // Scan all files in the directory
+    foreach (scandir($directory) as $file) {
+        $filePath = $directory . DIRECTORY_SEPARATOR . $file;
+        //echo $filePath . "\n";
+        // Skip directories
+        if (!is_file($filePath)) {
+            continue;
+        }
+        // Check if the filename contains the search string
+        if (strpos($file, $searchString) !== false) {
+            $fileTime = filemtime($filePath);
+            if ($fileTime > $mostRecentTime) {
+                $mostRecentTime = $fileTime;
+                $mostRecentFile = $filePath;
+                $mostRecentWithoutPath = $file;
+            }
+        }
+    }
+    $mostRecentWithoutPath = preg_replace('/[^\x20-\x7E]/','',$mostRecentWithoutPath);
+    //die(hexDump($mostRecentWithoutPath));
+    //echo $mostRecentWithoutPath;
+    //$mostRecentWithoutPath = "esp8266_cabin_remote2.ino.bin";
+    return trim($mostRecentWithoutPath);
 }

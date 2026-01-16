@@ -2083,46 +2083,7 @@ function processRawSolArkFile() {
         ],
         
         
-            // CHARACTERISTIC #8 — PV voltages and currents (example)
-      "char8" => [
-          "start" => "Characteristic #8 30s_3 (3)",
-          "end"   => "0x3ffbb62c",
-          "lines" => [
-              "0x3ffbb60c" => [
-                  [ 'key' => 'pv1_voltage', 'offsets' => [0,1], 'type'=>'u16','endian'=>'little','multiplier'=>0.1 ],
-                  [ 'key' => 'pv2_voltage', 'offsets' => [2,3], 'type'=>'u16','endian'=>'little','multiplier'=>0.1 ],
-                  [ 'key' => 'pv1_current', 'offsets' => [4,5], 'type'=>'u16','endian'=>'little','multiplier'=>0.01 ],
-                  [ 'key' => 'pv2_current', 'offsets' => [6,7], 'type'=>'u16','endian'=>'little','multiplier'=>0.01 ]
-              ]
-          ]
-      ],
-
-      // CHARACTERISTIC #9 — grid and AC
-      "char9" => [
-          "start" => "Characteristic #9 30s_4 (4)",
-          "end"   => "0x3ffbb64c",
-          "lines" => [
-              "0x3ffbb62c" => [
-                  [ 'key' => 'grid_power', 'offsets' => [0,1], 'type'=>'s16','endian'=>'little','multiplier'=>1 ],
-                  [ 'key' => 'ac_load',    'offsets' => [2,3], 'type'=>'s16','endian'=>'little','multiplier'=>1 ],
-                  [ 'key' => 'ac_voltage', 'offsets' => [4,5], 'type'=>'u16','endian'=>'little','multiplier'=>0.1 ],
-                  [ 'key' => 'ac_current', 'offsets' => [6,7], 'type'=>'u16','endian'=>'little','multiplier'=>0.01 ]
-              ]
-          ]
-      ],
-
-      // CHARACTERISTIC #10 — battery temperature, internal temps
-      "char10" => [
-          "start" => "Characteristic #10 30s_5 (5)",
-          "end"   => "0x3ffbb66c",
-          "lines" => [
-              "0x3ffbb64c" => [
-                  [ 'key' => 'battery_temp',  'offsets' => [0,1], 'type'=>'s16','endian'=>'little','multiplier'=>0.1 ],
-                  [ 'key' => 'inverter_temp', 'offsets' => [2,3], 'type'=>'s16','endian'=>'little','multiplier'=>0.1 ],
-                  [ 'key' => 'pcb_temp',      'offsets' => [4,5], 'type'=>'s16','endian'=>'little','multiplier'=>0.1 ]
-              ]
-          ]
-      ]
+ 
  
 
 
@@ -3212,7 +3173,7 @@ function showLatestMessages($tenantId) {
   return $out;
 }
 
-function gatherAnyTractiveGpsData($tenant){
+function gatherAnyTractiveGpsData($tenant, $debug = false){
   //var_dump($tenant);
   global $conn, $timezone;
   $credential = getCredential($tenant, "tractive");
@@ -3290,17 +3251,29 @@ function gatherAnyTractiveGpsData($tenant){
       exit;
   }
   // FOR DEBUGGING! Print the access token
-  /*
-  echo "Access Token: " . $result['access_token'] . PHP_EOL;
-  echo "Expires at: " . date('Y-m-d H:i:s', $result['expires_at']) . PHP_EOL;
-  echo "User ID: " . $result['user_id'] . PHP_EOL;
-  echo "Client ID: " . $result['client_id'] . PHP_EOL;
-    */
-  $timestamp = time();
-  $timezoneOffset = 18000; //for east coast!
-  $url = $baseUrl . "/tracker/" . $yourTrackerCode . "/positions?time_from=" . intval( $timestamp-4000)  . "&time_to=" . intval($timezoneOffset + $timestamp) . "&format=json_segments";
-  //echo   $url;
+  if($debug) {
+    echo "<br/>Access Token: " . $result['access_token'] . PHP_EOL;
+    echo "<br/>Expires at: " . date('Y-m-d H:i:s', $result['expires_at']) . PHP_EOL;
+    echo "<br/>User ID: " . $result['user_id'] . PHP_EOL;
+    echo "<br/>Client ID: " . $result['client_id'] . PHP_EOL;
+  }
+    
+  $dt = new DateTime('today', new DateTimeZone('UTC'));
+  $utcMidnight = $dt->getTimestamp();
+  if($debug) {
+    echo "<br/>utcMidnight: " . $utcMidnight . "<br/>";
+  }
   
+  $timestamp = time();
+  $timezoneOffset = 18000; //for east coast! //or not
+  $timeFrom = intval($utcMidnight + $timezoneOffset);
+  //$timeFrom = 1768280400;
+  $url = $baseUrl . "/tracker/" . $yourTrackerCode . "/positions?time_from=" . $timeFrom . "&time_to=" . intval($timestamp + 210) . "&format=json_segments";
+  //$url = "https://graph.tractive.com/4/tracker/MOOWPDZO/positions?time_from=1768280400&time_to=1768362058&format=json_segments";
+  //$url = "https://graph.tractive.com/4/tracker/MOOWPDZO/positions?time_from=1768366800&time_to=1768362268&format=json_segments";
+  if($debug) {
+    echo  "<br/>URL: " . $url . "<br/>";
+  }
   $headers = [
       "accept: application/json, text/plain, */*",
       "accept-encoding: gzip, deflate, br, zstd",
@@ -3327,7 +3300,9 @@ function gatherAnyTractiveGpsData($tenant){
   curl_setopt($ch, CURLOPT_ENCODING, ""); // allow gzip/br decoding
   curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
   $response = curl_exec($ch);
-  //echo $response;
+  if($debug) {
+    echo $response;
+  }
   $data = null;
   if (curl_errno($ch)) {
     echo "cURL error: " . curl_error($ch);
@@ -3410,7 +3385,9 @@ function gatherAnyTractiveGpsData($tenant){
               AND recorded = '" . $recorded . "'
         )
       ";
-      //echo $sql;
+      if($debug) {
+        echo "<br/>" . $sql;
+      }
       $result = mysqli_query($conn, $sql);
     }
   }

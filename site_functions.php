@@ -648,7 +648,7 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
   }
  
   $sql = insertUpdateSql($conn, $table, $pkSpec, $data);
-
+  //die($sql);
   if (mysqli_multi_query($conn, $sql)) {
     do {
       // Store first result set
@@ -659,6 +659,7 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
         mysqli_free_result($result);
         $error = mysqli_error($conn);
 				if($error != ""){
+          //die($sql);
           return array($pk[0]=>$error, "_sql"=>$sql);
           echo $sql;
           echo "\n<hr/>\n";
@@ -2113,6 +2114,8 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
               $count++;
             }
           }
+        } else if($type == "many-to-many") {
+          //do nothing with column
         } else if($column == "expired"  && $value == ""){
         } else if($type == "time" && $value == "") {
         } else if ($column != "created" && !beginsWith($column, "_")  && array_key_exists($column, $primaryKey) == false) {
@@ -3217,6 +3220,29 @@ function userDisplayText($user) {
     return $user["full_name"];
   }
   return $user["email"];
+}
+
+function hexDump(string $data, int $bytesPerLine = 16): string {
+    $out = '';
+    $len = strlen($data);
+    for ($i = 0; $i < $len; $i += $bytesPerLine) {
+        $chunk = substr($data, $i, $bytesPerLine);
+        $hex = '';
+        $ascii = '';
+
+        for ($j = 0, $cl = strlen($chunk); $j < $cl; $j++) {
+            $byte = ord($chunk[$j]);
+            $hex   .= sprintf('%02X ', $byte);
+            $ascii .= ($byte >= 32 && $byte <= 126) ? chr($byte) : '.';
+        }
+        $out .= sprintf(
+            "%08X  %-48s |%s|\n",
+            $i,
+            $hex,
+            $ascii
+        );
+    }
+    return $out;
 }
 
  
