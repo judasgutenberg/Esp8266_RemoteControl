@@ -54,7 +54,7 @@
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
-#define version 2104
+#define VERSION 2108
 
 //static globals for the state machine
 static RemoteState remoteState = RS_IDLE;
@@ -73,11 +73,13 @@ static uint32_t taskStartTimeMs = 0; // logging timer
 // Start a new remote task (replacement for original sendRemoteData)
 void startRemoteTask(const String& datastring, const String& mode, uint16_t fRAMordinal) {
   if(ci[POLLING_SKIP_LEVEL] < 1) {
+    //Serial.println("////////////////////////skippy!");
     return;
   }
   if(remoteState != RS_IDLE) {
     // Already running a task. You could choose to queue multiple, but for now bail.
     // If you want to always start a new one, consider returning or queueing.
+    //Serial.println("////////////////////////not idle!");
     return;
   }
 
@@ -920,6 +922,7 @@ void runRemoteTask() {
                 canSleep = true;
                 deferredCanSleep = false;
               }
+ 
               runCommandsFromNonJson((char *)("!" + serverCommandParts[1]).c_str(), false);
             }
           }   
@@ -1347,6 +1350,9 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       }
     } else if(command.indexOf("reboot") > -1  || command.startsWith("update firmware")){
       //can't do this here, so we defer it!
+      if(lastCommandLogId > 0) {
+        setSlaveLong(0,  lastCommandLogId); //stash the commandLogId in the slave
+      }
       //Serial.println("&*&*&*&");
       if(!deferred) {
         //Serial.println("**********************");
@@ -1364,7 +1370,9 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
           runCommandsFromNonJson(deferredCommand, true);
         }
       } else { //we're deferred, so we can roll!
+        
         if(command.startsWith("update firmware")) {
+          millisAtPossibleReboot = millis();
           String rest = command.substring(15);  // 15 = length of "update firmware"
           rest.trim(); //this should contain a url for new firmware.  if it begins with "/" assume it is on the same host as everything else
           String flashUrl = "";
@@ -1376,27 +1384,34 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
             String encryptedStoragePassword = encryptStoragePassword(rest);
             flashUrl = "http://" + String(cs[HOST_GET]) + String(cs[URL_GET]) + "?k2=" + encryptedStoragePassword + "&architecture=" + architecture + "&device_id=" + ci[DEVICE_ID] + "&mode=reflash&data=" + urlEncode(rest, true);  
           }
+          String possibleResult;
+          setSlaveLong(1, 1);
           if(urlExists(flashUrl.c_str())){
              t_httpUpdate_return ret = ESPhttpUpdate.update(clientGet, flashUrl.c_str());
+             
              switch (ret) {
               case HTTP_UPDATE_FAILED:
-                textOut("Update failed; error (");
-                textOut(String(ESPhttpUpdate.getLastError()));
-                textOut(") ");
-                textOut( ESPhttpUpdate.getLastErrorString());
-                textOut("\n");
+                possibleResult = "Update failed; error (" + String(ESPhttpUpdate.getLastError()) + ") " + ESPhttpUpdate.getLastErrorString() + "\n";
+                textOut(possibleResult);
+                possibleEndingMessage = possibleResult;
                 break;
             
               case HTTP_UPDATE_NO_UPDATES:
-                textOut("No update available\n");
+                possibleResult = "No update available\n";
+                textOut(possibleResult);
+                possibleEndingMessage = possibleResult;
                 break;
             
               case HTTP_UPDATE_OK:
-                textOut("Update successful; rebooting...\n");
+                possibleResult = "Update successful; rebooting...\n";
+                textOut(possibleResult);
+                possibleEndingMessage = possibleResult;
                 break;
             }
           } else {
-            textOut(flashUrl + " does not exist; no action taken\n");
+            possibleResult = flashUrl + " does not exist; no action taken\n";
+            textOut(possibleEndingMessage);
+            possibleEndingMessage = possibleResult;
           }
         
         } else if(command.indexOf("watchdog") > -1){
@@ -1409,7 +1424,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
         deferredCommand = "";
       }
     } else if(command == "version") {
-      textOut("Version: " + String(version) + String("\n"));
+      textOut("Version: " + String(VERSION) + String("\n"));
     } else if(command == "pet watchdog") {
       uint32_t unixTime = timeClient.getEpochTime();
       petWatchDog((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND], unixTime);
@@ -2025,6 +2040,44 @@ void loop(){
     }
   }
   yield();
+
+  uint32_t preRebootCommandId = getSlaveLong(0);
+  /*
+  Serial.print(preRebootCommandId);
+  Serial.print(" ");
+  Serial.print(lastCommandLogId);
+  Serial.print(" ");
+  Serial.println(deviceName);
+  */
+  //this code updates any command output from a rebooting command with the version we ended up with
+  if(preRebootCommandId > 0 && lastCommandLogId == 0  && deviceName != "" && remoteState == RS_IDLE) {
+    //we rebooted and came up from it, so let's cap that command with something:
+    //Serial.println("----------------------------preboot?");
+    //Serial.println(preRebootCommandId );
+    if(millisAtPossibleReboot < nowTime  && millisAtPossibleReboot > 0 && possibleEndingMessage != "") { 
+      //we didn't actually reboot!
+      //though i don't know if this scenario ever happes
+      String stringToSend = possibleEndingMessage + "\n" + preRebootCommandId;
+      startRemoteTask(stringToSend, "commandout", 0xFFFF);
+      setSlaveLong(0,0);
+    } else {
+      //we definitely rebooted
+      uint8_t attemptedReflash = getSlaveLong(1);
+      String message = String("After reboot: version: ") + VERSION + "\n" + preRebootCommandId;
+      if(attemptedReflash == 1) {
+        message = String("Update of firmware was successful.  Now using version: ") + VERSION + "\n" + preRebootCommandId;
+      }
+      startRemoteTask(message, "commandout", 0xFFFF);
+      setSlaveLong(0,0);
+    }
+    setSlaveLong(1,0);
+  } else if (preRebootCommandId > 0  && deviceName != "" && remoteState == RS_IDLE) {
+    //we didn't actually reboot!
+    Serial.println("((((((((((((((((((((((((do we ever get here?");
+    String stringToSend = possibleEndingMessage + "\n" + preRebootCommandId;
+    startRemoteTask(stringToSend, "commandout", 0xFFFF);
+    setSlaveLong(0,0);
+  }
  
   if(canSleep) {
     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
