@@ -54,7 +54,7 @@
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
-#define VERSION 2108
+#define VERSION 2109
 
 //static globals for the state machine
 static RemoteState remoteState = RS_IDLE;
@@ -1385,7 +1385,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
             flashUrl = "http://" + String(cs[HOST_GET]) + String(cs[URL_GET]) + "?k2=" + encryptedStoragePassword + "&architecture=" + architecture + "&device_id=" + ci[DEVICE_ID] + "&mode=reflash&data=" + urlEncode(rest, true);  
           }
           String possibleResult;
-          setSlaveLong(1, 1);
+          setSlaveLong(1, VERSION);
           if(urlExists(flashUrl.c_str())){
              t_httpUpdate_return ret = ESPhttpUpdate.update(clientGet, flashUrl.c_str());
              
@@ -2062,10 +2062,10 @@ void loop(){
       setSlaveLong(0,0);
     } else {
       //we definitely rebooted
-      uint8_t attemptedReflash = getSlaveLong(1);
+      uint32_t oldVersion = getSlaveLong(1);
       String message = String("After reboot: version: ") + VERSION + "\n" + preRebootCommandId;
-      if(attemptedReflash == 1) {
-        message = String("Update of firmware was successful.  Now using version: ") + VERSION + "\n" + preRebootCommandId;
+      if(oldVersion > 0) {
+        message = String("Update of firmware was successful; version " + String(oldVersion) + " changed to version ") + VERSION + "\n" + preRebootCommandId;
       }
       startRemoteTask(message, "commandout", 0xFFFF);
       setSlaveLong(0,0);
