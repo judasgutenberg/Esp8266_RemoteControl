@@ -53,7 +53,8 @@
 #define COMMAND_GET_UNIX_TIME               181   //returns unix timestamp as known to the slave
 #define COMMAND_GET_CONFIG                  182   //gets a config item by ordinal number (from the configuration cis[] array)
 #define COMMAND_SET_CONFIG                  183   //sets a config item by ordinal and value
-
+#define COMMAND_GET_LONG                    184   //gets a config long item in cls by ordinal number (from the configuration cis[] array)
+#define COMMAND_SET_LONG                    185   //sets a config long item in cls by ordinal and value
 
 
 
@@ -677,6 +678,34 @@ uint32_t getSlaveConfigItem(uint8_t ordinal) {
   return value;
 }
 
+uint32_t getSlaveLong(uint8_t ordinal) {
+  if(ci[SLAVE_I2C] < 1) {
+    return 0;
+  }
+  Wire.beginTransmission(ci[SLAVE_I2C]);
+  Wire.write(COMMAND_GET_LONG);    // send the command
+  Wire.write(ordinal);    // send the ordinal into the slave config array
+  Wire.endTransmission();
+  yield();
+  delay(1);
+  Wire.requestFrom(ci[SLAVE_I2C], 4);
+  uint32_t value = 0;
+  byte buffer[4];
+  int i = 0;
+  while (Wire.available() && i < 4) {
+    byte singleByte = Wire.read();
+    //Serial.print("byte: ");
+    //Serial.println(singleByte);
+    buffer[i++] = singleByte;
+  }
+  for (int j = 0; j < i; j++) {
+    value |= ((long)buffer[j] << (8 * j));
+  }
+  //Serial.println(value);
+  return value;
+}
+
+
 void setSlaveConfigItem(uint8_t ordinal, uint16_t value) {
   if(ci[SLAVE_I2C] < 1) {
     return;
@@ -689,6 +718,27 @@ void setSlaveConfigItem(uint8_t ordinal, uint16_t value) {
   bytes[1] = (value >> 8) & 0xFF; // MSB
   Wire.write(bytes[0]); 
   Wire.write(bytes[1]); 
+  Wire.endTransmission();
+  yield();
+}
+
+void setSlaveLong(uint8_t ordinal, uint32_t value) {
+  if(ci[SLAVE_I2C] < 1) {
+    return;
+  }
+  Wire.beginTransmission(ci[SLAVE_I2C]);
+  Wire.write(COMMAND_SET_LONG);    // send the command
+  Wire.write(ordinal);    // send the ordinal into the slave config array
+ 
+  uint8_t bytes[4];
+  bytes[0] = value & 0xFF;
+  bytes[1] = (value >> 8) & 0xFF;
+  bytes[2] = (value >> 16) & 0xFF;
+  bytes[3] = (value >> 24) & 0xFF;
+  for(uint8_t i = 0; i<4; i++) {
+    Wire.write(bytes[i]); 
+  }
+
   Wire.endTransmission();
   yield();
 }

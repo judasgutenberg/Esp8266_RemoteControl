@@ -114,5 +114,7 @@ bool slaveUnpetted = true;
 uint8_t lastSlavePowerMode = 0;
 uint32_t lastSlaveMillis = 0;
 bool resendSlavePinInfo = false;
+uint32_t millisAtPossibleReboot = 0;
+String possibleEndingMessage;
 
 ESP8266WebServer server(80); //Server on port 80

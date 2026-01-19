@@ -121,6 +121,8 @@ extern bool slaveUnpetted;
 extern uint8_t lastSlavePowerMode;
 extern uint32_t lastSlaveMillis;
 extern bool resendSlavePinInfo;
+extern uint32_t millisAtPossibleReboot;
+extern String possibleEndingMessage;
 
 extern ESP8266WebServer server;
 
