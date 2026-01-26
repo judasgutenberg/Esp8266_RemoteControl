@@ -93,7 +93,7 @@ In addition to configuration items on the master controller, this system also al
 
 Note:  when using the serial connection to alter configuration items, they need to be referred to by number, not by name, since the microcontroller has no idea what the names are.  The numbers are automatically looked up when commands are sent via the web, but there is no such facility to do this via serial.  So instead of issuing a <b>set debug 0</b> you would issue a <b>set 45 0</b>, kind of like with the classic Apollo DSKY. The numbers for the names can be looked up in config.h.
 
-# OTA Firmware Updates
+## OTA Firmware Updates
 The firmware in any ESP8266 in this system can be updated by copying the .bin file of its image (which is retrievable in the file system the Arduino IDE creates, though that isn't as straightforward as the folks at Arduino could've made it) to the folder on the web server whose name is given as $flash_directory in config.php.  Then you simply issue the command <b>update firmware [filename]</b> as an instant command.  If the file is a genuine image, the file will flash and the ESP8266 will reboot with the new firmware. Note:  if this should fail because the file is for the wrong firmware, you may have to journey to the ESP8266 to fix it.
 
 ## APIs and Pseudo Devices
