@@ -54,7 +54,7 @@
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
-#define VERSION 2110
+#define VERSION 2111
 
 //static globals for the state machine
 static RemoteState remoteState = RS_IDLE;
@@ -1455,6 +1455,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
         if (httpCode != HTTP_CODE_OK) {
             textOut("Flash file failed to load");
         }
+        enterSlaveBootloader();
         updateSlaveFirmware((String)flashUrl);
 
       } else {
@@ -2951,44 +2952,85 @@ uint8_t hexToByte(String hex) {
     return strtoul(hex.c_str(), nullptr, 16);
 }
 
-// Send a full page to the slave in 32-byte chunks
-void sendFlashPage(uint32_t pageAddr, uint8_t *data, bool debug) {
+// Send a full 128-byte page to the slave in safe chunks, with retries and automatic chunk reduction
+bool sendFlashPage(uint32_t pageAddr, uint8_t *data, bool debug) {
     if (debug) {
         Serial.print("Flashing page at 0x");
         Serial.println(pageAddr, HEX);
     }
+ 
+    const int MAX_CHUNK_SIZE = 16;    // starting safe chunk size
+    const int MIN_CHUNK_SIZE = 15;     // smallest chunk allowed
+    const int MAX_RETRIES = 1;        // retry per chunk
+    const int POST_CHUNK_DELAY = 5;   // ms to let slave settle
 
-    const int CHUNK_SIZE = 32;  // AVR TWI buffer limit
-    for (int offset = 0; offset < PAGE_SIZE; offset += CHUNK_SIZE) {
-        int bytesThisChunk = min(CHUNK_SIZE, PAGE_SIZE - offset);
+    int offsetInPage = 0;
 
-        Wire.beginTransmission(ci[SLAVE_I2C]);
-        Wire.write(CMD_ACCESS_MEMORY);
-        Wire.write(MEMTYPE_FLASH);
+    while (offsetInPage < PAGE_SIZE) {
+        int chunkSize = MAX_CHUNK_SIZE;
+        bool chunkSent = false;
 
-        uint16_t wordAddr = (pageAddr >> 1) + (offset >> 1);
-        Wire.write((wordAddr >> 8) & 0xFF);
-        Wire.write(wordAddr & 0xFF);
+        while (!chunkSent && chunkSize >= MIN_CHUNK_SIZE) {
+            int bytesThisChunk = min(chunkSize, PAGE_SIZE - offsetInPage);
+            bool sent = false;
 
-        for (int i = 0; i < bytesThisChunk; i++) {
-            Wire.write(data[offset + i]);
-            // optional progress dots every 16 bytes
-            if (debug && ((i + 1) % 16 == 0 || i == bytesThisChunk - 1)) Serial.print(".");
-        }
+            for (int attempt = 1; attempt <= MAX_RETRIES && !sent; attempt++) {
+                Wire.beginTransmission(ci[SLAVE_I2C]);
+                Wire.write(CMD_ACCESS_MEMORY);
+                Wire.write(MEMTYPE_FLASH);
 
-        uint8_t err = Wire.endTransmission();
-        if (debug) {
-            if (err != 0) {
-                Serial.print(" ERROR sending chunk at offset ");
-                Serial.println(offset);
+                uint16_t wordAddr = (pageAddr >> 1) + (offsetInPage >> 1);
+                Wire.write((wordAddr >> 8) & 0xFF);
+                Wire.write(wordAddr & 0xFF);
+
+                for (int i = 0; i < bytesThisChunk; i++) {
+                    Wire.write(data[offsetInPage + i]);
+                }
+                delay(20);
+                uint8_t err = Wire.endTransmission();
+                delay(20);
+                if (err == 0) {
+                    sent = true;
+                    chunkSent = true;
+                } else if (debug) {
+                    Serial.print(" ERROR sending chunk at offset ");
+                    Serial.print(offsetInPage);
+                    Serial.print(" (attempt ");
+                    Serial.print(attempt);
+                    Serial.print("), bytesThisChunk=");
+                    Serial.println(bytesThisChunk);
+                    delay(5 * attempt);  // gradually longer delay on retries
+                }
+            }
+
+            if (!chunkSent) {
+                // reduce chunk size if it keeps failing
+                if (chunkSize > MIN_CHUNK_SIZE) {
+                    chunkSize /= 2;
+                    if (debug) {
+                        Serial.print(" Reducing chunk size to ");
+                        Serial.println(chunkSize);
+                    }
+                } else {
+                    // cannot reduce further
+                    if (debug) {
+                        Serial.print(" FAILED chunk at offset ");
+                        Serial.println(offsetInPage);
+                    }
+                    return false; // abort page
+                }
             }
         }
 
-        delay(5);  // give bootloader time to finish internal flash write
+        offsetInPage += min(chunkSize, PAGE_SIZE - offsetInPage);
+        delay(POST_CHUNK_DELAY);
     }
 
     if (debug) Serial.println(" OK -- send flash page");
+    return true;
 }
+
+
 
 // Flush the last page at EOF or when page boundary changes
 void flushLastPage(bool debug) {
@@ -3093,16 +3135,11 @@ void runSlaveSketch() {
 }
 
 void enterSlaveBootloader() {
-  Wire.beginTransmission(ci[SLAVE_I2C]);
-  Wire.write(190);       // command byte
-  Wire.write((BOOT_MAGIC_VALUE >> 8) & 0xFF); // high byte
-  Wire.write(BOOT_MAGIC_VALUE & 0xFF);        // low byte
-  Wire.endTransmission();
-
-  // Give the slave a moment to act on it
-  delay(20);
+    Wire.beginTransmission(ci[SLAVE_I2C]);
+    Wire.write(190); // COMMAND_ENTER_BOOTLOADER
+    Wire.endTransmission();
+    delay(20);
 }
-
 
 void  leaveSlaveBootloader() {
   Wire.beginTransmission(ci[SLAVE_I2C]);
