@@ -95,6 +95,8 @@ Note:  when using the serial connection to alter configuration items, they need 
 ## OTA Firmware Updates
 The firmware in any ESP8266 in this system can be updated by copying the .bin file of its image (which is retrievable in the file system the Arduino IDE creates, though that isn't as straightforward as the folks at Arduino could've made it) to the folder on the web server whose name is given as $flash_directory in config.php.  Then you simply issue the command <b>update firmware [filename]</b> as an instant command.  If the file is a genuine image, the file will flash and the ESP8266 will reboot with the new firmware. Note:  if this should fail because the file is for the wrong firmware, you may have to journey to the ESP8266 to fix it.
 
+A feature still in development is the ability to remotely upload new firmware to an I2C slave via I2c.  Once that is in place, slaves can be left in-circuit indefinitely and no longer require USB or other serial hardware.
+
 ## APIs and Pseudo Devices
 Every tenant gets its own set of credentials for APIs it has access to, which are added via the API Credentials link in the tenant list.  Some APIs can actually act like devices,  even logging data to the device_log table. These are called "pseudo devices" and their "device_id" (which is called "pseudo_device_id") is set with the API credentials.  Then that API is polled automatically by the backend to retrieve data so it can be stored in the device_log table.  This is how I track my dog Charlotte when she is wearing her Tractive tracker, since that is not a device I control; I can only get data via its cloud-based API.
 
