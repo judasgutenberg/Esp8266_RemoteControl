@@ -54,7 +54,7 @@
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
-#define VERSION 2111
+#define VERSION 2112
 
 //static globals for the state machine
 static RemoteState remoteState = RS_IDLE;
@@ -2956,20 +2956,31 @@ uint8_t hexToByte(String hex) {
 bool sendFlashPage(uint32_t pageAddr, uint8_t *data, bool debug) {
     if (debug) {
         Serial.print("Flashing page at 0x");
-        Serial.println(pageAddr, HEX);
+        Serial.println(pageAddr);
     }
  
     const int MAX_CHUNK_SIZE = 16;    // starting safe chunk size
-    const int MIN_CHUNK_SIZE = 15;     // smallest chunk allowed
-    const int MAX_RETRIES = 1;        // retry per chunk
-    const int POST_CHUNK_DELAY = 5;   // ms to let slave settle
+    const int MIN_CHUNK_SIZE = 16;     // smallest chunk allowed
+    const int MAX_RETRIES = 3;        // retry per chunk
+    const int POST_CHUNK_DELAY = 10;   // ms to let slave settle
 
     int offsetInPage = 0;
-
+  
+    if(pageAddr == 0){
+      Wire.beginTransmission(ci[SLAVE_I2C]);
+      Wire.write(CMD_ACCESS_MEMORY);
+      Wire.write(MEMTYPE_FLASH);
+      Wire.write(0);
+      Wire.write(0);
+      Wire.endTransmission();
+      delay(40);
+    }
+                
     while (offsetInPage < PAGE_SIZE) {
         int chunkSize = MAX_CHUNK_SIZE;
         bool chunkSent = false;
-
+        Serial.print("In loop: ");
+        Serial.println(pageAddr);
         while (!chunkSent && chunkSize >= MIN_CHUNK_SIZE) {
             int bytesThisChunk = min(chunkSize, PAGE_SIZE - offsetInPage);
             bool sent = false;
@@ -2979,16 +2990,20 @@ bool sendFlashPage(uint32_t pageAddr, uint8_t *data, bool debug) {
                 Wire.write(CMD_ACCESS_MEMORY);
                 Wire.write(MEMTYPE_FLASH);
 
-                uint16_t wordAddr = (pageAddr >> 1) + (offsetInPage >> 1);
-                Wire.write((wordAddr >> 8) & 0xFF);
-                Wire.write(wordAddr & 0xFF);
+                uint16_t byteAddr = pageAddr + offsetInPage;
 
+                Serial.print("Addr to slave: ");
+                Serial.println(byteAddr);
+                
+                Wire.write((byteAddr >> 8) & 0xFF);
+                Wire.write(byteAddr & 0xFF);
+                delay(10);
                 for (int i = 0; i < bytesThisChunk; i++) {
                     Wire.write(data[offsetInPage + i]);
                 }
-                delay(20);
+                delay(5);
                 uint8_t err = Wire.endTransmission();
-                delay(20);
+                delay(5);
                 if (err == 0) {
                     sent = true;
                     chunkSent = true;
