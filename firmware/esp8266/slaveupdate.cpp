@@ -1,6 +1,9 @@
 /////////////////////////////////////////////
-//slave reflasher code -- it can reflash an I2C slave over I2C!  You must set fuses and install twiboot:
-//my branch of twiboot that this code expects is at: https://github.com/judasgutenberg/twiboot
+//slave reflasher code -- this code, when run from a master, can reflash an I2C slave over I2C!  
+//You must set fuses and install my modified twiboot  bootloader on your slave
+//the branch of twiboot that this code expects is at: https://github.com/judasgutenberg/twiboot
+//Gus Mueller, February 5, 2026
+//Twiboot code is Copyright (C) 10/2020 by Olaf Rempel    
 /*
 the commands would be something like this for Atmega328p
 .\avrdude.exe -c usbtiny -p m328p -U lfuse:w:0xC2:m -U hfuse:w:0xD8:m -U efuse:w:0xFD:m
