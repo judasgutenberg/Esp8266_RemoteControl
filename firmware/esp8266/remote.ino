@@ -2979,8 +2979,10 @@ bool sendFlashPage(uint32_t pageAddr, uint8_t *data, bool debug) {
     while (offsetInPage < PAGE_SIZE) {
         int chunkSize = MAX_CHUNK_SIZE;
         bool chunkSent = false;
-        Serial.print("In loop: ");
-        Serial.println(pageAddr);
+        if (debug) {
+          Serial.print("In chunk loop at ");
+          Serial.println(pageAddr);
+        }
         while (!chunkSent && chunkSize >= MIN_CHUNK_SIZE) {
             int bytesThisChunk = min(chunkSize, PAGE_SIZE - offsetInPage);
             bool sent = false;
@@ -2991,10 +2993,10 @@ bool sendFlashPage(uint32_t pageAddr, uint8_t *data, bool debug) {
                 Wire.write(MEMTYPE_FLASH);
 
                 uint16_t byteAddr = pageAddr + offsetInPage;
-
-                Serial.print("Addr to slave: ");
-                Serial.println(byteAddr);
-                
+                if (debug) {
+                  Serial.print("Address on slave: ");
+                  Serial.println(byteAddr);
+                }
                 Wire.write((byteAddr >> 8) & 0xFF);
                 Wire.write(byteAddr & 0xFF);
                 delay(10);
@@ -3014,8 +3016,9 @@ bool sendFlashPage(uint32_t pageAddr, uint8_t *data, bool debug) {
                     Serial.print(attempt);
                     Serial.print("), bytesThisChunk=");
                     Serial.println(bytesThisChunk);
-                    delay(5 * attempt);  // gradually longer delay on retries
+                    
                 }
+                delay(5 * attempt);  // gradually longer delay on retries
             }
 
             if (!chunkSent) {
@@ -3041,7 +3044,9 @@ bool sendFlashPage(uint32_t pageAddr, uint8_t *data, bool debug) {
         delay(POST_CHUNK_DELAY);
     }
 
-    if (debug) Serial.println(" OK -- send flash page");
+    if (debug) {
+      Serial.println(" OK -- send flash page");
+    }
     return true;
 }
 
@@ -3055,7 +3060,9 @@ void flushLastPage(bool debug) {
             Serial.println(currentPageBase, HEX);
         }
         sendFlashPage(currentPageBase, pageBuffer, debug);
-        if (debug) Serial.println("........ OK");
+        if (debug) {
+          Serial.println("........ OK");
+        }
         currentPageBase = 0xFFFFFFFF;
         pagePending = false;
         memset(pageBuffer, 0xFF, PAGE_SIZE);
@@ -3106,19 +3113,22 @@ void streamHexFile(Stream *stream, bool debug = true) {
 // Update slave firmware from a HEX URL
 void updateSlaveFirmware(String url) {
     HTTPClient http;
+    bool debug = false;
     http.begin(clientGet, url);
     int httpCode = http.GET();
     if (httpCode != HTTP_CODE_OK) return;
 
     WiFiClient *stream = http.getStreamPtr();
-    streamHexFile(stream, true);
+    streamHexFile(stream, debug);
 
-    finalizeBootloaderUpdate(true);
+    finalizeBootloaderUpdate(debug);
 }
 
 // Finalize the update: flush last page + jump to application
 void finalizeBootloaderUpdate(bool debug) {
-    if (debug) Serial.println("Flushing last page if needed...");
+    if (debug) {
+      Serial.println("Flushing last page if needed...");
+    }
 
     Wire.beginTransmission(ci[SLAVE_I2C]);
     Wire.write(CMD_ACCESS_MEMORY);   // command: access flash
@@ -3129,14 +3139,18 @@ void finalizeBootloaderUpdate(bool debug) {
     
     flushLastPage(debug);
     delay(40);
-    if (debug) Serial.println("Requesting slave to jump to application...");
+    if (debug) {
+      Serial.println("Requesting slave to jump to application...");
+    }
 
     Wire.beginTransmission(ci[SLAVE_I2C]);
     Wire.write(CMD_SWITCH_APPLICATION);
     Wire.write(BOOTTYPE_APPLICATION);
     Wire.endTransmission();
 
-    if (debug) Serial.println("Jump command sent successfully.");
+    if (debug) {
+      Serial.println("Jump command sent successfully.");
+    }
 }
 
 void runSlaveSketch() {
