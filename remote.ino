@@ -1,7 +1,7 @@
 /*
  * ESP8266 Remote Control. Also sends weather data from multiple kinds of sensors (configured in config.c) 
  * originally built on the basis of something I found on https://circuits4you.com
- * reorganized and extended by Gus Mueller, April 24 2022 - June 22 2024
+ * reorganized and extended by Gus Mueller, April 24 2022 - January 10 2026
  * Also resets a Moxee Cellular hotspot if there are network problems
  * since those do not include watchdog behaviors
  */
@@ -9,17 +9,24 @@
  //note:  this needs to be compiled in the Arduino environment alongside:
  //config.cpp
  //config.h
+ //globals.cpp
+ //globals.h
  //i2cslave.cpp
  //i2cslave.h
  //index.h
+ //utilities.cpp
+ //utilities.h
 
 #include "globals.h"
 #include "i2cslave.h"
 #include "utilities.h"
+#include "slaveupdate.h"
 
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
+#include <ESP8266HTTPClient.h>
+#include <ESP8266httpUpdate.h>
 #include <IRremoteESP8266.h>
 #include <IRsend.h>
 #include <Adafruit_INA219.h>
@@ -48,9 +55,10 @@
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
+#define VERSION 2112
+
 //static globals for the state machine
 static RemoteState remoteState = RS_IDLE;
-static WiFiClient clientGet;
 static String remoteDatastring;      // original datastring param
 static String remoteMode;            // mode param
 static uint16_t remoteFRAMordinal;   // fRAMordinal param
@@ -65,11 +73,13 @@ static uint32_t taskStartTimeMs = 0; // logging timer
 // Start a new remote task (replacement for original sendRemoteData)
 void startRemoteTask(const String& datastring, const String& mode, uint16_t fRAMordinal) {
   if(ci[POLLING_SKIP_LEVEL] < 1) {
+    //Serial.println("////////////////////////skippy!");
     return;
   }
   if(remoteState != RS_IDLE) {
     // Already running a task. You could choose to queue multiple, but for now bail.
     // If you want to always start a new one, consider returning or queueing.
+    //Serial.println("////////////////////////not idle!");
     return;
   }
 
@@ -441,8 +451,8 @@ void compileAndSendDeviceData(
     pos += snprintf(tx + pos, sizeof(tx) - pos, "*****");
 
     // slave I2C data
-    if (ci[SLAVE_I2C] > 0) {
-        String s = slaveData();
+    if (ci[SLAVE_I2C] > 0 && lastSlavePowerMode < 2) { //don't get this info with every poll if the slave is trying to sleep more deeply than 1
+        String s = slaveWatchdogData();
         pos += snprintf(tx + pos, sizeof(tx) - pos, "*%s", s.c_str());
     }
 
@@ -589,9 +599,7 @@ void wiFiConnect() {
         break; // move to next SSID
       }
 
-      if (!initialAttemptPhase &&
-          wiFiSeconds > (ci[WIFI_TIMEOUT] / 2) &&
-          ci[FRAM_ADDRESS] > 0) {
+      if (!initialAttemptPhase && wiFiSeconds > (ci[WIFI_TIMEOUT] / 2) &&  ci[FRAM_ADDRESS] > 0) {
         offlineMode = true;
         haveReconnected = false;
         return;
@@ -841,7 +849,7 @@ void runRemoteTask() {
 
         // ---- reproduce original parsing logic ----
         // skip error lines (your logic tested indexOf("\"error\":") < 0 etc)
-        if(retLine.indexOf("\"error\":") < 0 && (remoteMode == "saveData" || remoteMode == "commandout") && (retLine.charAt(0)== '{' || retLine.charAt(0)== '*' || retLine.charAt(0)== '|')) {
+        if(retLine.indexOf("\"error\":") < 0 && (remoteMode == "saveData" || remoteMode == "commandout") && (retLine.charAt(0)== '{' || retLine.charAt(0)== '*' || retLine.charAt(0)== '|' || retLine.charAt(0)== '=')) {
           lastDataLogTime = millis();
           moxeeRebootCount = 0;
           for (int i = 0; i < 11; i++) moxeeRebootTimes[i] = 0;
@@ -856,6 +864,8 @@ void runRemoteTask() {
           // If deferredCommand exists, run it (this is allowed post-socket)
           if(deferredCommand != "") {
             yield();
+            //Serial.println("~~~~~~~~~~~~~~~~~~");
+            //Serial.println(deferredCommand);
             runCommandsFromNonJson(deferredCommand, true);
           }
 
@@ -912,6 +922,7 @@ void runRemoteTask() {
                 canSleep = true;
                 deferredCanSleep = false;
               }
+ 
               runCommandsFromNonJson((char *)("!" + serverCommandParts[1]).c_str(), false);
             }
           }   
@@ -973,6 +984,7 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
     return "";
   }
   String additionalSensorArray[12];
+  String deviceInfoValues[2];
   String specificSensorData[8];
   int i2c;
   int pinNumber;
@@ -982,13 +994,19 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
   int deviceFeatureId;
   int consolidateAllSensorsToOneRecord = 0;
   String out = "";
+  String deviceInfo;
   int objectCursor = 0;
   int oldSensorId = -1;
   int ordinalOfOverwrite = 0;
   String sensorName;
   splitString(sensorData, '|', additionalSensorArray, 12);
-  deviceName = additionalSensorArray[0].substring(1);
- 
+  deviceInfo = additionalSensorArray[0].substring(1);
+  splitString(deviceInfo, '*', deviceInfoValues, 2);
+  deviceName = deviceInfoValues[0];
+  architecture = deviceInfoValues[1];
+  //Serial.println(deviceInfo);
+  //Serial.println(architecture);
+  
   requestNonJsonPinInfo = 1; //set this global
   for(int i=1; i<12; i++) {
     String sensorDatum = additionalSensorArray[i];
@@ -1095,6 +1113,7 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
             pinName[foundPins].setCharAt(strlen(friendlyPinName), '\0'); // truncate to correct length
             pinList[foundPins] = nonJsonPinDatum[1];
             yield();
+            int existingValue = pinMap->get(nonJsonPinDatum[1]);
             if (!localSource || serverSaved == 1) {
                 if (serverSaved == 1) {
                     localSource = false;
@@ -1103,23 +1122,33 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
                     pinMap->put(nonJsonPinDatum[1], value);
                 }
             }
-            if (i2c > 0) {
-                setPinValueOnSlave(i2c, (char)pinNumber, (char)value);
-                yield();
+            if(existingValue != value || resendSlavePinInfo) { //this should minimize i2c traffic and unnecessary digitalWrites as well
+              if (i2c > 0) {
+                  setPinValueOnSlave(i2c, (char)pinNumber, (char)value);
+                  yield();
+              } else {
+                  pinMode(pinNumber, OUTPUT);
+                  if (canBeAnalog) {
+                      analogWrite(pinNumber, value);
+                  } else {
+                      digitalWrite(pinNumber, value > 0 ? HIGH : LOW);
+                  }
+              }
+              //Serial.println("different--------------------------------------------");
             } else {
-                pinMode(pinNumber, OUTPUT);
-                if (canBeAnalog) {
-                    analogWrite(pinNumber, value);
-                } else {
-                    digitalWrite(pinNumber, value > 0 ? HIGH : LOW);
-                }
+              //Serial.print("same: ");
+              //Serial.print(existingValue);
+              //Serial.print("=?");
+              //Serial.println(value);
             }
-
             foundPins++;
  
         }
-    }
 
+    }
+    if(resendSlavePinInfo) {
+      resendSlavePinInfo = false;
+    }
     pinTotal = foundPins;
 }
 
@@ -1292,7 +1321,7 @@ void runCommandsFromJson(char * json){
 }
 */
 
-void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
+void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
   //can change the default values of some config data for things like polling
   String command;
   int commandId;
@@ -1300,8 +1329,8 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
   String commandArray[4];
   int latency;
   //first get rid of the first character, since all it does is signal that we are receiving a command:
-  nonJsonLine++;
-  splitString(nonJsonLine, '|', commandArray, 3);
+  const char* cmd = nonJsonLine + 1;
+  splitString(cmd, '|', commandArray, 3);
   commandId = commandArray[0].toInt();
   command = commandArray[1];
   commandData = commandArray[2];
@@ -1319,23 +1348,140 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
         requestLong(ci[SLAVE_I2C], 128);
         textOut("Slave rebooted\n");
       }
-    } else if(command.indexOf("reboot") > -1){
+    } else if(command.indexOf("reboot") > -1  || command.startsWith("update firmware")){
       //can't do this here, so we defer it!
+      if(lastCommandLogId > 0) {
+        setSlaveLong(0,  lastCommandLogId); //stash the commandLogId in the slave
+      }
+      //Serial.println("&*&*&*&");
       if(!deferred) {
-        nonJsonLine--; //get the ! back at the beginning
+        //Serial.println("**********************");
+        //Serial.println(command);
         size_t len = strlen(nonJsonLine);
         deferredCommand = new char[len + 1];  // +1 for null terminator
         strcpy(deferredCommand, nonJsonLine);
-        textOut("Rebooting... \n");
-      } else {
-        if(command.indexOf("watchdog") > -1){
+        if(command.indexOf("reboot") > -1) {
+           textOut("Rebooting... \n");
+        } else if (command.startsWith("update firmware")) {
+          textOut("Attempting firmware update...\n");
+        }
+        if(commandId == -1) {
+          //our command is via serial, so call handle deferred commands immediately
+          runCommandsFromNonJson(deferredCommand, true);
+        }
+      } else { //we're deferred, so we can roll!
+        
+        if(command.startsWith("update firmware")) {
+          millisAtPossibleReboot = millis();
+          String rest = command.substring(15);  // 15 = length of "update firmware"
+          rest.trim(); //this should contain a url for new firmware.  if it begins with "/" assume it is on the same host as everything else
+          String flashUrl = "";
+          if(rest.startsWith("http://")) { //if we get a full url
+            flashUrl = rest;
+          } else if(rest.charAt(0) == '/') {
+            flashUrl = "http://" + String(cs[HOST_GET]) + rest; //my firmware has an aversion to https!
+          } else { //get the flash file from the backend using its security system, pulling it from the flash update directory, wherever it happens to be
+            String encryptedStoragePassword = encryptStoragePassword(rest);
+            flashUrl = "http://" + String(cs[HOST_GET]) + String(cs[URL_GET]) + "?k2=" + encryptedStoragePassword + "&architecture=" + architecture + "&device_id=" + ci[DEVICE_ID] + "&mode=reflash&data=" + urlEncode(rest, true);  
+          }
+          String possibleResult;
+          setSlaveLong(1, VERSION);
+          if(urlExists(flashUrl.c_str())){
+             t_httpUpdate_return ret = ESPhttpUpdate.update(clientGet, flashUrl.c_str());
+             
+             switch (ret) {
+              case HTTP_UPDATE_FAILED:
+                possibleResult = "Update failed; error (" + String(ESPhttpUpdate.getLastError()) + ") " + ESPhttpUpdate.getLastErrorString() + "\n";
+                textOut(possibleResult);
+                possibleEndingMessage = possibleResult;
+                break;
+            
+              case HTTP_UPDATE_NO_UPDATES:
+                possibleResult = "No update available\n";
+                textOut(possibleResult);
+                possibleEndingMessage = possibleResult;
+                break;
+            
+              case HTTP_UPDATE_OK:
+                possibleResult = "Update successful; rebooting...\n";
+                textOut(possibleResult);
+                possibleEndingMessage = possibleResult;
+                break;
+            }
+          } else {
+            possibleResult = flashUrl + " does not exist; no action taken\n";
+            textOut(possibleEndingMessage);
+            possibleEndingMessage = possibleResult;
+          }
+        
+        } else if(command.indexOf("watchdog") > -1){
           if(ci[SLAVE_I2C] > 0) {
             requestLong(ci[SLAVE_I2C], 134);
           }
         } else {
          rebootEsp();
         }
+        deferredCommand = "";
       }
+    } else if(command == "version") {
+      textOut("Version: " + String(VERSION) + String("\n"));
+
+    } else if(command == "run slave sketch") {
+      runSlaveSketch();
+      textOut("Hopefully running a sketch\n");
+    } else if(command == "slave bootloader") {
+      enterSlaveBootloader();
+      textOut("Hopefully the slave is waiting for a sketch\n");
+    } else if(command.startsWith("update slave firmware")) {
+      millisAtPossibleReboot = millis();
+      String rest = command.substring(21);  // 21 = length of "update slave firmware"
+      rest.trim(); //this should contain a url for new firmware.  if it begins with "/" assume it is on the same host as everything else
+      String flashUrl = "";
+      textOut("Updating slave firmware...\n");
+      if(rest.startsWith("http://")) { //if we get a full url
+        flashUrl = rest;
+      } else if(rest.charAt(0) == '/') {
+        flashUrl = "http://" + String(cs[HOST_GET]) + rest; //my firmware has an aversion to https!
+      } else { //get the flash file from the backend using its security system, pulling it from the flash update directory, wherever it happens to be
+        String encryptedStoragePassword = encryptStoragePassword(rest);
+        flashUrl = "http://" + String(cs[HOST_GET]) + String(cs[URL_GET]) + "?k2=" + encryptedStoragePassword + "&architecture=" + architecture + "&device_id=" + ci[DEVICE_ID] + "&mode=reflash&data=" + urlEncode(rest, true);  
+      }
+      //Serial.println(flashUrl);
+      String possibleResult;
+      HTTPClient http;
+      if(urlExists(flashUrl.c_str())){
+        http.begin(clientGet, flashUrl.c_str());
+        int httpCode = http.GET();
+        if (httpCode != HTTP_CODE_OK) {
+            textOut("Flash file failed to load");
+        }
+        uint32_t oldVersion = requestLong(ci[SLAVE_I2C], 160);
+        enterSlaveBootloader();
+        updateSlaveFirmware((String)flashUrl);
+        uint32_t newVersion = 0;
+        int waitIterations = 0;
+        while((newVersion == 0 || newVersion > 10000) && waitIterations < 200) {
+          newVersion = requestLong(ci[SLAVE_I2C], 160);
+          delay(200);
+          waitIterations++;
+        }
+        textOut("Slave firmware updated from version " + String(oldVersion) + " to " + String(newVersion) + "\n");
+      } else {
+        possibleResult = flashUrl + " does not exist; no action taken\n";
+        textOut(possibleResult);
+        possibleEndingMessage = possibleResult;
+      }
+        
+    } else if(command == "pet watchdog") {
+      uint32_t unixTime = timeClient.getEpochTime();
+      petWatchDog((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND], unixTime);
+      textOut("Watchdog petted\n");
+    } else if(command == "get weather sensors") {
+      String transmissionString = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, -1, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
+      textOut(transmissionString + "\n");
+    } else if(command.startsWith("update firmware")) {//do an over-the-air update
+
+      
     } else if(command == "reboot now") {
       rebootEsp(); //only use in extreme measures -- as an instant command will produce a booting loop until command is manually cleared
     } else if(command == "one pin at a time") {
@@ -1397,36 +1543,31 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
 
     } else if(command == "get watchdog info") {
       if(ci[SLAVE_I2C] > 0) {
-        long ms      = requestLong(ci[SLAVE_I2C], 129); // millis
-        long lastReboot = requestLong(ci[SLAVE_I2C], 130); // last watchdog reboot time
-        long rebootCount  = requestLong(ci[SLAVE_I2C], 131); // reboot count
-        long lastWePetted  = requestLong(ci[SLAVE_I2C], 132);
-        long lastPetAtBite  = requestLong(ci[SLAVE_I2C], 133);
-        textOut("Watchdog millis: " + String(ms) + "; Last reboot at: " + String(lastReboot) + " (" + msTimeAgo(ms, lastReboot) + "); Reboot count: " + String(rebootCount) + "; Last petted: " + String(lastWePetted) + " (" + msTimeAgo(ms, lastWePetted) + "); Bit " + String(lastPetAtBite) + " seconds after pet\n"); 
+        slaveWatchdogInfo();
       }
     } else if(command == "get watchdog data") {
       if(ci[SLAVE_I2C] > 0) {
-        textOut(slaveData() + "\n");
+        textOut(slaveWatchdogData() + "\n");
       } 
-    } else if (command ==  "save master config") { //master and slave configs are both stored in slave eeprom
+    } else if (command ==  "save master config") { //saves whatever the master config is to slave EEPROM
       if(ci[SLAVE_I2C] > 0) {
         saveAllConfigToEEPROM(0);
         textOut("Configuration saved\n");
       }
 
-    } else if (command ==  "save slave config") {
+    } else if (command ==  "save slave config") { //saves whatever the slave config is to slave EEPROM
       if(ci[SLAVE_I2C] > 0) {
         saveAllConfigToEEPROM(512);
         textOut("Configuration saved\n");
       }
-    } else if (command ==  "init master config") {
+    } else if (command ==  "init master defaults") { //sets the config to their hardcoded defaults
       if(ci[SLAVE_I2C] > 0) {
-        initMasterConfig();
+        initMasterDefaults();
         textOut("Master config initialized\n");
       }
-    } else if (command ==  "init slave config") {
+    } else if (command ==  "init slave defaults") { //sets the config to their hardcoded defaults
       if(ci[SLAVE_I2C] > 0) {
-        initSlaveConfig();
+        initSlaveDefaults();
         textOut("Slave config initialized\n");
       }
       
@@ -1447,8 +1588,7 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       textOut("EEPROM data:\n");
       textOut(String(buffer));
     } else if (command.startsWith("reset serial")) {
-      Serial.flush();
-      Serial.begin(115200, SERIAL_8N1, SERIAL_FULL); 
+      setSerialRate((byte)ci[BAUD_RATE_LEVEL]); 
       ETS_UART_INTR_DISABLE();
       ETS_UART_INTR_ENABLE();
       textOut("Serial reset\n");
@@ -1457,18 +1597,18 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
     } else if (command.startsWith("dump slave config eeprom")) {
       loadAllConfigFromEEPROM(1, 512);
     } else if (command.startsWith("send slave serial")) { //setting items in the configuration
-      String rest = command.substring(17);  // 17 = length of "sendslaveserial"
+      String rest = command.substring(17);  // 17 = length of "send slave serial"
       sendSlaveSerial(rest);
       textOut("Serial data sent to slave: " + rest + "\n");
     } else if (command.startsWith("set slave time")) { //setting items in the configuration
       char buffer[500]; 
-      String rest = command.substring(17);  // 13 = length of "read slave eeprom"
+      String rest = command.substring(14);  // 13 = length of "read slave eeprom"
       sendLong(ci[SLAVE_I2C], 180, rest.toInt());
       textOut("Slave UNIX time set to: " + rest + "\n");
-    } else if (command.startsWith("get slave time")) { //setting items in the configuration
+    } else if (command.startsWith("get slave time")) {  
       uint32_t unixTime = requestLong(ci[SLAVE_I2C], 181);
       textOut("Slave UNIX time: " + String(unixTime) + "\n");
-    } else if (command.startsWith("init slave serial")) { //setting items in the configuration
+    } else if (command.startsWith("init slave serial")) {  
       enableSlaveSerial(9);
       textOut("Serial on slave initiated\n");
     } else if (command.startsWith("get slave serial")) { //getting any slave serial data
@@ -1478,17 +1618,110 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
       //Serial.println(count);
       //Serial.println(result);
       textOut(result);
+    } else if (command.startsWith("get slave parsed datum")) { //getting a specific parsed data item
+      String rest = command.substring(22);  // 22 = length of "get slave parsed datum"
+      rest.trim();
+      uint8_t ordinal = rest.toInt();
+      uint16_t result = getParsedSlaveDatum(ordinal);
+      textOut("Parsed slave value " + rest + ": " + result + "\n");
+
+    } else if (command == "dump parsed serial packet") { //getting a specific parsed data item
+      char buffer[128]; 
+      readDataParsedFromSlaveSerial();
+      //parsedSerialData
+      //uint8_t parsedBuf[40]  = {0xF1, 0xF2, 0xD1, 0xD2, 0xC1, 0xC2, 0xB1, 0xB2};
+      bytesToHex(parsedSerialData, 20, buffer);
+      textOut("Parsed serial packet: " + String(buffer) + "\n");
     } else if (command.startsWith("get master eeprom used")) { //getting numeric result from slave command
       int bytesUsed = loadAllConfigFromEEPROM(2, 0);
       textOut("Slave EEPROM bytes used for master: " + (String)bytesUsed + "\n");
     } else if (command.startsWith("get slave eeprom used")) { //getting numeric result from slave command
       int bytesUsed = loadAllConfigFromEEPROM(2, 512);
       textOut("Slave EEPROM bytes used for slave: " + (String)(bytesUsed - 512) + "\n");
-    } else if (command.startsWith("get slave")) { //getting numeric result from slave command
+    } else if (command.startsWith("get slave")) { //getting slave config value
       String rest = command.substring(9);  // 9 = length of "get slave"
       rest.trim(); 
-      long result = requestLong(ci[SLAVE_I2C], rest.toInt()); 
-      textOut("Slave data for command " + rest + ": " + (String)result + "\n");
+      //Serial.println(rest);
+      uint16_t result = getSlaveConfigItem((byte)rest.toInt()); 
+      textOut("Slave config value for " + rest + ": " + (String)result + "\n");
+    } else if (command.startsWith("set slave parser basis")) { //setting the master's idea of what the slave parser configs are
+      String rest = command.substring(23);  // 23 = length of "set slave parser basis"
+      //Serial.println(rest);
+      uint8_t ordinal;
+      String value;
+      String ordinalString;
+      int spaceIndex = rest.indexOf(' '); // find first space
+      if (spaceIndex != -1) {
+        ordinalString = rest.substring(0, spaceIndex);        // everything before space
+        ordinalString.trim();
+        value = rest.substring(spaceIndex + 1);    // everything after space
+        if (css[ordinal]) {
+          free(css[ordinal]);
+        }
+        css[ordinal] = strdup(value.c_str());
+        textOut("Slave parser basis #" + ordinalString + " set to " + value + "\n");
+      } 
+    } else if (command.startsWith("set slave basis")) { //setting the master's idea of what the slave parser configs are
+      String rest = command.substring(16);  // 16 = length of "set parser basis"
+      uint8_t ordinal;
+      uint16_t value;
+      String ordinalString;
+      int spaceIndex = rest.indexOf(' '); // find first space
+      if (spaceIndex != -1) {
+        ordinalString = rest.substring(0, spaceIndex);        // everything before space
+        ordinalString.trim();
+        ordinal = ordinalString.toInt();
+        value = rest.substring(spaceIndex + 1).toInt();    // everything after space
+        cis[ordinal] = value;
+        textOut("Slave basis #" + ordinalString + " set to " + String(value) + "\n");
+      } 
+    } else if (command.startsWith("set slave")) { //setting numeric result from slave command
+      String rest = command.substring(9);  // 9 = length of "set slave config"
+      rest.trim(); 
+      //Serial.println(rest);
+      uint8_t ordinal;
+      uint16_t value;
+      String ordinalString;
+      ordinal = ordinalString.toInt();
+      int spaceIndex = rest.indexOf(' '); // find first space
+      if (spaceIndex != -1) {
+        ordinalString = rest.substring(0, spaceIndex);        // everything before space
+        ordinalString.trim();
+        value = rest.substring(spaceIndex + 1).toInt();    // everything after space
+        //Serial.print(ordinalString);
+        //Serial.print(" ");
+        //Serial.println(value);
+      }  
+      if(isInteger(ordinalString)) {
+        setSlaveConfigItem(ordinalString.toInt(), value);
+        textOut("Slave configuration " + ordinalString + " set to: " + value + "\n");
+      }
+      
+    } else if (command.startsWith("run slave")) { //getting numeric result from slave command
+      String rest = command.substring(9);  // 9 = length of "run slave"
+      rest.trim();
+      
+      int spacePos = rest.indexOf(' ');
+      
+      if (spacePos == -1) {
+        // Single parameter: current behavior
+        long result = requestLong(ci[SLAVE_I2C], rest.toInt());
+        textOut("Slave data for command " + rest + ": " + String(result) + "\n");
+      } else {
+        // Two parameters
+        String firstStr  = rest.substring(0, spacePos);
+        String secondStr = rest.substring(spacePos + 1);
+        firstStr.trim();
+        secondStr.trim();
+        byte firstParam  = (byte)firstStr.toInt();
+        long secondParam = secondStr.toInt();
+        sendLong(ci[SLAVE_I2C], firstParam, secondParam);
+        textOut(
+          "Commmand " +
+          String(firstParam) + " run on slave with value: " +
+          String(secondParam) + "\n"
+        );
+      }
     } else if (command.startsWith("set")) { //setting items in the configuration
       String rest = command.substring(3);  // 3 = length of "set"
       rest.trim(); 
@@ -1528,33 +1761,16 @@ void runCommandsFromNonJson(char * nonJsonLine, bool deferred){
         }
         textOut("Sought configuration: " + value + "\n");
       } else {
-        textOut("Configuration '" + rest + "' does not exist:\n");
+        textOut("Configuration '" + rest + "' does not exist\n");
       }
     } else {
+      textOut("Command '" + command + "' does not exist\n");
       //lastCommandLogId = 0; //don't do this!!
     }
     if(commandId > 0) { //don't reset lastCommandId if the command came via serial port
       lastCommandId = commandId;
     }
   }
-}
-
-bool isInteger(const String &s) {
-  if (s.length() == 0) return false;
-
-  unsigned int i = 0;
-
-  // Optional sign
-  if (s[0] == '-' || s[0] == '+') {
-    if (s.length() == 1) return false; // String is only "+" or "-"
-    i = 1;
-  }
-
-  for (; i < s.length(); i++) {
-    if (!isDigit(s[i])) return false;
-  }
-
-  return true;
 }
 
 void sendIr(String rawDataStr) {
@@ -1586,15 +1802,6 @@ void sendIr(String rawDataStr) {
     Serial.println("IR signal sent!");
   }
   free(rawData); // Free memory
-}
-
-String slaveData() {
-    long ms      = requestLong(ci[SLAVE_I2C], 129); // millis
-    long lastReboot = requestLong(ci[SLAVE_I2C], 130); // last watchdog reboot time
-    long rebootCount  = requestLong(ci[SLAVE_I2C], 131); // reboot count
-    long lastWePetted  = requestLong(ci[SLAVE_I2C], 132);
-    long lastPetAtBite  = requestLong(ci[SLAVE_I2C], 133);
-    return String(ms) + "*" + String(lastReboot) + "*" + String(rebootCount) + "*" + String(lastWePetted) + "*" + String(lastPetAtBite);
 }
 
 void rebootEsp() {
@@ -1633,6 +1840,7 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
   }
 }
 
+//takes "12,14,1,2,6" and returns an array of those ints
 int splitAndParseInts(const char* input, int* outputArray, int maxCount) {
   int count = 0;
   char buffer[128]; // adjust to max expected string length
@@ -1651,17 +1859,19 @@ int splitAndParseInts(const char* input, int* outputArray, int maxCount) {
 //SETUP----------------------------------------------------
 void setup(){
   Wire.begin();
-  yield();    
-  Serial.begin(115200, SERIAL_8N1, SERIAL_FULL);
-  Serial.setRxBufferSize(1024);
+  yield();
+  //Serial.begin(115200);    
+  //setSerialRate((byte)ci[BAUD_RATE_LEVEL]); 
+  //Serial.setRxBufferSize(1024);
   //Serial.setDebugOutput(true);
   delay(10);
-  initMasterConfig();
+  initMasterDefaults();
+  setSerialRate((byte)ci[BAUD_RATE_LEVEL]); 
   if(loadAllConfigFromEEPROM(0, 0) != 1) {
     if(ci[DEBUG] > 0) {
       Serial.println("\nNo config found in EEPROM");
     }
-    initMasterConfig();
+    initMasterDefaults();
   } else {
     if(ci[DEBUG] > 0) {
       Serial.println("\nConfiguration retrieved from slave EEPROM");
@@ -1688,6 +1898,7 @@ void setup(){
  
   
   //Wire.setClock(50000); // Set I2C speed to 100kHz (default is 400kHz)
+  //Wire.setClock(100000);
   startWeatherSensors(ci[SENSOR_ID],  ci[SENSOR_SUB_TYPE], ci[SENSOR_I2C], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN]);
   wiFiConnect();
   server.on("/", handleRoot);      //Displays a form where devices can be turned on and off and the outputs of sensors
@@ -1736,13 +1947,13 @@ void setup(){
 
   //clearFramLog();
   //displayAllFramRecords();
- 
+  //do an initial pet of the watchdog just to set its unix time and make sure it does not bite us
+
 }
 
 //LOOP----------------------------------------------------
 void loop(){
   yield();
-
   doSerialCommands();
   
   yield();
@@ -1851,14 +2062,18 @@ void loop(){
       }
     }
   }
-
-
- if (ci[SLAVE_PET_WATCHDOG_COMMAND] > 0 && (nowTime - lastPet) > 20000) { 
-    petWatchDog((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND], timeClient.getEpochTime());
-    yield();
-    //feedbackPrint("pet\n");
-   
-    lastPet = nowTime;
+  if(ci[SLAVE_PET_WATCHDOG_COMMAND] > 0) {
+    unsigned long timeoutSeconds = 1;
+    for (uint8_t i = 200; i < ci[SLAVE_PET_WATCHDOG_COMMAND]; i++) {
+      timeoutSeconds *= 10;
+    }
+    uint32_t unixTime = timeClient.getEpochTime();
+    if ((nowTime - lastPet > timeoutSeconds * 900UL) || (unixTime > 1000 && slaveUnpetted)) { //pet every 90% of the time that will lead to a bite
+      petWatchDog((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND], unixTime);
+      yield();
+      slaveUnpetted = false;
+      //feedbackPrint("pet\n");
+    }
   }
   yield();
   
@@ -1872,6 +2087,44 @@ void loop(){
     }
   }
   yield();
+
+  uint32_t preRebootCommandId = getSlaveLong(0);
+  /*
+  Serial.print(preRebootCommandId);
+  Serial.print(" ");
+  Serial.print(lastCommandLogId);
+  Serial.print(" ");
+  Serial.println(deviceName);
+  */
+  //this code updates any command output from a rebooting command with the version we ended up with
+  if(preRebootCommandId > 0 && lastCommandLogId == 0  && deviceName != "" && remoteState == RS_IDLE) {
+    //we rebooted and came up from it, so let's cap that command with something:
+    //Serial.println("----------------------------preboot?");
+    //Serial.println(preRebootCommandId );
+    if(millisAtPossibleReboot < nowTime  && millisAtPossibleReboot > 0 && possibleEndingMessage != "") { 
+      //we didn't actually reboot!
+      //though i don't know if this scenario ever happes
+      String stringToSend = possibleEndingMessage + "\n" + preRebootCommandId;
+      startRemoteTask(stringToSend, "commandout", 0xFFFF);
+      setSlaveLong(0,0);
+    } else {
+      //we definitely rebooted
+      uint32_t oldVersion = getSlaveLong(1);
+      String message = String("After reboot: version: ") + VERSION + "\n" + preRebootCommandId;
+      if(oldVersion > 0) {
+        message = String("Update of firmware was successful; version " + String(oldVersion) + " changed to version ") + VERSION + "\n" + preRebootCommandId;
+      }
+      startRemoteTask(message, "commandout", 0xFFFF);
+      setSlaveLong(0,0);
+    }
+    setSlaveLong(1,0);
+  } else if (preRebootCommandId > 0  && deviceName != "" && remoteState == RS_IDLE) {
+    //we didn't actually reboot!
+    Serial.println("((((((((((((((((((((((((do we ever get here?");
+    String stringToSend = possibleEndingMessage + "\n" + preRebootCommandId;
+    startRemoteTask(stringToSend, "commandout", 0xFFFF);
+    setSlaveLong(0,0);
+  }
  
   if(canSleep) {
     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
@@ -1890,24 +2143,26 @@ void loop(){
 }
 
 void doSerialCommands() {
+  static String command;
   yield();
-  char serialByte;
-  String command = "!-1|";
-  while(Serial.available()) {
-    serialByte = Serial.read();
-    if(serialByte == '\r' || serialByte == '\n') {
-      if(ci[DEBUG] > 0) {
-        Serial.print("Serial command: ");
-        Serial.println(command);
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == '\r' || c == '\n') {
+      if (command.length() > 0) {
+        if (ci[DEBUG] > 0) {
+          Serial.print("Serial command: ");
+          Serial.println(command);
+        }
+        String fullCommand = "!-1|" + command;
+        runCommandsFromNonJson(fullCommand.c_str(), false);
+        command = "";   // reset AFTER parsing
       }
-      runCommandsFromNonJson((char *) command.c_str(), false);
     } else {
-      command = command + serialByte;
-      delay(10);
+      command += c;
     }
   }
-  
 }
+
 
 void sleepForSeconds(int seconds) {
     wifi_set_opmode(NULL_MODE);            // Turn off Wi-Fi for lower power
@@ -2678,6 +2933,7 @@ void addOfflineRecord(std::vector<std::tuple<uint8_t, uint8_t, double>>& record,
     record.emplace_back(std::make_tuple(ordinal, type, value));  // ✅ Safer
   }
 }
+
 
 /////////////////////////////////////////////
 //processor-specific
