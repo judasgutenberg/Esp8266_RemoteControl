@@ -5,7 +5,7 @@
 #include "utilities.h"
 #include <Arduino.h>
 
-// Existing watchdog commands
+// Existing commands
 #define COMMAND_REBOOT              128   //reboots the slave asynchronously using the watchdog system
 #define COMMAND_MILLIS              129   //returns the millis() value of the slave 
 #define COMMAND_LASTWATCHDOGREBOOT  130   //millis() of the last time the slave sent a reboot signal to the master
@@ -15,13 +15,12 @@
 #define COMMAND_REBOOTMASTER        134   //reboot the master now by asserting the reboot line
 #define COMMAND_SLEEP               135   //go into the kind of sleep where I2C will wake it up
 #define COMMAND_DEEP_SLEEP          136   //go into unreachably deep sleep for n seconds
-#define COMMAND_POWER_TYPE          137   //0: normal, 1: switch to low-power mode (going lightly to sleep after handling the last I2C request)
 
 #define COMMAND_WATCHDOGPETBASE     200   //commands above 200 are used to tell the slave how often it needs to be petted.  this command can also update the slave's unix timestamp
 
 // New EEPROM-style commands
 #define COMMAND_EEPROM_SETADDR      150   // set pointer for read/write
-#define COMMAND_EEPROM_WRITE        151   // sequential write mode 
+#define COMMAND_EEPROM_WRITE        151   // sequential write mode
 #define COMMAND_EEPROM_READ         152   // sequential read mode
 #define COMMAND_EEPROM_NORMAL       153   // exit EEPROM mode, back to default behavior
 
@@ -30,6 +29,7 @@
 #define COMMAND_TEMPERATURE         162   //a pseudo-random poor approximation of temperature
 #define COMMAND_FREEMEMORY          163   //returns free memory on the slave
 #define COMMAND_GET_SLAVE_CONFIG    164   //returns where in the EEPROM the slave's local configuration is persisted
+#define COMMAND_GET_PROCESSOR_TYPE  165   //returns an int representing the processor type
 
 //serial commands
 #define COMMAND_PARSE_BUFFER                169   //explicitly parse data in the txBuffer using the serial parser system
@@ -55,6 +55,9 @@
 #define COMMAND_SET_CONFIG                  183   //sets a config item by ordinal and value
 #define COMMAND_GET_LONG                    184   //gets a config long item in cls by ordinal number (from the configuration cis[] array)
 #define COMMAND_SET_LONG                    185   //sets a config long item in cls by ordinal and value
+
+#define COMMAND_ENTER_BOOTLOADER            190   //reflash bootloader
+
 
 
 
@@ -846,3 +849,4 @@ String slaveWatchdogData() {
     //Serial.println(lastSlavePowerMode);
     return String(ms) + "*" + String(lastReboot) + "*" + String(rebootCount) + "*" + String(lastWePetted) + "*" + String(lastPetAtBite);
 }
+
