@@ -20,7 +20,7 @@ the commands would be something like this for Atmega328p
  
 extern bool pagePending;   // true when current page has unsent data
 uint8_t hexToByte(String hex);
-bool sendFlashPage(uint32_t pageAddr, uint8_t *data, bool debug);
+bool sendFlashPage(uint32_t pageAddr, uint8_t *data, int totalBytes, bool debug);
 void flushLastPage(uint8_t *pageBuffer, bool debug);
 void processHexLine(String line, uint8_t *pageBuffer, bool debug);
 void streamHexFile(Stream *stream, uint8_t *pageBuffer, uint32_t flashFileSize, bool debug);

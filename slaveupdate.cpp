@@ -3,13 +3,17 @@
 //You must set fuses and install my modified twiboot  bootloader on your slave
 //the branch of twiboot that this code expects is at: https://github.com/judasgutenberg/twiboot
 //Gus Mueller, February 5, 2026
-//Twiboot code is Copyright (C) 10/2020 by Olaf Rempel    
-/*
-the commands would be something like this for Atmega328p
-.\avrdude.exe -c usbtiny -p m328p -U lfuse:w:0xC2:m -U hfuse:w:0xD8:m -U efuse:w:0xFD:m
-.\avrdude.exe -c usbtiny -p m328p -U flash:w:twiboot.hex:i
+//Twiboot code is Copyright (C) 10/2020 by Olaf Rempel
+//note: flashUnitSize is not the flash page size of the target AVR
+//that is handled entirely on the bootloader side and will be adjusted as needed for different AVRs  
 
+/*
+the commands would be something like this for Atmega328p:
+IF YOU CAN PHYSICALLY REMOVE THE CRYSTAL: avrdude -c usbtiny -p m328p -U lfuse:w:0xff:m -U hfuse:w:0xd8:m  -U efuse:w:0xfd:m -U lock:w:0xFF:m
+OTHERWISE: avrdude -c usbtiny -p m328p -U lfuse:w:0xF7:m -U hfuse:w:0xd8:m  -U efuse:w:0xfd:m -U lock:w:0xFF:m
 */
+//in this code, the I2C address is referred to as  ci[SLAVE_I2C] because I use a configuration array
+//but you might instead use a global scalar or a macro
 /////////////////////////////////////////////
  
 #include "slaveupdate.h"
@@ -20,7 +24,7 @@ the commands would be something like this for Atmega328p
 #define BOOTTYPE_APPLICATION   0x80
 #define BOOT_MAGIC_VALUE 0xB007
 
-uint8_t flashPageSize = 128; //default size for the Atmega328p
+uint8_t flashUnitSize = 128; //default size for the Atmega328p
 
 uint32_t baseSlaveAddress = 0;
 uint32_t currentPageBase = 0xFFFFFFFF;
@@ -31,39 +35,37 @@ uint8_t hexToByte(String hex) {
     return strtoul(hex.c_str(), nullptr, 16);
 }
 
-// Send a full 128-byte page to the slave in safe chunks, with retries and automatic chunk reduction
-bool sendFlashPage(uint32_t pageAddr, uint8_t *data, bool debug) {
+// Send arbitrary-length data to the slave in safe chunks, retries included
+bool sendFlashPage(uint32_t pageAddr, uint8_t *data, int totalBytes, bool debug) {
     if (debug) {
         Serial.print("Flashing page at 0x");
-        Serial.println(pageAddr);
+        Serial.println(pageAddr, HEX);
     }
- 
-    const int MAX_CHUNK_SIZE = 16;    // starting safe chunk size
-    const int MIN_CHUNK_SIZE = 16;     // smallest chunk allowed
+
+    const int MAX_CHUNK_SIZE = 16;    // starting chunk size (safe for I2C)
+    const int MIN_CHUNK_SIZE = 16;    // smallest allowed chunk
     const int MAX_RETRIES = 3;        // retry per chunk
-    const int POST_CHUNK_DELAY = 10;   // ms to let slave settle
+    const int POST_CHUNK_DELAY = 10;  // ms pause after chunk
 
     int offsetInPage = 0;
-  
-    if(pageAddr == 0){
-      Wire.beginTransmission(ci[SLAVE_I2C]);
-      Wire.write(CMD_ACCESS_MEMORY);
-      Wire.write(MEMTYPE_FLASH);
-      Wire.write(0);
-      Wire.write(0);
-      Wire.endTransmission();
-      delay(20);
+    int bytesThisChunk = 0;
+    // Optional: notify bootloader of start of memory access at address 0
+    if (pageAddr == 0) {
+        Wire.beginTransmission(ci[SLAVE_I2C]);
+        Wire.write(CMD_ACCESS_MEMORY);
+        Wire.write(MEMTYPE_FLASH);
+        Wire.write(0);
+        Wire.write(0);
+        Wire.endTransmission();
+        delay(20);
     }
-                
-    while (offsetInPage < flashPageSize) {
+
+    while (offsetInPage < totalBytes) {
         int chunkSize = MAX_CHUNK_SIZE;
         bool chunkSent = false;
-        if (debug) {
-          Serial.print("In chunk loop at ");
-          Serial.println(pageAddr);
-        }
+
         while (!chunkSent && chunkSize >= MIN_CHUNK_SIZE) {
-            int bytesThisChunk = min(chunkSize, flashPageSize - offsetInPage);
+            bytesThisChunk = min(chunkSize, totalBytes - offsetInPage);
             bool sent = false;
 
             for (int attempt = 1; attempt <= MAX_RETRIES && !sent; attempt++) {
@@ -73,18 +75,23 @@ bool sendFlashPage(uint32_t pageAddr, uint8_t *data, bool debug) {
 
                 uint16_t byteAddr = pageAddr + offsetInPage;
                 if (debug) {
-                  Serial.print("Address on slave: ");
-                  Serial.println(byteAddr);
+                    Serial.print("Address on slave: 0x");
+                    Serial.println(byteAddr, HEX);
                 }
                 Wire.write((byteAddr >> 8) & 0xFF);
                 Wire.write(byteAddr & 0xFF);
+
                 delay(3);
+
+                // send the actual chunk
                 for (int i = 0; i < bytesThisChunk; i++) {
                     Wire.write(data[offsetInPage + i]);
                 }
                 delay(2);
+
                 uint8_t err = Wire.endTransmission();
                 delay(2);
+
                 if (err == 0) {
                     sent = true;
                     chunkSent = true;
@@ -95,13 +102,12 @@ bool sendFlashPage(uint32_t pageAddr, uint8_t *data, bool debug) {
                     Serial.print(attempt);
                     Serial.print("), bytesThisChunk=");
                     Serial.println(bytesThisChunk);
-                    
                 }
+
                 delay(5 * attempt);  // gradually longer delay on retries
             }
 
             if (!chunkSent) {
-                // reduce chunk size if it keeps failing
                 if (chunkSize > MIN_CHUNK_SIZE) {
                     chunkSize /= 2;
                     if (debug) {
@@ -109,22 +115,22 @@ bool sendFlashPage(uint32_t pageAddr, uint8_t *data, bool debug) {
                         Serial.println(chunkSize);
                     }
                 } else {
-                    // cannot reduce further
                     if (debug) {
                         Serial.print(" FAILED chunk at offset ");
                         Serial.println(offsetInPage);
                     }
-                    return false; // abort page
+                    return false;
                 }
             }
         }
 
-        offsetInPage += min(chunkSize, flashPageSize - offsetInPage);
+        // increment by actual bytes successfully sent
+        offsetInPage += bytesThisChunk;
         delay(POST_CHUNK_DELAY);
     }
 
     if (debug) {
-      Serial.println(" OK -- send flash page");
+        Serial.println(" OK -- send flash page");
     }
     return true;
 }
@@ -138,13 +144,13 @@ void flushLastPage(uint8_t *pageBuffer, bool debug) {
             Serial.print("Flushing last page at 0x");
             Serial.println(currentPageBase, HEX);
         }
-        sendFlashPage(currentPageBase, pageBuffer, debug);
+        sendFlashPage(currentPageBase, pageBuffer, flashUnitSize, debug);
         if (debug) {
           Serial.println("........ OK");
         }
         currentPageBase = 0xFFFFFFFF;
         pagePending = false;
-        memset(pageBuffer, 0xFF, flashPageSize);
+        memset(pageBuffer, 0xFF, flashUnitSize);
     }
 }
 
@@ -168,7 +174,7 @@ void processHexLine(String line, uint8_t *pageBuffer, bool debug) {
 
     for (int i = 0; i < len; i++) {
         uint32_t a = absAddr + i;
-        uint32_t pageBase = a & ~(flashPageSize-1);
+        uint32_t pageBase = a & ~(flashUnitSize-1);
 
         // flush previous page if we moved to a new one
         if (pageBase != currentPageBase) {
@@ -205,7 +211,7 @@ void streamHexFile(Stream *stream, uint8_t *pageBuffer, uint32_t flashFileSize, 
 // Update slave firmware from a HEX URL
 void updateSlaveFirmware(String url) {
     uint8_t pageBuffer[128];   // lives only during update
-    memset(pageBuffer, 0xFF, flashPageSize);
+    memset(pageBuffer, 0xFF, flashUnitSize);
     HTTPClient http;
     bool debug = false;
     http.begin(clientGet, url);
