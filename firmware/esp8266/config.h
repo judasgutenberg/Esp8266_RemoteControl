@@ -52,9 +52,10 @@
 #define POLLING_SKIP_LEVEL 46
 #define LOCAL_WEB_SERVICE_RESPONSIVENESS 47
 #define BAUD_RATE_LEVEL 48
+#define CONFIG_SCHEME 49
 ///////////////////////
 #define CONFIG_STRING_COUNT 16
-#define CONFIG_TOTAL_COUNT 49
+#define CONFIG_TOTAL_COUNT 50
 //////////////////////
 #define CONFIG_SLAVE_STRING_COUNT 5 //for strings used specifically by the slave
 #define CONFIG_SLAVE_TOTAL_COUNT 10  //total config items on slave
@@ -79,3 +80,4 @@ void initMasterDefaults();
 void initSlaveDefaults();
 
 #endif
+
