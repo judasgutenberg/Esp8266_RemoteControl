@@ -53,6 +53,8 @@
 #include <cmath> 
 #include <math.h> // for isnan, NAN
 
+#include <LittleFS.h>
+
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
 #define VERSION 2112
@@ -69,6 +71,9 @@ static int attemptCount = 0;
 static String responseBufferSM;      // accumulate response
 static uint32_t taskStartTimeMs = 0; // logging timer
 
+void listFiles();
+void formatFileSystem();
+int loadAllConfigFromFlash(int mode, uint16_t addr);
 
 // Start a new remote task (replacement for original sendRemoteData)
 void startRemoteTask(const String& datastring, const String& mode, uint16_t fRAMordinal) {
@@ -522,81 +527,84 @@ void wiFiConnect() {
   WiFi.setSleep(false);
   WiFi.setAutoReconnect(false);
   WiFi.persistent(false);
-
+  uint8_t validWiFiAttempts = 0;
   for (int attempt = 0; attempt < NUM_WIFI_CREDENTIALS; attempt++) {
     int ssidIndex = (currentWifiIndex + attempt) % NUM_WIFI_CREDENTIALS;
     const char* wifiSsid = cs[WIFI_SSID + ssidIndex * 2];
     const char* wifiPassword = cs[WIFI_PASSWORD + ssidIndex * 2];
-    if(ci[DEBUG] > 0) {
-      Serial.printf("\nAttempting WiFi connection to: %s\n", wifiSsid);
-    }
-
-    WiFi.disconnect(true);
-    unsigned long disconnectTime = millis();
-    // short wait for disconnect to take effect (non-blocking)
-    while (millis() - disconnectTime < 100) {
-      yield();
-    }
-
-    WiFi.begin(wifiSsid, wifiPassword);
-
-    int wiFiSeconds = 0;
-    bool initialAttemptPhase = true;
-    lastOfflineReconnectAttemptTime = millis();
-
-    while (WiFi.status() != WL_CONNECTED) {
-      unsigned long now = millis();
-
-      // print dot every second
-      if (now - lastDotTime >= 1000) {
-        if(ci[DEBUG] > 0) {
-          Serial.print(".");
-        }
-        lastDotTime = now;
-        wiFiSeconds++;
+    if (wifiSsid && wifiSsid[0] != '\0') {
+      validWiFiAttempts++;
+      if(ci[DEBUG] > 0) {
+        Serial.printf("\nAttempting WiFi connection to: %s\n", wifiSsid);
       }
-
-      // print asterisk and retry every 10 seconds
-      if (now - lastOfflineReconnectAttemptTime > 10000) {
-        WiFi.disconnect();
-        WiFi.begin(wifiSsid, wifiPassword);
-        lastOfflineReconnectAttemptTime = now;
-        if(ci[DEBUG] > 0) {
-          Serial.print("*");
-        }
+  
+      WiFi.disconnect(true);
+      unsigned long disconnectTime = millis();
+      // short wait for disconnect to take effect (non-blocking)
+      while (millis() - disconnectTime < 100) {
+        yield();
       }
-
-      if (WiFi.status() == WL_NO_SSID_AVAIL) {
-        if(ci[DEBUG] > 0) {
-          Serial.printf("\nSSID not found: %s\n", wifiSsid);
-        }
-        break; // try next SSID
-      }
-
-      // timeout handling
-      uint32_t wifiTimeoutToUse = ci[WIFI_TIMEOUT];
-      if (knownMoxeePhase == 0)
-        wifiTimeoutToUse = ci[GRANULARITY_WHEN_IN_MOXEE_PHASE_0];
-      else
-        wifiTimeoutToUse = ci[GRANULARITY_WHEN_IN_MOXEE_PHASE_1];
-
-      if (wiFiSeconds > wifiTimeoutToUse) {
-        if(ci[DEBUG] > 0) {
-          Serial.println("");
-          Serial.println("WiFi taking too long");
-        }
-        if(ci[MOXEE_POWER_SWITCH] > 0) {
+  
+      WiFi.begin(wifiSsid, wifiPassword);
+  
+      int wiFiSeconds = 0;
+      bool initialAttemptPhase = true;
+      lastOfflineReconnectAttemptTime = millis();
+  
+      while (WiFi.status() != WL_CONNECTED) {
+        unsigned long now = millis();
+  
+        // print dot every second
+        if (now - lastDotTime >= 1000) {
           if(ci[DEBUG] > 0) {
-            Serial.println(", rebooting Moxee");
+            Serial.print(".");
           }
-          rebootMoxee();
+          lastDotTime = now;
+          wiFiSeconds++;
         }
-        if(ci[DEBUG] > 0) {
-          Serial.println(", trying another");
+  
+        // print asterisk and retry every 10 seconds
+        if (now - lastOfflineReconnectAttemptTime > 10000) {
+          WiFi.disconnect();
+          WiFi.begin(wifiSsid, wifiPassword);
+          lastOfflineReconnectAttemptTime = now;
+          if(ci[DEBUG] > 0) {
+            Serial.print("*");
+          }
         }
-        wiFiSeconds = 0;
-        initialAttemptPhase = false;
-        break; // move to next SSID
+  
+        if (WiFi.status() == WL_NO_SSID_AVAIL) {
+          if(ci[DEBUG] > 0) {
+            Serial.printf("\nSSID not found: %s\n", wifiSsid);
+          }
+          break; // try next SSID
+        }
+  
+        // timeout handling
+        uint32_t wifiTimeoutToUse = ci[WIFI_TIMEOUT];
+        if (knownMoxeePhase == 0)
+          wifiTimeoutToUse = ci[GRANULARITY_WHEN_IN_MOXEE_PHASE_0];
+        else
+          wifiTimeoutToUse = ci[GRANULARITY_WHEN_IN_MOXEE_PHASE_1];
+  
+        if (wiFiSeconds > wifiTimeoutToUse) {
+          if(ci[DEBUG] > 0) {
+            Serial.println("");
+            Serial.println("WiFi taking too long");
+          }
+          if(ci[MOXEE_POWER_SWITCH] > 0) {
+            if(ci[DEBUG] > 0) {
+              Serial.println(", rebooting Moxee");
+            }
+            rebootMoxee();
+          }
+          if(ci[DEBUG] > 0) {
+            Serial.println(", trying another");
+          }
+          wiFiSeconds = 0;
+          initialAttemptPhase = false;
+          break; // move to next SSID
+        }
       }
 
       if (!initialAttemptPhase && wiFiSeconds > (ci[WIFI_TIMEOUT] / 2) &&  ci[FRAM_ADDRESS] > 0) {
@@ -621,11 +629,16 @@ void wiFiConnect() {
   }
 
   if (!connected) {
-    if(ci[DEBUG] > 0) {
-      Serial.println("\nAll WiFi attempts failed.");
+    if(validWiFiAttempts > 0) {
+      if(ci[DEBUG] > 0) {
+        Serial.println("\nAll WiFi attempts failed.");
+      }
     }
-    if (ci[FRAM_ADDRESS] > 0)
-      offlineMode = true;
+    if (ci[FRAM_ADDRESS] > 0){
+      
+    }
+    //had required a FRAM_ADDRESS but perhaps not
+    offlineMode = true;
     haveReconnected = false;
   } else {
     offlineMode = false;
@@ -638,6 +651,9 @@ void wiFiConnect() {
 
 // Call this frequently from loop()
 void runRemoteTask() {
+  if(offlineMode) {
+    return;
+  }
   switch(remoteState) {
 
     case RS_IDLE:
@@ -1423,6 +1439,10 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
         }
         deferredCommand = "";
       }
+    } else if(command == "list files") {
+      listFiles();
+    } else if(command == "format file system") {
+      formatFileSystem();
     } else if(command == "version") {
       textOut("Version: " + String(VERSION) + String("\n"));
 
@@ -1832,7 +1852,7 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
   //be out of phase with the cellular hotspot
   shiftArrayUp(moxeeRebootTimes,  timeClient.getEpochTime(), 10);
   moxeeRebootCount++;
-  if(moxeeRebootCount > 9 && ci[FRAM_ADDRESS] > 0) { //don't bother with offlineode if we cat log data
+  if(moxeeRebootCount > 9) { //don't bother with offlineode if we cat log data  // && ci[FRAM_ADDRESS] > 0
     offlineMode = true;
     moxeeRebootCount = 0;
   } else if(moxeeRebootCount > ci[NUMBER_OF_HOTSPOT_REBOOTS_OVER_LIMITED_TIMEFRAME_BEFORE_ESP_REBOOT]) { //kind of a watchdog
@@ -1867,7 +1887,7 @@ void setup(){
   delay(10);
   initMasterDefaults();
   setSerialRate((byte)ci[BAUD_RATE_LEVEL]); 
-  if(loadAllConfigFromEEPROM(0, 0) != 1) {
+  if(loadAllConfig(0, 0) != 1) {
     if(ci[DEBUG] > 0) {
       Serial.println("\nNo config found in EEPROM");
     }
@@ -1944,7 +1964,11 @@ void setup(){
   if(ci[IR_PIN] > -1) {
     //irsend.begin(); //do this elsewhere?
   }
-
+  if (!LittleFS.begin()) {
+    if(ci[DEBUG] > 0) {
+      Serial.println("LittleFS mount failed!");
+    }
+  }
   //clearFramLog();
   //displayAllFramRecords();
   //do an initial pet of the watchdog just to set its unix time and make sure it does not bite us
@@ -1955,10 +1979,8 @@ void setup(){
 void loop(){
   yield();
   doSerialCommands();
-  
   yield();
   runRemoteTask();
-  
   yield();
   //Serial.println("");
   //Serial.print("KNOWN MOXEE PHASE: ");
@@ -1990,19 +2012,18 @@ void loop(){
   */
   //displayFramRecord(147);
   yield();
-  for(int i=0; i < ci[LOCAL_WEB_SERVICE_RESPONSIVENESS]; i++) { //doing this four times here is helpful to make web service reasonably responsive. once is not enough
-    server.handleClient();          //Handle client requests
-    yield();
+  if(!offlineMode) {
+    for(int i=0; i < ci[LOCAL_WEB_SERVICE_RESPONSIVENESS]; i++) { //doing this four times here is helpful to make web service reasonably responsive. once is not enough
+      server.handleClient();          //Handle client requests
+      yield();
+    }
   }
- 
   //dumpMemoryStats(122);
   //was doing an experiment:
   if(nowTime - wifiOnTime > 20000) {
     //WiFi.disconnect(true);
   }
   cleanup();
- 
-
   if(lastCommandLogId > 0 || responseBuffer != "") {
     String stringToSend = responseBuffer + "\n" + lastCommandLogId;
     startRemoteTask(stringToSend, "commandout", 0xFFFF);
@@ -2934,6 +2955,40 @@ void addOfflineRecord(std::vector<std::tuple<uint8_t, uint8_t, double>>& record,
   }
 }
 
+/////////////////////////////////////////////
+//config routines
+/////////////////////////////////////////////
+int loadAllConfig(int mode, uint16_t param){
+  if(ci[CONFIG_SCHEME] == 1) {
+    return loadAllConfigFromEEPROM(mode, param);
+  } else if (ci[CONFIG_SCHEME] == 0) {
+    return loadAllConfigFromFlash(mode, param);
+  } else {
+    return 0;
+  }
+}
+
+int loadAllConfigFromFlash(int mode, uint16_t addr) { //can also be used to recover values from EEPROM
+  
+  return 0;
+}
+
+
+/////////////////////////////////////////////
+//file system routines
+/////////////////////////////////////////////
+void formatFileSystem() {
+  LittleFS.format();
+  LittleFS.begin();
+  textOut("File system formatted\n");
+}
+
+void listFiles() {
+  Dir dir = LittleFS.openDir("/");
+  while (dir.next()) {
+    textOut("FILE: " + String(dir.fileName()) + " (" + String(dir.fileSize()) + " bytes)\n");
+  }
+}
 
 /////////////////////////////////////////////
 //processor-specific
