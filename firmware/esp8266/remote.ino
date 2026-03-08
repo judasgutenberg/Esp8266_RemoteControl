@@ -552,6 +552,7 @@ void wiFiConnect() {
       lastOfflineReconnectAttemptTime = millis();
   
       while (WiFi.status() != WL_CONNECTED) {
+        delay(5);
         unsigned long now = millis();
   
         // print dot every second
@@ -582,24 +583,27 @@ void wiFiConnect() {
   
         // timeout handling
         uint32_t wifiTimeoutToUse = ci[WIFI_TIMEOUT];
-        if (knownMoxeePhase == 0)
+        if (knownMoxeePhase == 0) {
           wifiTimeoutToUse = ci[GRANULARITY_WHEN_IN_MOXEE_PHASE_0];
-        else
+        } else {
           wifiTimeoutToUse = ci[GRANULARITY_WHEN_IN_MOXEE_PHASE_1];
-  
+        }
         if (wiFiSeconds > wifiTimeoutToUse) {
+          Serial.print(wiFiSeconds);
+          Serial.print(" ");
+          Serial.println(wifiTimeoutToUse);
           if(ci[DEBUG] > 0) {
             Serial.println("");
             Serial.println("WiFi taking too long");
           }
           if(ci[MOXEE_POWER_SWITCH] > 0) {
             if(ci[DEBUG] > 0) {
-              Serial.println(", rebooting Moxee");
+              Serial.println("rebooting Moxee");
             }
             rebootMoxee();
           }
           if(ci[DEBUG] > 0) {
-            Serial.println(", trying another");
+            Serial.println("trying another");
           }
           wiFiSeconds = 0;
           initialAttemptPhase = false;
