@@ -6,12 +6,14 @@
 //Twiboot code is Copyright (C) 10/2020 by Olaf Rempel
 //note: flashUnitSize is not the flash page size of the target AVR
 //that is handled entirely on the bootloader side and will be adjusted as needed for different AVRs  
-/*
-the commands would be something like this for Atmega328p
-.\avrdude.exe -c usbtiny -p m328p -U lfuse:w:0xC2:m -U hfuse:w:0xD8:m -U efuse:w:0xFD:m
-.\avrdude.exe -c usbtiny -p m328p -U flash:w:twiboot.hex:i
 
+/*
+the commands would be something like this for Atmega328p:
+IF YOU CAN PHYSICALLY REMOVE THE CRYSTAL: avrdude -c usbtiny -p m328p -U lfuse:w:0xff:m -U hfuse:w:0xd8:m  -U efuse:w:0xfd:m -U lock:w:0xFF:m
+OTHERWISE: avrdude -c usbtiny -p m328p -U lfuse:w:0xF7:m -U hfuse:w:0xd8:m  -U efuse:w:0xfd:m -U lock:w:0xFF:m
 */
+//in this code, the I2C address is referred to as  ci[SLAVE_I2C] because I use a configuration array
+//but you might instead use a global scalar or a macro
 /////////////////////////////////////////////
  
 #include "slaveupdate.h"
@@ -22,7 +24,7 @@ the commands would be something like this for Atmega328p
 #define BOOTTYPE_APPLICATION   0x80
 #define BOOT_MAGIC_VALUE 0xB007
 
-uint8_t flashUnitSize = 128; //default size for the Atmega328p
+uint8_t flashUnitSize = 128; //default size for the Atmega328p, but this is now decoupled from the AVR's flash page size
 
 uint32_t baseSlaveAddress = 0;
 uint32_t currentPageBase = 0xFFFFFFFF;
@@ -32,7 +34,7 @@ bool pagePending = false;   // true when current page has unsent data
 uint8_t hexToByte(String hex) {
     return strtoul(hex.c_str(), nullptr, 16);
 }
-
+ 
 // Send arbitrary-length data to the slave in safe chunks, retries included
 bool sendFlashPage(uint32_t pageAddr, uint8_t *data, int totalBytes, bool debug) {
     if (debug) {
@@ -135,8 +137,8 @@ bool sendFlashPage(uint32_t pageAddr, uint8_t *data, int totalBytes, bool debug)
 
 
 
-// Flush the last page at EOF or when page boundary changes
-void flushLastPage(uint8_t *pageBuffer, bool debug) {
+// Flush the page at EOF or when page boundary changes
+void flushPage(uint8_t *pageBuffer, bool debug) {
     if (currentPageBase != 0xFFFFFFFF && pagePending) {
         if (debug) {
             Serial.print("Flushing last page at 0x");
@@ -176,7 +178,8 @@ void processHexLine(String line, uint8_t *pageBuffer, bool debug) {
 
         // flush previous page if we moved to a new one
         if (pageBase != currentPageBase) {
-            flushLastPage(pageBuffer, debug);         // flush old page if any
+            //textOut("page FLUSH\n");
+            flushPage(pageBuffer, debug);         // flush old page if any
             currentPageBase = pageBase;   // update AFTER flush
         }
 
@@ -237,7 +240,7 @@ void finalizeBootloaderUpdate(uint8_t *pageBuffer, bool debug) {
     Wire.write(0x00);               // dummy addr low
     Wire.endTransmission();
     
-    flushLastPage(pageBuffer, debug);
+    flushPage(pageBuffer, debug);
     delay(40);
     if (debug) {
       Serial.println("Requesting slave to jump to application...");
