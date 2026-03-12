@@ -1577,10 +1577,10 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
     } else if (command ==  "list files") {
       listFiles();
     } else if (command ==  "save master config") { //saves whatever the master config is to slave EEPROM
-      if(ci[SLAVE_I2C] > 0 && ci[CONFIG_SCHEME] == 1) {
+      if(ci[SLAVE_I2C] > 0 && ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_I2C_SLAVE) {
         saveAllConfigToEEPROM(0);
         textOut("Configuration saved to EEPROM\n");
-      } else if (ci[CONFIG_SCHEME] == 0) {
+      } else if (ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_FLASH) {
 
         saveAllConfigToFlash(0);
         textOut("Configuration saved to flash\n");
@@ -2978,9 +2978,9 @@ void addOfflineRecord(std::vector<std::tuple<uint8_t, uint8_t, double>>& record,
 //config routines
 /////////////////////////////////////////////
 int loadAllConfig(int mode, uint16_t param){
-  if(ci[CONFIG_SCHEME] == 1) {
+  if(ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_I2C_SLAVE) {
     return loadAllConfigFromEEPROM(mode, param);
-  } else if (ci[CONFIG_SCHEME] == 0) {
+  } else if (ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_FLASH) {
     return loadAllConfigFromFlash(mode, param);
   } else {
     return 0;
