@@ -1,6 +1,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 #include "globals.h"
+
+#define CONFIG_PERSIST_METHOD_FLASH 0
+#define CONFIG_PERSIST_METHOD_I2C_SLAVE 1
+
 // ===== AUTO-GENERATED CONFIGURATION INDEX DEFINITIONS =====
 
 // String configuration options (0–11)
@@ -52,7 +56,7 @@
 #define POLLING_SKIP_LEVEL 46
 #define LOCAL_WEB_SERVICE_RESPONSIVENESS 47
 #define BAUD_RATE_LEVEL 48
-#define CONFIG_SCHEME 49
+#define CONFIG_PERSIST_METHOD 49
 ///////////////////////
 #define CONFIG_STRING_COUNT 16
 #define CONFIG_TOTAL_COUNT 50
@@ -67,6 +71,7 @@
 #define SLAVE_I2C_ADDRESS 7
 #define SLAVE_REBOOT_PIN 8
 #define SLAVE_SERIAL_MODE 9
+
 // ==========================================================
 
 
@@ -80,4 +85,3 @@ void initMasterDefaults();
 void initSlaveDefaults();
 
 #endif
-
