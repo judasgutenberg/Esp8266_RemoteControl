@@ -1481,7 +1481,8 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
         }
         uint32_t oldVersion = requestLong(ci[SLAVE_I2C], 160);
         enterSlaveBootloader();
-        updateSlaveFirmware((String)flashUrl);
+        updateSlaveFirmware((String)flashUrl); //synchronous!  
+        //startSlaveUpdate((String)flashUrl);  //for a failed state machine
         uint32_t newVersion = 0;
         int waitIterations = 0;
         while(newVersion == 0  && waitIterations < 20) {
@@ -1573,10 +1574,16 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       if(ci[SLAVE_I2C] > 0) {
         textOut(slaveWatchdogData() + "\n");
       } 
+    } else if (command ==  "list files") {
+      listFiles();
     } else if (command ==  "save master config") { //saves whatever the master config is to slave EEPROM
-      if(ci[SLAVE_I2C] > 0) {
+      if(ci[SLAVE_I2C] > 0 && ci[CONFIG_SCHEME] == 1) {
         saveAllConfigToEEPROM(0);
-        textOut("Configuration saved\n");
+        textOut("Configuration saved to EEPROM\n");
+      } else if (ci[CONFIG_SCHEME] == 0) {
+
+        saveAllConfigToFlash(0);
+        textOut("Configuration saved to flash\n");
       }
 
     } else if (command ==  "save slave config") { //saves whatever the slave config is to slave EEPROM
@@ -1605,6 +1612,13 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       textOut("Last data: " + msTimeAgo(lastDataLogTime) + "\n");
     } else if (command == "memory") {
       dumpMemoryStats(0);
+    } else if (command == "format file system") {
+      formatFileSystem();
+      textOut("File system formatted\n");
+    } else if (command.startsWith("dump file")) {
+      String rest = command.substring(10);  // 10 = length of "dump file"
+      rest.trim();
+      dumpFile(rest.c_str());
     } else if (command.startsWith("read slave eeprom")) {
       char buffer[500]; 
       String rest = command.substring(17);  // 17 = length of "read slave eeprom"
@@ -1893,7 +1907,7 @@ void setup(){
   setSerialRate((byte)ci[BAUD_RATE_LEVEL]); 
   if(loadAllConfig(0, 0) != 1) {
     if(ci[DEBUG] > 0) {
-      Serial.println("\nNo config found in EEPROM");
+      Serial.println("\nNo config found in storage");
     }
     initMasterDefaults();
   } else {
@@ -1985,6 +1999,7 @@ void loop(){
   doSerialCommands();
   yield();
   runRemoteTask();
+  //runSlaveUpdater();
   yield();
   //Serial.println("");
   //Serial.print("KNOWN MOXEE PHASE: ");
@@ -2970,10 +2985,6 @@ int loadAllConfig(int mode, uint16_t param){
   } else {
     return 0;
   }
-}
-
-int loadAllConfigFromFlash(int mode, uint16_t addr) { //can also be used to recover values from EEPROM
-  
   return 0;
 }
 
@@ -2981,6 +2992,36 @@ int loadAllConfigFromFlash(int mode, uint16_t addr) { //can also be used to reco
 /////////////////////////////////////////////
 //file system routines
 /////////////////////////////////////////////
+
+void dumpFile(const char* filename) {
+
+    if (!LittleFS.begin()) {
+        return;
+    }
+
+    File f = LittleFS.open(filename, "r");
+    if (!f) {
+
+        textOut("File open failed\n");
+        return;
+    }
+
+    const int BUF_SIZE = 128;
+    char buffer[BUF_SIZE + 1];
+
+    while (f.available()) {
+
+        size_t n = f.readBytes(buffer, BUF_SIZE);
+        buffer[n] = 0;  // null terminate so textOut can treat it as a string
+    }
+    for(int i = 0; i< BUF_SIZE; i++) {
+        char c = buffer[i];
+        if(c == 0) break;
+        textOut(String(c));
+    }
+    f.close();
+}
+
 void formatFileSystem() {
   LittleFS.format();
   LittleFS.begin();
@@ -2994,6 +3035,171 @@ void listFiles() {
   }
 }
 
+
+
+int loadAllConfigFromFlash(int mode, uint16_t param) { //can also be used to recover values from FLASH
+    if (!LittleFS.begin()) {
+        return 0;
+    }
+    File f = LittleFS.open("/config.cfg", "r");
+    if (!f) {
+        return 0;
+    }
+
+    int*  activeCi;
+    char** activeCs;
+
+    int totalConfigItems       = CONFIG_TOTAL_COUNT;
+    int totalStringConfigItems = CONFIG_STRING_COUNT;
+    //Serial.println("----------SIZES");
+    //Serial.println(totalConfigItems);
+    //Serial.println(totalStringConfigItems);
+    activeCi = ci;
+    activeCs = cs;
+    // ============================================================
+    // 1. Read marker (must be "DATA")
+    // ============================================================
+    char marker[5];
+    if (f.readBytes(marker, 5) != 5) {
+        f.close();
+        return 0;
+    }
+    
+    marker[4] = '\0';
+ 
+    if (strcmp(marker, "DATA") != 0) {
+        f.close();
+        return 0;
+    }
+ 
+    // ============================================================
+    // 2. Read all integer configs (int16)
+    // ============================================================
+    for (int i = 0; i < totalConfigItems; i++) {
+        uint8_t lo = f.read();
+        uint8_t hi = f.read();
+        int16_t v = (hi << 8) | lo;
+        //Serial.print("value for #" + String(i) + ": ");
+        //Serial.println(v);
+        if (mode == 0) {
+            activeCi[i] = v;
+        } else if (mode == 1) {
+            textOut(String(v));
+            textOut("\n");
+        }
+    }
+
+    // ============================================================
+    // 3. Read all string configs
+    // ============================================================
+    for (int i = 0; i < totalStringConfigItems; i++) {
+        char buffer[128];
+        int pos = 0;
+
+        while (pos < 127 && f.available()) {
+            char c = f.read();
+            buffer[pos++] = c;
+            if (c == 0) break;
+        }
+        buffer[127] = 0;
+
+        if (mode == 0) {
+            size_t len = strlen(buffer);
+
+            if (!activeCs[i]) {
+                activeCs[i] = (char*)malloc(len + 1);
+            } else if (strlen(activeCs[i]) < len) {
+                char* tmp = (char*)realloc(activeCs[i], len + 1);
+                if (tmp) activeCs[i] = tmp;
+            }
+
+            if (activeCs[i]) {
+                memcpy(activeCs[i], buffer, len + 1);
+            }
+            //Serial.print("string value for #" + String(i) + ": ");
+            //Serial.println(buffer);
+        } else if (mode == 1) {
+            textOut(buffer);
+            textOut("\n");
+        }
+    }
+
+    f.close();
+
+    if (mode == 0) return 1;
+    return 0;
+}
+
+void saveAllConfigToFlash(uint16_t param) {
+    int* activeCi;
+    char** activeCs;
+
+    uint32_t slaveConfigLocation = requestLong(ci[SLAVE_I2C], 164);
+
+    int totalConfigItems = CONFIG_TOTAL_COUNT;
+    int totalStringConfigItems = CONFIG_STRING_COUNT;
+
+    activeCi = ci;
+    activeCs = cs;
+
+    if(false && param >= slaveConfigLocation) {
+        totalConfigItems = CONFIG_SLAVE_TOTAL_COUNT;
+        totalStringConfigItems = CONFIG_SLAVE_STRING_COUNT;
+        activeCi = cis;
+        activeCs = css;
+    }
+
+    if(!LittleFS.begin()) {
+        return;
+    }
+    File f = LittleFS.open("/config.cfg", "w");
+    if(!f) {
+        return;
+    }
+
+    // ============================================================
+    // 1. Write marker "DATA\0"
+    // ============================================================
+
+    f.write((const uint8_t*)"DATA", 4);
+    f.write((uint8_t)0);
+
+    // ============================================================
+    // 2. Write integer configs (2 bytes each)
+    // ============================================================
+
+    for(int i = 0; i < totalConfigItems; i++) {
+        //Serial.println(i);
+        int16_t v = activeCi[i];
+
+        uint8_t lo = v & 0xFF;
+        uint8_t hi = (v >> 8) & 0xFF;
+
+        f.write(lo);
+        f.write(hi);
+    }
+
+    // ============================================================
+    // 3. Write strings (null terminated)
+    // ============================================================
+
+    for(int i = 0; i < totalStringConfigItems; i++) {
+        //Serial.println(i);
+        const char* s = activeCs[i];
+        if(s == NULL) s = "";
+    
+        //Serial.print("Value: ");
+        //Serial.println(s);
+        if(s == NULL) s = "";
+
+        size_t len = strlen(s);
+
+        f.write((const uint8_t*)s, len);
+        f.write((uint8_t)0);
+    }
+
+    f.close();
+}
 /////////////////////////////////////////////
 //processor-specific
 /////////////////////////////////////////////
