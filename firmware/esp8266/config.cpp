@@ -50,6 +50,7 @@ void initConfig(void) {
   ci[POLLING_SKIP_LEVEL] = 50;
   ci[LOCAL_WEB_SERVICE_RESPONSIVENESS] = 1;
   ci[BAUD_RATE_LEVEL] = 9;
+  ci[CONFIG_PERSIST_METHOD] = 1;
 }
 
 
