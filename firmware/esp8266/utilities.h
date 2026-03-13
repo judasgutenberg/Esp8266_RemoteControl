@@ -23,6 +23,7 @@ static int appendNullOrInt(char *buf, size_t bufSize, size_t pos, long val);
 String nullifyOrNumber(double inVal);
 String nullifyOrInt(int inVal);
 void shiftArrayUp(uint32_t array[], uint32_t newValue, int arraySize);
+String extractFilename(String url);
 int splitStringToCharArrays(char *input, char delim, char outArray[][50], int maxParts);
 void splitString(const String& input, char delimiter, String* outputArray, int arraySize);
 String replaceFirstOccurrenceAtChar(String str1, String str2, char atChar);
