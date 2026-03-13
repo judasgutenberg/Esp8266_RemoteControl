@@ -1574,7 +1574,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       if(ci[SLAVE_I2C] > 0) {
         textOut(slaveWatchdogData() + "\n");
       } 
-    } else if (command ==  "list files") {
+    } else if (command ==  "ls") {
       listFiles();
     } else if (command ==  "save master config") { //saves whatever the master config is to slave EEPROM
       if(ci[SLAVE_I2C] > 0 && ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_I2C_SLAVE) {
@@ -1612,10 +1612,13 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       textOut("Last data: " + msTimeAgo(lastDataLogTime) + "\n");
     } else if (command == "memory") {
       dumpMemoryStats(0);
+    } else if (command.startsWith("download file")) {
+      String rest = command.substring(14);
+      downloadFile(rest.c_str(),extractFilename(rest).c_str());
     } else if (command == "format file system") {
       formatFileSystem();
       textOut("File system formatted\n");
-    } else if (command.startsWith("dump file")) {
+    } else if (command.startsWith("cat")) {
       String rest = command.substring(10);  // 10 = length of "dump file"
       rest.trim();
       dumpFile(rest.c_str());
@@ -2992,6 +2995,90 @@ int loadAllConfig(int mode, uint16_t param){
 /////////////////////////////////////////////
 //file system routines
 /////////////////////////////////////////////
+
+bool downloadFile(const char* url, const char* localPath) {
+
+  if (!LittleFS.begin()) {
+    Serial.println("LittleFS mount failed");
+    return false;
+  }
+
+  WiFiClient client;
+  HTTPClient http;
+
+  Serial.print("Downloading: ");
+  Serial.println(url);
+
+  if (!http.begin(client, url)) {
+    Serial.println("HTTP begin failed");
+    return false;
+  }
+
+  int httpCode = http.GET();
+
+  if (httpCode != HTTP_CODE_OK) {
+    Serial.printf("HTTP GET failed, code: %d\n", httpCode);
+    http.end();
+    return false;
+  }
+
+  File file = LittleFS.open(localPath, "w");
+  if (!file) {
+    Serial.println("Failed to open local file for writing");
+    http.end();
+    return false;
+  }
+
+  WiFiClient *stream = http.getStreamPtr();
+  uint8_t buffer[128];
+
+  int len = http.getSize();
+  int total = 0;
+
+  while (http.connected() && (len > 0 || len == -1)) {
+    size_t available = stream->available();
+    if (available) {
+      int c = stream->readBytes(buffer, (available > sizeof(buffer)) ? sizeof(buffer) : available);
+      file.write(buffer, c);
+      total += c;
+
+      if (len > 0) len -= c;
+    }
+    yield(); // keep watchdog happy
+  }
+
+  file.close();
+  http.end();
+
+  Serial.printf("Downloaded %d bytes\n", total);
+
+  return true;
+}
+
+bool deleteFile(const char* path) {
+
+  if (!LittleFS.begin()) {
+    Serial.println("LittleFS mount failed");
+    return false;
+  }
+
+  if (!LittleFS.exists(path)) {
+    Serial.print("File does not exist: ");
+    Serial.println(path);
+    return false;
+  }
+
+  if (LittleFS.remove(path)) {
+    Serial.print("Deleted: ");
+    Serial.println(path);
+    return true;
+  } else {
+    Serial.print("Failed to delete: ");
+    Serial.println(path);
+    return false;
+  }
+}
+
 
 void dumpFile(const char* filename) {
 
