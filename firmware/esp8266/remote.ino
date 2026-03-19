@@ -1619,7 +1619,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       formatFileSystem();
       textOut("File system formatted\n");
     } else if (command.startsWith("cat")) {
-      String rest = command.substring(10);  // 10 = length of "dump file"
+      String rest = command.substring(4);  // 10 = length of "dump file"
       rest.trim();
       dumpFile(rest.c_str());
     } else if (command.startsWith("read slave eeprom")) {
@@ -3079,7 +3079,6 @@ bool deleteFile(const char* path) {
   }
 }
 
-
 void dumpFile(const char* filename) {
 
     if (!LittleFS.begin()) {
@@ -3088,26 +3087,25 @@ void dumpFile(const char* filename) {
 
     File f = LittleFS.open(filename, "r");
     if (!f) {
-
         textOut("File open failed\n");
         return;
     }
 
     const int BUF_SIZE = 128;
     char buffer[BUF_SIZE + 1];
-
+    textOut("\n");
     while (f.available()) {
 
         size_t n = f.readBytes(buffer, BUF_SIZE);
-        buffer[n] = 0;  // null terminate so textOut can treat it as a string
+        buffer[n] = 0;  // null terminate
+
+        textOut(buffer);  // 🔥 send this chunk immediately
     }
-    for(int i = 0; i< BUF_SIZE; i++) {
-        char c = buffer[i];
-        if(c == 0) break;
-        textOut(String(c));
-    }
+    textOut("\n");
+
     f.close();
 }
+
 
 void formatFileSystem() {
   LittleFS.format();
