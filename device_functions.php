@@ -2065,7 +2065,7 @@ function processRawSolArkFile() {
             ]
         ],
 
-        // CHARACTERISTIC #7 — includes your battery voltage ×100
+        // CHARACTERISTIC #7 ï¿½ includes your battery voltage ï¿½100
         "char7" => [
             "start" => "Characteristic #7 30s_2 (2)",
             "end"   => "I (318800102)",
@@ -2960,12 +2960,13 @@ function instantCommand($tenantId, $userId, $deviceId = "") {
     //but we no longer do this
     //file_put_contents("instant_command_" . gvfw("device_id") . ".txt", $commandText . "\n" . $commandLogId);
   }
+  $fields = "c.command_log_id, command_text, REPLACE(result_text, '\n', '<br/>') AS result_text, c.recorded, c.device_id, c.tenant_id, c.user_id, c.result_recorded, c.command_address, c.command_data, c.canceled, d.name AS device_name";
   if($deviceId){
-    $sql = "SELECT c.*, d.name AS device_name FROM command_log c JOIN device d ON c.device_id=d.device_id AND c.tenant_id=d.tenant_id WHERE c.device_id=" . intval($deviceId) . " AND c.tenant_id = " . intval($tenantId) . " ORDER BY c.recorded DESC";
+    $sql = "SELECT " . $fields . " FROM command_log c JOIN device d ON c.device_id=d.device_id AND c.tenant_id=d.tenant_id WHERE c.device_id=" . intval($deviceId) . " AND c.tenant_id = " . intval($tenantId) . " ORDER BY c.recorded DESC";
   } else {
-    $sql = "SELECT c.*, d.name AS device_name FROM command_log c JOIN device d ON c.device_id=d.device_id AND c.tenant_id=d.tenant_id WHERE c.tenant_id = " . intval($tenantId) . " ORDER BY c.recorded DESC LIMIT 0, 20";
+    $sql = "SELECT " . $fields . " FROM command_log c JOIN device d ON c.device_id=d.device_id AND c.tenant_id=d.tenant_id WHERE c.tenant_id = " . intval($tenantId) . " ORDER BY c.recorded DESC LIMIT 0, 20";
   }
-  
+  //die($sql);
   $result = $conn->query($sql);
   if($result) {
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
