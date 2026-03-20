@@ -57,7 +57,7 @@
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
-#define VERSION 2112
+#define VERSION 2113
 
 //static globals for the state machine
 static RemoteState remoteState = RS_IDLE;
