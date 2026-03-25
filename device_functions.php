@@ -2258,7 +2258,7 @@ function getCurrentSolarDataFromCloud($tenant, $alwaysReturnData = false) {
   //var_dump($mostRecentInverterRecord);
   //echo $minutesSinceLastRecord;
   
-  if(gvfw("solarkapitest") || $minutesSinceLastRecord > 5) { //we don't need to get data from SolArk any more, but this is how you would
+  if(gvfw("solarkapitest") || $minutesSinceLastRecord > 5  ) { //we don't need to get data from SolArk any more, but this is how you would
     $credential = getCredential($tenant, "solark");
     if(!$credential) {
       return;
@@ -2273,8 +2273,8 @@ function getCurrentSolarDataFromCloud($tenant, $alwaysReturnData = false) {
     $url = $baseUrl . '/oauth/token';
     $headers = [
         'Content-Type: application/json;charset=UTF-8',
-        'Origin: https://www.mysolark.com',
-        'Referer: https://www.mysolark.com',
+        'Origin: https://www.solarkcloud.com',
+        'Referer: https://www.solarkcloud.com',
         'Accept: application/json',
         'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36'
     ];
@@ -2296,10 +2296,12 @@ function getCurrentSolarDataFromCloud($tenant, $alwaysReturnData = false) {
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); // Set custom headers
- 
+                      
 
     $response = curl_exec($ch);
-    //var_dump($response);
+    if(gvfw("solarkapitest")){
+      var_dump($response);
+    } 
     if(curl_errno($ch)){
         echo 'Curl error: ' . curl_error($ch);
     }
@@ -2323,16 +2325,29 @@ function getCurrentSolarDataFromCloud($tenant, $alwaysReturnData = false) {
     ];
 
     $queryString = http_build_query($userParams);
+    if(gvfw("solarkapitest")){
+      echo "<HR>";
+      echo $queryString;
+      echo "<HR>";
+    }
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $actionUrl . "?" . $queryString);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, array(
       "Authorization: Bearer " . $access_token,  //had been sending the token in the querystring, but that stopped working the morning of April 9, 2024
       "Accept: application/json",
+      'Content-Type: application/json;charset=UTF-8',
+      'Origin: https://www.solarkcloud.com',
+      'Referer: https://www.solarkcloud.com',
+      'Accept: application/json',
+      "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
     ));
+ 
     $dataResponse = curl_exec($ch);
     curl_close($ch);
-    
+    if(gvfw("solarkapitest")){
+      var_dump($dataResponse);
+    } 
     $dataBody = json_decode($dataResponse, true);
     if(gvfw("solarkapitest")){
       var_dump($dataBody);
