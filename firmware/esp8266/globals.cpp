@@ -42,6 +42,7 @@ const unsigned long MAX_RESPONSE_SIZE = 32 * 1024UL; // safety cap to avoid runa
 uint16_t framIndexAddress = 0;   
 uint16_t  currentRecordCount = 0;
 
+WiFiClient clientGet;
 WiFiUDP ntpUDP; //i guess i need this for time lookup
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
@@ -116,5 +117,7 @@ uint32_t lastSlaveMillis = 0;
 bool resendSlavePinInfo = false;
 uint32_t millisAtPossibleReboot = 0;
 String possibleEndingMessage;
-
+String fileToUpload;
+String additionalUrlParams;
+uint32_t fileUploadPosition = 0;
 ESP8266WebServer server(80); //Server on port 80

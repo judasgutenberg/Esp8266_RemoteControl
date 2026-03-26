@@ -10,7 +10,8 @@
 #include <tuple>
 #include <cmath> 
 #include <math.h> // for isnan, NAN
- 
+
+String packetString(String fileToUpload, uint32_t fileUploadPosition);
 void textOut(String data);
 String makeAsteriskString(uint8_t number);
 void dumpMemoryStats(int marker);

@@ -56,6 +56,7 @@ extern const unsigned long MAX_RESPONSE_SIZE;
 
 
 // Other globals
+extern WiFiClient clientGet;
 extern uint16_t framIndexAddress;
 extern uint16_t currentRecordCount;
 
@@ -123,6 +124,9 @@ extern uint32_t lastSlaveMillis;
 extern bool resendSlavePinInfo;
 extern uint32_t millisAtPossibleReboot;
 extern String possibleEndingMessage;
+extern String fileToUpload;
+extern uint32_t fileUploadPosition;
+extern String additionalUrlParams;
 
 extern ESP8266WebServer server;
 
