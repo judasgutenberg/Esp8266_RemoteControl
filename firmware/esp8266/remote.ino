@@ -57,7 +57,7 @@
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
-#define VERSION 2113
+#define VERSION 2114
 
 //static globals for the state machine
 static RemoteState remoteState = RS_IDLE;
@@ -87,6 +87,8 @@ void startRemoteTask(const String& datastring, const String& mode, uint16_t fRAM
     //Serial.println("////////////////////////not idle!");
     return;
   }
+  //startRemoteTask(stringToSend, "sendPacket", 0xFFFF);
+
 
   remoteDatastring = datastring;
   remoteMode = mode;
@@ -98,6 +100,29 @@ void startRemoteTask(const String& datastring, const String& mode, uint16_t fRAM
   connectBackoffUntil = 0;
   remoteURL = ""; // will be built in RS_PREPARE
   remoteState = RS_PREPARE;
+  additionalUrlParams = "";
+  if(fileToUpload != "") { //we're uploading a file, so bypass other data
+    String possibleDataString = packetString(fileToUpload, fileUploadPosition);
+    if(possibleDataString == "") {
+      fileToUpload = "";
+      fileUploadPosition = 0;
+    } else {
+      remoteDatastring = possibleDataString;
+      //Serial.println("wooter");
+      remoteMode = "savePacket";
+      //Serial.println("wooter1");
+      File f = LittleFS.open(fileToUpload, "r");
+      //Serial.println("wooter2");
+      if (!f) {
+          textOut(fileToUpload + ": file not found\n");
+          fileToUpload = "";
+          return;
+      }
+      uint32_t totalFileSize = f.size();
+      f.close();
+      additionalUrlParams = "filename=" + fileToUpload + "&cursor=" +  fileUploadPosition + "&total_size=" + totalFileSize;
+    }
+  }
 }
 
 
@@ -679,6 +704,11 @@ void runRemoteTask() {
       String encryptedStoragePassword = encryptStoragePassword(remoteDatastring);
       // build URL exactly like before
       remoteURL = String(cs[URL_GET]) + "?k2=" + encryptedStoragePassword + "&device_id=" + ci[DEVICE_ID] + "&mode=" + remoteMode + "&data=" + urlEncode(remoteDatastring, true);
+      if(additionalUrlParams != "") {
+
+        remoteURL += "&" + additionalUrlParams;
+      }
+      
       if(ci[DEBUG] > 0) {
         Serial.println(remoteURL);
       }
@@ -867,9 +897,9 @@ void runRemoteTask() {
         retLine.trim();
         if(retLine.length() == 0) continue;
 
-        // ---- reproduce original parsing logic ----
-        // skip error lines (your logic tested indexOf("\"error\":") < 0 etc)
-        if(retLine.indexOf("\"error\":") < 0 && (remoteMode == "saveData" || remoteMode == "commandout") && (retLine.charAt(0)== '{' || retLine.charAt(0)== '*' || retLine.charAt(0)== '|' || retLine.charAt(0)== '=')) {
+ 
+        //alpha beta gamma: this is the part that confirms that the backend got our data
+        if(retLine.indexOf("\"error\":") < 0 && (remoteMode == "saveData" || remoteMode == "commandout" || remoteMode == "savePacket") && (retLine.charAt(0)== '{' || retLine.charAt(0)== '*' || retLine.charAt(0)== '|' || retLine.charAt(0)== '=')) {
           lastDataLogTime = millis();
           moxeeRebootCount = 0;
           for (int i = 0; i < 11; i++) moxeeRebootTimes[i] = 0;
@@ -948,10 +978,29 @@ void runRemoteTask() {
           }   
           receivedDataJson = true;
           break; // original code broke here
-        } else if(first == '!') {
-          // command line
-          runCommandsFromNonJson((char *)retLine.c_str(), false);
-          break;
+        } else if(first == '!') { //could be a command, could be returning various scalar progress values such as file upload progress
+          if (retLine.indexOf( '|') > 0) {
+            // command line
+            runCommandsFromNonJson((char *)retLine.c_str(), false);
+            break;
+          } else {
+            fileUploadPosition = retLine.substring(1).toInt();
+            File f = LittleFS.open(fileToUpload, "r");
+            if (!f) {
+                textOut(fileToUpload + ": file not found\n");
+                fileToUpload = "";
+                return;
+            }
+            uint32_t totalFileSize = f.size();
+            if(totalFileSize >= fileUploadPosition) {
+              
+              textOut(fileToUpload + " has finished uploading\n");
+              fileToUpload = "";
+            } else {
+              textOut((100 * fileUploadPosition / totalFileSize)   + "%\n");
+            }
+            break;
+          }
         } else {
           if(ci[DEBUG] > 1) {
             Serial.print("web data: ");
@@ -1612,9 +1661,34 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       textOut("Last data: " + msTimeAgo(lastDataLogTime) + "\n");
     } else if (command == "memory") {
       dumpMemoryStats(0);
-    } else if (command.startsWith("download file")) {
-      String rest = command.substring(14);
+    } else if (command.startsWith("delete")) {
+      String rest = command.substring(7);
+      deleteFile(rest.c_str());
+    } else if (command.startsWith("download")) {
+      String rest = command.substring(9);
       downloadFile(rest.c_str(),extractFilename(rest).c_str());
+    } else if (command.startsWith("upload")) {
+      String rest = command.substring(7);
+      
+      if(fileToUpload != "") {
+        textOut(fileToUpload + " is still uploading; please wait\n");
+        return;
+        
+      }
+      fileToUpload = rest;
+      File f = LittleFS.open(fileToUpload, "r");
+      if (!f) {
+          textOut(fileToUpload + ": file not found\n");
+          fileToUpload = "";
+          return;
+      }
+      
+ 
+      f.close();
+    
+      textOut(fileToUpload + " uploading to server...\n");
+      
+      fileUploadPosition = 0;
     } else if (command == "format file system") {
       formatFileSystem();
       textOut("File system formatted\n");
@@ -1812,6 +1886,46 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       lastCommandId = commandId;
     }
   }
+}
+
+bool parseCommand( const String& input, const String& command, String* results, int& resultCount, int maxResults) {
+    resultCount = 0;
+    String s = input;
+    s.trim();
+    // Check if it starts with the command
+    if (!s.startsWith(command)) {
+        return false;
+    }
+    // Remove the command part
+    s = s.substring(command.length());
+    s.trim();
+    bool inQuotes = false;
+    String current = "";
+
+    for (unsigned int i = 0; i < s.length(); i++) {
+        char c = s[i];
+
+        if (c == '"') {
+            inQuotes = !inQuotes;
+            continue; // don't include the quote
+        }
+
+        if (c == ' ' && !inQuotes) {
+            if (current.length() > 0) {
+                if (resultCount < maxResults) {
+                    results[resultCount++] = current;
+                }
+                current = "";
+            }
+        } else {
+            current += c;
+        }
+    }
+    // Add last token
+    if (current.length() > 0 && resultCount < maxResults) {
+        results[resultCount++] = current;
+    }
+    return true;
 }
 
 void sendIr(String rawDataStr) {
@@ -3015,7 +3129,8 @@ bool downloadFile(const char* url, const char* localPath) {
   }
 
   int httpCode = http.GET();
-
+  //Serial.println(http.header("Content-Encoding"));
+  //Serial.println(http.header("Content-Type"));
   if (httpCode != HTTP_CODE_OK) {
     Serial.printf("HTTP GET failed, code: %d\n", httpCode);
     http.end();
@@ -3035,46 +3150,44 @@ bool downloadFile(const char* url, const char* localPath) {
   int len = http.getSize();
   int total = 0;
 
-  while (http.connected() && (len > 0 || len == -1)) {
+  while (http.connected() || stream->available()) {
     size_t available = stream->available();
     if (available) {
-      int c = stream->readBytes(buffer, (available > sizeof(buffer)) ? sizeof(buffer) : available);
+      int c = stream->readBytes(buffer, min(available, sizeof(buffer)));
       file.write(buffer, c);
       total += c;
-
-      if (len > 0) len -= c;
+    } else {
+      delay(1);  // give network time to breathe
     }
-    yield(); // keep watchdog happy
+  
+    yield();
   }
-
   file.close();
   http.end();
-
   Serial.printf("Downloaded %d bytes\n", total);
-
   return true;
 }
 
 bool deleteFile(const char* path) {
-
   if (!LittleFS.begin()) {
-    Serial.println("LittleFS mount failed");
+    textOut("LittleFS mount failed\n");
     return false;
   }
-
   if (!LittleFS.exists(path)) {
-    Serial.print("File does not exist: ");
-    Serial.println(path);
+    textOut("file does not exist: ");
+    textOut(path);
+    textOut("\n");
     return false;
   }
-
   if (LittleFS.remove(path)) {
-    Serial.print("Deleted: ");
-    Serial.println(path);
+    textOut("deleted: ");
+    textOut(path);
+    textOut("\n");
     return true;
   } else {
-    Serial.print("Failed to delete: ");
-    Serial.println(path);
+    textOut("failed to delete: ");
+    textOut(path);
+    textOut("\n");
     return false;
   }
 }
