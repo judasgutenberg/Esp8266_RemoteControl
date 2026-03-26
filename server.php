@@ -61,6 +61,7 @@ if($_REQUEST) {
 	$periodAgo = 0;
 	$scale = "day";
 	$loraId = gvfw("lora_id");
+	$filename  = gvfw("filename");
 	$payload = gvfw("payload"); //for debugging
 	//i may end up deciding that locationId and deviceId are the same thing, and for now they are
 	//but maybe some day they will be different things
@@ -104,9 +105,9 @@ if($_REQUEST) {
 	}
 
 	$averageLatency = intval(readMemoryCache("latency-" . $deviceId));
-  $allData = intval(gvfw("all_data"));
-  $maxRecorded = gvfw("max_recorded");
-  $message = gvfw("message");
+	$allData = intval(gvfw("all_data"));
+	$maxRecorded = gvfw("max_recorded");
+	$message = gvfw("message");
 	//absolute_timespan_cusps
 	$absoluteTimespanCusps = false;
 	$absoluteTimespanCusps = gvfw("absolute_timespan_cusps");
@@ -152,54 +153,72 @@ if($_REQUEST) {
 	
 	$specificColumn = gvfw("specific_column");
 	if($storagePassword){
-    if($manufactureId) {
-      //echo "*****" . $storagePassword . "****";
-      //echo "\n" . bin2hex($str);
-    }
+		if($manufactureId) {
+		//echo "*****" . $storagePassword . "****";
+		//echo "\n" . bin2hex($str);
+		}
 		$deviceIds = deriveDeviceIdsFromStoragePassword($storagePassword);
 	}
 
 	$canAccessData = array_search($locationId, $deviceIds) !== false  || ($user  && in_array($mode, $deviceFreeAcceptableModes)) ;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
-  if($canAccessData) {	
-    $tenant = deriveTenantFromStoragePassword($storagePassword);
-    $tenantId = $tenant["tenant_id"];
-    $mostRecentInverterRecord = getMostRecentInverterRecord($tenant);
-    $lastInverterRecorded = new DateTime($mostRecentInverterRecord["recorded"]);
-    //var_dump($mostRecentInverterRecord );
-    //echo "<BR>" . $mostRecentInverterRecord  . "***<BR>";
-    $ageOfInverterRecord = $date->getTimestamp() -$lastInverterRecorded->getTimestamp();
-    $useCloudInverterData = false;
-    //die($ageOfInverterRecord  . "XX" . $date->getTimestamp() . "YY" . $lastInverterRecorded->getTimestamp());
-    if($ageOfInverterRecord > 600) { //it's been five minutes since we last had an inverter record, so maybe use the API then to get data from the SolArk cloud. it's not great, but it's enough for automation
-      $useCloudInverterData = true;
+	if($canAccessData) {	
+		$tenant = deriveTenantFromStoragePassword($storagePassword);
+		$tenantId = $tenant["tenant_id"];
+		$mostRecentInverterRecord = getMostRecentInverterRecord($tenant);
+		$lastInverterRecorded = new DateTime($mostRecentInverterRecord["recorded"]);
+		//var_dump($mostRecentInverterRecord );
+		//echo "<BR>" . $mostRecentInverterRecord  . "***<BR>";
+		$ageOfInverterRecord = $date->getTimestamp() -$lastInverterRecorded->getTimestamp();
+		$useCloudInverterData = false;
+		//die($ageOfInverterRecord  . "XX" . $date->getTimestamp() . "YY" . $lastInverterRecorded->getTimestamp());
+		if($ageOfInverterRecord > 600) { //it's been five minutes since we last had an inverter record, so maybe use the API then to get data from the SolArk cloud. it's not great, but it's enough for automation
+			$useCloudInverterData = true;
 
-      getCurrentSolarDataFromCloud($tenant); //only do this one tenth of the time
+			getCurrentSolarDataFromCloud($tenant); //only do this one tenth of the time
 
-    }
+		}
+
 		if(!$conn) {
 			$out = ["error"=>"bad database connection"];
 		} else {
 			$latestCommandData = getLatestCommandData($locationId, $tenant["tenant_id"]);
 			if(!$loraId) {
-        $loraId = "NULL";
+				$loraId = "NULL";
 			} else {
-        $loraId = intval($loraId);
+				$loraId = intval($loraId);
 			}
-      if($message) { //a message might be sent from Meshtastic or perhaps other communication systems I might integrate with
-        $sql = "INSERT INTO message(recorded, device_id, tenant_id, content, lora_id) VALUES('" .  $formattedDateTime . "'," . intval($deviceId) . ",". $tenantId . ",'" . mysqli_real_escape_string($conn, $message) . "'," . $loraId . ")";
-    
-        $result = mysqli_query($conn, $sql);
-        $out["message"] = "Message saved"; 
-        $error = mysqli_error($conn);
+			if($message) { //a message might be sent from Meshtastic or perhaps other communication systems I might integrate with
+				$sql = "INSERT INTO message(recorded, device_id, tenant_id, content, lora_id) VALUES('" .  $formattedDateTime . "'," . intval($deviceId) . ",". $tenantId . ",'" . mysqli_real_escape_string($conn, $message) . "'," . $loraId . ")";
+			
+				$result = mysqli_query($conn, $sql);
+				$out["message"] = "Message saved"; 
+				$error = mysqli_error($conn);
 				if($error != ""){
 					$out["error"] = $error;
 				}
 				//pick up any web-produced messages and send via lora
 				$out["messages"] = getMessagesForLoRa($tenantId);
-        die(json_encode($out));
-      }
+				die(json_encode($out));
+			}
 			if(array_key_exists("data", $_REQUEST)) {
-				
+
+				if($filename != ""){
+					$rootTemp = "./temp";
+					$cursor = gvfw("cursor");
+					$fileSize = gvfw("total_size");
+
+					if(!is_dir($rootTemp)){
+						mkdir($rootTemp);
+					}
+					$greaterTempPath = $rootTemp . "/" . $deviceId;
+					if(!is_dir($greaterTempPath)){
+						mkdir($greaterTempPath);
+					}
+					$destinationPath = buildDeviceUploadPath($deviceId); 
+					//echo "*". $destinationPath . "*<BR>";
+					$newLength = handleUploadChunk($greaterTempPath, $destinationPath, $filename, $data, $cursor, $fileSize);
+					die("!" . intval($newLength));
+				}
 				$lines = explode("|",$data);
 				//maybe move the parsing of all data up here so we have it if we need it
 				///////
@@ -370,8 +389,24 @@ if($_REQUEST) {
 				//old way, back when we didn't have a command_log table:
 				//file_put_contents("instant_response_" . gvfw("device_id") . ".txt", $data, FILE_APPEND | LOCK_EX);
         $commandText = getNumberAfterLastNewline($data, true);
+        $commandTextEscaped = mysqli_real_escape_string($conn, $commandText);
         $commandLogId = getNumberAfterLastNewline($data, false);
-        $sql = "UPDATE command_log SET result_recorded='" . $formattedDateTime  ."', result_text='" . mysqli_real_escape_string($conn, $commandText) . "' WHERE tenant_id=". intval($tenantId) . "  AND device_id=" . intval($deviceId) . " AND command_log_id=" . intval($commandLogId);
+        $sql = "
+          UPDATE command_log
+          SET
+              result_recorded = '$formattedDateTime',
+              result_text = CONCAT(
+                  IFNULL(result_text, ''),
+                  CASE
+                      WHEN result_text IS NULL OR result_text = '' THEN ''
+                      ELSE '\n'
+                  END,
+                  '$commandTextEscaped'
+              )
+          WHERE
+              tenant_id = " . intval($tenantId) . "
+              AND device_id = " . intval($deviceId) . "
+              AND command_log_id = " . intval($commandLogId);
         $result = mysqli_query($conn, $sql);
         //this is where you get just datetime info back
 			} else if ($mode=="saveLocallyGatheredSolarData") { //used by the special inverter monitoring MCU to send fine-grain data promptly
@@ -1158,7 +1193,8 @@ if($_REQUEST) {
 		}
 		//var_dump($out);
 		//hmm, does not always work if your text is garbled
-		if(nonJsonPinData) {
+     
+		if(intval($nonJsonPinData) == 1) {
       echo "=" . join("|", array_values($out));
 		} else {
       echo json_encode($out);
@@ -1166,7 +1202,7 @@ if($_REQUEST) {
 		}
 	}
 } else {
-  if(nonJsonPinData) {
+  if(intval($nonJsonPinData) == 1) {
     echo "=done|" . $method;
 	} else {
     echo '{"message":"done", "method":"' . $method . '"}';

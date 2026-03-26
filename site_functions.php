@@ -1885,6 +1885,83 @@ function buildUploadPath($table, $pkVal, $fieldName, $extension) {
     return $assetFilePath;
 }
 
+function buildDeviceUploadPath($pkVal) {
+   $uploadsDir = "device_uploads";
+   if(!is_dir($uploadsDir)){
+      mkdir($uploadsDir);
+    }
+    $greaterUploadsPath = $uploadsDir . "/" . $pkVal;
+    if(!is_dir($greaterUploadsPath)){
+      mkdir($greaterUploadsPath);
+    }
+    //echo $greaterUploadsPath  . "<BR>";
+    return $greaterUploadsPath;
+}
+
+function handleUploadChunk($greaterTempPath, $destinationPath, $filename, $data, $cursor, $fileSize) {
+
+    $tempFile = rtrim($greaterTempPath, '/\\') . DIRECTORY_SEPARATOR . $filename;
+    $destFile = rtrim($destinationPath, '/\\') . DIRECTORY_SEPARATOR . $filename;
+    //echo $tempFile . "<BR>";
+    //echo $destFile . "<BR>";
+    
+    // Decode base64
+    $decoded = base64_decode($data, true);
+    if ($decoded === false) {
+        return false;
+    }
+
+    $fp = fopen($tempFile, 'c+b');
+    if (!$fp) {
+        return false;
+    }
+
+    // Lock to prevent concurrent write chaos
+    flock($fp, LOCK_EX);
+
+    if (fseek($fp, $cursor) !== 0) {
+        flock($fp, LOCK_UN);
+        fclose($fp);
+        return false;
+    }
+
+    $bytesWritten = fwrite($fp, $decoded);
+    if ($bytesWritten === false) {
+        flock($fp, LOCK_UN);
+        fclose($fp);
+        return false;
+    }
+
+    fflush($fp);
+
+    // Get current size
+    $stat = fstat($fp);
+    $currentSize = $stat['size'];
+
+    flock($fp, LOCK_UN);
+    fclose($fp);
+
+    // If complete, move to destination
+    if ($currentSize >= $fileSize) {
+
+        if (!is_dir($destinationPath)) {
+            mkdir($destinationPath, 0777, true);
+        }
+
+        // Prefer rename if possible (atomic)
+        if (!@rename($tempFile, $destFile)) {
+            // fallback to copy if rename fails (e.g., different filesystem)
+            if (!copy($tempFile, $destFile)) {
+                return false;
+            }
+            // optional cleanup
+            // unlink($tempFile);
+        }
+    }
+
+    return $currentSize;
+}
+
 function download($path, $friendlyName, $content = ""){
     header("Cache-Control: no-cache private");
     header("Content-Description: File Transfer");
