@@ -57,7 +57,7 @@
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
-#define VERSION 2114
+#define VERSION 2115
 
 //static globals for the state machine
 static RemoteState remoteState = RS_IDLE;
@@ -1661,12 +1661,15 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       textOut("Last data: " + msTimeAgo(lastDataLogTime) + "\n");
     } else if (command == "memory") {
       dumpMemoryStats(0);
-    } else if (command.startsWith("delete")) {
+    } else if (command.startsWith("rm")) {
       String rest = command.substring(7);
       deleteFile(rest.c_str());
     } else if (command.startsWith("download")) {
       String rest = command.substring(9);
       downloadFile(rest.c_str(),extractFilename(rest).c_str());
+    } else if (command.startsWith("mkdir")) {
+      String rest = command.substring(6);
+      makeDir(rest.c_str());
     } else if (command.startsWith("upload")) {
       String rest = command.substring(7);
       
@@ -1682,12 +1685,8 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
           fileToUpload = "";
           return;
       }
-      
- 
       f.close();
-    
       textOut(fileToUpload + " uploading to server...\n");
-      
       fileUploadPosition = 0;
     } else if (command == "format file system") {
       formatFileSystem();
@@ -2060,6 +2059,7 @@ void setup(){
   server.on("/readLocalData", localShowData);
   server.on("/weatherdata", handleWeatherData);
   server.on("/writeLocalData", localSetData);
+  server.onNotFound(handleFileRequest);
   server.begin(); 
   textOut("HTTP server started\n");
   
@@ -3168,6 +3168,40 @@ bool downloadFile(const char* url, const char* localPath) {
   return true;
 }
 
+bool makeDir(const char* path) {
+  if (!LittleFS.begin()) {
+    textOut("LittleFS mount failed\n");
+    return false;
+  }
+  // Ensure leading slash
+  if (path[0] != '/') {
+    textOut("Path must start with /\n");
+    return false;
+  }
+  // Check if already exists
+  if (LittleFS.exists(path)) {
+    textOut("Folder already exists (or a file blocks it): ");
+    textOut(path);
+    textOut("\n");
+    return true;  // treat as success
+  }
+  // Create placeholder file to force the directory to exist
+  String placeholder = String(path) + "/.placeholder";
+  File f = LittleFS.open(placeholder.c_str(), "w");
+  if (f) {
+    f.close();
+    textOut("Created folder with placeholder: ");
+    textOut(path);
+    textOut("\n");
+    return true;
+  } else {
+    textOut("Failed to create folder placeholder: ");
+    textOut(path);
+    textOut("\n");
+    return false;
+  }
+}
+
 bool deleteFile(const char* path) {
   if (!LittleFS.begin()) {
     textOut("LittleFS mount failed\n");
@@ -3397,6 +3431,35 @@ void saveAllConfigToFlash(uint16_t param) {
     }
 
     f.close();
+}
+
+void handleFileRequest() {
+  String path = server.uri(); // "/file.txt"
+  
+  if (path.startsWith("/")) path = path.substring(1); // "file.txt"
+
+  if (path.length() == 0 || !LittleFS.exists("/" + path)) {
+    // File doesn't exist, pass control to default 404
+    server.send(404, "text/plain", "Not Found");
+    return;
+  }
+
+  File file = LittleFS.open("/" + path, "r");
+  if (!file) {
+    server.send(500, "text/plain", "Failed to open file");
+    return;
+  }
+
+  // Basic MIME type detection
+  String contentType = "text/plain";
+  if (path.endsWith(".html")) contentType = "text/html";
+  else if (path.endsWith(".css")) contentType = "text/css";
+  else if (path.endsWith(".js")) contentType = "application/javascript";
+  else if (path.endsWith(".png")) contentType = "image/png";
+  else if (path.endsWith(".jpg") || path.endsWith(".jpeg")) contentType = "image/jpeg";
+
+  server.streamFile(file, contentType);
+  file.close();
 }
 /////////////////////////////////////////////
 //processor-specific
