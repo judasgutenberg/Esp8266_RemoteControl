@@ -21,6 +21,7 @@
 #include "i2cslave.h"
 #include "utilities.h"
 #include "slaveupdate.h"
+#include "commandhandlers.h"
 
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
@@ -57,7 +58,7 @@
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
-#define VERSION 2115
+#define VERSION 2118
 
 //static globals for the state machine
 static RemoteState remoteState = RS_IDLE;
@@ -74,6 +75,45 @@ static uint32_t taskStartTimeMs = 0; // logging timer
 void listFiles();
 void formatFileSystem();
 int loadAllConfigFromFlash(int mode, uint16_t addr);
+
+typedef void (*CommandHandler)(String* args, int argCount);
+
+struct CommandDef {
+  const char* name;
+  CommandHandler handler;
+  int maxArgs;
+  bool exactMatch;
+};
+ 
+
+CommandDef commands[] = {
+  {"rm", cmdDel, 1, false},
+  {"download", cmdDownload, 1, false},
+  //{"mkdir", cmdMkdir, 1, false},
+  {"upload", cmdUpload, 1, false},
+  {"cat", cmdCat, 1, false},
+  {"read slave eeprom", cmdReadSlaveEeprom, 1, false},
+  {"reset serial", cmdResetSerial, 0, false},
+  {"dump config eeprom", cmdConfigEeprom, 0, false},
+  {"dump slave config eeprom", cmdDumpSlaveEeprom, 0, false},
+  {"send slave serial", cmdSendSlaveSerial, 1, false},
+  {"set slave time", cmdSetSlaveTime, 1, false},
+  {"get slave time", cmdGetSlaveTime, 0, false},
+  {"init slave serial", cmdInitSlaveSerial, 0, false},
+  {"get slave serial", getSlaveSerial, 0, false},
+  {"get slave parsed datum", getSlaveParsedDatum, 1, false},
+  {"update slave firmware", updateSlaveFirmware, 1, false},
+  {"get master eeprom used", getMasterEepromUsed, 0, false},
+  {"get slave eeprom used", getSlaveEepromUsed, 0, false},
+  {"get slave", getSlave, 1, false},
+  {"set slave parser basis", setSlaveParserBasis, 2, false},
+  {"set slave basis", setSlaveBasis, 2, false},
+  {"set slave", setSlave, 2, false},
+  {"run slave", runSlave, 2, false},
+  {"set", cmdSet, 2, false},
+  {"get", cmdGet, 1, false},
+  // add more here…
+};
 
 // Start a new remote task (replacement for original sendRemoteData)
 void startRemoteTask(const String& datastring, const String& mode, uint16_t fRAMordinal) {
@@ -1002,7 +1042,7 @@ void runRemoteTask() {
             break;
           }
         } else {
-          if(ci[DEBUG] > 1) {
+          if(ci[DEBUG] > 2) {
             Serial.print("web data: ");
             Serial.println(retLine);
           }
@@ -1410,6 +1450,8 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
   if(commandId == -2) {
     outputMode = 2;
   }
+  String* results = new String[4];
+  int resultCount;
   if(commandId) {
     //Serial.println(command);
     if (command == "reboot slave") {
@@ -1492,60 +1534,18 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
         }
         deferredCommand = "";
       }
-    } else if(command == "list files") {
-      listFiles();
-    } else if(command == "format file system") {
+    } 
+    
+    if(command == "format file system") {
       formatFileSystem();
     } else if(command == "version") {
       textOut("Version: " + String(VERSION) + String("\n"));
-
     } else if(command == "run slave sketch") {
       runSlaveSketch();
       textOut("Hopefully running a sketch\n");
     } else if(command == "slave bootloader") {
       enterSlaveBootloader();
-      textOut("Hopefully the slave is waiting for a sketch\n");
-    } else if(command.startsWith("update slave firmware")) {
-      millisAtPossibleReboot = millis();
-      String rest = command.substring(21);  // 21 = length of "update slave firmware"
-      rest.trim(); //this should contain a url for new firmware.  if it begins with "/" assume it is on the same host as everything else
-      String flashUrl = "";
-      textOut("Updating slave firmware...\n");
-      if(rest.startsWith("http://")) { //if we get a full url
-        flashUrl = rest;
-      } else if(rest.charAt(0) == '/') {
-        flashUrl = "http://" + String(cs[HOST_GET]) + rest; //my firmware has an aversion to https!
-      } else { //get the flash file from the backend using its security system, pulling it from the flash update directory, wherever it happens to be
-        String encryptedStoragePassword = encryptStoragePassword(rest);
-        flashUrl = "http://" + String(cs[HOST_GET]) + String(cs[URL_GET]) + "?k2=" + encryptedStoragePassword + "&architecture=" + architecture + "&device_id=" + ci[DEVICE_ID] + "&mode=reflash&data=" + urlEncode(rest, true);  
-      }
-      //Serial.println(flashUrl);
-      String possibleResult;
-      HTTPClient http;
-      if(urlExists(flashUrl.c_str())){
-        http.begin(clientGet, flashUrl.c_str());
-        int httpCode = http.GET();
-        if (httpCode != HTTP_CODE_OK) {
-            textOut("Flash file failed to load");
-        }
-        uint32_t oldVersion = requestLong(ci[SLAVE_I2C], 160);
-        enterSlaveBootloader();
-        updateSlaveFirmware((String)flashUrl); //synchronous!  
-        //startSlaveUpdate((String)flashUrl);  //for a failed state machine
-        uint32_t newVersion = 0;
-        int waitIterations = 0;
-        while(newVersion == 0  && waitIterations < 20) {
-          newVersion = requestLong(ci[SLAVE_I2C], 160);
-          delay(200);
-          waitIterations++;
-        }
-        textOut("Slave firmware updated from version " + String(oldVersion) + " to " + String(newVersion) + "\n");
-      } else {
-        possibleResult = flashUrl + " does not exist; no action taken\n";
-        textOut(possibleResult);
-        possibleEndingMessage = possibleResult;
-      }
-        
+      textOut("Slave is waiting for a sketch\n");
     } else if(command == "pet watchdog") {
       uint32_t unixTime = timeClient.getEpochTime();
       petWatchDog((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND], unixTime);
@@ -1553,9 +1553,6 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
     } else if(command == "get weather sensors") {
       String transmissionString = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, -1, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
       textOut(transmissionString + "\n");
-    } else if(command.startsWith("update firmware")) {//do an over-the-air update
-
-      
     } else if(command == "reboot now") {
       rebootEsp(); //only use in extreme measures -- as an instant command will produce a booting loop until command is manually cleared
     } else if(command == "one pin at a time") {
@@ -1661,83 +1658,6 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       textOut("Last data: " + msTimeAgo(lastDataLogTime) + "\n");
     } else if (command == "memory") {
       dumpMemoryStats(0);
-    } else if (command.startsWith("rm")) {
-      String rest = command.substring(7);
-      deleteFile(rest.c_str());
-    } else if (command.startsWith("download")) {
-      String rest = command.substring(9);
-      downloadFile(rest.c_str(),extractFilename(rest).c_str());
-    } else if (command.startsWith("mkdir")) {
-      String rest = command.substring(6);
-      makeDir(rest.c_str());
-    } else if (command.startsWith("upload")) {
-      String rest = command.substring(7);
-      
-      if(fileToUpload != "") {
-        textOut(fileToUpload + " is still uploading; please wait\n");
-        return;
-        
-      }
-      fileToUpload = rest;
-      File f = LittleFS.open(fileToUpload, "r");
-      if (!f) {
-          textOut(fileToUpload + ": file not found\n");
-          fileToUpload = "";
-          return;
-      }
-      f.close();
-      textOut(fileToUpload + " uploading to server...\n");
-      fileUploadPosition = 0;
-    } else if (command == "format file system") {
-      formatFileSystem();
-      textOut("File system formatted\n");
-    } else if (command.startsWith("cat")) {
-      String rest = command.substring(4);  // 10 = length of "dump file"
-      rest.trim();
-      dumpFile(rest.c_str());
-    } else if (command.startsWith("read slave eeprom")) {
-      char buffer[500]; 
-      String rest = command.substring(17);  // 17 = length of "read slave eeprom"
-      readBytesFromSlaveEEPROM((uint16_t)rest.toInt(), buffer, 500);
-      textOut("EEPROM data:\n");
-      textOut(String(buffer));
-    } else if (command.startsWith("reset serial")) {
-      setSerialRate((byte)ci[BAUD_RATE_LEVEL]); 
-      ETS_UART_INTR_DISABLE();
-      ETS_UART_INTR_ENABLE();
-      textOut("Serial reset\n");
-    } else if (command.startsWith("dump config eeprom")) {
-      loadAllConfigFromEEPROM(1, 0);
-    } else if (command.startsWith("dump slave config eeprom")) {
-      loadAllConfigFromEEPROM(1, 512);
-    } else if (command.startsWith("send slave serial")) { //setting items in the configuration
-      String rest = command.substring(17);  // 17 = length of "send slave serial"
-      sendSlaveSerial(rest);
-      textOut("Serial data sent to slave: " + rest + "\n");
-    } else if (command.startsWith("set slave time")) { //setting items in the configuration
-      char buffer[500]; 
-      String rest = command.substring(14);  // 13 = length of "read slave eeprom"
-      sendLong(ci[SLAVE_I2C], 180, rest.toInt());
-      textOut("Slave UNIX time set to: " + rest + "\n");
-    } else if (command.startsWith("get slave time")) {  
-      uint32_t unixTime = requestLong(ci[SLAVE_I2C], 181);
-      textOut("Slave UNIX time: " + String(unixTime) + "\n");
-    } else if (command.startsWith("init slave serial")) {  
-      enableSlaveSerial(9);
-      textOut("Serial on slave initiated\n");
-    } else if (command.startsWith("get slave serial")) { //getting any slave serial data
-      char buffer[500]; 
-      int count = readBytesFromSlaveSerial(buffer, 500);
-      String result = String(buffer).substring(0, count);
-      //Serial.println(count);
-      //Serial.println(result);
-      textOut(result);
-    } else if (command.startsWith("get slave parsed datum")) { //getting a specific parsed data item
-      String rest = command.substring(22);  // 22 = length of "get slave parsed datum"
-      rest.trim();
-      uint8_t ordinal = rest.toInt();
-      uint16_t result = getParsedSlaveDatum(ordinal);
-      textOut("Parsed slave value " + rest + ": " + result + "\n");
 
     } else if (command == "dump parsed serial packet") { //getting a specific parsed data item
       char buffer[128]; 
@@ -1746,148 +1666,32 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       //uint8_t parsedBuf[40]  = {0xF1, 0xF2, 0xD1, 0xD2, 0xC1, 0xC2, 0xB1, 0xB2};
       bytesToHex(parsedSerialData, 20, buffer);
       textOut("Parsed serial packet: " + String(buffer) + "\n");
-    } else if (command.startsWith("get master eeprom used")) { //getting numeric result from slave command
-      int bytesUsed = loadAllConfigFromEEPROM(2, 0);
-      textOut("Slave EEPROM bytes used for master: " + (String)bytesUsed + "\n");
-    } else if (command.startsWith("get slave eeprom used")) { //getting numeric result from slave command
-      int bytesUsed = loadAllConfigFromEEPROM(2, 512);
-      textOut("Slave EEPROM bytes used for slave: " + (String)(bytesUsed - 512) + "\n");
-    } else if (command.startsWith("get slave")) { //getting slave config value
-      String rest = command.substring(9);  // 9 = length of "get slave"
-      rest.trim(); 
-      //Serial.println(rest);
-      uint16_t result = getSlaveConfigItem((byte)rest.toInt()); 
-      textOut("Slave config value for " + rest + ": " + (String)result + "\n");
-    } else if (command.startsWith("set slave parser basis")) { //setting the master's idea of what the slave parser configs are
-      String rest = command.substring(23);  // 23 = length of "set slave parser basis"
-      //Serial.println(rest);
-      uint8_t ordinal;
-      String value;
-      String ordinalString;
-      int spaceIndex = rest.indexOf(' '); // find first space
-      if (spaceIndex != -1) {
-        ordinalString = rest.substring(0, spaceIndex);        // everything before space
-        ordinalString.trim();
-        value = rest.substring(spaceIndex + 1);    // everything after space
-        if (css[ordinal]) {
-          free(css[ordinal]);
-        }
-        css[ordinal] = strdup(value.c_str());
-        textOut("Slave parser basis #" + ordinalString + " set to " + value + "\n");
-      } 
-    } else if (command.startsWith("set slave basis")) { //setting the master's idea of what the slave parser configs are
-      String rest = command.substring(16);  // 16 = length of "set parser basis"
-      uint8_t ordinal;
-      uint16_t value;
-      String ordinalString;
-      int spaceIndex = rest.indexOf(' '); // find first space
-      if (spaceIndex != -1) {
-        ordinalString = rest.substring(0, spaceIndex);        // everything before space
-        ordinalString.trim();
-        ordinal = ordinalString.toInt();
-        value = rest.substring(spaceIndex + 1).toInt();    // everything after space
-        cis[ordinal] = value;
-        textOut("Slave basis #" + ordinalString + " set to " + String(value) + "\n");
-      } 
-    } else if (command.startsWith("set slave")) { //setting numeric result from slave command
-      String rest = command.substring(9);  // 9 = length of "set slave config"
-      rest.trim(); 
-      //Serial.println(rest);
-      uint8_t ordinal;
-      uint16_t value;
-      String ordinalString;
-      ordinal = ordinalString.toInt();
-      int spaceIndex = rest.indexOf(' '); // find first space
-      if (spaceIndex != -1) {
-        ordinalString = rest.substring(0, spaceIndex);        // everything before space
-        ordinalString.trim();
-        value = rest.substring(spaceIndex + 1).toInt();    // everything after space
-        //Serial.print(ordinalString);
-        //Serial.print(" ");
-        //Serial.println(value);
-      }  
-      if(isInteger(ordinalString)) {
-        setSlaveConfigItem(ordinalString.toInt(), value);
-        textOut("Slave configuration " + ordinalString + " set to: " + value + "\n");
-      }
-      
-    } else if (command.startsWith("run slave")) { //getting numeric result from slave command
-      String rest = command.substring(9);  // 9 = length of "run slave"
-      rest.trim();
-      
-      int spacePos = rest.indexOf(' ');
-      
-      if (spacePos == -1) {
-        // Single parameter: current behavior
-        long result = requestLong(ci[SLAVE_I2C], rest.toInt());
-        textOut("Slave data for command " + rest + ": " + String(result) + "\n");
-      } else {
-        // Two parameters
-        String firstStr  = rest.substring(0, spacePos);
-        String secondStr = rest.substring(spacePos + 1);
-        firstStr.trim();
-        secondStr.trim();
-        byte firstParam  = (byte)firstStr.toInt();
-        long secondParam = secondStr.toInt();
-        sendLong(ci[SLAVE_I2C], firstParam, secondParam);
-        textOut(
-          "Commmand " +
-          String(firstParam) + " run on slave with value: " +
-          String(secondParam) + "\n"
-        );
-      }
-    } else if (command.startsWith("set")) { //setting items in the configuration
-      String rest = command.substring(3);  // 3 = length of "set"
-      rest.trim(); 
-      String key, value;
-      int spaceIndex = rest.indexOf(' '); // find first space
-      if (spaceIndex != -1) {
-        key = rest.substring(0, spaceIndex);        // everything before space
-        value = rest.substring(spaceIndex + 1);    // everything after space
-        value.trim(); // remove extra spaces
-      } else {
-        key = rest;   // no space found, all is key
-        value = "";   // no value
-      }   
-      if(isInteger(key)) {
-        int configIndex = key.toInt();
-        if(configIndex>=CONFIG_STRING_COUNT) {
-          ci[configIndex] = value.toInt();
-        } else {   
-          char buffer[50];    
-          value.toCharArray(buffer, sizeof(buffer));
-          cs[configIndex] = strdup(buffer); 
-        }
-        textOut("Configuration set to: " + value + "\n");
-      } else {
-        textOut("Configuration '" + key + "' does not exist:\n");
-      }
-    } else if (command.startsWith("get")) { //getting items in the configuration
-      String rest = command.substring(3);  // 3 = length of "set"
-      rest.trim(); 
-      if(isInteger(rest)) {
-        int configIndex = rest.toInt();
-        String value;
-        if(configIndex>=CONFIG_STRING_COUNT) {
-          value = String(ci[configIndex]);
-        } else {
-          value = String(cs[configIndex]);
-        }
-        textOut("Sought configuration: " + value + "\n");
-      } else {
-        textOut("Configuration '" + rest + "' does not exist\n");
-      }
-    } else {
-      textOut("Command '" + command + "' does not exist\n");
-      //lastCommandLogId = 0; //don't do this!!
-    }
+
+    } else if (command == "format file system") {
+      formatFileSystem();
+      textOut("File system formatted\n");
+    } 
+    //now let's use the fancy command parser!
+    handleCommand(command);
     if(commandId > 0) { //don't reset lastCommandId if the command came via serial port
       lastCommandId = commandId;
     }
   }
 }
 
-bool parseCommand( const String& input, const String& command, String* results, int& resultCount, int maxResults) {
+void handleCommand(String input) {
+  String results[5];
+  int resultCount = 0;
+  for (int i = 0; i < sizeof(commands); i++) {
+    if (parseCommand(input, commands[i].name, results, resultCount, commands[i].maxArgs)) {
+      commands[i].handler(results, resultCount);
+      return;
+    }
+  }
+  textOut("Command '" + input + "' does not exist\n");
+}
+
+bool parseCommand(const String& input, const String& command, String* results, int& resultCount, int maxResults) {
     resultCount = 0;
     String s = input;
     s.trim();
@@ -2028,7 +1832,12 @@ void setup(){
     initMasterDefaults();
   } else {
     if(ci[DEBUG] > 0) {
-      Serial.println("\nConfiguration retrieved from slave EEPROM");
+      Serial.print("\nConfiguration retrieved from ");
+      if(ci[CONFIG_PERSIST_METHOD] == 1) {
+        Serial.println("slave EEPROM");
+      } else {
+        Serial.println("local flash");
+      }
     }
   }
   //set specified pins to start low immediately, keeping devices from turning on
@@ -3087,7 +2896,7 @@ void swapFRAMContents(uint16_t location1, uint16_t location2, uint16_t length) {
 
 void addOfflineRecord(std::vector<std::tuple<uint8_t, uint8_t, double>>& record, uint8_t ordinal, uint8_t type, double value) {
   if (!isnan(value)) {
-    record.emplace_back(std::make_tuple(ordinal, type, value));  // ✅ Safer
+    record.emplace_back(std::make_tuple(ordinal, type, value));  // ? Safer
   }
 }
 
@@ -3246,7 +3055,7 @@ void dumpFile(const char* filename) {
         size_t n = f.readBytes(buffer, BUF_SIZE);
         buffer[n] = 0;  // null terminate
 
-        textOut(buffer);  // 🔥 send this chunk immediately
+        textOut(buffer);  // ?? send this chunk immediately
     }
     textOut("\n");
 
