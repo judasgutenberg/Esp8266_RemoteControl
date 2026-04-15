@@ -944,6 +944,45 @@ void runRemoteTask() {
         }
       
         char first = line[0];
+
+
+        
+        // alpha beta gamma: backend confirmation logic (heap-safe version)
+        
+        // check: line does NOT contain "\"error\":"
+        bool hasError = (strstr(line, "\"error\":") != NULL);
+        
+        // check: first character
+        char firstChar = line[0];
+        bool validStart = (firstChar == '{' || firstChar == '*' || firstChar == '|' || firstChar == '=');
+        
+        // check: remoteMode (still a String, but not created in loop)
+        bool validMode = (remoteMode == "saveData" || remoteMode == "commandout" || remoteMode == "savePacket");
+        
+        if (!hasError && validMode && validStart) {
+          lastDataLogTime = millis();
+          moxeeRebootCount = 0;
+          for (int i = 0; i < 11; i++) moxeeRebootTimes[i] = 0;
+        
+          if (lastCommandLogId == 0 && responseBuffer == "" && outputMode == 0) {
+            canSleep = true;
+          }
+        
+          if (remoteMode == "commandout" || outputMode == 2) {
+            lastCommandLogId = 0;
+          }
+        
+          // run deferred command safely
+          if (deferredCommand && deferredCommand[0] != '\0') {
+            yield();
+            runCommandsFromNonJson(deferredCommand, true);
+          }
+        
+          outputMode = 0;
+          responseBuffer = "";
+        }
+        
+                
       
         // ============================
         // HANDLE CASES (no String used)
