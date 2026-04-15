@@ -820,9 +820,9 @@ function editDeviceFeature($error,  $user) {
   if(!$pk){
     $pk = "NULL";
   }
-  
-  if($record = valueExistsElsewhere($table, $source["digest_bit_position"], "digest_bit_position", $table . "_id", $pk, $tenantId)) {
-    $error["digest_bit_position"] = $source["digest_bit_position"] . " is used in " .  $record["name"] . ".";
+ 
+  if($record = valueExistsElsewhere($table, gvfa("digest_bit_position", $source), "digest_bit_position", $table . "_id", $pk, $tenantId)) {
+    $error["digest_bit_position"] = gvfa("digest_bit_position", $source) . " is used in " .  $record["name"] . ".";
   }
   
   $formData = array(
@@ -931,7 +931,7 @@ function editDeviceFeature($error,  $user) {
 	    'value' => gvfa("digest_bit_position", $source), 
       'error' => gvfa("digest_bit_position", $error),
       //if(valueExistsElsewhere($table, $source, "digest_bit_position", $table . "_id", $pk, $tenantId)) {
-      'frontend_validation' => "valueExistsElsewhere('" . $table . "','" . 'digest_bit_position' . "','" . $table . "_id','" . $source[$table . "_id"] . "','name')",
+      'frontend_validation' => "valueExistsElsewhere('" . $table . "','" . 'digest_bit_position' . "','" . $table . "_id','" . gvfa($table . "_id", $source) . "','name')",
       'range' => "0...31"
 	  ],
     [

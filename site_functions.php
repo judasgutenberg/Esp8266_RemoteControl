@@ -609,7 +609,7 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
     $data["password"] =  crypt($data["password"], $encryptionPassword);
   }
   if(in_array($table, $tablesThatRequireUser)){
-    $data["user_id"] = $uWWer["user_id"];
+    $data["user_id"] = $user["user_id"];
   }
  
   //need data from the $_FILES collection for their database fields, mostly just to know the extension but also the original file name
