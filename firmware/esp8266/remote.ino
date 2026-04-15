@@ -565,7 +565,7 @@ void compileAndSendDeviceData(
 
     // pinMap
     {
-        String s = joinMapValsOnDelimiter(pinMap, "*");
+        String s = joinStdMapValsOnDelimiter(pinMap, "*");
         pos += snprintf(tx + pos, sizeof(tx) - pos, "|%s", s.c_str());
     }
 
@@ -821,6 +821,7 @@ void runRemoteTask() {
     // -------------------- send the HTTP request (non-blocking single-shot) --------------------
     case RS_SENDING_REQUEST: {
       yield();
+      
       // send the GET request in one go (small, so ok)
       clientGet.println("GET " + remoteURL + " HTTP/1.1");
       clientGet.print("Host: ");
@@ -906,168 +907,166 @@ void runRemoteTask() {
 
     // -------------------- process the response AFTER socket is closed --------------------
     case RS_PROCESSING_REPLY: {
-      // This is where we port your parsing & action logic but run it in small micro-steps if necessary.
-      // For clarity and parity, we'll mostly follow your original flow but doing it all here, after socket closed.
-
       bool receivedData = false;
       bool receivedDataJson = false;
-
-      // if ipAddressAffectingChange logic: only clear after we have data from server
-      if(responseBufferSM.length() > 0 && ipAddressAffectingChange != "") {
-        ipAddressAffectingChange = "";
-        changeSourceId = 0;
-      }
-
-      // We'll parse responseBufferSM line-by-line similar to previous readStringUntil('\n')
-      // but using index scanning to avoid extra allocations.
+      // Make a mutable working buffer ONCE
+      // (You can reuse this across calls if you want to go full zero-allocation)
       int len = responseBufferSM.length();
-      int pos = 0;
-      while(pos < len) {
+      char *buf = (char*)malloc(len + 1);
+      if (!buf) return;
+      
+      memcpy(buf, responseBufferSM.c_str(), len);
+      buf[len] = '\0';
+      
+      char *line = buf;
+      char *next;
+      
+      while (line && *line) {
         yield();
-        // read a line until '\n' or end
-        int nextNL = responseBufferSM.indexOf('\n', pos);
-        String retLine;
-        if(nextNL == -1) {
-          retLine = responseBufferSM.substring(pos);
-          pos = len;
-        } else {
-          retLine = responseBufferSM.substring(pos, nextNL);
-          pos = nextNL + 1;
-        }
-        retLine.trim();
-        if(retLine.length() == 0) continue;
-
- 
-        //alpha beta gamma: this is the part that confirms that the backend got our data
-        if(retLine.indexOf("\"error\":") < 0 && (remoteMode == "saveData" || remoteMode == "commandout" || remoteMode == "savePacket") && (retLine.charAt(0)== '{' || retLine.charAt(0)== '*' || retLine.charAt(0)== '|' || retLine.charAt(0)== '=')) {
-          lastDataLogTime = millis();
-          moxeeRebootCount = 0;
-          for (int i = 0; i < 11; i++) moxeeRebootTimes[i] = 0;
-
-          if(lastCommandLogId == 0 && responseBuffer == "" && outputMode == 0) {
-            canSleep = true;
-          }
-
-          if(remoteMode == "commandout" || outputMode == 2) {
-            lastCommandLogId = 0;
-          }
-          // If deferredCommand exists, run it (this is allowed post-socket)
-          if(deferredCommand != "") {
-            yield();
-            //Serial.println("~~~~~~~~~~~~~~~~~~");
-            //Serial.println(deferredCommand);
-            runCommandsFromNonJson(deferredCommand, true);
-          }
-
-          // clear outputMode/responses like before
-          outputMode = 0;
-          responseBuffer = "";
+      
+        // find next newline
+        next = strchr(line, '\n');
+        if (next) {
+          *next = '\0';   // terminate this line
+          next++;         // move to start of next
         }
       
-        // special handling of first-char markers
-        char first = retLine.charAt(0);
-        if(first == '*') {
-          // getInitialDeviceInfo
-          if(ci[DEBUG] > 1) {
-            Serial.println("Initial: " + retLine);
+        // --- trim in place ---
+        while (*line == ' ' || *line == '\r' || *line == '\t') line++;
+        char *end = line + strlen(line) - 1;
+        while (end > line && (*end == ' ' || *end == '\r' || *end == '\t')) {
+          *end-- = '\0';
+        }
+      
+        if (*line == '\0') {
+          line = next;
+          continue;
+        }
+      
+        char first = line[0];
+      
+        // ============================
+        // HANDLE CASES (no String used)
+        // ============================
+      
+        if (first == '*') {
+          if (ci[DEBUG] > 1) {
+            Serial.print("Initial: ");
+            Serial.println(line);
           }
-          if(cs[SENSOR_CONFIG_STRING] != "") {
-            retLine = replaceFirstOccurrenceAtChar(retLine, String(cs[SENSOR_CONFIG_STRING]), '|');
+      
+          if (cs[SENSOR_CONFIG_STRING] != "") {
+            // ⚠️ this still uses String, but outside tight loop frequency
+            String tmp = line;
+            tmp = replaceFirstOccurrenceAtChar(tmp, String(cs[SENSOR_CONFIG_STRING]), '|');
+            strncpy(line, tmp.c_str(), len); // copy back
           }
-          additionalSensorInfo = retLine;
+      
+          additionalSensorInfo = line;
           handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), true);
-          break; // original code broke on this
-        } else if(first == '{') {
-          // JSON
-          if(ci[DEBUG] > 1) {
-            Serial.println("JSON: " + retLine);
-          }
-          receivedDataJson = true;
-          // you previously setLocalHardwareToServerStateFromJson here; add if exists
-          // setLocalHardwareToServerStateFromJson((char *)retLine.c_str());
           break;
-        } else if(first == '|') {
-          // delimited format
-          // Note: original splitString(retLine, '!', serverCommandParts, 3);
-          String serverCommandParts[3];
-          splitString(retLine, '!', serverCommandParts, 3);
-          yield();
-          if(ci[DEBUG] > 1) {
-            Serial.println("delimited: " + retLine);
+        }
+      
+        else if (first == '{') {
+          if (ci[DEBUG] > 1) {
+            Serial.print("JSON: ");
+            Serial.println(line);
           }
-          setLocalHardwareToServerStateFromNonJson((char *)serverCommandParts[0].c_str());
-          if(retLine.indexOf("!") > -1) {
-            if(serverCommandParts[1].length()>5) {
-              if(ci[DEBUG] > 1) {
-                Serial.print("COMMAND (beside pin data): ");
-                Serial.println(serverCommandParts[1]);
-              }
-            }
-            if(lastCommandLogId == 0) {
-              lastCommandLogId = strtoul(serverCommandParts[2].c_str(), NULL, 10);
-              if(lastCommandLogId > 0) {
-                canSleep = false;
-                deferredCanSleep = true;
-              } else if (deferredCanSleep) {
-                canSleep = true;
-                deferredCanSleep = false;
-              }
- 
-              runCommandsFromNonJson((char *)("!" + serverCommandParts[1]).c_str(), false);
-            }
-          }   
+      
           receivedDataJson = true;
-          break; // original code broke here
-        } else if(first == '!') { //could be a command, could be returning various scalar progress values such as file upload progress
-          if (retLine.indexOf( '|') > 0) {
-            // command line
-            runCommandsFromNonJson((char *)retLine.c_str(), false);
+          break;
+        }
+      
+        else if (first == '|') {
+          if (ci[DEBUG] > 1) {
+            Serial.print("delimited: ");
+            Serial.println(line);
+          }
+      
+          // split in-place on '!'
+          char *parts[3] = {0};
+          int part = 0;
+          parts[part++] = line;
+      
+          for (char *p = line; *p && part < 3; p++) {
+            if (*p == '!') {
+              *p = '\0';
+              parts[part++] = p + 1;
+            }
+          }
+      
+          setLocalHardwareToServerStateFromNonJson(parts[0]);
+      
+          if (part > 1 && strlen(parts[1]) > 5) {
+            if (ci[DEBUG] > 1) {
+              Serial.print("COMMAND: ");
+              Serial.println(parts[1]);
+            }
+          }
+      
+          if (lastCommandLogId == 0 && part > 2) {
+            lastCommandLogId = strtoul(parts[2], NULL, 10);
+      
+            if (lastCommandLogId > 0) {
+              canSleep = false;
+              deferredCanSleep = true;
+            } else if (deferredCanSleep) {
+              canSleep = true;
+              deferredCanSleep = false;
+            }
+      
+            // build "!command" WITHOUT String
+            char cmdBuf[128];
+            cmdBuf[0] = '!';
+            strncpy(cmdBuf + 1, parts[1] ? parts[1] : "", sizeof(cmdBuf) - 2);
+            cmdBuf[sizeof(cmdBuf) - 1] = '\0';
+      
+            runCommandsFromNonJson(cmdBuf, false);
+          }
+      
+          receivedDataJson = true;
+          break;
+        }
+      
+        else if (first == '!') {
+          if (strchr(line, '|')) {
+            runCommandsFromNonJson(line, false);
             break;
           } else {
-            fileUploadPosition = retLine.substring(1).toInt();
+            fileUploadPosition = atoi(line + 1);
+      
             File f = LittleFS.open(fileToUpload, "r");
             if (!f) {
-                textOut(fileToUpload + ": file not found\n");
-                fileToUpload = "";
-                return;
+              textOut(fileToUpload + ": file not found\n");
+              fileToUpload = "";
+              free(buf);
+              return;
             }
+      
             uint32_t totalFileSize = f.size();
-            if(totalFileSize >= fileUploadPosition) {
-              
+      
+            if (totalFileSize >= fileUploadPosition) {
               textOut(fileToUpload + " has finished uploading\n");
               fileToUpload = "";
             } else {
-              textOut((100 * fileUploadPosition / totalFileSize)   + "%\n");
+              char pct[32];
+              snprintf(pct, sizeof(pct), "%u%%\n",
+                       (100 * fileUploadPosition) / totalFileSize);
+              textOut(pct);
             }
             break;
           }
-        } else {
-          if(ci[DEBUG] > 2) {
+        }
+        else {
+          if (ci[DEBUG] > 2) {
             Serial.print("web data: ");
-            Serial.println(retLine);
+            Serial.println(line);
           }
         }
         receivedData = true;
-      } // end while-lines
-
-      if(receivedData && !receivedDataJson) {
-        onePinAtATimeMode = true;
+        line = next;
       }
-
-      // Now: handle FRAM ordinal change, deferred tasks, etc (do these AFTER parsing)
-      if(remoteFRAMordinal != 0xFFFF) {
-        dumpMemoryStats(99);
-        yield();
-        if(ci[FRAM_ADDRESS] > 0) {
-          changeDelimiterOnRecord(remoteFRAMordinal, 0xFE);
-        }
-      }
-
-      // connection success clears failure markers
-      connectionFailureTime = 0;
-      connectionFailureMode = false;
-
-      // Finally flag done
+      free(buf);
       remoteState = RS_DONE;
       return;
     }
@@ -1155,109 +1154,134 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
 //i've made it so the ESP8266 can receive data in either format. it takes the lead on specifying which format it prefers
 //but if it misbehaves, i can force it to be one format or the other remotely 
 void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
-    if(ci[POLLING_SKIP_LEVEL] < 15) {
-      return;
+    if (ci[POLLING_SKIP_LEVEL] < 15) {
+        return;
     }
+
+    static int limitCursor = 1;
+    if (limitCursor > 11) {
+        limitCursor = 1;
+    }
+
     int pinNumber = 0;
     int value = -1;
     int canBeAnalog = 0;
     int serverSaved = 0;
-    char friendlyPinName[50]; // max length of friendly name
-    char nonJsonPinArray[12][50]; // array for each pin entry, max 64 chars
+
+    char friendlyPinName[50];
+    char nonJsonPinArray[12][50];
     char nonJsonDatum[64];
-    char nonJsonPinDatum[5][50]; // each field max 32 chars
-    char pinIdParts[2][8];       // for i2c.key split
+    char nonJsonPinDatum[5][50];
+
+    char pinIdCopy[50];
     char i2c = 0;
-    static int limitCursor = 1;
-    if(limitCursor > 11) {
-      limitCursor = 1;
+
+    splitStringToCharArrays(nonJsonLine, '|', nonJsonPinArray, 12);
+
+    int beginLoop = 1;
+    int endLoop = 12;
+
+    if (ci[POLLING_SKIP_LEVEL] == 16) {
+        beginLoop = limitCursor;
+        endLoop = limitCursor + 1;
+        limitCursor++;
     }
 
-    // Split nonJsonLine into |-delimited pin entries
     int foundPins = 0;
-    splitStringToCharArrays(nonJsonLine, '|', nonJsonPinArray, 12); // you need a version of splitString that fills char arrays
-    int beginLoop = 1; //4-5 is pin 3 on slave on laboratory test
-    int endLoop =  12;
-    if(ci[POLLING_SKIP_LEVEL] == 16) {
-      beginLoop = limitCursor;
-      endLoop = limitCursor + 1;
-      limitCursor++;
-    }
+    int initialPinMapSize = pinMap.size();
     for (int i = beginLoop; i < endLoop; i++) {
         yield();
+
         strncpy(nonJsonDatum, nonJsonPinArray[i], sizeof(nonJsonDatum) - 1);
         nonJsonDatum[sizeof(nonJsonDatum) - 1] = '\0';
 
-        if (strchr(nonJsonDatum, '*')) {
-            splitStringToCharArrays(nonJsonDatum, '*', nonJsonPinDatum, 5);
-            yield();
-            strncpy(friendlyPinName, nonJsonPinDatum[0], sizeof(friendlyPinName)-1);
-            friendlyPinName[sizeof(friendlyPinName)-1] = '\0';
-            yield();
-            strncpy(pinIdParts[0], nonJsonPinDatum[1], sizeof(pinIdParts[0])-1);
-            pinIdParts[0][sizeof(pinIdParts[0])-1] = '\0';
-            strncpy(pinIdParts[1], nonJsonPinDatum[1], sizeof(pinIdParts[1])-1);
-            yield();
-            pinIdParts[1][sizeof(pinIdParts[1])-1] = '\0';
+        if (!strchr(nonJsonDatum, '*')) continue;
 
-            // Key and value
-            char *dotPos = strchr(nonJsonPinDatum[1], '.');
-            if (dotPos) {
-                *dotPos = 0;
-                i2c = atoi(nonJsonPinDatum[1]);
-                pinNumber = atoi(dotPos + 1);
-            } else {
-                pinNumber = atoi(nonJsonPinDatum[1]);
-                i2c = 0;
-            }
-            //---------
-         
-            value = atoi(nonJsonPinDatum[2]);
-            canBeAnalog = atoi(nonJsonPinDatum[3]);
-            serverSaved = atoi(nonJsonPinDatum[4]);
-            yield();
-            // Update globals
-            strncpy(pinName[foundPins].begin(), friendlyPinName, sizeof(friendlyPinName)-1);
-            yield();
-            pinName[foundPins].setCharAt(strlen(friendlyPinName), '\0'); // truncate to correct length
-            pinList[foundPins] = nonJsonPinDatum[1];
-            yield();
-            int existingValue = pinMap->get(nonJsonPinDatum[1]);
-            if (!localSource || serverSaved == 1) {
-                if (serverSaved == 1) {
-                    localSource = false;
-                } else {
-                    pinMap->remove(nonJsonPinDatum[1]);
-                    pinMap->put(nonJsonPinDatum[1], value);
-                }
-            }
-            if(existingValue != value || resendSlavePinInfo) { //this should minimize i2c traffic and unnecessary digitalWrites as well
-              if (i2c > 0) {
-                  setPinValueOnSlave(i2c, (char)pinNumber, (char)value);
-                  yield();
-              } else {
-                  pinMode(pinNumber, OUTPUT);
-                  if (canBeAnalog) {
-                      analogWrite(pinNumber, value);
-                  } else {
-                      digitalWrite(pinNumber, value > 0 ? HIGH : LOW);
-                  }
-              }
-              //Serial.println("different--------------------------------------------");
-            } else {
-              //Serial.print("same: ");
-              //Serial.print(existingValue);
-              //Serial.print("=?");
-              //Serial.println(value);
-            }
-            foundPins++;
- 
+        splitStringToCharArrays(nonJsonDatum, '*', nonJsonPinDatum, 5);
+        yield();
+
+        // ----------------------------
+        // SAFE COPY (DO NOT MUTATE ORIGINAL)
+        // ----------------------------
+        strncpy(pinIdCopy, nonJsonPinDatum[1], sizeof(pinIdCopy) - 1);
+        pinIdCopy[sizeof(pinIdCopy) - 1] = '\0';
+
+        char *dotPos = strchr(pinIdCopy, '.');
+        if (dotPos) {
+            *dotPos = '\0';
+            i2c = atoi(pinIdCopy);
+            pinNumber = atoi(dotPos + 1);
+        } else {
+            i2c = 0;
+            pinNumber = atoi(pinIdCopy);
         }
 
+        value = atoi(nonJsonPinDatum[2]);
+        canBeAnalog = atoi(nonJsonPinDatum[3]);
+        serverSaved = atoi(nonJsonPinDatum[4]);
+
+        strncpy(friendlyPinName, nonJsonPinDatum[0], sizeof(friendlyPinName) - 1);
+        friendlyPinName[sizeof(friendlyPinName) - 1] = '\0';
+
+        // ----------------------------
+        // IMPORTANT: KEEP ORIGINAL KEY EXACTLY AS BEFORE
+        // ----------------------------
+        char *rawKey = nonJsonPinDatum[1];
+
+        pinName[foundPins] = friendlyPinName;
+        pinList[foundPins] = rawKey;
+
+        // ----------------------------
+        // SAFE MAP ACCESS (NO operator[] INSERT SIDE EFFECTS)
+        // ----------------------------
+        int existingValue = -1;
+        auto it = pinMap.find(rawKey);
+        if (it != pinMap.end()) {
+            existingValue = it->second;
+        }
+
+        if (!localSource || serverSaved == 1) {
+            if (serverSaved == 1) {
+                localSource = false;
+            } else {
+              /*
+                Serial.print("[");
+                Serial.print(nonJsonPinDatum[1]);
+                Serial.println("]");
+                Serial.print(pinMap.size());
+                Serial.print(" ");
+                */
+                auto it = pinMap.find(rawKey);
+               
+                
+                pinMap.erase(rawKey);
+                if(strlen(rawKey) < 8 && (it != pinMap.end()  || initialPinMapSize==0)) { //only insert if initialPinMapSize is 0 or pinMap key was found
+                  pinMap.insert({rawKey, value});
+                }
+                //Serial.println(pinMap.size());
+            }
+        }
+
+        // ----------------------------
+        // OUTPUT SIDE EFFECTS (UNCHANGED LOGIC)
+        // ----------------------------
+        if (existingValue != value || resendSlavePinInfo) {
+            if (i2c > 0) {
+                setPinValueOnSlave(i2c, (char)pinNumber, (char)value);
+            } else {
+                pinMode(pinNumber, OUTPUT);
+                if (canBeAnalog) {
+                    analogWrite(pinNumber, value);
+                } else {
+                    digitalWrite(pinNumber, value > 0 ? HIGH : LOW);
+                }
+            }
+        }
+
+        foundPins++;
     }
-    if(resendSlavePinInfo) {
-      resendSlavePinInfo = false;
-    }
+
+    resendSlavePinInfo = false;
     pinTotal = foundPins;
 }
 
@@ -1432,6 +1456,8 @@ void runCommandsFromJson(char * json){
 
 void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
   //can change the default values of some config data for things like polling
+  //dumpMemoryStats(99);
+  //return;
   String command;
   int commandId;
   String commandData;
@@ -1450,16 +1476,11 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
   if(commandId == -2) {
     outputMode = 2;
   }
-  String* results = new String[4];
+  String* results[4];
   int resultCount;
   if(commandId) {
     //Serial.println(command);
-    if (command == "reboot slave") {
-      if(ci[SLAVE_I2C] > 0) {
-        requestLong(ci[SLAVE_I2C], 128);
-        textOut("Slave rebooted\n");
-      }
-    } else if(command.indexOf("reboot") > -1  || command.startsWith("update firmware")){
+    if(command.indexOf("reboot") > -1  || command.startsWith("update firmware")){
       //can't do this here, so we defer it!
       if(lastCommandLogId > 0) {
         setSlaveLong(0,  lastCommandLogId); //stash the commandLogId in the slave
@@ -1479,6 +1500,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
         if(commandId == -1) {
           //our command is via serial, so call handle deferred commands immediately
           runCommandsFromNonJson(deferredCommand, true);
+          return;
         }
       } else { //we're deferred, so we can roll!
         
@@ -1533,6 +1555,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
          rebootEsp();
         }
         deferredCommand = "";
+        return;
       }
     } 
     
@@ -1594,6 +1617,15 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       if(ci[FRAM_ADDRESS] > 0) {
         dumpFramRecordIndexes();
       }
+
+    } else if (command == "reboot slave") {
+      if(ci[SLAVE_I2C] > 0) {
+        requestLong(ci[SLAVE_I2C], 128);
+        textOut("Slave rebooted\n");
+        return;
+      }
+ 
+      
     } else if (command == "set date") {
       if(ci[RTC_ADDRESS] > 0) {
         String dateArray[7];
@@ -1622,6 +1654,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       } 
     } else if (command ==  "ls") {
       listFiles();
+      return;
     } else if (command ==  "save master config") { //saves whatever the master config is to slave EEPROM
       if(ci[SLAVE_I2C] > 0 && ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_I2C_SLAVE) {
         saveAllConfigToEEPROM(0);
@@ -1658,7 +1691,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       textOut("Last data: " + msTimeAgo(lastDataLogTime) + "\n");
     } else if (command == "memory") {
       dumpMemoryStats(0);
-
+      return;
     } else if (command == "dump parsed serial packet") { //getting a specific parsed data item
       char buffer[128]; 
       readDataParsedFromSlaveSerial();
@@ -1673,6 +1706,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
     } 
     //now let's use the fancy command parser!
     handleCommand(command);
+    command = "";
     if(commandId > 0) { //don't reset lastCommandId if the command came via serial port
       lastCommandId = commandId;
     }
@@ -1682,7 +1716,12 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
 void handleCommand(String input) {
   String results[5];
   int resultCount = 0;
+  if(input == "") {
+    return;
+  }
   for (int i = 0; i < sizeof(commands); i++) {
+    yield();
+ 
     if (parseCommand(input, commands[i].name, results, resultCount, commands[i].maxArgs)) {
       commands[i].handler(results, resultCount);
       return;
@@ -2122,6 +2161,7 @@ void doSerialCommands() {
         String fullCommand = "!-1|" + command;
         runCommandsFromNonJson(fullCommand.c_str(), false);
         command = "";   // reset AFTER parsing
+        return;
       }
     } else {
       command += c;
@@ -2161,14 +2201,14 @@ void localSetData() {
     textOut(String(onValue));
     textOut("\n");
   } 
-  for (int i = 0; i < pinMap->size(); i++) {
+  for (int i = 0; i < pinMap.size(); i++) {
     String key = pinList[i];
     textOut(key);
     textOut(" ?= ");
     textOut(String(id) + "\n");
     if(key == id) {
-      pinMap->remove(key);
-      pinMap->put(key, onValue);
+      pinMap.erase(key);
+      pinMap[key] = onValue;
       if(ci[DEBUG] > 0) {
         Serial.print("LOCAL SOURCE TRUE :");
         Serial.println(onValue);
@@ -2184,9 +2224,9 @@ void localShowData() {
     return;
   }
   String out = "{\"device\":\"" + deviceName + "\", \"pins\": [";
-  for (int i = 0; i < pinMap->size(); i++) {
-    out = out + "{\"id\": \"" + pinList[i] +  "\",\"name\": \"" + pinName[i] +  "\", \"value\": \"" + (String)pinMap->getData(i) + "\"}";
-    if(i < pinMap->size()-1) {
+  for (int i = 0; i < pinMap.size(); i++) {
+    out = out + "{\"id\": \"" + pinList[i] +  "\",\"name\": \"" + pinName[i] +  "\", \"value\": \"" + (String)pinMap[pinList[i]] + "\"}";
+    if(i < pinMap.size()-1) {
       out = out + ", ";
     }
   }
@@ -3070,9 +3110,13 @@ void formatFileSystem() {
 }
 
 void listFiles() {
+  if(!LittleFS.begin()) {
+    return;
+  }
   Dir dir = LittleFS.openDir("/");
   while (dir.next()) {
     textOut("FILE: " + String(dir.fileName()) + " (" + String(dir.fileSize()) + " bytes)\n");
+    yield();
   }
 }
 
@@ -3128,6 +3172,7 @@ int loadAllConfigFromFlash(int mode, uint16_t param) { //can also be used to rec
             textOut(String(v));
             textOut("\n");
         }
+        yield();
     }
 
     // ============================================================
@@ -3143,7 +3188,7 @@ int loadAllConfigFromFlash(int mode, uint16_t param) { //can also be used to rec
             if (c == 0) break;
         }
         buffer[127] = 0;
-
+        yield();
         if (mode == 0) {
             size_t len = strlen(buffer);
 
@@ -3218,6 +3263,7 @@ void saveAllConfigToFlash(uint16_t param) {
 
         f.write(lo);
         f.write(hi);
+        yield();
     }
 
     // ============================================================
@@ -3237,6 +3283,7 @@ void saveAllConfigToFlash(uint16_t param) {
 
         f.write((const uint8_t*)s, len);
         f.write((uint8_t)0);
+        yield();
     }
 
     f.close();
@@ -3244,21 +3291,19 @@ void saveAllConfigToFlash(uint16_t param) {
 
 void handleFileRequest() {
   String path = server.uri(); // "/file.txt"
-  
-  if (path.startsWith("/")) path = path.substring(1); // "file.txt"
-
+  if (path.startsWith("/")) {
+    path = path.substring(1); // "file.txt"
+  }
   if (path.length() == 0 || !LittleFS.exists("/" + path)) {
     // File doesn't exist, pass control to default 404
     server.send(404, "text/plain", "Not Found");
     return;
   }
-
   File file = LittleFS.open("/" + path, "r");
   if (!file) {
     server.send(500, "text/plain", "Failed to open file");
     return;
   }
-
   // Basic MIME type detection
   String contentType = "text/plain";
   if (path.endsWith(".html")) contentType = "text/html";
@@ -3266,7 +3311,6 @@ void handleFileRequest() {
   else if (path.endsWith(".js")) contentType = "application/javascript";
   else if (path.endsWith(".png")) contentType = "image/png";
   else if (path.endsWith(".jpg") || path.endsWith(".jpeg")) contentType = "image/jpeg";
-
   server.streamFile(file, contentType);
   file.close();
 }
@@ -3275,4 +3319,11 @@ void handleFileRequest() {
 /////////////////////////////////////////////
 int freeMemory() {
     return ESP.getFreeHeap();
+}
+
+void logHeap(const char* label) {
+  Serial.printf("[%s] Free: %u, Max: %u\n",
+                label,
+                ESP.getFreeHeap(),
+                ESP.getMaxFreeBlockSize());
 }
