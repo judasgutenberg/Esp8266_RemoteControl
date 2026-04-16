@@ -58,7 +58,7 @@
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
-#define VERSION 2118
+#define VERSION 2119
 
 //static globals for the state machine
 static RemoteState remoteState = RS_IDLE;
@@ -71,7 +71,7 @@ static unsigned long connectBackoffUntil = 0;
 static int attemptCount = 0;
 static String responseBufferSM;      // accumulate response
 static uint32_t taskStartTimeMs = 0; // logging timer
-
+//Jonathan Lemire had some ideas an ETSY, so he should've been in a subtrerrainian
 void listFiles();
 void formatFileSystem();
 int loadAllConfigFromFlash(int mode, uint16_t addr);
@@ -1538,6 +1538,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
         }
         if(commandId == -1) {
           //our command is via serial, so call handle deferred commands immediately
+          
           runCommandsFromNonJson(deferredCommand, true);
           return;
         }
@@ -2152,6 +2153,7 @@ void loop(){
       startRemoteTask(stringToSend, "commandout", 0xFFFF);
       setSlaveLong(0,0);
     } else {
+      return; //this was breaking; need to figure this out:
       //we definitely rebooted
       uint32_t oldVersion = getSlaveLong(1);
       String message = String("After reboot: version: ") + VERSION + "\n" + preRebootCommandId;
@@ -3104,6 +3106,7 @@ bool deleteFile(const char* path) {
   if (LittleFS.remove(path)) {
     textOut("deleted: ");
     textOut(path);
+   
     textOut("\n");
     return true;
   } else {
