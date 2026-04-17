@@ -58,8 +58,7 @@
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
-#define VERSION 2119
-
+#define VERSION 2120
 //static globals for the state machine
 static RemoteState remoteState = RS_IDLE;
 static String remoteDatastring;      // original datastring param
@@ -1601,38 +1600,50 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
     
     if(command == "format file system") {
       formatFileSystem();
+      return;
     } else if(command == "version") {
       textOut("Version: " + String(VERSION) + String("\n"));
+      return;
     } else if(command == "run slave sketch") {
       runSlaveSketch();
       textOut("Hopefully running a sketch\n");
+      return;
     } else if(command == "slave bootloader") {
       enterSlaveBootloader();
       textOut("Slave is waiting for a sketch\n");
+      return;
     } else if(command == "pet watchdog") {
       uint32_t unixTime = timeClient.getEpochTime();
       petWatchDog((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND], unixTime);
       textOut("Watchdog petted\n");
+      return;
     } else if(command == "get weather sensors") {
       String transmissionString = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, -1, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
       textOut(transmissionString + "\n");
+      return;
     } else if(command == "reboot now") {
       rebootEsp(); //only use in extreme measures -- as an instant command will produce a booting loop until command is manually cleared
+      return;
     } else if(command == "one pin at a time") {
       onePinAtATimeMode = (boolean)commandData.toInt(); //setting a global.
+      return;
     } else if(command == "clear latency average") {
       latencyCount = 0;
       latencySum = 0;
+      return;
     } else if(command == "ir") {
       sendIr(commandData); //ir data must be comma-delimited
+      return;
     } else if(command == "clear fram") {
       if(ci[FRAM_ADDRESS] > 0) {
         clearFramLog(); 
       }
+      return;
     } else if(command == "dump fram") {
       if(ci[FRAM_ADDRESS] > 0) {
         displayAllFramRecords(); 
       }
+      return;
     } else if(command == "dump fram hex") {
       if(ci[FRAM_ADDRESS] > 0) {
         if(!commandData || commandData == "") {
@@ -1641,30 +1652,34 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
           hexDumpFRAM(commandData.toInt(), lastRecordSize, 15);
         }
       }
+      return;
     } else if(command == "dump fram hex#") {
       if(ci[FRAM_ADDRESS] > 0) {
         hexDumpFRAMAtIndex(commandData.toInt(), lastRecordSize, 15);
       }
+      return;
     } else if(command == "swap fram") {
       if(ci[FRAM_ADDRESS] > 0) {
         swapFRAMContents(ci[FRAM_INDEX_SIZE] * 2, 554, lastRecordSize);
       }
+      return;
     } else if(command == "dump fram record") {
       if(ci[FRAM_ADDRESS] > 0) {
         displayFramRecord((uint16_t)commandData.toInt()); 
       }
+      return;
     } else if(command == "dump fram index") {
       if(ci[FRAM_ADDRESS] > 0) {
         dumpFramRecordIndexes();
       }
-
+      return;
     } else if (command == "reboot slave") {
       if(ci[SLAVE_I2C] > 0) {
         requestLong(ci[SLAVE_I2C], 128);
         textOut("Slave rebooted\n");
         return;
       }
- 
+      return;
       
     } else if (command == "set date") {
       if(ci[RTC_ADDRESS] > 0) {
@@ -1678,20 +1693,22 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
                      (byte) dateArray[5].toInt(),      
                      (byte) dateArray[6].toInt()); 
       }
-                   
+       return;            
     } else if (command ==  "get date") {
       if(ci[RTC_ADDRESS] > 0) {
         printRTCDate();
       }
-
+      return;
     } else if(command == "get watchdog info") {
       if(ci[SLAVE_I2C] > 0) {
         slaveWatchdogInfo();
       }
+      return;
     } else if(command == "get watchdog data") {
       if(ci[SLAVE_I2C] > 0) {
         textOut(slaveWatchdogData() + "\n");
       } 
+      return;
     } else if (command ==  "ls") {
       listFiles();
       return;
@@ -1704,31 +1721,37 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
         saveAllConfigToFlash(0);
         textOut("Configuration saved to flash\n");
       }
-
+      return;
     } else if (command ==  "save slave config") { //saves whatever the slave config is to slave EEPROM
       if(ci[SLAVE_I2C] > 0) {
         saveAllConfigToEEPROM(512);
         textOut("Configuration saved\n");
       }
+      return;
     } else if (command ==  "init master defaults") { //sets the config to their hardcoded defaults
       if(ci[SLAVE_I2C] > 0) {
         initMasterDefaults();
         textOut("Master config initialized\n");
       }
+      return;
     } else if (command ==  "init slave defaults") { //sets the config to their hardcoded defaults
       if(ci[SLAVE_I2C] > 0) {
         initSlaveDefaults();
         textOut("Slave config initialized\n");
       }
-      
+      return;
     } else if (command ==  "get uptime") {
       textOut("Last booted: " + timeAgo("") + "\n");
+      return;
     } else if (command ==  "get wifi uptime") {
       textOut("WiFi up: " + msTimeAgo(wifiOnTime) + "\n");
+      return;
     } else if (command ==  "get lastpoll") {
       textOut("Last poll: " + msTimeAgo(lastPoll) + "\n");
+      return;
     } else if (command ==  "get lastdatalog") {
       textOut("Last data: " + msTimeAgo(lastDataLogTime) + "\n");
+      return;
     } else if (command == "memory") {
       dumpMemoryStats(0);
       return;
@@ -1743,6 +1766,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
     } else if (command == "format file system") {
       formatFileSystem();
       textOut("File system formatted\n");
+      return;
     } 
     //now let's use the fancy command parser!
     handleCommand(command);
