@@ -112,6 +112,10 @@ if($_POST || gvfw("table")) { //gvfw("table")
   } else if(beginsWith(strtolower($action), "save") || beginsWith(strtolower($action), "create")) {
     if($user["role"] != "viewer" && ($table != "user"  &&  $table != "report") || $user["role"] == "super") {
       $errors = genericEntitySave($user, $table, $forceUpdate);
+      if(is_array($errors)){
+        //var_dump($errors);
+        $action =  "startcreate"; //show the form again
+      }
     } else {
       $out.= "You lack permissions to make changes to a " . $table . ".";
     }

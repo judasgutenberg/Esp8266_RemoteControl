@@ -675,6 +675,7 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
     } while (mysqli_next_result($conn));
   } else {
       $error = mysqli_error($conn);
+      //die($error);
       if($error != ""){
         return array($pk[0]=>$error, "_sql"=>$sql);
         echo $sql;

@@ -398,7 +398,9 @@ function editWeatherCondition($error,  $user) {
 	    'label' => 'id',
       'name' => $table . "_id",
       'type' => 'read_only',
-	    'value' => gvfa($table . "_id", $source)
+	    'value' => gvfa($table . "_id", $source),
+      'error' => gvfa($table . "_id", $error),
+      'error' => gvfa($table . "_id", $error)
 	  ],
 		[
 	    'label' => 'name',
@@ -561,7 +563,8 @@ function editUser($error){
     [
 	    'label' => 'id',
       'name' => $table . "_id",
-      'type' => 'read_only'
+      'type' => 'read_only',
+      'error' => gvfa($table . "_id", $error)
 	  ],
     [
       'label' => 'full name',
@@ -710,7 +713,9 @@ function editTenant($error, $user){
     [
 	    'label' => 'id',
       'name' => $table . "_id",
-      'type' => 'read_only'
+      'type' => 'read_only',
+      'error' => gvfa($table . "_id", $error),
+      'error' => gvfa($table . "_id", $error)
 	  ],
  
     [
@@ -830,7 +835,8 @@ function editDeviceFeature($error,  $user) {
 	    'label' => 'id',
       'name' => $table . "_id",
       'type' => 'read_only',
-	    'value' => gvfa($table . "_id", $source)
+	    'value' => gvfa($table . "_id", $source), 
+      'error' => gvfa($table . "_id", $error)
 	  ],
     [
 	    'label' => 'created',
@@ -995,7 +1001,8 @@ function editCodeTemplate($error,  $user) {
 	    'label' => 'id',
       'name' => $table . "_id",
       'type' => 'read_only',
-	    'value' => gvfa($table . "_id", $source)
+	    'value' => gvfa($table . "_id", $source),
+      'error' => gvfa($table . "_id", $error)
 	  ],
     [
 	    'label' => 'created',
@@ -1076,7 +1083,8 @@ function editCommandType($error,  $user) {
 	    'label' => 'id',
       'name' => $table . "_id",
       'type' => 'read_only',
-	    'value' => gvfa($table . "_id", $source)
+	    'value' => gvfa($table . "_id", $source),
+      'error' => gvfa($table . "_id", $error)
 	  ],
     [
 	    'label' => 'created',
@@ -1190,7 +1198,8 @@ function editCommand($error,  $user) {
 	    'label' => 'id',
       'name' => $table . "_id",
       'type' => 'read_only',
-	    'value' => gvfa($table . "_id", $source)
+	    'value' => gvfa($table . "_id", $source),
+      'error' => gvfa($table . "_id", $error)
 	  ],
     [
 	    'label' => 'created',
@@ -1394,7 +1403,8 @@ function editDeviceColumnMap($error, $deviceId, $user) {
 	    'label' => 'id',
       'name' => $table . "_id",
       'type' => 'read_only',
-	    'value' => gvfa($table . "_id", $source)
+	    'value' => gvfa($table . "_id", $source),
+      'error' => gvfa($table . "_id", $error)
 	  ],
     [
 	    'label' => 'include in graph',
@@ -1515,7 +1525,8 @@ function editReport($error,  $user) {
 	    'label' => 'id',
       'name' => $table . "_id",
       'type' => 'read_only',
-	    'value' => gvfa($table . "_id", $source)
+	    'value' => gvfa($table . "_id", $source),
+      'error' => gvfa($table . "_id", $error)
 	  ],
 		[
 	    'label' => 'name',
@@ -1658,7 +1669,8 @@ function editDevice($error,  $user) {
 	    'label' => 'id',
       'name' => $table . "_id",
       'type' => 'read_only',
-	    'value' => gvfa($table . "_id", $source)
+	    'value' => gvfa($table . "_id", $source),
+      'error' => gvfa($table . "_id", $error)
 	  ],
     [
 	    'label' => 'color',
@@ -1807,7 +1819,8 @@ function editManagementRule($error, $user) {
 	    'label' => '',
       'name' => $table . "_id",
       'type' => 'hidden',
-	    'value' => gvfa($table . "_id", $source)
+	    'value' => gvfa($table . "_id", $source),
+      'error' => gvfa($table . "_id", $error)
 	  ],
 		[
 	    'label' => 'name',
