@@ -793,6 +793,9 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
     $noSyntaxHighlighting =gvfa("no_syntax_highlighting", $datum); 
     $values =gvfa("values", $datum); 
 		$error = gvfa("error", $datum); 
+    //this code automatically displays SQL errors on the form at the input that caused the error.
+    //it does this using an error parser at extractErrorColumnName and then moves the actual error to the right
+    //place in the $data array
     if($error  && strpos($error, " at row ") !== false) {  
       $columnForError = extractErrorColumnName($error);
       //echo "*" . $columnForError . "*" . $error . "<br>";
