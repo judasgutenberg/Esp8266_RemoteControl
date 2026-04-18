@@ -716,6 +716,25 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
   header("Location: " . $url);
 }
 
+function extractErrorColumnName($errorString) {
+    $matches = [];
+    // Look for a backtick-wrapped word followed by " at row"
+    if (preg_match('/`([^`]+)`\s+at\s+row/i', $errorString, $matches)) {
+        return $matches[1];
+    }
+    return null; // nothing found
+}
+
+function setFormDataErrorByName(array &$data, $name, $error) {
+    foreach ($data as &$record) {
+        if (isset($record['name']) && $record['name'] === $name) {
+            $record['error'] = $error; // create or overwrite
+            return true; // found and updated
+        }
+    }
+    return false; // no matching record found
+}
+
 function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user = null, $onload = "", $forceUpdate = false) { //$data also includes any errors
   Global $conn;
   $textareaIds = [];
@@ -732,6 +751,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
   }
   $guessAtTable = "";
   $guessAtPk = "";
+
 	foreach($data as &$datum) {
 		$label = gvfa("label", $datum);
     $frontendValidation = gvfa("frontend_validation", $datum);
@@ -773,6 +793,15 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
     $noSyntaxHighlighting =gvfa("no_syntax_highlighting", $datum); 
     $values =gvfa("values", $datum); 
 		$error = gvfa("error", $datum); 
+    if($error  && strpos($error, " at row ") !== false) {  
+      $columnForError = extractErrorColumnName($error);
+      //echo "*" . $columnForError . "*" . $error . "<br>";
+      setFormDataErrorByName($data, $columnForError, $error);
+      if($columnForError != $name) {
+        $error = "";
+      }
+      
+    }
 		if($label == "") {
 			$label = $name;
 		}
