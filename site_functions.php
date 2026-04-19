@@ -2999,7 +2999,7 @@ function resolveTemplateVar($expression, $scope, $escape = true) {
     return $escape ? htmlspecialchars($result, ENT_QUOTES) : $result;
 }
 
-function timeAgoMillis($diffInMillis) {
+function timeAgoMillis($diffInMillis, $suffix = " ago") {
   if(is_null($diffInMillis) || !is_numeric($diffInMillis)) {
     return "not found";
   }
@@ -3010,15 +3010,15 @@ function timeAgoMillis($diffInMillis) {
     $days    = intdiv($diffInSeconds, 86400);
 
     if ($days > 0) {
-        return $days . ($days === 1 ? " day ago" : " days ago");
+        return $days . ($days === 1 ? " day ago" : " days" . $suffix);
     }
     if ($hours > 0) {
-        return $hours . ($hours === 1 ? " hour ago" : " hours ago");
+        return $hours . ($hours === 1 ? " hour ago" : " hours" . $suffix);
     }
     if ($minutes > 0) {
-        return $minutes . ($minutes === 1 ? " minute ago" : " minutes ago");
+        return $minutes . ($minutes === 1 ? " minute ago" : " minutes" . $suffix);
     }
-    return $seconds . ($seconds === 1 ? " second ago" : " seconds ago");
+    return $seconds . ($seconds === 1 ? " second ago" : " seconds" . $suffix);
 }
 
 function timeAgo($sqlDateTime, $compareTo = null) {

@@ -236,10 +236,17 @@ function devices($user) {
       'label' => 'location name',
       'name' => 'location_name' 
     ],
+    /*
     [
-      'label' => 'booted',
+      'label' => 'millis',
       'name' => 'millis',
-      'function' => 'timeAgoMillis("<millis/>")'
+ 
+    ],
+    */
+    [
+      'label' => 'uptime',
+      'name' => 'millis',
+      'function' => 'timeAgoMillis("<millis/>", "")'
     ],
     [
       'label' => 'ip address',

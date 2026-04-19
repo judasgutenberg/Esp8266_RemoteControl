@@ -2560,7 +2560,31 @@ function formatSQL(sql) {
       : currentDate.toLocaleDateString("sv-SE"); // yyyy-mm-dd
 
   }
-  
+    function timeAgoMillis(diffInMillis, suffix) {
+		if (diffInMillis === null || diffInMillis === undefined || isNaN(diffInMillis)) {
+			return "not found";
+		}
+		if(!suffix) {
+			suffix = "";
+		}
+		const diffInSeconds = Math.floor(diffInMillis / 1000);
+
+		const seconds = diffInSeconds % 60;
+		const minutes = Math.floor(diffInSeconds / 60) % 60;
+		const hours   = Math.floor(diffInSeconds / 3600) % 24;
+		const days    = Math.floor(diffInSeconds / 86400);
+
+		if (days > 0) {
+			return days + (days === 1 ? " day ago" : " days" + suffix);
+		}
+		if (hours > 0) {
+			return hours + (hours === 1 ? " hour ago" : " hours" + suffix);
+		}
+		if (minutes > 0) {
+			return minutes + (minutes === 1 ? " minute ago" : " minutes" + suffix);
+		}
+		return seconds + (seconds === 1 ? " second ago" : " seconds" + suffix);
+	}
   
   function timeAgo(sqlDateTime, compareTo, returnDiffInSeconds, noEndWord) {
 	  sqlDateTime = sqlDateTime.replace(" ", "T"); // Fix for Safari 11
