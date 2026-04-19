@@ -215,7 +215,7 @@ function codeTemplates($user) {
 
 function devices($user) {
   $table = "device";
-  $sql = "SELECT *  FROM " . $table . "  WHERE tenant_id=<tenant_id/>";
+  $sql = "SELECT *, (SELECT millis from device_log dl WHERE d.device_id = dl.device_id  ORDER BY device_log_id DESC LIMIT 0,1) as millis    FROM " . $table . " d  WHERE tenant_id=<tenant_id/>";
   //echo $sql;
   $result = replaceTokensAndQuery($sql, $user);
   $out = "";
@@ -235,6 +235,11 @@ function devices($user) {
     [
       'label' => 'location name',
       'name' => 'location_name' 
+    ],
+    [
+      'label' => 'booted',
+      'name' => 'millis',
+      'function' => 'timeAgoMillis("<millis/>")'
     ],
     [
       'label' => 'ip address',

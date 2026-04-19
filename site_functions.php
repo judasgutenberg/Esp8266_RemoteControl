@@ -2999,6 +2999,28 @@ function resolveTemplateVar($expression, $scope, $escape = true) {
     return $escape ? htmlspecialchars($result, ENT_QUOTES) : $result;
 }
 
+function timeAgoMillis($diffInMillis) {
+  if(is_null($diffInMillis) || !is_numeric($diffInMillis)) {
+    return "not found";
+  }
+  $diffInSeconds = $diffInMillis / 1000;
+    $seconds = $diffInSeconds % 60;
+    $minutes = intdiv($diffInSeconds, 60) % 60;
+    $hours   = intdiv($diffInSeconds, 3600) % 24;
+    $days    = intdiv($diffInSeconds, 86400);
+
+    if ($days > 0) {
+        return $days . ($days === 1 ? " day ago" : " days ago");
+    }
+    if ($hours > 0) {
+        return $hours . ($hours === 1 ? " hour ago" : " hours ago");
+    }
+    if ($minutes > 0) {
+        return $minutes . ($minutes === 1 ? " minute ago" : " minutes ago");
+    }
+    return $seconds . ($seconds === 1 ? " second ago" : " seconds ago");
+}
+
 function timeAgo($sqlDateTime, $compareTo = null) {
   global $timezone;
   // Set the timezone
