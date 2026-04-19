@@ -2161,6 +2161,8 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
         $skip = true;
       } else if(($type == "bool"  || $type == "checkbox") && !$value){
         $sanitized = '0';
+      //} else if ((beginsWith($type, "select")) && $value === "") {
+        //$sanitized = 'NULL';
       } else if ((beginsWith($type, "number")  ||  $type == "int") && $value === "") {
         $sanitized = 'NULL';
       } else if (beginsWith($type, "string") && $value === "") {
