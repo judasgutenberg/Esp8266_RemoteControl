@@ -1011,7 +1011,7 @@ void runRemoteTask() {
           // run deferred command safely
           if (deferredCommand && deferredCommand[0] != '\0') {
             yield();
-            runCommandsFromNonJson(deferredCommand, true);
+            runCommand(deferredCommand, true);
           }
         
           outputMode = 0;
@@ -1096,7 +1096,7 @@ void runRemoteTask() {
             strncpy(cmdBuf + 1, parts[1] ? parts[1] : "", sizeof(cmdBuf) - 2);
             cmdBuf[sizeof(cmdBuf) - 1] = '\0';
       
-            runCommandsFromNonJson(cmdBuf, false);
+            runCommand(cmdBuf, false);
           }
       
           receivedDataJson = true;
@@ -1105,7 +1105,7 @@ void runRemoteTask() {
       
         else if (first == '!') {
           if (strchr(line, '|')) {
-            runCommandsFromNonJson(line, false);
+            runCommand(line, false);
             break;
           } else {
             fileUploadPosition = atoi(line + 1);
@@ -1529,7 +1529,7 @@ void runCommandsFromJson(char * json){
 }
 */
 
-void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
+void runCommand(const char * nonJsonLine, bool deferred){
   //can change the default values of some config data for things like polling
   //dumpMemoryStats(99);
   //return;
@@ -1574,7 +1574,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
         }
         if(commandId == -1) {
           //our command is via serial, so call handle deferred commands immediately
-          runCommandsFromNonJson(deferredCommand, true);
+          runCommand(deferredCommand, true);
         }
         return;
       } else { //we're deferred, so we can roll!
@@ -2092,7 +2092,7 @@ void doSerialCommands() {
           Serial.println(command);
         }
         String fullCommand = "!-1|" + command;
-        runCommandsFromNonJson(fullCommand.c_str(), false);
+        runCommand(fullCommand.c_str(), false);
         command = "";   // reset AFTER parsing
         return;
       }
