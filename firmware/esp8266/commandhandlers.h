@@ -33,6 +33,43 @@
 #include <LittleFS.h>
 
 
+
+void cmdVersion(String* param, int argCount);
+void cmdRunSlaveSketch(String* param, int argCount);
+void cmdRunSlaveBootloader(String* param, int argCount);
+void cmdPetWatchdog(String* param, int argCount);
+void cmdGetWeatherSensors(String* param, int argCount);
+void cmdRebootEsp(String* param, int argCount);
+void cmdOnePinAtATime(String* param, int argCount);
+void cmdClearLatencyAverage(String* param, int argCount);
+void cmdIr(String* param, int argCount);
+void cmdClearFram(String* param, int argCount);
+void cmdDumpFram(String* param, int argCount);
+void cmdDumpFramHex(String* param, int argCount);
+void cmdDumpFramHexAt(String* param, int argCount);
+void cmdSwapFram(String* param, int argCount);
+void cmdDumpFramRecord(String* param, int argCount);
+void cmdGetFramIndex(String* param, int argCount);
+void cmdRebootSlave(String* param, int argCount);
+void cmdSetDate(String* param, int argCount);
+void cmdGetDate(String* param, int argCount);
+void cmdGetWatchdogInfo(String* param, int argCount);
+void cmdGetWatchdogData(String* param, int argCount);
+void cmdListFiles(String* param, int argCount);
+void cmdSaveMasterConfig(String* param, int argCount);
+void cmdSaveSlaveConfig(String* param, int argCount);
+void cmdInitMasterDefaults(String* param, int argCount);
+void cmdInitSlaveDefaults(String* param, int argCount);
+void cmdGetUptime(String* param, int argCount);
+void cmdGetWifiUptime(String* param, int argCount);
+void cmdGetLastpoll(String* param, int argCount);
+void cmdGetLastdatalog(String* param, int argCount);
+void cmdMemory(String* param, int argCount);
+void cmdDumpSerialPacket(String* param, int argCount);
+void cmdFormatFileSystem(String* param, int argCount);
+
+
+
 void cmdDel(String* param, int argCount);
 void cmdDownload(String* param, int argCount);
 void cmdUpload(String* param, int argCount);
@@ -57,18 +94,3 @@ void setSlave(String* param, int argCount);
 void runSlave(String* param, int argCount);
 void cmdSet(String* param, int argCount);
 void cmdGet(String* param, int argCount);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

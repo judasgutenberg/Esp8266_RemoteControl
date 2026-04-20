@@ -1,4 +1,211 @@
  #include "commandhandlers.h"
+ #include "globals.h"
+
+void cmdVersion(String* param, int argCount) {
+  textOut("Version: " + String(VERSION) + String("\n"));
+}
+
+void cmdRunSlaveSketch(String* param, int argCount) {
+  runSlaveSketch();
+  textOut("Hopefully running a sketch\n");
+}
+
+void cmdRunSlaveBootloader(String* param, int argCount) {
+  enterSlaveBootloader();
+  textOut("Slave is waiting for a sketch\n");
+}
+
+void cmdPetWatchdog(String* param, int argCount) {
+  uint32_t unixTime = timeClient.getEpochTime();
+  petWatchDog((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND], unixTime);
+  textOut("Watchdog petted\n");
+}
+
+
+void cmdGetWeatherSensors(String* param, int argCount) {
+  String transmissionString = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, -1, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
+  textOut(transmissionString + "\n");
+}
+
+void cmdRebootEsp(String* param, int argCount) {
+  rebootEsp();
+}
+
+void cmdOnePinAtATime(String* param, int argCount) {
+  onePinAtATimeMode = (boolean)param[0].toInt(); //setting a global.
+}
+
+void cmdClearLatencyAverage(String* param, int argCount) {
+  latencyCount = 0;
+  latencySum = 0;
+}
+
+void cmdIr(String* param, int argCount) {
+  String commandData = param[0];
+  commandData.replace(" ", ",");
+  
+  sendIr(commandData); //ir data must be comma-delimited
+}
+
+void cmdClearFram(String* param, int argCount) {
+  if(ci[FRAM_ADDRESS] > 0) {
+    clearFramLog(); 
+  }
+}
+
+void cmdDumpFram(String* param, int argCount) {
+  if(ci[FRAM_ADDRESS] > 0) {
+    displayAllFramRecords(); 
+  }
+}
+
+void cmdDumpFramHex(String* param, int argCount) {
+  String commandData = param[0];
+  if(ci[FRAM_ADDRESS] > 0) {
+    if(commandData == "") {
+      hexDumpFRAM(2 * ci[FRAM_INDEX_SIZE], lastRecordSize, 15);
+    } else {
+      hexDumpFRAM(param[0].toInt(), lastRecordSize, 15);
+    }
+  }
+}
+
+void cmdDumpFramHexAt(String* param, int argCount) {
+  if(ci[FRAM_ADDRESS] > 0) {
+    hexDumpFRAMAtIndex(param[0].toInt(), lastRecordSize, 15); 
+  }
+}
+
+void cmdSwapFram(String* param, int argCount) {
+  if(ci[FRAM_ADDRESS] > 0) {
+    swapFRAMContents(ci[FRAM_INDEX_SIZE] * 2, 554, lastRecordSize);
+  }
+}
+
+void cmdDumpFramRecord(String* param, int argCount) {
+  if(ci[FRAM_ADDRESS] > 0) {
+    displayFramRecord((uint16_t)param[0].toInt()); 
+  }
+}
+
+void cmdGetFramIndex(String* param, int argCount) {
+  if(ci[FRAM_ADDRESS] > 0) {
+    dumpFramRecordIndexes();
+  }
+}
+
+void cmdRebootSlave(String* param, int argCount) {
+  if(ci[SLAVE_I2C] > 0) {
+    requestLong(ci[SLAVE_I2C], 128);
+    textOut("Slave rebooted\n");
+  }
+}
+
+void cmdSetDate(String* param, int argCount) { //params must be comma-delimited
+  if(ci[RTC_ADDRESS] > 0) {
+    String dateArray[7];
+    splitString(param[0], ',', dateArray, 7);
+    setDateDs1307((byte) dateArray[0].toInt(), 
+                 (byte) dateArray[1].toInt(),     
+                 (byte) dateArray[2].toInt(),  
+                 (byte) dateArray[3].toInt(),  
+                 (byte) dateArray[4].toInt(),   
+                 (byte) dateArray[5].toInt(),      
+                 (byte) dateArray[6].toInt()); 
+  }
+  textOut("Date set\n");
+}
+
+void cmdGetDate(String* param, int argCount) {
+  if(ci[RTC_ADDRESS] > 0) {
+    printRTCDate();
+  }
+}
+
+void cmdGetWatchdogInfo(String* param, int argCount) {
+  if(ci[SLAVE_I2C] > 0) {
+    slaveWatchdogInfo();
+  }
+}
+
+void cmdGetWatchdogData(String* param, int argCount) {
+  if(ci[SLAVE_I2C] > 0) {
+    textOut(slaveWatchdogData() + "\n");
+  }
+}
+
+void cmdListFiles(String* param, int argCount) {
+  listFiles();
+}
+
+void cmdSaveMasterConfig(String* param, int argCount) {
+  if(ci[SLAVE_I2C] > 0 && ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_I2C_SLAVE) {
+    saveAllConfigToEEPROM(0);
+    textOut("Configuration saved to EEPROM\n");
+  } else if (ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_FLASH) {
+
+    saveAllConfigToFlash(0);
+    textOut("Configuration saved to flash\n");
+  }
+}
+
+void cmdSaveSlaveConfig(String* param, int argCount) {
+  if(ci[SLAVE_I2C] > 0) {
+    saveAllConfigToEEPROM(512);
+    textOut("Configuration saved\n");
+  }
+}
+
+void cmdInitMasterDefaults(String* param, int argCount) {
+  if(ci[SLAVE_I2C] > 0) {
+    initMasterDefaults();
+    textOut("Master config initialized\n");
+  }
+}
+
+void cmdInitSlaveDefaults(String* param, int argCount) {
+  if(ci[SLAVE_I2C] > 0) {
+    initSlaveDefaults();
+    textOut("Slave config initialized\n");
+  }
+}
+
+void cmdGetUptime(String* param, int argCount) {
+  textOut("Last booted: " + timeAgo("") + "\n");
+}
+
+void cmdGetWifiUptime(String* param, int argCount) {
+  textOut("WiFi up: " + msTimeAgo(wifiOnTime) + "\n");
+}
+
+void cmdGetLastpoll(String* param, int argCount) {
+  textOut("Last poll: " + msTimeAgo(lastPoll) + "\n");
+}
+
+void cmdGetLastdatalog(String* param, int argCount) {
+  textOut("Last data: " + msTimeAgo(lastDataLogTime) + "\n");
+}
+
+void cmdMemory(String* param, int argCount) {
+  dumpMemoryStats(0);
+}
+
+void cmdDumpSerialPacket(String* param, int argCount) {
+  char buffer[128]; 
+  readDataParsedFromSlaveSerial();
+  //parsedSerialData
+  //uint8_t parsedBuf[40]  = {0xF1, 0xF2, 0xD1, 0xD2, 0xC1, 0xC2, 0xB1, 0xB2};
+  bytesToHex(parsedSerialData, 20, buffer);
+  textOut("Parsed serial packet: " + String(buffer) + "\n");
+}
+
+
+void cmdFormatFileSystem(String* param, int argCount) {
+  formatFileSystem();
+  textOut("File system formatted\n");
+}
+///////////////////////
+
 
 
 void cmdDel(String* param, int argCount) {
@@ -151,6 +358,10 @@ void setSlaveParserBasis(String* param, int argCount) {
   textOut("Slave parser basis #" + ordinalString + " set to " + value + "\n");
 }
 
+//hmmmmmmm
+
+
+
 void setSlaveBasis(String* param, int argCount) {
   String ordinalString = param[0];
   String value = param[1];
@@ -175,7 +386,7 @@ void runSlave(String* param, int argCount) {
   String ordinalString = param[0];
   int ordinal = ordinalString.toInt();
   String value = param[1];
- if(value != "") {
+  if(value != "") {
     sendLong(ci[SLAVE_I2C], ordinal, value.toInt());
     textOut(
           "Commmand " +
@@ -224,21 +435,4 @@ void cmdGet(String* param, int argCount) {
     value = String(cs[configIndex]);
   }
   textOut("Sought configuration: " + value + "\n");
- 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,3 +1,5 @@
+#define VERSION 2120
+
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
@@ -19,6 +21,7 @@
 #include <Adafruit_VL53L0X.h>
 #include <Adafruit_FRAM_I2C.h>
 #include "SimpleMap.h" // assuming you have this header
+#include <map>
 
 // Sensor objects
 extern Adafruit_ADT7410 adt7410[4];
@@ -99,7 +102,8 @@ extern String responseBuffer;
 extern unsigned long lastPet;
 extern int currentWifiIndex;
 
-extern SimpleMap<String, int> *pinMap;
+//extern SimpleMap<String, int> *pinMap;
+extern  std::map<String, int> pinMap;
 extern SimpleMap<String, int> *sensorObjectCursor;
 
 extern uint32_t moxeeRebootTimes[];

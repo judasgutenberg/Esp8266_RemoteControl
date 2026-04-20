@@ -1,6 +1,7 @@
 #include "globals.h"
 #include "config.h"
 #include <SimpleMap.h>
+#include <map>
 
 
 
@@ -84,11 +85,16 @@ int currentWifiIndex = 0;
 
 
 //https://github.com/spacehuhn/SimpleMap
+/*
 SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String &b) -> int {
   if (a == b) return 0;      // a and b are equal
   else if (a > b) return 1;  // a is bigger than b
   else return -1;            // a is smaller than b
 });
+*/
+
+ 
+std::map<String, int> pinMap;
 SimpleMap<String, int> *sensorObjectCursor = new SimpleMap<String, int>([](String &a, String &b) -> int {
   if (a == b) return 0;      // a and b are equal
   else if (a > b) return 1;  // a is bigger than b

@@ -10,6 +10,7 @@
 #include <tuple>
 #include <cmath> 
 #include <math.h> // for isnan, NAN
+#include <map>
 
 String packetString(String fileToUpload, uint32_t fileUploadPosition);
 void textOut(String data);
@@ -17,6 +18,7 @@ String makeAsteriskString(uint8_t number);
 void dumpMemoryStats(int marker);
 String urlEncode(String str, bool minimizeImpact);
 String joinValsOnDelimiter(uint32_t vals[], String delimiter, int numberToDo);
+String joinStdMapValsOnDelimiter(const std::map<String, int>& pinMap, const String& delimiter);
 String joinMapValsOnDelimiter(SimpleMap<String, int> *pinMap, String delimiter);
 bool isInteger(const String &s);
 static int appendNullOrNumber(char *buf, size_t bufSize, size_t pos, double val, const char *fmt);
