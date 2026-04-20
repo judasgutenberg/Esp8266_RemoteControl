@@ -1553,12 +1553,14 @@ void runCommand(const char * nonJsonLine, bool deferred){
   }
   String* results[4];
   int resultCount;
+  command.trim();
   if(commandId) {
     //Serial.println(command);
-    if((command.indexOf("reboot") > -1   && command.indexOf("slave") < 0) || command.startsWith("update firmware")){
+    if(command == "reboot" || command.startsWith("update firmware")){
       //can't do this here, so we defer it!
       if(lastCommandLogId > 0) {
-        setSlaveLong(0,  lastCommandLogId); //stash the commandLogId in the slave
+        //setSlaveLong(0,  lastCommandLogId); //stash the commandLogId in the slave
+        saveCommandState(lastCommandLogId, VERSION);
       }
       //Serial.println("&*&*&*&");
       if(!deferred) {
@@ -1567,13 +1569,13 @@ void runCommand(const char * nonJsonLine, bool deferred){
         size_t len = strlen(nonJsonLine);
         deferredCommand = new char[len + 1];  // +1 for null terminator
         strcpy(deferredCommand, nonJsonLine);
-        if(command.indexOf("reboot") > -1 && command.indexOf("slave") < 0) {
+        if(command == "reboot") {
           textOut("Rebooting... \n");
         } else if (command.startsWith("update firmware")) {
           textOut("Attempting firmware update...\n");
         }
         if(commandId == -1) {
-          //our command is via serial, so call handle deferred commands immediately
+          //our command is via serial, so handle deferred commands immediately
           runCommand(deferredCommand, true);
         }
         return;
@@ -1593,7 +1595,8 @@ void runCommand(const char * nonJsonLine, bool deferred){
             flashUrl = "http://" + String(cs[HOST_GET]) + String(cs[URL_GET]) + "?k2=" + encryptedStoragePassword + "&architecture=" + architecture + "&device_id=" + ci[DEVICE_ID] + "&mode=reflash&data=" + urlEncode(rest, true);  
           }
           String possibleResult;
-          setSlaveLong(1, VERSION);
+          //setSlaveLong(1, VERSION);
+          //saveCommandState(lastCommandLogId, VERSION);
           if(urlExists(flashUrl.c_str())){
              t_httpUpdate_return ret = ESPhttpUpdate.update(clientGet, flashUrl.c_str());
              
@@ -1622,11 +1625,6 @@ void runCommand(const char * nonJsonLine, bool deferred){
             possibleEndingMessage = possibleResult;
           }
           return;
-        } else if(command.indexOf("watchdog") > -1){
-          if(ci[SLAVE_I2C] > 0) {
-            requestLong(ci[SLAVE_I2C], 134);
-            return;
-          }
         } else {
          rebootEsp();
         }
@@ -1634,7 +1632,6 @@ void runCommand(const char * nonJsonLine, bool deferred){
         return;
       }
     } 
-    
 
     //now let's use the fancy command parser!
     handleCommand(command);
@@ -1651,15 +1648,17 @@ void handleCommand(String input) {
   if(input == "") {
     return;
   }
-  for (int i = 0; i < sizeof(commands); i++) {
+  int commandNumber = sizeof(commands) / sizeof(commands[0]);
+  for (int i = 0; i < commandNumber; i++) {
     yield();
- 
+    
     if (parseCommand(input, commands[i].name, results, resultCount, commands[i].maxArgs)) {
       commands[i].handler(results, resultCount);
       return;
     }
   }
   textOut("Command '" + input + "' does not exist\n");
+  return;
 }
 
 bool parseCommand(const String& input, const String& command, String* results, int& resultCount, int maxResults) {
@@ -1700,6 +1699,38 @@ bool parseCommand(const String& input, const String& command, String* results, i
         results[resultCount++] = current;
     }
     return true;
+}
+
+void saveCommandState(uint32_t lastCommandLogId, uint16_t version) {
+    File file = LittleFS.open("/commandstate.txt", "w");
+    if (!file) {
+        // optional: Serial.println("Failed to open file for writing");
+        return;
+    }
+    file.println(lastCommandLogId);
+    file.println(version);
+    file.close();
+}
+
+uint32_t loadCommandStateVersion(int dataToReturn) {
+    File file = LittleFS.open("/commandstate.txt", "r");
+    if (!file) {
+        // optional: Serial.println("Failed to open file for reading");
+        return 0;
+    }
+    String line1 = file.readStringUntil('\n');
+    String line2 = file.readStringUntil('\n');
+    file.close();
+    // Trim just in case (LittleFS can carry CRLF depending on writes)
+    line1.trim();
+    line2.trim();
+    uint32_t preRebootCommandId = (uint32_t) line1.toInt();
+    uint32_t version = (uint16_t) line2.toInt();
+    if(dataToReturn == 0) {
+      return version;
+    } else {
+      return preRebootCommandId;
+    }
 }
 
 void sendIr(String rawDataStr) {
@@ -2025,7 +2056,8 @@ void loop(){
   }
   yield();
 
-  uint32_t preRebootCommandId = getSlaveLong(0);
+  //uint32_t preRebootCommandId = getSlaveLong(0);
+  uint32_t preRebootCommandId = loadCommandStateVersion(1);
   /*
   Serial.print(preRebootCommandId);
   Serial.print(" ");
@@ -2043,25 +2075,28 @@ void loop(){
       //though i don't know if this scenario ever happes
       String stringToSend = possibleEndingMessage + "\n" + preRebootCommandId;
       startRemoteTask(stringToSend, "commandout", 0xFFFF);
-      setSlaveLong(0,0);
+      //setSlaveLong(0,0);
     } else {
-      return; //this was breaking; need to figure this out:
+      //return; //this was breaking; need to figure this out:
       //we definitely rebooted
-      uint32_t oldVersion = getSlaveLong(1);
+      //uint32_t oldVersion = getSlaveLong(1);
+      uint32_t oldVersion = loadCommandStateVersion(0);
       String message = String("After reboot: version: ") + VERSION + "\n" + preRebootCommandId;
       if(oldVersion > 0) {
         message = String("Update of firmware was successful; version " + String(oldVersion) + " changed to version ") + VERSION + "\n" + preRebootCommandId;
       }
       startRemoteTask(message, "commandout", 0xFFFF);
-      setSlaveLong(0,0);
+      //setSlaveLong(0,0);
     }
-    setSlaveLong(1,0);
+    saveCommandState(0, 0);
+    //setSlaveLong(1,0);
   } else if (preRebootCommandId > 0  && deviceName != "" && remoteState == RS_IDLE) {
     //we didn't actually reboot!
     Serial.println("((((((((((((((((((((((((do we ever get here?");
     String stringToSend = possibleEndingMessage + "\n" + preRebootCommandId;
     startRemoteTask(stringToSend, "commandout", 0xFFFF);
-    setSlaveLong(0,0);
+    //setSlaveLong(0,0);
+    saveCommandState(0, 0);
   }
  
   if(canSleep) {
