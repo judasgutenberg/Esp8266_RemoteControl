@@ -58,7 +58,7 @@
 
 #include "index.h" //Our HTML webpage contents with javascriptrons
 
-#define VERSION 2120
+
 //static globals for the state machine
 static RemoteState remoteState = RS_IDLE;
 static String remoteDatastring;      // original datastring param
@@ -86,6 +86,43 @@ struct CommandDef {
  
 
 CommandDef commands[] = {
+
+  {"version", cmdVersion, 0, true},
+  {"run slave sketch", cmdRunSlaveSketch, 0, true},
+  {"slave bootloader", cmdRunSlaveBootloader, 0, true},
+  {"pet watchdog", cmdPetWatchdog, 0, true},
+  {"get weather sensors", cmdGetWeatherSensors, 0, true},
+  {"reboot now", cmdRebootEsp, 0, true},
+  {"one pin at a time", cmdOnePinAtATime, 0, true},
+  {"clear latency average", cmdClearLatencyAverage, 0, true},
+  {"ir", cmdIr, 1, false},
+  {"clear fram", cmdClearFram, 0, true},
+  {"dump fram", cmdDumpFram, 0, true},
+  {"dump fram hex", cmdDumpFramHex, 1, true}, 
+  {"dump fram hex#", cmdDumpFramHexAt, 1, true}, 
+  {"swap fram", cmdSwapFram, 0, true},
+  {"dump fram record", cmdDumpFramRecord, 1, true},
+  {"get fram index", cmdGetFramIndex, 0, true},
+  {"reboot slave", cmdRebootSlave, 0, true},
+  {"set date", cmdSetDate, 1, true},
+  {"get date", cmdGetDate, 0, true},
+  {"get watchdog info", cmdGetWatchdogInfo, 0, true},
+  {"get watchdog data", cmdGetWatchdogData, 0, true},
+  {"ls", cmdListFiles, 0, true},
+  {"save master config", cmdSaveMasterConfig, 0, true},
+  {"save slave config", cmdSaveSlaveConfig, 0, true},
+  {"init master defaults", cmdInitMasterDefaults, 0, true}, 
+  {"init slave defaults", cmdInitSlaveDefaults, 0, true},
+  {"get uptime", cmdGetUptime, 0, true},
+  {"get wifi uptime", cmdGetWifiUptime, 0, true},
+  {"get lastpoll", cmdGetLastpoll, 0, true},
+  {"get lastdatalog", cmdGetLastdatalog, 0, true},
+  {"memory", cmdMemory, 0, true},
+  {"dump parsed serial packet", cmdDumpSerialPacket, 0, true},
+  {"format file system", cmdFormatFileSystem, 0, true},
+
+  
+  ///////////
   {"rm", cmdDel, 1, false},
   {"download", cmdDownload, 1, false},
   //{"mkdir", cmdMkdir, 1, false},
@@ -1518,7 +1555,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
   int resultCount;
   if(commandId) {
     //Serial.println(command);
-    if(command.indexOf("reboot") > -1  || command.startsWith("update firmware")){
+    if((command.indexOf("reboot") > -1   && command.indexOf("slave") < 0) || command.startsWith("update firmware")){
       //can't do this here, so we defer it!
       if(lastCommandLogId > 0) {
         setSlaveLong(0,  lastCommandLogId); //stash the commandLogId in the slave
@@ -1530,17 +1567,16 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
         size_t len = strlen(nonJsonLine);
         deferredCommand = new char[len + 1];  // +1 for null terminator
         strcpy(deferredCommand, nonJsonLine);
-        if(command.indexOf("reboot") > -1) {
-           textOut("Rebooting... \n");
+        if(command.indexOf("reboot") > -1 && command.indexOf("slave") < 0) {
+          textOut("Rebooting... \n");
         } else if (command.startsWith("update firmware")) {
           textOut("Attempting firmware update...\n");
         }
         if(commandId == -1) {
           //our command is via serial, so call handle deferred commands immediately
-          
           runCommandsFromNonJson(deferredCommand, true);
-          return;
         }
+        return;
       } else { //we're deferred, so we can roll!
         
         if(command.startsWith("update firmware")) {
@@ -1585,10 +1621,11 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
             textOut(possibleEndingMessage);
             possibleEndingMessage = possibleResult;
           }
-        
+          return;
         } else if(command.indexOf("watchdog") > -1){
           if(ci[SLAVE_I2C] > 0) {
             requestLong(ci[SLAVE_I2C], 134);
+            return;
           }
         } else {
          rebootEsp();
@@ -1598,176 +1635,7 @@ void runCommandsFromNonJson(const char * nonJsonLine, bool deferred){
       }
     } 
     
-    if(command == "format file system") {
-      formatFileSystem();
-      return;
-    } else if(command == "version") {
-      textOut("Version: " + String(VERSION) + String("\n"));
-      return;
-    } else if(command == "run slave sketch") {
-      runSlaveSketch();
-      textOut("Hopefully running a sketch\n");
-      return;
-    } else if(command == "slave bootloader") {
-      enterSlaveBootloader();
-      textOut("Slave is waiting for a sketch\n");
-      return;
-    } else if(command == "pet watchdog") {
-      uint32_t unixTime = timeClient.getEpochTime();
-      petWatchDog((uint8_t)ci[SLAVE_PET_WATCHDOG_COMMAND], unixTime);
-      textOut("Watchdog petted\n");
-      return;
-    } else if(command == "get weather sensors") {
-      String transmissionString = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, -1, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
-      textOut(transmissionString + "\n");
-      return;
-    } else if(command == "reboot now") {
-      rebootEsp(); //only use in extreme measures -- as an instant command will produce a booting loop until command is manually cleared
-      return;
-    } else if(command == "one pin at a time") {
-      onePinAtATimeMode = (boolean)commandData.toInt(); //setting a global.
-      return;
-    } else if(command == "clear latency average") {
-      latencyCount = 0;
-      latencySum = 0;
-      return;
-    } else if(command == "ir") {
-      sendIr(commandData); //ir data must be comma-delimited
-      return;
-    } else if(command == "clear fram") {
-      if(ci[FRAM_ADDRESS] > 0) {
-        clearFramLog(); 
-      }
-      return;
-    } else if(command == "dump fram") {
-      if(ci[FRAM_ADDRESS] > 0) {
-        displayAllFramRecords(); 
-      }
-      return;
-    } else if(command == "dump fram hex") {
-      if(ci[FRAM_ADDRESS] > 0) {
-        if(!commandData || commandData == "") {
-          hexDumpFRAM(2 * ci[FRAM_INDEX_SIZE], lastRecordSize, 15);
-        } else {
-          hexDumpFRAM(commandData.toInt(), lastRecordSize, 15);
-        }
-      }
-      return;
-    } else if(command == "dump fram hex#") {
-      if(ci[FRAM_ADDRESS] > 0) {
-        hexDumpFRAMAtIndex(commandData.toInt(), lastRecordSize, 15);
-      }
-      return;
-    } else if(command == "swap fram") {
-      if(ci[FRAM_ADDRESS] > 0) {
-        swapFRAMContents(ci[FRAM_INDEX_SIZE] * 2, 554, lastRecordSize);
-      }
-      return;
-    } else if(command == "dump fram record") {
-      if(ci[FRAM_ADDRESS] > 0) {
-        displayFramRecord((uint16_t)commandData.toInt()); 
-      }
-      return;
-    } else if(command == "dump fram index") {
-      if(ci[FRAM_ADDRESS] > 0) {
-        dumpFramRecordIndexes();
-      }
-      return;
-    } else if (command == "reboot slave") {
-      if(ci[SLAVE_I2C] > 0) {
-        requestLong(ci[SLAVE_I2C], 128);
-        textOut("Slave rebooted\n");
-        return;
-      }
-      return;
-      
-    } else if (command == "set date") {
-      if(ci[RTC_ADDRESS] > 0) {
-        String dateArray[7];
-        splitString(commandData, ',', dateArray, 7);
-        setDateDs1307((byte) dateArray[0].toInt(), 
-                     (byte) dateArray[1].toInt(),     
-                     (byte) dateArray[2].toInt(),  
-                     (byte) dateArray[3].toInt(),  
-                     (byte) dateArray[4].toInt(),   
-                     (byte) dateArray[5].toInt(),      
-                     (byte) dateArray[6].toInt()); 
-      }
-       return;            
-    } else if (command ==  "get date") {
-      if(ci[RTC_ADDRESS] > 0) {
-        printRTCDate();
-      }
-      return;
-    } else if(command == "get watchdog info") {
-      if(ci[SLAVE_I2C] > 0) {
-        slaveWatchdogInfo();
-      }
-      return;
-    } else if(command == "get watchdog data") {
-      if(ci[SLAVE_I2C] > 0) {
-        textOut(slaveWatchdogData() + "\n");
-      } 
-      return;
-    } else if (command ==  "ls") {
-      listFiles();
-      return;
-    } else if (command ==  "save master config") { //saves whatever the master config is to slave EEPROM
-      if(ci[SLAVE_I2C] > 0 && ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_I2C_SLAVE) {
-        saveAllConfigToEEPROM(0);
-        textOut("Configuration saved to EEPROM\n");
-      } else if (ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_FLASH) {
 
-        saveAllConfigToFlash(0);
-        textOut("Configuration saved to flash\n");
-      }
-      return;
-    } else if (command ==  "save slave config") { //saves whatever the slave config is to slave EEPROM
-      if(ci[SLAVE_I2C] > 0) {
-        saveAllConfigToEEPROM(512);
-        textOut("Configuration saved\n");
-      }
-      return;
-    } else if (command ==  "init master defaults") { //sets the config to their hardcoded defaults
-      if(ci[SLAVE_I2C] > 0) {
-        initMasterDefaults();
-        textOut("Master config initialized\n");
-      }
-      return;
-    } else if (command ==  "init slave defaults") { //sets the config to their hardcoded defaults
-      if(ci[SLAVE_I2C] > 0) {
-        initSlaveDefaults();
-        textOut("Slave config initialized\n");
-      }
-      return;
-    } else if (command ==  "get uptime") {
-      textOut("Last booted: " + timeAgo("") + "\n");
-      return;
-    } else if (command ==  "get wifi uptime") {
-      textOut("WiFi up: " + msTimeAgo(wifiOnTime) + "\n");
-      return;
-    } else if (command ==  "get lastpoll") {
-      textOut("Last poll: " + msTimeAgo(lastPoll) + "\n");
-      return;
-    } else if (command ==  "get lastdatalog") {
-      textOut("Last data: " + msTimeAgo(lastDataLogTime) + "\n");
-      return;
-    } else if (command == "memory") {
-      dumpMemoryStats(0);
-      return;
-    } else if (command == "dump parsed serial packet") { //getting a specific parsed data item
-      char buffer[128]; 
-      readDataParsedFromSlaveSerial();
-      //parsedSerialData
-      //uint8_t parsedBuf[40]  = {0xF1, 0xF2, 0xD1, 0xD2, 0xC1, 0xC2, 0xB1, 0xB2};
-      bytesToHex(parsedSerialData, 20, buffer);
-      textOut("Parsed serial packet: " + String(buffer) + "\n");
-
-    } else if (command == "format file system") {
-      formatFileSystem();
-      textOut("File system formatted\n");
-      return;
-    } 
     //now let's use the fancy command parser!
     handleCommand(command);
     command = "";
