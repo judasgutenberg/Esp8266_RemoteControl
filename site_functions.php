@@ -3010,15 +3010,15 @@ function timeAgoMillis($diffInMillis, $suffix = " ago") {
     $days    = intdiv($diffInSeconds, 86400);
 
     if ($days > 0) {
-        return $days . ($days === 1 ? " day ago" : " days" . $suffix);
+        return $days . ($days === 1 ? " day" : " days" . $suffix);
     }
     if ($hours > 0) {
-        return $hours . ($hours === 1 ? " hour ago" : " hours" . $suffix);
+        return $hours . ($hours === 1 ? " hour" : " hours" . $suffix);
     }
     if ($minutes > 0) {
-        return $minutes . ($minutes === 1 ? " minute ago" : " minutes" . $suffix);
+        return $minutes . ($minutes === 1 ? " minute" : " minutes" . $suffix);
     }
-    return $seconds . ($seconds === 1 ? " second ago" : " seconds" . $suffix);
+    return $seconds . ($seconds === 1 ? " second" : " seconds" . $suffix);
 }
 
 function timeAgo($sqlDateTime, $compareTo = null) {
