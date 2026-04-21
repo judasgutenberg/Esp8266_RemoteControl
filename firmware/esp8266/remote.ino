@@ -75,7 +75,7 @@ void listFiles();
 void formatFileSystem();
 int loadAllConfigFromFlash(int mode, uint16_t addr);
 
-typedef void (*CommandHandler)(String* args, int argCount);
+typedef void (*CommandHandler)(String* args, int argCount, bool deferred);
 
 struct CommandDef {
   const char* name;
@@ -86,25 +86,28 @@ struct CommandDef {
  
 
 CommandDef commands[] = {
-
+  {"reboot now", cmdRebootEsp, 0, true},
+  {"reboot", cmdDeferredReboot, 0, true},
+  {"update firmware", cmdUpdateFirmware, 1, true},
+  
   {"version", cmdVersion, 0, true},
   {"run slave sketch", cmdRunSlaveSketch, 0, true},
   {"slave bootloader", cmdRunSlaveBootloader, 0, true},
   {"pet watchdog", cmdPetWatchdog, 0, true},
   {"get weather sensors", cmdGetWeatherSensors, 0, true},
-  {"reboot now", cmdRebootEsp, 0, true},
-  {"one pin at a time", cmdOnePinAtATime, 0, true},
+  
+  {"one pin at a time", cmdOnePinAtATime, 0, false},
   {"clear latency average", cmdClearLatencyAverage, 0, true},
   {"ir", cmdIr, 1, false},
   {"clear fram", cmdClearFram, 0, true},
   {"dump fram", cmdDumpFram, 0, true},
-  {"dump fram hex", cmdDumpFramHex, 1, true}, 
-  {"dump fram hex#", cmdDumpFramHexAt, 1, true}, 
+  {"dump fram hex", cmdDumpFramHex, 1, false}, 
+  {"dump fram hex#", cmdDumpFramHexAt, 1, false}, 
   {"swap fram", cmdSwapFram, 0, true},
-  {"dump fram record", cmdDumpFramRecord, 1, true},
+  {"dump fram record", cmdDumpFramRecord, 1, false},
   {"get fram index", cmdGetFramIndex, 0, true},
   {"reboot slave", cmdRebootSlave, 0, true},
-  {"set date", cmdSetDate, 1, true},
+  {"set date", cmdSetDate, 1, false},
   {"get date", cmdGetDate, 0, true},
   {"get watchdog info", cmdGetWatchdogInfo, 0, true},
   {"get watchdog data", cmdGetWatchdogData, 0, true},
@@ -1529,6 +1532,31 @@ void runCommandsFromJson(char * json){
 }
 */
 
+void notYetDeferred(const char * nonJsonLine, int commandId){
+  //Serial.println("NOT DEFERRED");
+  if(lastCommandLogId > 0 || commandId <0) {
+    //Serial.println("SAVING COMMAND STATE");
+    saveCommandState(lastCommandLogId, VERSION, commandId);
+  }
+  String command;
+  //Serial.println("**********************");
+  //Serial.println(command);
+  if (nonJsonLine == nullptr) {
+    return;
+  }
+  size_t len = strlen(nonJsonLine);
+  if (deferredCommand != nullptr) {
+    delete[] deferredCommand;
+  }
+  deferredCommand = new char[len + 1];  // +1 for null terminator
+  strcpy(deferredCommand, nonJsonLine);
+  if(commandId == -1) {
+    //our command is via serial, so handle deferred commands immediately
+    runCommand(deferredCommand, true);
+  }
+  return;
+}
+
 void runCommand(const char * nonJsonLine, bool deferred){
   //can change the default values of some config data for things like polling
   //dumpMemoryStats(99);
@@ -1556,85 +1584,10 @@ void runCommand(const char * nonJsonLine, bool deferred){
   command.trim();
   if(commandId) {
     //Serial.println(command);
-    if(command == "reboot" || command.startsWith("update firmware")){
-      //can't do this here, so we defer it!
-      if(lastCommandLogId > 0) {
-        //setSlaveLong(0,  lastCommandLogId); //stash the commandLogId in the slave
-        saveCommandState(lastCommandLogId, VERSION);
-      }
-      //Serial.println("&*&*&*&");
-      if(!deferred) {
-        //Serial.println("**********************");
-        //Serial.println(command);
-        size_t len = strlen(nonJsonLine);
-        deferredCommand = new char[len + 1];  // +1 for null terminator
-        strcpy(deferredCommand, nonJsonLine);
-        if(command == "reboot") {
-          textOut("Rebooting... \n");
-        } else if (command.startsWith("update firmware")) {
-          textOut("Attempting firmware update...\n");
-        }
-        if(commandId == -1) {
-          //our command is via serial, so handle deferred commands immediately
-          runCommand(deferredCommand, true);
-        }
-        return;
-      } else { //we're deferred, so we can roll!
-        
-        if(command.startsWith("update firmware")) {
-          millisAtPossibleReboot = millis();
-          String rest = command.substring(15);  // 15 = length of "update firmware"
-          rest.trim(); //this should contain a url for new firmware.  if it begins with "/" assume it is on the same host as everything else
-          String flashUrl = "";
-          if(rest.startsWith("http://")) { //if we get a full url
-            flashUrl = rest;
-          } else if(rest.charAt(0) == '/') {
-            flashUrl = "http://" + String(cs[HOST_GET]) + rest; //my firmware has an aversion to https!
-          } else { //get the flash file from the backend using its security system, pulling it from the flash update directory, wherever it happens to be
-            String encryptedStoragePassword = encryptStoragePassword(rest);
-            flashUrl = "http://" + String(cs[HOST_GET]) + String(cs[URL_GET]) + "?k2=" + encryptedStoragePassword + "&architecture=" + architecture + "&device_id=" + ci[DEVICE_ID] + "&mode=reflash&data=" + urlEncode(rest, true);  
-          }
-          String possibleResult;
-          //setSlaveLong(1, VERSION);
-          //saveCommandState(lastCommandLogId, VERSION);
-          if(urlExists(flashUrl.c_str())){
-             t_httpUpdate_return ret = ESPhttpUpdate.update(clientGet, flashUrl.c_str());
-             
-             switch (ret) {
-              case HTTP_UPDATE_FAILED:
-                possibleResult = "Update failed; error (" + String(ESPhttpUpdate.getLastError()) + ") " + ESPhttpUpdate.getLastErrorString() + "\n";
-                textOut(possibleResult);
-                possibleEndingMessage = possibleResult;
-                break;
-            
-              case HTTP_UPDATE_NO_UPDATES:
-                possibleResult = "No update available\n";
-                textOut(possibleResult);
-                possibleEndingMessage = possibleResult;
-                break;
-            
-              case HTTP_UPDATE_OK:
-                possibleResult = "Update successful; rebooting...\n";
-                textOut(possibleResult);
-                possibleEndingMessage = possibleResult;
-                break;
-            }
-          } else {
-            possibleResult = flashUrl + " does not exist; no action taken\n";
-            textOut(possibleEndingMessage);
-            possibleEndingMessage = possibleResult;
-          }
-          return;
-        } else {
-         rebootEsp();
-        }
-        deferredCommand = "";
-        return;
-      }
-    } 
-
-    //now let's use the fancy command parser!
-    handleCommand(command);
+    handleCommand(command, deferred);
+    if(!deferred && (command == "reboot" || command.startsWith("update firmware"))) {
+      notYetDeferred(nonJsonLine, commandId);
+    }
     command = "";
     if(commandId > 0) { //don't reset lastCommandId if the command came via serial port
       lastCommandId = commandId;
@@ -1642,7 +1595,7 @@ void runCommand(const char * nonJsonLine, bool deferred){
   }
 }
 
-void handleCommand(String input) {
+void handleCommand(String input, bool deferred) {
   String results[5];
   int resultCount = 0;
   if(input == "") {
@@ -1653,7 +1606,7 @@ void handleCommand(String input) {
     yield();
     
     if (parseCommand(input, commands[i].name, results, resultCount, commands[i].maxArgs)) {
-      commands[i].handler(results, resultCount);
+      commands[i].handler(results, resultCount, deferred);
       return;
     }
   }
@@ -1701,7 +1654,7 @@ bool parseCommand(const String& input, const String& command, String* results, i
     return true;
 }
 
-void saveCommandState(uint32_t lastCommandLogId, uint16_t version) {
+void saveCommandState(uint32_t lastCommandLogId, uint16_t version, int32_t commandId) {
     File file = LittleFS.open("/commandstate.txt", "w");
     if (!file) {
         // optional: Serial.println("Failed to open file for writing");
@@ -1709,6 +1662,7 @@ void saveCommandState(uint32_t lastCommandLogId, uint16_t version) {
     }
     file.println(lastCommandLogId);
     file.println(version);
+    file.println(commandId);
     file.close();
 }
 
@@ -1720,16 +1674,21 @@ uint32_t loadCommandStateVersion(int dataToReturn) {
     }
     String line1 = file.readStringUntil('\n');
     String line2 = file.readStringUntil('\n');
+    String line3 = file.readStringUntil('\n');
     file.close();
     // Trim just in case (LittleFS can carry CRLF depending on writes)
     line1.trim();
     line2.trim();
-    uint32_t preRebootCommandId = (uint32_t) line1.toInt();
+    line3.trim();
+    int32_t preRebootCommandId = (int32_t) line1.toInt();
     uint32_t version = (uint16_t) line2.toInt();
+    int32_t commandId = (int32_t) line3.toInt();
     if(dataToReturn == 0) {
       return version;
-    } else {
+    } else if(dataToReturn == 1) {
       return preRebootCommandId;
+    } else {
+      return commandId;
     }
 }
 
@@ -2057,7 +2016,9 @@ void loop(){
   yield();
 
   //uint32_t preRebootCommandId = getSlaveLong(0);
-  uint32_t preRebootCommandId = loadCommandStateVersion(1);
+  int32_t preRebootCommandId = loadCommandStateVersion(1);
+  int32_t oldCommandId = loadCommandStateVersion(2);
+  //Serial.print("\n\n\n\n\hmmmmm so coming up " + String(loadCommandStateVersion(0)) + "*" + String(preRebootCommandId) + "*" + String(loadCommandStateVersion(2)) );
   /*
   Serial.print(preRebootCommandId);
   Serial.print(" ");
@@ -2066,37 +2027,54 @@ void loop(){
   Serial.println(deviceName);
   */
   //this code updates any command output from a rebooting command with the version we ended up with
-  if(preRebootCommandId > 0 && lastCommandLogId == 0  && deviceName != "" && remoteState == RS_IDLE) {
+  if((preRebootCommandId > 0 || oldCommandId < 0) && lastCommandLogId == 0  && deviceName != "" && remoteState == RS_IDLE) {
     //we rebooted and came up from it, so let's cap that command with something:
     //Serial.println("----------------------------preboot?");
     //Serial.println(preRebootCommandId );
     if(millisAtPossibleReboot < nowTime  && millisAtPossibleReboot > 0 && possibleEndingMessage != "") { 
       //we didn't actually reboot!
-      //though i don't know if this scenario ever happes
+      //though i don't know if this scenario ever happens
       String stringToSend = possibleEndingMessage + "\n" + preRebootCommandId;
-      startRemoteTask(stringToSend, "commandout", 0xFFFF);
+      if(oldCommandId < 0) {
+        textOut(stringToSend);
+      } else {
+        startRemoteTask(stringToSend, "commandout", 0xFFFF);
+      }
       //setSlaveLong(0,0);
+      //Serial.print("\n\n\n\n\not so coming up!!");
     } else {
       //return; //this was breaking; need to figure this out:
       //we definitely rebooted
       //uint32_t oldVersion = getSlaveLong(1);
       uint32_t oldVersion = loadCommandStateVersion(0);
-      String message = String("After reboot: version: ") + VERSION + "\n" + preRebootCommandId;
+      
+      //Serial.print("\n\n\n\n\ncoming up!!");
+      //Serial.print(oldVersion);
+      //Serial.print(" ");
+      //Serial.println(oldCommandId);
+      
+      String message = String("After reboot: version: ") + VERSION;
       if(oldVersion > 0) {
-        message = String("Update of firmware was successful; version " + String(oldVersion) + " changed to version ") + VERSION + "\n" + preRebootCommandId;
+        message = String("Update of firmware was successful; version " + String(oldVersion) + " changed to version ") + VERSION + "\n";
       }
-      startRemoteTask(message, "commandout", 0xFFFF);
+      String commandToSend = message + preRebootCommandId;
+      if(oldCommandId < 0) {
+        textOut(message);
+      } else {
+        startRemoteTask(commandToSend, "commandout", 0xFFFF);
+      }
       //setSlaveLong(0,0);
     }
-    saveCommandState(0, 0);
+    saveCommandState(0, 0, 0);
     //setSlaveLong(1,0);
   } else if (preRebootCommandId > 0  && deviceName != "" && remoteState == RS_IDLE) {
+    Serial.println("\nsix");
     //we didn't actually reboot!
-    Serial.println("((((((((((((((((((((((((do we ever get here?");
+    //Serial.println("((((((((((((((((((((((((do we ever get here?");
     String stringToSend = possibleEndingMessage + "\n" + preRebootCommandId;
     startRemoteTask(stringToSend, "commandout", 0xFFFF);
     //setSlaveLong(0,0);
-    saveCommandState(0, 0);
+    saveCommandState(0, 0, 0);
   }
  
   if(canSleep) {
@@ -2137,7 +2115,6 @@ void doSerialCommands() {
   }
 }
 
-
 void sleepForSeconds(int seconds) {
     wifi_set_opmode(NULL_MODE);            // Turn off Wi-Fi for lower power
     wifi_set_sleep_type(LIGHT_SLEEP_T);    // Enable Light Sleep Mode
@@ -2148,8 +2125,6 @@ void sleepForSeconds(int seconds) {
     }
     // GPIO states are preserved during this periodd
 }
-
-
 
 //this is the easiest way I could find to read querystring parameters on an ESP8266. ChatGPT was suprisingly unhelpful
 void localSetData() {
@@ -2963,10 +2938,8 @@ bool downloadFile(const char* url, const char* localPath) {
 
   WiFiClient *stream = http.getStreamPtr();
   uint8_t buffer[128];
-
   int len = http.getSize();
   int total = 0;
-
   while (http.connected() || stream->available()) {
     size_t available = stream->available();
     if (available) {
@@ -2976,7 +2949,6 @@ bool downloadFile(const char* url, const char* localPath) {
     } else {
       delay(1);  // give network time to breathe
     }
-  
     yield();
   }
   file.close();
@@ -3045,11 +3017,9 @@ bool deleteFile(const char* path) {
 }
 
 void dumpFile(const char* filename) {
-
     if (!LittleFS.begin()) {
         return;
     }
-
     File f = LittleFS.open(filename, "r");
     if (!f) {
         textOut("File open failed\n");
@@ -3071,7 +3041,6 @@ void dumpFile(const char* filename) {
     f.close();
 }
 
-
 void formatFileSystem() {
   LittleFS.format();
   LittleFS.begin();
@@ -3088,8 +3057,6 @@ void listFiles() {
     yield();
   }
 }
-
-
 
 int loadAllConfigFromFlash(int mode, uint16_t param) { //can also be used to recover values from FLASH
     if (!LittleFS.begin()) {
@@ -3188,22 +3155,17 @@ int loadAllConfigFromFlash(int mode, uint16_t param) { //can also be used to rec
 void saveAllConfigToFlash(uint16_t param) {
     int* activeCi;
     char** activeCs;
-
     uint32_t slaveConfigLocation = requestLong(ci[SLAVE_I2C], 164);
-
     int totalConfigItems = CONFIG_TOTAL_COUNT;
     int totalStringConfigItems = CONFIG_STRING_COUNT;
-
     activeCi = ci;
     activeCs = cs;
-
     if(false && param >= slaveConfigLocation) {
         totalConfigItems = CONFIG_SLAVE_TOTAL_COUNT;
         totalStringConfigItems = CONFIG_SLAVE_STRING_COUNT;
         activeCi = cis;
         activeCs = css;
     }
-
     if(!LittleFS.begin()) {
         return;
     }
