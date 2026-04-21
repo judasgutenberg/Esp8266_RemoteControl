@@ -11,6 +11,18 @@ void cmdDeferredReboot(String* param, int argCount, bool deferred) {
   }
 }
 
+
+void cmdRebootMasterFromSlave(String* param, int argCount, bool deferred) {
+  if(ci[SLAVE_I2C] > 0) {
+    if(!deferred) {
+      textOut("Slave instigating master reboot... \n");
+      //notYetDeferred();
+    } else {
+      requestLong(ci[SLAVE_I2C], 134);
+    }
+  }
+}
+
 void cmdUpdateFirmware(String* param, int argCount, bool deferred) {
   if(!deferred) {
     textOut("Attempting firmware update...\n");
@@ -163,6 +175,8 @@ void cmdRebootSlave(String* param, int argCount, bool deferred) {
     textOut("Slave rebooted\n");
   }
 }
+
+
 
 void cmdSetDate(String* param, int argCount, bool deferred) { //params must be comma-delimited
   if(ci[RTC_ADDRESS] > 0) {

@@ -65,6 +65,7 @@ void cmdSwapFram(String* param, int argCount, bool deferred);
 void cmdDumpFramRecord(String* param, int argCount, bool deferred);
 void cmdGetFramIndex(String* param, int argCount, bool deferred);
 void cmdRebootSlave(String* param, int argCount, bool deferred);
+void cmdRebootMasterFromSlave(String* param, int argCount, bool deferred);
 void cmdSetDate(String* param, int argCount, bool deferred);
 void cmdGetDate(String* param, int argCount, bool deferred);
 void cmdGetWatchdogInfo(String* param, int argCount, bool deferred);
