@@ -105,7 +105,7 @@ uint32_t moxeeRebootTimes[] = {0,0,0,0,0,0,0,0,0,0,0};
 int moxeeRebootCount = 0;
 int timeOffset = 0;
 long lastCommandId = 0;
-char * deferredCommand = "";
+char * deferredCommand = nullptr;
  
 bool onePinAtATimeMode = false; //used when the server starts gzipping data and we can't make sense of it
 char requestNonJsonPinInfo = 1; //use to get much more compressed data double-delimited data from data.php if 1, otherwise if 0 it requests JSON
