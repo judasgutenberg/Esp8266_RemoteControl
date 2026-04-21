@@ -87,6 +87,8 @@ struct CommandDef {
 
 CommandDef commands[] = {
   {"reboot now", cmdRebootEsp, 0, true},
+  {"reboot slave", cmdRebootSlave, 0, true},
+  {"watchdog reboot", cmdRebootMasterFromSlave, 0, true},
   {"reboot", cmdDeferredReboot, 0, true},
   {"update firmware", cmdUpdateFirmware, 1, true},
   
@@ -106,7 +108,7 @@ CommandDef commands[] = {
   {"swap fram", cmdSwapFram, 0, true},
   {"dump fram record", cmdDumpFramRecord, 1, false},
   {"get fram index", cmdGetFramIndex, 0, true},
-  {"reboot slave", cmdRebootSlave, 0, true},
+  
   {"set date", cmdSetDate, 1, false},
   {"get date", cmdGetDate, 0, true},
   {"get watchdog info", cmdGetWatchdogInfo, 0, true},
@@ -248,16 +250,26 @@ String weatherDataString(
   
   // sensor-reading branches (unchanged)
   if (ci[SENSOR_ID] == 1) {
-    if (powerPin > -1) digitalWrite(powerPin, HIGH);
+    if (powerPin > -1) {
+      digitalWrite(powerPin, HIGH);
+    }
     delay(10);
-    if (i2c) sensorValueStr = String(getPinValueOnSlave((char)i2c, (char)dataPin));
-    else sensorValueStr = String(analogRead(dataPin));
-    if (powerPin > -1) digitalWrite(powerPin, LOW);
+    if (i2c) {
+      sensorValueStr = String(getPinValueOnSlave((char)i2c, (char)dataPin));
+    } else {
+      sensorValueStr = String(analogRead(dataPin));
+    }
+    if (powerPin > -1) {
+      digitalWrite(powerPin, LOW);
+    }
   } else if (ci[SENSOR_ID] == 53) {
     VL53L0X_RangingMeasurementData_t measure;
     lox[objectCursor].rangingTest(&measure, false);
-    if (measure.RangeStatus != 4) sensorValueStr = String(measure.RangeMilliMeter);
-    else sensorValueStr = "-1";
+    if (measure.RangeStatus != 4) {
+      sensorValueStr = String(measure.RangeMilliMeter);
+    } else {
+      sensorValueStr = "-1";
+    }
   } else if (sensorId == 680) {
     int32_t humidityRaw = 0, temperatureRaw = 0, pressureRaw = 0, gasRaw = 0;
     BME680[objectCursor].getSensorData(temperatureRaw, humidityRaw, pressureRaw, gasRaw);
@@ -266,7 +278,9 @@ String weatherDataString(
     pressureFromSensor = (double)pressureRaw / 100.0;
     gasFromSensor = (double)gasRaw / 100.0;
   } else if (sensorId == 2301) {
-    if (powerPin > -1) digitalWrite(powerPin, HIGH);
+    if (powerPin > -1) {
+      digitalWrite(powerPin, HIGH);
+    }
     delay(10);
     humidityFromSensor = (double)dht[objectCursor]->readHumidity();
     temperatureFromSensor = (double)dht[objectCursor]->readTemperature();
@@ -305,21 +319,36 @@ String weatherDataString(
   const int FIELDS = 12;
   const int FIELD_MAX = 48;   // reduced per-field size; adjust if you expect big fields
   static char fields[FIELDS][FIELD_MAX];
-  for (int i = 0; i < FIELDS; ++i) fields[i][0] = '\0';
+  for (int i = 0; i < FIELDS; ++i) {
+    fields[i][0] = '\0';
+  }
 
   // fill fields (check bounds)
-  if (!isnan(temperatureFromSensor)) snprintf(fields[0], FIELD_MAX, "%.2f", temperatureFromSensor);
-  if (!isnan(pressureFromSensor))    snprintf(fields[1], FIELD_MAX, "%.2f", pressureFromSensor);
-  if (!isnan(humidityFromSensor))    snprintf(fields[2], FIELD_MAX, "%.2f", humidityFromSensor);
-  if (!isnan(gasFromSensor))         snprintf(fields[3], FIELD_MAX, "%.2f", gasFromSensor);
+  if (!isnan(temperatureFromSensor)) {
+    snprintf(fields[0], FIELD_MAX, "%.2f", temperatureFromSensor);
+  }
+  if (!isnan(pressureFromSensor)) {
+    snprintf(fields[1], FIELD_MAX, "%.2f", pressureFromSensor);
+  }
+  if (!isnan(humidityFromSensor)){
+    snprintf(fields[2], FIELD_MAX, "%.2f", humidityFromSensor);
+  }
+  if (!isnan(gasFromSensor)){
+    snprintf(fields[3], FIELD_MAX, "%.2f", gasFromSensor);
+  }
 
   if (ordinalOfOverwrite >= 0 && ordinalOfOverwrite < FIELDS) {
     String useVal = sensorValueStr;
     if (useVal.length() == 0) {
-      if (sensorSubtype == 1) useVal = String(pressureFromSensor);
-      else if (sensorSubtype == 2) useVal = String(humidityFromSensor);
-      else if (sensorSubtype == 3) useVal = String(gasFromSensor);
-      else useVal = String(temperatureFromSensor);
+      if (sensorSubtype == 1) {
+        useVal = String(pressureFromSensor);
+      } else if (sensorSubtype == 2) {
+        useVal = String(humidityFromSensor);
+      } else if (sensorSubtype == 3) {
+        useVal = String(gasFromSensor);
+      } else {
+        useVal = String(temperatureFromSensor);
+      }
     }
     strncpy(fields[ordinalOfOverwrite], useVal.c_str(), FIELD_MAX - 1);
     fields[ordinalOfOverwrite][FIELD_MAX - 1] = '\0';
@@ -333,14 +362,22 @@ String weatherDataString(
   // append first 4 fields with '*' delimiter, safe checks after every write
   for (int i = 0; i < 4; ++i) {
     if (i > 0) {
-      if (pos + 1 < bufSize) tx[pos++] = '*';
-      else { tx[bufSize - 1] = '\0'; return String(tx); }
+      if (pos + 1 < bufSize) {
+        tx[pos++] = '*';
+      } else { 
+        tx[bufSize - 1] = '\0'; return String(tx); 
+      }
     }
     if (fields[i][0] != '\0') {
       int n = snprintf(tx + pos, bufSize - pos, "%s", fields[i]);
-      if (n < 0) { tx[bufSize - 1] = '\0'; return String(tx); }
+      if (n < 0) { 
+        tx[bufSize - 1] = '\0'; 
+        return String(tx); 
+      }
       pos += (size_t)n;
-      if (pos >= bufSize) { tx[bufSize - 1] = '\0'; return String(tx); }
+      if (pos >= bufSize) { 
+        tx[bufSize - 1] = '\0'; return String(tx); 
+      }
     }
   }
 
@@ -359,9 +396,15 @@ String weatherDataString(
       unsigned long millisVal = millis();
       if (ci[FRAM_ADDRESS] > 0) {
         std::vector<std::tuple<uint8_t, uint8_t, double>> framWeatherRecord;
-        if (!isnan(temperatureFromSensor)) addOfflineRecord(framWeatherRecord, 0, 5, temperatureFromSensor);
-        if (!isnan(pressureFromSensor))    addOfflineRecord(framWeatherRecord, 1, 5, pressureFromSensor);
-        if (!isnan(humidityFromSensor))    addOfflineRecord(framWeatherRecord, 2, 5, humidityFromSensor);
+        if (!isnan(temperatureFromSensor)) {
+          addOfflineRecord(framWeatherRecord, 0, 5, temperatureFromSensor);
+        }
+        if (!isnan(pressureFromSensor))    {
+          addOfflineRecord(framWeatherRecord, 1, 5, pressureFromSensor);
+        }
+        if (!isnan(humidityFromSensor))    {
+          addOfflineRecord(framWeatherRecord, 2, 5, humidityFromSensor);
+        }
         if (ci[RTC_ADDRESS] > 0) {
           addOfflineRecord(framWeatherRecord, 32, 2, currentRTCTimestamp());
           if(ci[DEBUG] > 0) {
@@ -1585,8 +1628,8 @@ void runCommand(const char * nonJsonLine, bool deferred){
   if(commandId) {
     //Serial.println(command);
     handleCommand(command, deferred);
-    if(!deferred && (command == "reboot" || command.startsWith("update firmware"))) {
-      notYetDeferred(nonJsonLine, commandId, (int32_t)(command!="reboot"));
+    if(!deferred && (command == "watchdog reboot"  || command == "reboot" || command.startsWith("update firmware"))) {
+      notYetDeferred(nonJsonLine, commandId, (int32_t)(command=="update firmware"));
     }
     command = "";
     if(commandId > 0) { //don't reset lastCommandId if the command came via serial port
