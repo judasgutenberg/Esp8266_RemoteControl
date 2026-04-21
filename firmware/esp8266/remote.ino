@@ -1532,11 +1532,11 @@ void runCommandsFromJson(char * json){
 }
 */
 
-void notYetDeferred(const char * nonJsonLine, int commandId){
+void notYetDeferred(const char * nonJsonLine, int commandId, int commandType){
   //Serial.println("NOT DEFERRED");
   if(lastCommandLogId > 0 || commandId <0) {
     //Serial.println("SAVING COMMAND STATE");
-    saveCommandState(lastCommandLogId, VERSION, commandId);
+    saveCommandState(lastCommandLogId, VERSION, commandId, commandType);
   }
   String command;
   //Serial.println("**********************");
@@ -1586,7 +1586,7 @@ void runCommand(const char * nonJsonLine, bool deferred){
     //Serial.println(command);
     handleCommand(command, deferred);
     if(!deferred && (command == "reboot" || command.startsWith("update firmware"))) {
-      notYetDeferred(nonJsonLine, commandId);
+      notYetDeferred(nonJsonLine, commandId, (int32_t)(command!="reboot"));
     }
     command = "";
     if(commandId > 0) { //don't reset lastCommandId if the command came via serial port
@@ -1654,7 +1654,7 @@ bool parseCommand(const String& input, const String& command, String* results, i
     return true;
 }
 
-void saveCommandState(uint32_t lastCommandLogId, uint16_t version, int32_t commandId) {
+void saveCommandState(uint32_t lastCommandLogId, uint16_t version, int32_t commandId, int32_t commandType) {
     File file = LittleFS.open("/commandstate.txt", "w");
     if (!file) {
         // optional: Serial.println("Failed to open file for writing");
@@ -1663,33 +1663,22 @@ void saveCommandState(uint32_t lastCommandLogId, uint16_t version, int32_t comma
     file.println(lastCommandLogId);
     file.println(version);
     file.println(commandId);
+    file.println(commandType);
     file.close();
 }
 
-uint32_t loadCommandStateVersion(int dataToReturn) {
+int32_t loadCommandStateVersion(int dataToReturn) {
     File file = LittleFS.open("/commandstate.txt", "r");
     if (!file) {
         // optional: Serial.println("Failed to open file for reading");
         return 0;
     }
-    String line1 = file.readStringUntil('\n');
-    String line2 = file.readStringUntil('\n');
-    String line3 = file.readStringUntil('\n');
-    file.close();
-    // Trim just in case (LittleFS can carry CRLF depending on writes)
-    line1.trim();
-    line2.trim();
-    line3.trim();
-    int32_t preRebootCommandId = (int32_t) line1.toInt();
-    uint32_t version = (uint16_t) line2.toInt();
-    int32_t commandId = (int32_t) line3.toInt();
-    if(dataToReturn == 0) {
-      return version;
-    } else if(dataToReturn == 1) {
-      return preRebootCommandId;
-    } else {
-      return commandId;
+    int lineCount = 4;
+    int32_t lines[4];
+    for(int lineNumber = 0; lineNumber<lineCount; lineNumber++){
+      lines[lineNumber] = (int32_t)file.readStringUntil('\n').toInt();
     }
+    return lines[dataToReturn];
 }
 
 void sendIr(String rawDataStr) {
@@ -2016,8 +2005,11 @@ void loop(){
   yield();
 
   //uint32_t preRebootCommandId = getSlaveLong(0);
-  int32_t preRebootCommandId = loadCommandStateVersion(1);
+  
+  int32_t preRebootCommandId = loadCommandStateVersion(0);
+  uint32_t oldVersion = loadCommandStateVersion(1);
   int32_t oldCommandId = loadCommandStateVersion(2);
+  int32_t commandType = loadCommandStateVersion(3);
   //Serial.print("\n\n\n\n\hmmmmm so coming up " + String(loadCommandStateVersion(0)) + "*" + String(preRebootCommandId) + "*" + String(loadCommandStateVersion(2)) );
   /*
   Serial.print(preRebootCommandId);
@@ -2027,7 +2019,17 @@ void loop(){
   Serial.println(deviceName);
   */
   //this code updates any command output from a rebooting command with the version we ended up with
-  if((preRebootCommandId > 0 || oldCommandId < 0) && lastCommandLogId == 0  && deviceName != "" && remoteState == RS_IDLE) {
+  /*
+  Serial.print("preRebootCommandId: ");
+  Serial.println(preRebootCommandId);
+  Serial.print("oldCommandId: ");
+  Serial.println(oldCommandId);
+  Serial.print("oldVersion: ");
+  Serial.println(oldVersion);
+  Serial.print("commandType: ");
+  Serial.println(commandType);
+  */
+  if((preRebootCommandId > 0 || oldCommandId < 0) && commandType >0 && lastCommandLogId == 0  && deviceName != "" && remoteState == RS_IDLE) {
     //we rebooted and came up from it, so let's cap that command with something:
     //Serial.println("----------------------------preboot?");
     //Serial.println(preRebootCommandId );
@@ -2046,14 +2048,14 @@ void loop(){
       //return; //this was breaking; need to figure this out:
       //we definitely rebooted
       //uint32_t oldVersion = getSlaveLong(1);
-      uint32_t oldVersion = loadCommandStateVersion(0);
+      
       
       //Serial.print("\n\n\n\n\ncoming up!!");
       //Serial.print(oldVersion);
       //Serial.print(" ");
       //Serial.println(oldCommandId);
       
-      String message = String("After reboot: version: ") + VERSION;
+      String message = String("After reboot: version: ") + VERSION  + "\n";
       if(oldVersion > 0) {
         message = String("Update of firmware was successful; version " + String(oldVersion) + " changed to version ") + VERSION + "\n";
       }
@@ -2065,7 +2067,7 @@ void loop(){
       }
       //setSlaveLong(0,0);
     }
-    saveCommandState(0, 0, 0);
+    saveCommandState(0, 0, 0, 0);
     //setSlaveLong(1,0);
   } else if (preRebootCommandId > 0  && deviceName != "" && remoteState == RS_IDLE) {
     Serial.println("\nsix");
@@ -2074,7 +2076,7 @@ void loop(){
     String stringToSend = possibleEndingMessage + "\n" + preRebootCommandId;
     startRemoteTask(stringToSend, "commandout", 0xFFFF);
     //setSlaveLong(0,0);
-    saveCommandState(0, 0, 0);
+    saveCommandState(0, 0, 0, 0);
   }
  
   if(canSleep) {
