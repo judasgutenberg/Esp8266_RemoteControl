@@ -1629,7 +1629,8 @@ void runCommand(const char * nonJsonLine, bool deferred){
     //Serial.println(command);
     handleCommand(command, deferred);
     if(!deferred && (command == "watchdog reboot"  || command == "reboot" || command.startsWith("update firmware"))) {
-      notYetDeferred(nonJsonLine, commandId, (int32_t)(command=="update firmware"));
+      //Serial.println("--------+"  + command + "*-----");
+      notYetDeferred(nonJsonLine, commandId, (int32_t)(command.startsWith("update firmware")));
     }
     command = "";
     if(commandId > 0) { //don't reset lastCommandId if the command came via serial port
@@ -1912,6 +1913,51 @@ void setup(){
 
 }
 
+void flashUpdateFeedback(uint32_t nowTime) {
+  //this function does nothing but give me feedback and the end of a reboot caused by a flash update
+  int32_t preRebootCommandId = loadCommandStateVersion(0);
+  uint32_t oldVersion = loadCommandStateVersion(1);
+  int32_t oldCommandId = loadCommandStateVersion(2);
+  int32_t commandType = loadCommandStateVersion(3);
+  String versionMessage = String("After reboot: version: ") + VERSION  + "\n";
+  if(oldVersion > 0) {
+    versionMessage = String("Update of firmware was successful; version " + String(oldVersion) + " changed to version ") + VERSION + "\n";
+  }
+  if((preRebootCommandId > 0 || oldCommandId < 0) && commandType >0 && lastCommandLogId == 0  && deviceName != "" && remoteState == RS_IDLE) {
+    //Serial.println("alpha");
+    //we rebooted and came up from it, so let's cap that command with something:
+    if(millisAtPossibleReboot < nowTime  && millisAtPossibleReboot > 0 && possibleEndingMessage != "") { 
+      //Serial.println("beta");
+      //we didn't actually reboot!
+      //though i don't know if this scenario ever happens
+      String versionMessage = possibleEndingMessage + "\n";
+      if(oldCommandId == -1) {
+        textOut(versionMessage);
+      } else {
+        startRemoteTask(versionMessage + preRebootCommandId, "commandout", 0xFFFF);
+      }
+    } else {
+      //Serial.println("gamma");
+      String commandToSend = versionMessage + preRebootCommandId;
+      if(oldCommandId == -1) {
+        textOut(versionMessage);
+      } else {
+        startRemoteTask(commandToSend, "commandout", 0xFFFF);
+      }
+      //setSlaveLong(0,0);
+    }
+    saveCommandState(0, 0, 0, 0);
+  } else if (preRebootCommandId > 0  && deviceName != "" && remoteState == RS_IDLE) {
+    //Serial.println("delta");
+    if(possibleEndingMessage == "") {
+      possibleEndingMessage = versionMessage;
+    }
+    String stringToSend = possibleEndingMessage + "\n" + preRebootCommandId;
+    startRemoteTask(stringToSend, "commandout", 0xFFFF);
+    saveCommandState(0, 0, 0, 0);
+  }
+}
+
 //LOOP----------------------------------------------------
 void loop(){
   yield();
@@ -2047,99 +2093,7 @@ void loop(){
   }
   yield();
 
-  //uint32_t preRebootCommandId = getSlaveLong(0);
-  
-  int32_t preRebootCommandId = loadCommandStateVersion(0);
-  uint32_t oldVersion = loadCommandStateVersion(1);
-  int32_t oldCommandId = loadCommandStateVersion(2);
-  int32_t commandType = loadCommandStateVersion(3);
-  //Serial.print("\n\n\n\n\hmmmmm so coming up " + String(loadCommandStateVersion(0)) + "*" + String(preRebootCommandId) + "*" + String(loadCommandStateVersion(2)) );
-  /*
-  Serial.print(preRebootCommandId);
-  Serial.print(" ");
-  Serial.print(lastCommandLogId);
-  Serial.print(" ");
-  Serial.println(deviceName);
-  */
-  //this code updates any command output from a rebooting command with the version we ended up with
-  /*
-  Serial.print("preRebootCommandId: ");
-  Serial.println(preRebootCommandId);
-  Serial.print("oldCommandId: ");
-  Serial.println(oldCommandId);
-  Serial.print("oldVersion: ");
-  Serial.println(oldVersion);
-  Serial.print("commandType: ");
-  Serial.println(commandType);
-  */
-  String versionMessage = String("After reboot: version: ") + VERSION  + "\n";
-  if(oldVersion > 0) {
-    versionMessage = String("Update of firmware was successful; version " + String(oldVersion) + " changed to version ") + VERSION + "\n";
-  }
-  
-  if((preRebootCommandId > 0 || oldCommandId < 0) && commandType >0 && lastCommandLogId == 0  && deviceName != "" && remoteState == RS_IDLE) {
-    //we rebooted and came up from it, so let's cap that command with something:
-    //Serial.println("----------------------------preboot?");
-    //Serial.println(preRebootCommandId );
-    if(millisAtPossibleReboot < nowTime  && millisAtPossibleReboot > 0 && possibleEndingMessage != "") { 
-      //we didn't actually reboot!
-      //though i don't know if this scenario ever happens
-      String stringToSend = possibleEndingMessage + "\n" + preRebootCommandId;
-      if(oldCommandId < 0) {
-        textOut(stringToSend);
-      } else {
-        startRemoteTask(stringToSend, "commandout", 0xFFFF);
-      }
-      //setSlaveLong(0,0);
-      //Serial.print("\n\n\n\n\not so coming up!!");
-    } else {
-      //return; //this was breaking; need to figure this out:
-      //we definitely rebooted
-      //uint32_t oldVersion = getSlaveLong(1);
-      
-      
-      //Serial.print("\n\n\n\n\ncoming up!!");
-      //Serial.print(oldVersion);
-      //Serial.print(" ");
-      //Serial.println(oldCommandId);
-      
-
-      String commandToSend = versionMessage + preRebootCommandId;
-      if(oldCommandId < 0) {
-        textOut(versionMessage);
-      } else {
-        startRemoteTask(commandToSend, "commandout", 0xFFFF);
-      }
-      //setSlaveLong(0,0);
-    }
-    saveCommandState(0, 0, 0, 0);
-    //setSlaveLong(1,0);
-  } else if (preRebootCommandId > 0  && deviceName != "" && remoteState == RS_IDLE) {
-    //we didn't actually reboot!
-    //Serial.println("((((((((((((((((((((((((do we ever get here?");
-    /*
-    Serial.print("preRebootCommandId: ");
-    Serial.println(preRebootCommandId);
-    Serial.print("oldCommandId: ");
-    Serial.println(oldCommandId);
-    Serial.print("oldVersion: ");
-    Serial.println(oldVersion);
-    Serial.print("commandType: ");
-    Serial.println(commandType);
-    Serial.print("lastCommandLogId: ");
-    Serial.println(lastCommandLogId);
-    */
-  
-    if(possibleEndingMessage == "") {
-      possibleEndingMessage = versionMessage;
-    }
- 
-    String stringToSend = possibleEndingMessage + "\n" + preRebootCommandId;
-    startRemoteTask(stringToSend, "commandout", 0xFFFF);
-    //setSlaveLong(0,0);
-    saveCommandState(0, 0, 0, 0);
-    
-  }
+  flashUpdateFeedback(nowTime);
  
   if(canSleep) {
     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
