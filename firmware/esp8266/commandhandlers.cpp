@@ -4,7 +4,7 @@
 
 void cmdDeferredReboot(String* param, int argCount, bool deferred) {
   if(!deferred) {
-    textOut("Rebooting... \n");
+    textOut(F("Rebooting... \n"));
     //notYetDeferred();
   } else {
     rebootEsp();
@@ -15,7 +15,7 @@ void cmdDeferredReboot(String* param, int argCount, bool deferred) {
 void cmdRebootMasterFromSlave(String* param, int argCount, bool deferred) {
   if(ci[SLAVE_I2C] > 0) {
     if(!deferred) {
-      textOut("Slave instigating master reboot... \n");
+      textOut(F("Slave instigating master reboot... \n"));
       //notYetDeferred();
     } else {
       requestLong(ci[SLAVE_I2C], 134);
@@ -25,7 +25,7 @@ void cmdRebootMasterFromSlave(String* param, int argCount, bool deferred) {
 
 void cmdUpdateFirmware(String* param, int argCount, bool deferred) {
   if(!deferred) {
-    textOut("Attempting firmware update...\n");
+    textOut(F("Attempting firmware update...\n"));
     //notYetDeferred();
   } else {
     millisAtPossibleReboot = millis();
@@ -47,25 +47,25 @@ void cmdUpdateFirmware(String* param, int argCount, bool deferred) {
        t_httpUpdate_return ret = ESPhttpUpdate.update(clientGet, flashUrl.c_str());
        switch (ret) {
         case HTTP_UPDATE_FAILED:
-          possibleResult = "Update failed; error (" + String(ESPhttpUpdate.getLastError()) + ") " + ESPhttpUpdate.getLastErrorString() + "\n";
+          possibleResult = F("Update failed; error (") + String(ESPhttpUpdate.getLastError()) + ") " + ESPhttpUpdate.getLastErrorString() + "\n";
           textOut(possibleResult);
           possibleEndingMessage = possibleResult;
           break;
       
         case HTTP_UPDATE_NO_UPDATES:
-          possibleResult = "No update available\n";
+          possibleResult = F("No update available\n");
           textOut(possibleResult);
           possibleEndingMessage = possibleResult;
           break;
       
         case HTTP_UPDATE_OK:
-          possibleResult = "Update successful; rebooting...\n";
+          possibleResult = F("Update successful; rebooting...\n");
           textOut(possibleResult);
           possibleEndingMessage = possibleResult;
           break;
       }
     } else {
-      possibleResult = flashUrl + " does not exist; no action taken\n";
+      possibleResult = flashUrl + F(" does not exist; no action taken\n");
       textOut(possibleEndingMessage);
       possibleEndingMessage = possibleResult;
     }
@@ -75,7 +75,7 @@ void cmdUpdateFirmware(String* param, int argCount, bool deferred) {
 
 ////////////////////
 void cmdVersion(String* param, int argCount, bool deferred) {
-  textOut("Version: " + String(VERSION) + String("\n"));
+  textOut(F("Version: ") + String(VERSION) + String("\n"));
 }
 
 void cmdRunSlaveSketch(String* param, int argCount, bool deferred) {
@@ -106,13 +106,13 @@ void cmdRebootEsp(String* param, int argCount, bool deferred) {
 
 void cmdOnePinAtATime(String* param, int argCount, bool deferred) {
   onePinAtATimeMode = (boolean)param[0].toInt(); //setting a global.
-  textOut("One pin at a time mode now: " + param[0] + "\n");
+  textOut(F("One pin at a time mode now: ") + param[0] + "\n");
 }
 
 void cmdClearLatencyAverage(String* param, int argCount, bool deferred) {
   latencyCount = 0;
   latencySum = 0;
-  textOut("Latency average cleared\n");
+  textOut(F("Latency average cleared\n"));
 }
 
 void cmdIr(String* param, int argCount, bool deferred) {
@@ -124,7 +124,7 @@ void cmdIr(String* param, int argCount, bool deferred) {
 void cmdClearFram(String* param, int argCount, bool deferred) {
   if(ci[FRAM_ADDRESS] > 0) {
     clearFramLog(); 
-    textOut("FRAM log cleared\n");
+    textOut(F("FRAM log cleared\n"));
   }
 }
 
@@ -189,7 +189,7 @@ void cmdSetDate(String* param, int argCount, bool deferred) { //params must be c
                  (byte) dateArray[4].toInt(),   
                  (byte) dateArray[5].toInt(),      
                  (byte) dateArray[6].toInt()); 
-    textOut("Date set\n");
+    textOut(F("Date set\n"));
   }
 }
 
@@ -216,12 +216,13 @@ void cmdListFiles(String* param, int argCount, bool deferred) {
 }
 
 void cmdSaveMasterConfig(String* param, int argCount, bool deferred) {
+  String initialBlurb = F("Configuration saved to");
   if(ci[SLAVE_I2C] > 0 && ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_I2C_SLAVE) {
     saveAllConfigToEEPROM(0);
-    textOut("Configuration saved to EEPROM\n");
+    textOut(initialBlurb + F(" EEPROM\n"));
   } else if (ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_FLASH) {
     saveAllConfigToFlash(0);
-    textOut("Configuration saved to flash\n");
+    textOut(initialBlurb + F(" flash\n"));
   }
 }
 
@@ -242,24 +243,24 @@ void cmdInitMasterDefaults(String* param, int argCount, bool deferred) {
 void cmdInitSlaveDefaults(String* param, int argCount, bool deferred) {
   if(ci[SLAVE_I2C] > 0) {
     initSlaveDefaults();
-    textOut("Slave config initialized\n");
+    textOut(F("Slave config initialized\n"));
   }
 }
 
 void cmdGetUptime(String* param, int argCount, bool deferred) {
-  textOut("Last booted: " + timeAgo("") + "\n");
+  textOut(F("Last booted: ") + timeAgo("") + "\n");
 }
 
 void cmdGetWifiUptime(String* param, int argCount, bool deferred) {
-  textOut("WiFi up: " + msTimeAgo(wifiOnTime) + "\n");
+  textOut(F("WiFi up: ") + msTimeAgo(wifiOnTime) + "\n");
 }
 
 void cmdGetLastpoll(String* param, int argCount, bool deferred) {
-  textOut("Last poll: " + msTimeAgo(lastPoll) + "\n");
+  textOut(F("Last poll: ") + msTimeAgo(lastPoll) + "\n");
 }
 
 void cmdGetLastdatalog(String* param, int argCount, bool deferred) {
-  textOut("Last data: " + msTimeAgo(lastDataLogTime) + "\n");
+  textOut(F("Last data: ") + msTimeAgo(lastDataLogTime) + "\n");
 }
 
 void cmdMemory(String* param, int argCount, bool deferred) {
@@ -272,13 +273,13 @@ void cmdDumpSerialPacket(String* param, int argCount, bool deferred) {
   //parsedSerialData
   //uint8_t parsedBuf[40]  = {0xF1, 0xF2, 0xD1, 0xD2, 0xC1, 0xC2, 0xB1, 0xB2};
   bytesToHex(parsedSerialData, 20, buffer);
-  textOut("Parsed serial packet: " + String(buffer) + "\n");
+  textOut(F("Parsed serial packet: ") + String(buffer) + "\n");
 }
 
 
 void cmdFormatFileSystem(String* param, int argCount, bool deferred) {
   formatFileSystem();
-  textOut("File system formatted\n");
+  textOut(F("File system formatted\n"));
 }
 ///////////////////////
 
@@ -294,18 +295,18 @@ void cmdDownload(String* param, int argCount, bool deferred) {
 
 void cmdUpload(String* param, int argCount, bool deferred) {
   if(fileToUpload != "") {
-    textOut(fileToUpload + " is still uploading; please wait\n");
+    textOut(fileToUpload + F(" is still uploading; please wait\n"));
     return;
   }
   fileToUpload = param[0];
   File f = LittleFS.open(fileToUpload, "r");
   if (!f) {
-      textOut(fileToUpload + ": file not found\n");
+      textOut(fileToUpload + F(": file not found\n"));
       fileToUpload = "";
       return;
   }
   f.close();
-  textOut(fileToUpload + " uploading to server...\n");
+  textOut(fileToUpload + F(" uploading to server...\n"));
   fileUploadPosition = 0;
 }
 
@@ -348,12 +349,12 @@ void cmdSetSlaveTime(String* param, int argCount, bool deferred) {
 
 void cmdGetSlaveTime(String* param, int argCount, bool deferred) {
   uint32_t unixTime = requestLong(ci[SLAVE_I2C], 181);
-  textOut("Slave UNIX time: " + String(unixTime) + "\n");
+  textOut(F("Slave UNIX time: ") + String(unixTime) + "\n");
 }
 
 void cmdInitSlaveSerial(String* param, int argCount, bool deferred) {
   enableSlaveSerial(9);
-  textOut("Serial on slave initiated\n");
+  textOut(F("Serial on slave initiated\n"));
 }
 
 void getSlaveSerial(String* param, int argCount, bool deferred) {
@@ -367,21 +368,22 @@ void getSlaveParsedDatum(String* param, int argCount, bool deferred) {
   param[0].trim();
   uint8_t ordinal = param[0].toInt();
   uint16_t result = getParsedSlaveDatum(ordinal);
-  textOut("Parsed slave value " + param[0] + ": " + result + "\n");
+  textOut(F("Parsed slave value ") + param[0] + ": " + result + "\n");
 }
 
 void updateSlaveFirmware(String* param, int argCount, bool deferred) {
+  String initialHttp = F("http://");
   millisAtPossibleReboot = millis();
   param[0].trim(); //this should contain a url for new firmware.  if it begins with "/" assume it is on the same host as everything else
   String flashUrl = "";
-  textOut("Updating slave firmware...\n");
+  textOut(F("Updating slave firmware...\n"));
   if(param[0].startsWith("http://")) { //if we get a full url
     flashUrl = param[0];
   } else if(param[0].charAt(0) == '/') {
-    flashUrl = "http://" + String(cs[HOST_GET]) + param[0]; //my firmware has an aversion to https!
+    flashUrl = initialHttp + String(cs[HOST_GET]) + param[0]; //my firmware has an aversion to https!
   } else { //get the flash file from the backend using its security system, pulling it from the flash update directory, wherever it happens to be
     String encryptedStoragePassword = encryptStoragePassword(param[0]);
-    flashUrl = "http://" + String(cs[HOST_GET]) + String(cs[URL_GET]) + "?k2=" + encryptedStoragePassword + "&architecture=" + architecture + "&device_id=" + ci[DEVICE_ID] + "&mode=reflash&data=" + urlEncode(param[0], true);  
+    flashUrl = initialHttp + String(cs[HOST_GET]) + String(cs[URL_GET]) + "?k2=" + encryptedStoragePassword + "&architecture=" + architecture + "&device_id=" + ci[DEVICE_ID] + "&mode=reflash&data=" + urlEncode(param[0], true);  
   }
   //Serial.println(flashUrl);
   String possibleResult;
@@ -405,7 +407,7 @@ void updateSlaveFirmware(String* param, int argCount, bool deferred) {
     }
     textOut("Slave firmware updated from version " + String(oldVersion) + " to " + String(newVersion) + "\n");
   } else {
-    possibleResult = flashUrl + " does not exist; no action taken\n";
+    possibleResult = flashUrl + F(" does not exist; no action taken\n");
     textOut(possibleResult);
     possibleEndingMessage = possibleResult;
   }
@@ -413,12 +415,12 @@ void updateSlaveFirmware(String* param, int argCount, bool deferred) {
 
 void getMasterEepromUsed(String* param, int argCount, bool deferred) {
   int bytesUsed = loadAllConfigFromEEPROM(2, 0);
-  textOut("Slave EEPROM bytes used for master: " + (String)bytesUsed + "\n");
+  textOut(F("Slave EEPROM bytes used for master: ") + (String)bytesUsed + "\n");
 }
 
 void getSlaveEepromUsed(String* param, int argCount, bool deferred) {
   int bytesUsed = loadAllConfigFromEEPROM(2, 512);
-  textOut("Slave EEPROM bytes used for slave: " + (String)(bytesUsed - 512) + "\n");
+  textOut(F("Slave EEPROM bytes used for slave: ") + (String)(bytesUsed - 512) + "\n");
 }
 
 void getSlave(String* param, int argCount, bool deferred) {
@@ -443,7 +445,7 @@ void setSlaveBasis(String* param, int argCount, bool deferred) {
   String value = param[1];
   int ordinal = ordinalString.toInt();
   cis[ordinal] = value.toInt();
-  textOut("Slave parser basis #" + ordinalString + " set to " + value + "\n");
+  textOut(F("Slave parser basis #") + ordinalString + " set to " + value + "\n");
 }
 
 void setSlave(String* param, int argCount, bool deferred) {
@@ -453,7 +455,7 @@ void setSlave(String* param, int argCount, bool deferred) {
  
   if(isInteger(ordinalString)) {
     setSlaveConfigItem(ordinal, value.toInt());
-    textOut("Slave configuration " + ordinalString + " set to: " + value + "\n");
+    textOut(F("Slave configuration ") + ordinalString + " set to: " + value + "\n");
   }
 }
 
@@ -466,12 +468,12 @@ void runSlave(String* param, int argCount, bool deferred) {
     sendLong(ci[SLAVE_I2C], ordinal, value.toInt());
     textOut(
           "Commmand " +
-          ordinalString + " run on slave with value: " +
+          ordinalString + F(" run on slave with value: ") +
           value + "\n"
         );
   } else {
     long result = requestLong(ci[SLAVE_I2C], ordinal);
-    textOut("Slave data for command " + ordinalString + ": " + String(result) + "\n");
+    textOut(F("Slave data for command ") + ordinalString + ": " + String(result) + "\n");
   }
 }
 
@@ -479,7 +481,7 @@ void cmdSet(String* param, int argCount, bool deferred) {
   String key = param[0];
   String value = param[1];
  if(!isInteger(key)) {
-  textOut("Configuration '" + key + "' does not exist:\n");
+  textOut(F("Configuration '") + key + F("' does not exist:\n"));
   return;
  }
  int configIndex = key.toInt();
@@ -493,14 +495,14 @@ void cmdSet(String* param, int argCount, bool deferred) {
       cs[configIndex] = strdup(buffer); 
     }
   }
-  textOut("Configuration set to: " + value + "\n");
+  textOut(F("Configuration set to: ") + value + "\n");
 }  
 
 
 void cmdGet(String* param, int argCount, bool deferred) {
   String key = param[0];
   if(!isInteger(key)) {
-    textOut("Configuration '" + key + "' does not exist:\n");
+    textOut(F("Configuration '") + key + "' does not exist:\n");
     return;
   }
   int configIndex = key.toInt();
@@ -510,5 +512,5 @@ void cmdGet(String* param, int argCount, bool deferred) {
   } else {
     value = String(cs[configIndex]);
   }
-  textOut("Sought configuration: " + value + "\n");
+  textOut(F("Sought configuration: ") + value + "\n");
 }

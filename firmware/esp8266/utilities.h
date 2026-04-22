@@ -15,6 +15,7 @@
 String packetString(String fileToUpload, uint32_t fileUploadPosition);
 void textOut(String data);
 String makeAsteriskString(uint8_t number);
+void logHeap(const char* label);
 void dumpMemoryStats(int marker);
 String urlEncode(String str, bool minimizeImpact);
 String joinValsOnDelimiter(uint32_t vals[], String delimiter, int numberToDo);
