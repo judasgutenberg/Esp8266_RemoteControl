@@ -864,6 +864,7 @@ void runRemoteTask() {
       if(clientGet.connect(cs[HOST_GET], 80)) {
         remoteState = RS_SENDING_REQUEST;
         stateStartMs = millis();
+        connectionFailureMode = false;
         yield();
       } else {
         yield();
@@ -905,12 +906,12 @@ void runRemoteTask() {
       yield();
       
       // send the GET request in one go (small, so ok)
-      clientGet.println("GET " + remoteURL + " HTTP/1.1");
-      clientGet.print("Host: ");
+      clientGet.println(F("GET ") + remoteURL + " HTTP/1.1");
+      clientGet.print(F("Host: "));
       clientGet.println(cs[HOST_GET]);
-      clientGet.println("User-Agent: ESP8266/1.0");
-      clientGet.println("Accept-Encoding: identity");
-      clientGet.println("Connection: close");
+      clientGet.println(F("User-Agent: ESP8266/1.0"));
+      clientGet.println(F("Accept-Encoding: identity"));
+      clientGet.println(F("Connection: close"));
       clientGet.println();
       remoteState = RS_WAITING_FOR_REPLY;
       return;
@@ -1039,7 +1040,7 @@ void runRemoteTask() {
         bool validStart = (firstChar == '{' || firstChar == '*' || firstChar == '|' || firstChar == '=');
         
         // check: remoteMode (still a String, but not created in loop)
-        bool validMode = (remoteMode == "saveData" || remoteMode == "commandout" || remoteMode == "savePacket");
+        bool validMode = (remoteMode == F("saveData") || remoteMode == F("commandout") || remoteMode == F("savePacket"));
         
         if (!hasError && validMode && validStart) {
           lastDataLogTime = millis();
@@ -1050,7 +1051,7 @@ void runRemoteTask() {
             canSleep = true;
           }
         
-          if (remoteMode == "commandout" || outputMode == 2) {
+          if (remoteMode == F("commandout") || outputMode == 2) {
             lastCommandLogId = 0;
           }
         
@@ -1072,10 +1073,9 @@ void runRemoteTask() {
       
         if (first == '*') {
           if (ci[DEBUG] > 1) {
-            Serial.print("Initial: ");
+            Serial.print(F("Initial: "));
             Serial.println(line);
           }
-      
           if (cs[SENSOR_CONFIG_STRING] != "") {
             // ⚠️ this still uses String, but outside tight loop frequency
             String tmp = line;
@@ -1086,24 +1086,19 @@ void runRemoteTask() {
           additionalSensorInfo = line;
           handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), true);
           break;
-        }
-      
-        else if (first == '{') {
+        } else if (first == '{') {
           if (ci[DEBUG] > 1) {
-            Serial.print("JSON: ");
+            Serial.print(F("JSON: "));
             Serial.println(line);
           }
       
           receivedDataJson = true;
           break;
-        }
-      
-        else if (first == '|') {
+        } else if (first == '|') {
           if (ci[DEBUG] > 1) {
             Serial.print("delimited: ");
             Serial.println(line);
           }
-      
           // split in-place on '!'
           char *parts[3] = {0};
           int part = 0;
@@ -1115,12 +1110,11 @@ void runRemoteTask() {
               parts[part++] = p + 1;
             }
           }
-      
           setLocalHardwareToServerStateFromNonJson(parts[0]);
       
           if (part > 1 && strlen(parts[1]) > 5) {
             if (ci[DEBUG] > 1) {
-              Serial.print("COMMAND: ");
+              Serial.print(F("COMMAND: "));
               Serial.println(parts[1]);
             }
           }
@@ -1141,10 +1135,8 @@ void runRemoteTask() {
             cmdBuf[0] = '!';
             strncpy(cmdBuf + 1, parts[1] ? parts[1] : "", sizeof(cmdBuf) - 2);
             cmdBuf[sizeof(cmdBuf) - 1] = '\0';
-      
             runCommand(cmdBuf, false);
           }
-      
           receivedDataJson = true;
           break;
         }
@@ -1158,7 +1150,7 @@ void runRemoteTask() {
       
             File f = LittleFS.open(fileToUpload, "r");
             if (!f) {
-              textOut(fileToUpload + ": file not found\n");
+              textOut(fileToUpload + F(": file not found\n"));
               fileToUpload = "";
               free(buf);
               return;
@@ -1167,7 +1159,7 @@ void runRemoteTask() {
             uint32_t totalFileSize = f.size();
       
             if (totalFileSize >= fileUploadPosition) {
-              textOut(fileToUpload + " has finished uploading\n");
+              textOut(fileToUpload + F(" has finished uploading\n"));
               fileToUpload = "";
             } else {
               char pct[32];
@@ -1180,7 +1172,7 @@ void runRemoteTask() {
         }
         else {
           if (ci[DEBUG] > 2) {
-            Serial.print("web data: ");
+            Serial.print(F("web data: "));
             Serial.println(line);
           }
         }
@@ -1191,7 +1183,6 @@ void runRemoteTask() {
       remoteState = RS_DONE;
       return;
     }
-
     // -------------------- finish and reset state --------------------
     case RS_DONE: {
       // clean up and go idle. clientGet should already be stopped in prior steps, but be safe:
@@ -1200,7 +1191,6 @@ void runRemoteTask() {
       // keep other globals as-is (we updated them in processing)
       return;
     }
-
     default:
       remoteState = RS_IDLE;
       return;
@@ -1278,12 +1268,10 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
     if (ci[POLLING_SKIP_LEVEL] < 15) {
         return;
     }
-
     static int limitCursor = 1;
     if (limitCursor > 11) {
         limitCursor = 1;
     }
-
     int pinNumber = 0;
     int value = -1;
     int canBeAnalog = 0;
@@ -1628,9 +1616,9 @@ void runCommand(const char * nonJsonLine, bool deferred){
   if(commandId) {
     //Serial.println(command);
     handleCommand(command, deferred);
-    if(!deferred && (command == "watchdog reboot"  || command == "reboot" || command.startsWith("update firmware"))) {
+    if(!deferred && (command == F("watchdog reboot")  || command == F("reboot") || command.startsWith(F("update firmware")))) {
       //Serial.println("--------+"  + command + "*-----");
-      notYetDeferred(nonJsonLine, commandId, (int32_t)(command.startsWith("update firmware")));
+      notYetDeferred(nonJsonLine, commandId, (int32_t)(command.startsWith(F("update firmware"))));
     }
     command = "";
     if(commandId > 0) { //don't reset lastCommandId if the command came via serial port
@@ -1654,7 +1642,7 @@ void handleCommand(String input, bool deferred) {
       return;
     }
   }
-  textOut("Command '" + input + "' does not exist\n");
+  textOut(F("Command '") + input + F("' does not exist\n"));
   return;
 }
 
@@ -1699,7 +1687,7 @@ bool parseCommand(const String& input, const String& command, String* results, i
 }
 
 void saveCommandState(uint32_t lastCommandLogId, uint16_t version, int32_t commandId, int32_t commandType) {
-    File file = LittleFS.open("/commandstate.txt", "w");
+    File file = LittleFS.open(F("/commandstate.txt"), "w");
     if (!file) {
         // optional: Serial.println("Failed to open file for writing");
         return;
@@ -1757,7 +1745,7 @@ void sendIr(String rawDataStr) {
 }
 
 void rebootEsp() {
-  textOut("Rebooting ESP\n");
+  textOut(F("Rebooting ESP\n"));
   ESP.restart();
 }
 
@@ -1919,9 +1907,11 @@ void flashUpdateFeedback(uint32_t nowTime) {
   uint32_t oldVersion = loadCommandStateVersion(1);
   int32_t oldCommandId = loadCommandStateVersion(2);
   int32_t commandType = loadCommandStateVersion(3);
-  String versionMessage = String("After reboot: version: ") + VERSION  + "\n";
+  String versionMessage;
+  versionMessage.reserve(80);  // preallocate once
+  versionMessage = String(F("After reboot: version: ")) + VERSION  + "\n";
   if(oldVersion > 0) {
-    versionMessage = String("Update of firmware was successful; version " + String(oldVersion) + " changed to version ") + VERSION + "\n";
+    versionMessage = String(F("Update of firmware was successful; version ") + String(oldVersion) + F(" changed to version ")) + VERSION + "\n";
   }
   if((preRebootCommandId > 0 || oldCommandId < 0) && commandType >0 && lastCommandLogId == 0  && deviceName != "" && remoteState == RS_IDLE) {
     //Serial.println("alpha");
@@ -1971,11 +1961,8 @@ void loop(){
   //Serial.println(knownMoxeePhase);
   //Serial.print("Last command log id: ");
   //Serial.println(lastCommandLogId);
-
   unsigned long nowTime = millis() + timeOffset;
   yield();
-
- 
   /*
   uint8_t testHi = 0;//(millis() >> 8) & 0xFF;
   uint8_t testLow = 4;// millis() & 0xFF;
@@ -2034,21 +2021,19 @@ void loop(){
   //Serial.print(" ");
   //Serial.println(connectionFailureTime);
   if(nowTime < granularityToUse * 1000 || (nowTime - lastPoll)/1000 > granularityToUse || connectionFailureTime>0 && connectionFailureTime + ci[CONNECTION_FAILURE_RETRY_SECONDS] * 1000 > nowTime) {  //send data to backend server every <ci[POLLING_GRANULARITY]> seconds or so
+    //Serial.println(granularityToUse);
     //Serial.print("Connection failure time: ");
     //Serial.println(connectionFailureTime);
     //Serial.print("  Connection failure calculation: ");
     //Serial.print(connectionFailureTime>0 && connectionFailureTime + ci[CONNECTION_FAILURE_RETRY_SECONDS] * 1000);
     //Serial.println("Epoch time:");
     //Serial.println(timeClient.getEpochTime());
-
     //compileAndSendDeviceData(String weatherdata, String wherewhen, String powerdata, bool doPinCursorChanges, uint16_t fRAMOrdinal)
     compileAndSendDeviceData("", "", "", true, 0xFFFF);
     lastPoll = nowTime;
   }
   yield();
-
   
- 
   lookupLocalPowerData();
   yield();
   if(offlineMode || ci[FRAM_ADDRESS] < 1){
@@ -2092,9 +2077,7 @@ void loop(){
     }
   }
   yield();
-
   flashUpdateFeedback(nowTime);
- 
   if(canSleep) {
     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
     if(ci[DEEP_SLEEP_TIME_PER_LOOP] > 0) {
@@ -2207,8 +2190,7 @@ byte decToBcd(byte val){
 }
 
 // Convert binary coded decimal to normal decimal numbers
-byte bcdToDec(byte val)
-{
+byte bcdToDec(byte val){
   return ( (val/16*10) + (val%16) );
 }
 
@@ -2227,13 +2209,10 @@ const int _ytab[2][12] = {
 #define SECSPERMIN (60UL) /* == ( 60) */
 #define LEAPYEAR(year)          (!((year) % 4) && (((year) % 100) || !((year) % 400)))
 
-
 void syncRTCWithNTP() {
   timeClient.update();
   time_t rawTime = timeClient.getEpochTime();
-  
   struct tm *timeInfo = gmtime(&rawTime);  // Convert to UTC struct
-
   byte second      = timeInfo->tm_sec;
   byte minute      = timeInfo->tm_min;
   byte hour        = timeInfo->tm_hour;
@@ -2242,10 +2221,8 @@ void syncRTCWithNTP() {
   byte month       = timeInfo->tm_mon + 1; // tm_mon is 0-based
   byte year        = timeInfo->tm_year - 100; // Convert from years since 1900
   char buffer[120];
-
   sprintf(buffer, "Setting RTC: %02d:%02d:%02d %02d/%02d/%02d\n", hour, minute, second,  month,  dayOfMonth, year + 2000);
   textOut(String(buffer));
-
   setDateDs1307(second, minute, hour, dayOfWeek, dayOfMonth, month, year);
 }
 
@@ -2270,13 +2247,11 @@ uint32_t getSecsSinceEpoch(uint16_t epoch, uint8_t month, uint8_t day, uint8_t y
   int countleap = 0;
   int i;
   int dayspermonth;
-  
   secs = years  * (SECSPERDAY * 365);
   if(epoch == 1970) {
     secs = secs + 946684800;
   }
-  for (i = 0; i < (years - 1); i++)
-  {   
+  for (i = 0; i < (years - 1); i++){   
       if (LEAPYEAR((epoch + i)))
         countleap++;
   }
@@ -2285,23 +2260,16 @@ uint32_t getSecsSinceEpoch(uint16_t epoch, uint8_t month, uint8_t day, uint8_t y
   secs += (hour * SECSPERHOUR);
   secs += (minute * SECSPERMIN);
   secs += ((day - 1) * SECSPERDAY);
-  
-  if (month > 1)
-  {
+  if (month > 1){
       dayspermonth = 0;
-  
-      if (LEAPYEAR((epoch + years))) // Only counts when we're on leap day or past it
-      {
-          if (month > 2)
-          {
+      if (LEAPYEAR((epoch + years))){ // Only counts when we're on leap day or past it
+          if (month > 2){
               dayspermonth = 1;
           } else if (month == 2 && day >= 29) {
               dayspermonth = 1;
           }
       }
-  
-      for (i = 0; i < month - 1; i++)
-      {   
+      for (i = 0; i < month - 1; i++){   
           secs += (_ytab[dayspermonth][i] * SECSPERDAY);
       }
   }
@@ -2357,8 +2325,7 @@ void getDateDs1307(byte *second,
           byte *dayOfWeek,
           byte *dayOfMonth,
           byte *month,
-          byte *year)
-{
+          byte *year){
   // Reset the register pointer
   Wire.beginTransmission(ci[RTC_ADDRESS]);
   Wire.write(0);
@@ -2376,8 +2343,7 @@ void getDateDs1307(byte *second,
   *year       = bcdToDec(Wire.read());
 }
 
-void printRTCDate()
-{
+void printRTCDate(){
   byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
   getDateDs1307(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
   textOut(String(year));
@@ -2394,8 +2360,7 @@ void printRTCDate()
   textOut("\n");
 }
 
-uint32_t currentRTCTimestamp()
-{
+uint32_t currentRTCTimestamp(){
   byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
   getDateDs1307(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
   //Serial.println(dayOfMonth);
@@ -2419,7 +2384,6 @@ void writeRecordToFRAM(const std::vector<std::tuple<uint8_t, uint8_t, double>>& 
   uint16_t recordStartAddress = (currentRecordCount == 0) 
     ? framIndexAddress + (ci[FRAM_INDEX_SIZE] * 2)  // Leave space for the index table
     : read16(framIndexAddress + uint16_t((currentRecordCount -1) * 2)) + lastRecordSize + 1; //record.size is 4 now?
-
   //Serial.println(record.size());
   uint16_t addr = recordStartAddress;
   //Serial.println(addr);
@@ -2494,7 +2458,6 @@ void writeRecordToFRAM(const std::vector<std::tuple<uint8_t, uint8_t, double>>& 
   currentRecordCount++;
   //also store currentRecordCount
   writeRecordCountToFRAM(currentRecordCount);
-
   //did it save correctly at all?
   //displayFramRecord(currentRecordCount-1);
 }
@@ -2577,7 +2540,6 @@ void sendAStoredRecordToBackend() {
   //Serial.println(positionInFram);
   std::vector<std::tuple<uint8_t, uint8_t, double>> record;
   readRecordFromFRAM(positionInFram, record, delimiter);
-  
   if(delimiter == 0xFF) { //we only send records to the backend if this is the delimiter.  after we send it, we update the delimiter to 0xFE
     if(ci[DEBUG] > 0) {
       //Serial.print("Sending FRAM Record at ");
@@ -2622,7 +2584,6 @@ void changeDelimiterOnRecord(uint16_t index, uint8_t newDelimiter) {
     Serial.println(index);
   }
   //bytes per line should be 25
-  
   uint8_t buffer[bytesPerLine];   // Buffer to hold data for one line
   //displayFramRecord(index);
   //hexDumpFRAM(location, bytesPerLine, 5);
@@ -2921,39 +2882,32 @@ int loadAllConfig(int mode, uint16_t param){
 /////////////////////////////////////////////
 
 bool downloadFile(const char* url, const char* localPath) {
-
   if (!LittleFS.begin()) {
-    Serial.println("LittleFS mount failed");
+    textOut("LittleFS mount failed\n");
     return false;
   }
-
   WiFiClient client;
   HTTPClient http;
-
-  Serial.print("Downloading: ");
-  Serial.println(url);
-
+  textOut("Downloading: ");
+  textOut(String(url) + "\n");
   if (!http.begin(client, url)) {
-    Serial.println("HTTP begin failed");
+    textOut("HTTP begin failed\n");
     return false;
   }
-
   int httpCode = http.GET();
   //Serial.println(http.header("Content-Encoding"));
   //Serial.println(http.header("Content-Type"));
   if (httpCode != HTTP_CODE_OK) {
-    Serial.printf("HTTP GET failed, code: %d\n", httpCode);
+    textOut("HTTP GET failed, code: " + String(httpCode) + "\n");
     http.end();
     return false;
   }
-
   File file = LittleFS.open(localPath, "w");
   if (!file) {
-    Serial.println("Failed to open local file for writing");
+    textOut("Failed to open local file for writing\n");
     http.end();
     return false;
   }
-
   WiFiClient *stream = http.getStreamPtr();
   uint8_t buffer[128];
   int len = http.getSize();
@@ -2971,7 +2925,7 @@ bool downloadFile(const char* url, const char* localPath) {
   }
   file.close();
   http.end();
-  Serial.printf("Downloaded %d bytes\n", total);
+  textOut("Downloaded " + String(total) + " bytes\n");
   return true;
 }
 
@@ -3023,7 +2977,6 @@ bool deleteFile(const char* path) {
   if (LittleFS.remove(path)) {
     textOut("deleted: ");
     textOut(path);
-   
     textOut("\n");
     return true;
   } else {
@@ -3043,7 +2996,6 @@ void dumpFile(const char* filename) {
         textOut("File open failed\n");
         return;
     }
-
     const int BUF_SIZE = 128;
     char buffer[BUF_SIZE + 1];
     textOut("\n");
@@ -3055,7 +3007,6 @@ void dumpFile(const char* filename) {
         textOut(buffer);  // ?? send this chunk immediately
     }
     textOut("\n");
-
     f.close();
 }
 
@@ -3084,10 +3035,8 @@ int loadAllConfigFromFlash(int mode, uint16_t param) { //can also be used to rec
     if (!f) {
         return 0;
     }
-
     int*  activeCi;
     char** activeCs;
-
     int totalConfigItems       = CONFIG_TOTAL_COUNT;
     int totalStringConfigItems = CONFIG_STRING_COUNT;
     //Serial.println("----------SIZES");
@@ -3214,11 +3163,9 @@ void saveAllConfigToFlash(uint16_t param) {
         f.write(hi);
         yield();
     }
-
     // ============================================================
     // 3. Write strings (null terminated)
     // ============================================================
-
     for(int i = 0; i < totalStringConfigItems; i++) {
         //Serial.println(i);
         const char* s = activeCs[i];
@@ -3226,10 +3173,10 @@ void saveAllConfigToFlash(uint16_t param) {
     
         //Serial.print("Value: ");
         //Serial.println(s);
-        if(s == NULL) s = "";
-
+        if(s == NULL) {
+          s = "";
+        }
         size_t len = strlen(s);
-
         f.write((const uint8_t*)s, len);
         f.write((uint8_t)0);
         yield();
@@ -3268,11 +3215,4 @@ void handleFileRequest() {
 /////////////////////////////////////////////
 int freeMemory() {
     return ESP.getFreeHeap();
-}
-
-void logHeap(const char* label) {
-  Serial.printf("[%s] Free: %u, Max: %u\n",
-                label,
-                ESP.getFreeHeap(),
-                ESP.getMaxFreeBlockSize());
 }
