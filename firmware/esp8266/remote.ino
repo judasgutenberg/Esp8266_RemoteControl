@@ -91,13 +91,11 @@ CommandDef commands[] = {
   {"watchdog reboot", cmdRebootMasterFromSlave, 0, true},
   {"reboot", cmdDeferredReboot, 0, true},
   {"update firmware", cmdUpdateFirmware, 1, true},
-  
   {"version", cmdVersion, 0, true},
   {"run slave sketch", cmdRunSlaveSketch, 0, true},
   {"slave bootloader", cmdRunSlaveBootloader, 0, true},
   {"pet watchdog", cmdPetWatchdog, 0, true},
   {"get weather sensors", cmdGetWeatherSensors, 0, true},
-  
   {"one pin at a time", cmdOnePinAtATime, 0, false},
   {"clear latency average", cmdClearLatencyAverage, 0, true},
   {"ir", cmdIr, 1, false},
@@ -108,7 +106,6 @@ CommandDef commands[] = {
   {"swap fram", cmdSwapFram, 0, true},
   {"dump fram record", cmdDumpFramRecord, 1, false},
   {"get fram index", cmdGetFramIndex, 0, true},
-  
   {"set date", cmdSetDate, 1, false},
   {"get date", cmdGetDate, 0, true},
   {"get watchdog info", cmdGetWatchdogInfo, 0, true},
@@ -125,8 +122,6 @@ CommandDef commands[] = {
   {"memory", cmdMemory, 0, true},
   {"dump parsed serial packet", cmdDumpSerialPacket, 0, true},
   {"format file system", cmdFormatFileSystem, 0, true},
-
-  
   ///////////
   {"rm", cmdDel, 1, false},
   {"download", cmdDownload, 1, false},
@@ -168,9 +163,6 @@ void startRemoteTask(const String& datastring, const String& mode, uint16_t fRAM
     //Serial.println("////////////////////////not idle!");
     return;
   }
-  //startRemoteTask(stringToSend, "sendPacket", 0xFFFF);
-
-
   remoteDatastring = datastring;
   remoteMode = mode;
   remoteFRAMordinal = fRAMordinal;
@@ -205,7 +197,6 @@ void startRemoteTask(const String& datastring, const String& mode, uint16_t fRAM
     }
   }
 }
-
 
 //ESP8266's home page:----------------------------------------------------
 void handleRoot() {
@@ -358,7 +349,6 @@ String weatherDataString(
   static char tx[1600]; // increase if required
   size_t pos = 0;
   const size_t bufSize = sizeof(tx);
-
   // append first 4 fields with '*' delimiter, safe checks after every write
   for (int i = 0; i < 4; ++i) {
     if (i > 0) {
@@ -429,8 +419,7 @@ String weatherDataString(
   }
 
   // append sensor id, device feature id, name, consolidate flag
-  int n = snprintf(tx + pos, bufSize - pos, "%ld*%d*%s*%d",
-                   (long)ci[SENSOR_ID], deviceFeatureId, sensorName.c_str(), consolidateAllSensorsToOneRecord);
+  int n = snprintf(tx + pos, bufSize - pos, "%ld*%d*%s*%d", (long)ci[SENSOR_ID], deviceFeatureId, sensorName.c_str(), consolidateAllSensorsToOneRecord);
   if (n > 0) {
     pos += (size_t)n;
     if (pos >= bufSize) pos = bufSize - 1;
@@ -439,8 +428,6 @@ String weatherDataString(
   tx[(pos < bufSize) ? pos : (bufSize - 1)] = '\0';
   return String(tx); // single String allocation only
 }
-
-
 
 void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int pinNumber, int powerPin) {
   //i've made all these inputs generic across different sensors, though for now some apply and others do not on some sensors
@@ -537,7 +524,6 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
       }
     }
   }
-
   sensorObjectCursor->put((String)sensorIdLocal, objectCursor + 1); //we keep track of how many of a particular ci[SENSOR_ID] we use
 }
 
@@ -578,13 +564,10 @@ void compileAndSendDeviceData(
     String additionalSensor = handleDeviceNameAndAdditionalSensors(
         (char*)additionalSensorInfo.c_str(), false
     );
-
     if (pos == 0 && additionalSensor.startsWith("!")) {
         additionalSensor.remove(0, 1);   // strip leading !
     }
-
     pos += snprintf(tx + pos, sizeof(tx) - pos, "%s", additionalSensor.c_str());
-
     // --- WHERE / WHEN -------------------------------------------------
     if (whereWhenData.length() > 0) {
         pos += snprintf(tx + pos, sizeof(tx) - pos, "|%s", whereWhenData.c_str());
@@ -592,22 +575,18 @@ void compileAndSendDeviceData(
         pos += snprintf(tx + pos, sizeof(tx) - pos, "|*%lu*%lu*",
                         millis(), timeClient.getEpochTime());
     }
-
     // latency
     if (latencyCount > 0) {
         pos += snprintf(tx + pos, sizeof(tx) - pos, "%u",
                         (1000 * latencySum) / latencyCount);
     }
-
     // latitude*longitude*elevation*velocity*uncertainty placeholder
     pos += snprintf(tx + pos, sizeof(tx) - pos, "*****");
-
     // slave I2C data
     if (ci[SLAVE_I2C] > 0 && lastSlavePowerMode < 2) { //don't get this info with every poll if the slave is trying to sleep more deeply than 1
         String s = slaveWatchdogData();
         pos += snprintf(tx + pos, sizeof(tx) - pos, "*%s", s.c_str());
     }
-
     // --- POWER DATA ----------------------------------------------------
     if (powerData.length() > 0) {
         pos += snprintf(tx + pos, sizeof(tx) - pos, "|%s", powerData.c_str());
@@ -615,61 +594,52 @@ void compileAndSendDeviceData(
         pos += snprintf(tx + pos, sizeof(tx) - pos, "|*%f*%f",
                         measuredVoltage, measuredAmpage);
     }
-
     // future expansion
     pos += snprintf(tx + pos, sizeof(tx) - pos, "|||");
-
     // --- EXTRA INFO ----------------------------------------------------
     pos += snprintf(tx + pos, sizeof(tx) - pos, "|");
-
     // clean up IP address
     String ipToUse = ipAddress;
     int sp = ipToUse.indexOf(' ');
-    if (sp > 0) ipToUse.remove(sp);
- 
+    if (sp > 0){
+      ipToUse.remove(sp);
+    }
     if (ipAddressAffectingChange.length() > 0) {
         ipToUse = ipAddressAffectingChange;
         changeSourceId = 1;
     }
-
     // pin cursor update
     if (onePinAtATimeMode && doPinCursorChanges) {
         pinCursor++;
         if (pinCursor >= pinTotal) pinCursor = 0;
     }
-
     pos += snprintf(tx + pos, sizeof(tx) - pos,
         "%d*%d*%d*%s*%d*%d*%d",
         lastCommandId, pinCursor, (int)localSource,
         ipToUse.c_str(), (int)requestNonJsonPinInfo,
         (int)justDeviceJson, changeSourceId
     );
-
     // pinMap
     {
         String s = joinStdMapValsOnDelimiter(pinMap, "*");
         pos += snprintf(tx + pos, sizeof(tx) - pos, "|%s", s.c_str());
     }
-
     // moxee reboot info
     {
         String s = joinValsOnDelimiter(moxeeRebootTimes, "*", 10);
         pos += snprintf(tx + pos, sizeof(tx) - pos, "|%s", s.c_str());
     }
-
     // --- SEND OUT ------------------------------------------------------
     if (!offlineMode) {
         startRemoteTask(String(tx), "getDeviceData", fRAMOrdinal);
     }
 }
 
-
 void wiFiConnect() {
   const int NUM_WIFI_CREDENTIALS = 5;
   unsigned long lastDotTime = 0;
   unsigned long lastOfflineReconnectAttemptTime = millis();
   bool connected = false;
-
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
   WiFi.setAutoReconnect(false);
@@ -684,24 +654,19 @@ void wiFiConnect() {
       if(ci[DEBUG] > 0) {
         Serial.printf("\nAttempting WiFi connection to: %s\n", wifiSsid);
       }
-  
       WiFi.disconnect(true);
       unsigned long disconnectTime = millis();
       // short wait for disconnect to take effect (non-blocking)
       while (millis() - disconnectTime < 100) {
         yield();
       }
-  
       WiFi.begin(wifiSsid, wifiPassword);
-  
       int wiFiSeconds = 0;
       bool initialAttemptPhase = true;
       lastOfflineReconnectAttemptTime = millis();
-  
       while (WiFi.status() != WL_CONNECTED) {
         delay(5);
         unsigned long now = millis();
-  
         // print dot every second
         if (now - lastDotTime >= 1000) {
           if(ci[DEBUG] > 0) {
@@ -710,7 +675,6 @@ void wiFiConnect() {
           lastDotTime = now;
           wiFiSeconds++;
         }
-  
         // print asterisk and retry every 10 seconds
         if (now - lastOfflineReconnectAttemptTime > 10000) {
           WiFi.disconnect();
@@ -720,14 +684,12 @@ void wiFiConnect() {
             Serial.print("*");
           }
         }
-  
         if (WiFi.status() == WL_NO_SSID_AVAIL) {
           if(ci[DEBUG] > 0) {
             Serial.printf("\nSSID not found: %s\n", wifiSsid);
           }
           break; // try next SSID
         }
-  
         // timeout handling
         uint32_t wifiTimeoutToUse = ci[WIFI_TIMEOUT];
         if (knownMoxeePhase == 0) {
@@ -757,28 +719,23 @@ void wiFiConnect() {
           break; // move to next SSID
         }
       }
-
       if (!initialAttemptPhase && wiFiSeconds > (ci[WIFI_TIMEOUT] / 2) &&  ci[FRAM_ADDRESS] > 0) {
         offlineMode = true;
         haveReconnected = false;
         return;
       }
-
       yield(); // keep Wi-Fi background tasks alive
     }
-
     if (WiFi.status() == WL_CONNECTED) {
       connected = true;
       currentWifiIndex = (ssidIndex + 1) % NUM_WIFI_CREDENTIALS; // next SSID next time
       if(ci[DEBUG] > 0) {
-        Serial.printf("\nConnected to %s, IP: %s\n", wifiSsid,
-                      WiFi.localIP().toString().c_str());
+        Serial.printf("\nConnected to %s, IP: %s\n", wifiSsid, WiFi.localIP().toString().c_str());
       }
       ipAddress = WiFi.localIP().toString();
       break;
     }
   }
-
   if (!connected) {
     if(validWiFiAttempts > 0) {
       if(ci[DEBUG] > 0) {
@@ -796,9 +753,6 @@ void wiFiConnect() {
     haveReconnected = true;
   }
 }
-
-
-
 
 // Call this frequently from loop()
 void runRemoteTask() {
@@ -822,15 +776,12 @@ void runRemoteTask() {
           remoteMode = "getInitialDeviceInfo";
         }
       }
-
       String encryptedStoragePassword = encryptStoragePassword(remoteDatastring);
       // build URL exactly like before
       remoteURL = String(cs[URL_GET]) + "?k2=" + encryptedStoragePassword + "&device_id=" + ci[DEVICE_ID] + "&mode=" + remoteMode + "&data=" + urlEncode(remoteDatastring, true);
       if(additionalUrlParams != "") {
-
         remoteURL += "&" + additionalUrlParams;
       }
-      
       if(ci[DEBUG] > 0) {
         Serial.println(remoteURL);
       }
@@ -851,7 +802,6 @@ void runRemoteTask() {
         yield();
         return;
       }
-
       if (clientGet.connected()) {
         // should not be connected here, but if it is, go send request
         remoteState = RS_SENDING_REQUEST;
@@ -859,7 +809,6 @@ void runRemoteTask() {
         yield();
         return;
       }
-
       // Try to connect once
       if(clientGet.connect(cs[HOST_GET], 80)) {
         remoteState = RS_SENDING_REQUEST;
@@ -900,11 +849,9 @@ void runRemoteTask() {
       }
       return;
     }
-
     // -------------------- send the HTTP request (non-blocking single-shot) --------------------
     case RS_SENDING_REQUEST: {
       yield();
-      
       // send the GET request in one go (small, so ok)
       clientGet.println(F("GET ") + remoteURL + " HTTP/1.1");
       clientGet.print(F("Host: "));
@@ -916,7 +863,6 @@ void runRemoteTask() {
       remoteState = RS_WAITING_FOR_REPLY;
       return;
     }
-
     // -------------------- wait for any reply (with timeout) --------------------
     case RS_WAITING_FOR_REPLY: {
       if(clientGet.available() > 0) {
@@ -938,7 +884,6 @@ void runRemoteTask() {
       // otherwise keep waiting (non-blocking)
       return;
     }
-
     // -------------------- drain the socket into responseBufferSM (non-blocking) --------------------
     case RS_READING_REPLY: {
       // Read everything currently available; do not block waiting for more
@@ -953,7 +898,6 @@ void runRemoteTask() {
         }
         // yield rarely is not needed inside here, but we return below to keep loop small
       }
-
       // If remote closed or we've read a lot and connection is no longer active, move to processing
       if (!clientGet.connected()) {
         yield();
@@ -963,9 +907,6 @@ void runRemoteTask() {
         stateStartMs = millis();
         return;
       }
-
-
-
       // If buffer is huge enough to process now, close and process
       if(responseBufferSM.length() > 4096) {
         yield();
@@ -974,7 +915,6 @@ void runRemoteTask() {
         stateStartMs = millis();
         return;
       }
-
       // If we've been waiting too long since first byte, close and process what we have
       if (millis() - stateStartMs > CONNECT_TIMEOUT_MS) {
         yield();
@@ -983,11 +923,9 @@ void runRemoteTask() {
         stateStartMs = millis();
         return;
       }
-
       // else continue reading later (non-blocking)
       return;
     }
-
     // -------------------- process the response AFTER socket is closed --------------------
     case RS_PROCESSING_REPLY: {
       bool receivedData = false;
@@ -996,81 +934,64 @@ void runRemoteTask() {
       // (You can reuse this across calls if you want to go full zero-allocation)
       int len = responseBufferSM.length();
       char *buf = (char*)malloc(len + 1);
-      if (!buf) return;
-      
+      if (!buf) {
+        return;
+      }
       memcpy(buf, responseBufferSM.c_str(), len);
       buf[len] = '\0';
-      
       char *line = buf;
       char *next;
-      
       while (line && *line) {
         yield();
-      
         // find next newline
         next = strchr(line, '\n');
         if (next) {
           *next = '\0';   // terminate this line
           next++;         // move to start of next
         }
-      
         // --- trim in place ---
         while (*line == ' ' || *line == '\r' || *line == '\t') line++;
         char *end = line + strlen(line) - 1;
         while (end > line && (*end == ' ' || *end == '\r' || *end == '\t')) {
           *end-- = '\0';
         }
-      
         if (*line == '\0') {
           line = next;
           continue;
         }
-      
         char first = line[0];
-
-
         
-        // alpha beta gamma: backend confirmation logic (heap-safe version)
-        
+        //backend confirmation logic (heap-safe version)
         // check: line does NOT contain "\"error\":"
         bool hasError = (strstr(line, "\"error\":") != NULL);
-        
         // check: first character
         char firstChar = line[0];
         bool validStart = (firstChar == '{' || firstChar == '*' || firstChar == '|' || firstChar == '=');
-        
         // check: remoteMode (still a String, but not created in loop)
         bool validMode = (remoteMode == F("saveData") || remoteMode == F("commandout") || remoteMode == F("savePacket"));
-        
         if (!hasError && validMode && validStart) {
           lastDataLogTime = millis();
           moxeeRebootCount = 0;
-          for (int i = 0; i < 11; i++) moxeeRebootTimes[i] = 0;
-        
+          for (int i = 0; i < 11; i++){
+            moxeeRebootTimes[i] = 0;
+          }
           if (lastCommandLogId == 0 && responseBuffer == "" && outputMode == 0) {
             canSleep = true;
           }
-        
           if (remoteMode == F("commandout") || outputMode == 2) {
             lastCommandLogId = 0;
           }
-        
           // run deferred command safely
           if (deferredCommand && deferredCommand[0] != '\0') {
             yield();
             runCommand(deferredCommand, true);
           }
-        
           outputMode = 0;
           responseBuffer = "";
         }
-        
-                
-      
         // ============================
-        // HANDLE CASES (no String used)
+        // HANDLE CASES 
         // ============================
-      
         if (first == '*') {
           if (ci[DEBUG] > 1) {
             Serial.print(F("Initial: "));
@@ -1082,7 +1003,6 @@ void runRemoteTask() {
             tmp = replaceFirstOccurrenceAtChar(tmp, String(cs[SENSOR_CONFIG_STRING]), '|');
             strncpy(line, tmp.c_str(), len); // copy back
           }
-      
           additionalSensorInfo = line;
           handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), true);
           break;
@@ -1091,7 +1011,6 @@ void runRemoteTask() {
             Serial.print(F("JSON: "));
             Serial.println(line);
           }
-      
           receivedDataJson = true;
           break;
         } else if (first == '|') {
@@ -1103,7 +1022,6 @@ void runRemoteTask() {
           char *parts[3] = {0};
           int part = 0;
           parts[part++] = line;
-      
           for (char *p = line; *p && part < 3; p++) {
             if (*p == '!') {
               *p = '\0';
@@ -1111,17 +1029,14 @@ void runRemoteTask() {
             }
           }
           setLocalHardwareToServerStateFromNonJson(parts[0]);
-      
           if (part > 1 && strlen(parts[1]) > 5) {
             if (ci[DEBUG] > 1) {
               Serial.print(F("COMMAND: "));
               Serial.println(parts[1]);
             }
           }
-      
           if (lastCommandLogId == 0 && part > 2) {
             lastCommandLogId = strtoul(parts[2], NULL, 10);
-      
             if (lastCommandLogId > 0) {
               canSleep = false;
               deferredCanSleep = true;
@@ -1129,7 +1044,6 @@ void runRemoteTask() {
               canSleep = true;
               deferredCanSleep = false;
             }
-      
             // build "!command" WITHOUT String
             char cmdBuf[128];
             cmdBuf[0] = '!';
@@ -1139,15 +1053,12 @@ void runRemoteTask() {
           }
           receivedDataJson = true;
           break;
-        }
-      
-        else if (first == '!') {
+        } else if (first == '!') {
           if (strchr(line, '|')) {
             runCommand(line, false);
             break;
           } else {
             fileUploadPosition = atoi(line + 1);
-      
             File f = LittleFS.open(fileToUpload, "r");
             if (!f) {
               textOut(fileToUpload + F(": file not found\n"));
@@ -1155,9 +1066,7 @@ void runRemoteTask() {
               free(buf);
               return;
             }
-      
             uint32_t totalFileSize = f.size();
-      
             if (totalFileSize >= fileUploadPosition) {
               textOut(fileToUpload + F(" has finished uploading\n"));
               fileToUpload = "";
