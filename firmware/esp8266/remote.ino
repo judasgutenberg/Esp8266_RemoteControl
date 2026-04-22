@@ -2113,13 +2113,30 @@ void loop(){
     saveCommandState(0, 0, 0, 0);
     //setSlaveLong(1,0);
   } else if (preRebootCommandId > 0  && deviceName != "" && remoteState == RS_IDLE) {
-    Serial.println("\nsix");
     //we didn't actually reboot!
     //Serial.println("((((((((((((((((((((((((do we ever get here?");
+    /*
+    Serial.print("preRebootCommandId: ");
+    Serial.println(preRebootCommandId);
+    Serial.print("oldCommandId: ");
+    Serial.println(oldCommandId);
+    Serial.print("oldVersion: ");
+    Serial.println(oldVersion);
+    Serial.print("commandType: ");
+    Serial.println(commandType);
+    Serial.print("lastCommandLogId: ");
+    Serial.println(lastCommandLogId);
+    */
+  
+    if(possibleEndingMessage == "") {
+      possibleEndingMessage = String("Update of this firmware was successful; version " + String(oldVersion) + " changed to version ") + VERSION + "\n";
+    }
+ 
     String stringToSend = possibleEndingMessage + "\n" + preRebootCommandId;
     startRemoteTask(stringToSend, "commandout", 0xFFFF);
     //setSlaveLong(0,0);
     saveCommandState(0, 0, 0, 0);
+    
   }
  
   if(canSleep) {
