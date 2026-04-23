@@ -117,7 +117,7 @@ CommandDef commands[] = {
   {"save slave config",     cmdSaveSlaveConfig, 0,  true,         0b00000010},
   {"init master defaults",  cmdInitMasterDefaults, 0, true,       0b00000000}, 
   {"init slave defaults",   cmdInitSlaveDefaults, 0, true,        0b00000010},
-  {"get uptime",            cmdGetUptime, 0,        true,         0b00000000},
+  {"uptime",                cmdGetUptime, 0,        true,         0b00000000},
   {"get wifi uptime",       cmdGetWifiUptime, 0,    true,         0b00000000},
   {"get lastpoll",          cmdGetLastpoll, 0,      true,         0b00000000},
   {"get lastdatalog",       cmdGetLastdatalog, 0,   true,         0b00000000},
