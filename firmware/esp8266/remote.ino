@@ -88,68 +88,68 @@ struct CommandDef {
 };
  
 CommandDef commands[] = {
-  {"reboot now", cmdRebootEsp, 0, true,                           0b00000000},
-  {"reboot slave", cmdRebootSlave, 0, true,                       0b00000010},
-  {"watchdog reboot", cmdRebootMasterFromSlave, 0, true,          0b10000010},
-  {"reboot", cmdDeferredReboot, 0, true,                          0b10000000},
-  {"update firmware", cmdUpdateFirmware, 1, true,                 0b10000000},
-  {"version", cmdVersion, 0, true,                                0b00000000},
-  {"run slave sketch", cmdRunSlaveSketch, 0, true,                0b00000010},
-  {"slave bootloader", cmdRunSlaveBootloader, 0, true,            0b00000010},
-  {"pet watchdog", cmdPetWatchdog, 0, true,                       0b00000010},
-  {"get weather sensors", cmdGetWeatherSensors, 0, true,          0b00000000},
-  {"one pin at a time", cmdOnePinAtATime, 0, false,               0b00000000},
+  {"reboot now",            cmdRebootEsp, 0,        true,         0b00000000},
+  {"reboot slave",          cmdRebootSlave, 0,      true,         0b00000010},
+  {"watchdog reboot",       cmdRebootMasterFromSlave, 0, true,    0b10000010},
+  {"reboot",                cmdDeferredReboot, 0,   true,         0b10000000},
+  {"update firmware",       cmdUpdateFirmware, 1,   true,         0b10000000},
+  {"version",               cmdVersion, 0,          true,         0b00000000},
+  {"run slave sketch",      cmdRunSlaveSketch, 0,   true,         0b00000010},
+  {"slave bootloader",      cmdRunSlaveBootloader, 0, true,       0b00000010},
+  {"pet watchdog",          cmdPetWatchdog, 0,      true,         0b00000010},
+  {"get weather sensors",   cmdGetWeatherSensors, 0, true,        0b00000000},
+  {"one pin at a time",     cmdOnePinAtATime, 0, false,           0b00000000},
   {"clear latency average", cmdClearLatencyAverage, 0, true,      0b00000000},
-  {"ir", cmdIr, 1, false,                                         0b00010000},
-  {"clear fram", cmdClearFram, 0, true,                           0b00000100},
-  {"dump fram", cmdDumpFram, 0, true,                             0b00000100},
-  {"dump fram hex", cmdDumpFramHex, 1, false,                     0b00000100}, 
-  {"dump fram hex#", cmdDumpFramHexAt, 1, false,                  0b00000100}, 
-  {"swap fram", cmdSwapFram, 0, true,                             0b00000100},
-  {"dump fram record", cmdDumpFramRecord, 1, false,               0b00000100},
-  {"get fram index", cmdGetFramIndex, 0, true,                    0b00000100},
-  {"set date", cmdSetDate, 1, false,                              0b00001000},
-  {"get date", cmdGetDate, 0, true,                               0b00001000},
-  {"get watchdog info", cmdGetWatchdogInfo, 0, true,              0b00000010},
-  {"get watchdog data", cmdGetWatchdogData, 0, true,              0b00000010},
-  {"ls", cmdListFiles, 0, true,                                   0b00000001},
+  {"ir",                    cmdIr, 1,               false,        0b00010000},
+  {"clear fram",            cmdClearFram, 0,        true,         0b00000100},
+  {"dump fram",             cmdDumpFram, 0,         true,         0b00000100},
+  {"dump fram hex",         cmdDumpFramHex, 1,      false,        0b00000100}, 
+  {"dump fram hex#",        cmdDumpFramHexAt, 1,    false,        0b00000100}, 
+  {"swap fram",             cmdSwapFram, 0,         true,         0b00000100},
+  {"dump fram record",      cmdDumpFramRecord, 1,   false,        0b00000100},
+  {"get fram index",        cmdGetFramIndex, 0,     true,         0b00000100},
+  {"set date",              cmdSetDate, 1,          false,        0b00001000},
+  {"get date",              cmdGetDate, 0,          true,         0b00001000},
+  {"get watchdog info",     cmdGetWatchdogInfo, 0,  true,         0b00000010},
+  {"get watchdog data",     cmdGetWatchdogData, 0,  true,         0b00000010},
+  {"ls",                    cmdListFiles, 0,        true,         0b00000001},
   {"save master config",    cmdSaveMasterConfig, 0, true,         0b00000000},
-  {"save slave config",     cmdSaveSlaveConfig, 0, true,          0b00000010},
+  {"save slave config",     cmdSaveSlaveConfig, 0,  true,         0b00000010},
   {"init master defaults",  cmdInitMasterDefaults, 0, true,       0b00000000}, 
   {"init slave defaults",   cmdInitSlaveDefaults, 0, true,        0b00000010},
-  {"get uptime",            cmdGetUptime, 0, true,                0b00000000},
-  {"get wifi uptime",       cmdGetWifiUptime, 0, true,            0b00000000},
-  {"get lastpoll",          cmdGetLastpoll, 0, true,              0b00000000},
-  {"get lastdatalog",       cmdGetLastdatalog, 0, true,           0b00000000},
-  {"memory",                cmdMemory, 0, true,                   0b00000000},
+  {"get uptime",            cmdGetUptime, 0,        true,         0b00000000},
+  {"get wifi uptime",       cmdGetWifiUptime, 0,    true,         0b00000000},
+  {"get lastpoll",          cmdGetLastpoll, 0,      true,         0b00000000},
+  {"get lastdatalog",       cmdGetLastdatalog, 0,   true,         0b00000000},
+  {"memory",                cmdMemory, 0,           true,         0b00000000},
   {"dump parsed serial packet", cmdDumpSerialPacket, 0, true,     0b00000010},
-  {"format file system", cmdFormatFileSystem, 0, true,            0b00000001},
+  {"format file system",    cmdFormatFileSystem, 0, true,         0b00000001},
   ///////////
-  {"rm", cmdDel, 1, false,                                        0b00000001},
-  {"download", cmdDownload, 1, false,                             0b00000001},
+  {"rm",                    cmdDel, 1, false,                     0b00000001},
+  {"download",              cmdDownload, 1, false,                0b00000001},
   //{"mkdir", cmdMkdir, 1, false, 0b00000000},
-  {"upload", cmdUpload, 1, false,                                 0b00000001},
-  {"cat", cmdCat, 1, false,                                       0b00000001},
-  {"read slave eeprom", cmdReadSlaveEeprom, 1, false,             0b00000010},
-  {"reset serial", cmdResetSerial, 0, false,                      0b00000000},
-  {"dump config eeprom", cmdConfigEeprom, 0, false,               0b00000010},
+  {"upload",                cmdUpload, 1, false,                  0b00000001},
+  {"cat",                   cmdCat, 1, false,                     0b00000001},
+  {"read slave eeprom",     cmdReadSlaveEeprom, 1, false,         0b00000010},
+  {"reset serial",          cmdResetSerial, 0, false,             0b00000000},
+  {"dump config eeprom",    cmdConfigEeprom, 0, false,            0b00000010},
   {"dump slave config eeprom", cmdDumpSlaveEeprom, 0, false,      0b00000010},
-  {"send slave serial", cmdSendSlaveSerial, 1, false,             0b00000010},
-  {"set slave time", cmdSetSlaveTime, 1, false,                   0b00000010},
-  {"get slave time", cmdGetSlaveTime, 0, false,                   0b00000010},
-  {"init slave serial", cmdInitSlaveSerial, 0, false,             0b00000010},
-  {"get slave serial", getSlaveSerial, 0, false,                  0b00000010},
+  {"send slave serial",     cmdSendSlaveSerial, 1, false,         0b00000010},
+  {"set slave time",        cmdSetSlaveTime, 1, false,            0b00000010},
+  {"get slave time",        cmdGetSlaveTime, 0, false,            0b00000010},
+  {"init slave serial",     cmdInitSlaveSerial, 0, false,         0b00000010},
+  {"get slave serial",      getSlaveSerial, 0, false,             0b00000010},
   {"get slave parsed datum", getSlaveParsedDatum, 1, false,       0b00000010},
   {"update slave firmware", updateSlaveFirmware, 1, false,        0b00000010},
   {"get master eeprom used", getMasterEepromUsed, 0, false,       0b00000010},
   {"get slave eeprom used", getSlaveEepromUsed, 0, false,         0b00000010},
-  {"get slave", getSlave, 1, false,                               0b00000010},
+  {"get slave",             getSlave, 1, false,                   0b00000010},
   {"set slave parser basis", setSlaveParserBasis, 2, false,       0b00000010},
-  {"set slave basis", setSlaveBasis, 2, false,                    0b00000010},
-  {"set slave", setSlave, 2, false,                               0b00000010},
-  {"run slave", runSlave, 2, false,                               0b00000010},
-  {"set", cmdSet, 2, false,                                       0b00000010},
-  {"get", cmdGet, 1, false,                                       0b00000010},
+  {"set slave basis",       setSlaveBasis, 2, false,              0b00000010},
+  {"set slave",             setSlave, 2, false,                   0b00000010},
+  {"run slave",             runSlave, 2, false,                   0b00000010},
+  {"set",                   cmdSet, 2, false,                     0b00000010},
+  {"get",                   cmdGet, 1, false,                     0b00000010},
   // add more here…
 };
 
@@ -183,11 +183,8 @@ void startRemoteTask(const String& datastring, const String& mode, uint16_t fRAM
       fileUploadPosition = 0;
     } else {
       remoteDatastring = possibleDataString;
-      //Serial.println("wooter");
       remoteMode = "savePacket";
-      //Serial.println("wooter1");
       File f = LittleFS.open(fileToUpload, "r");
-      //Serial.println("wooter2");
       if (!f) {
           textOut(fileToUpload + ": file not found\n");
           fileToUpload = "";
@@ -224,11 +221,7 @@ void lookupLocalPowerData() {//sets the globals with the current reading from th
   measuredAmpage = current_mA;
 }
 
-String weatherDataString(
-  int sensorId, int sensorSubtype, int dataPin, int powerPin, int i2c,
-  int deviceFeatureId, char objectCursor, String sensorName,
-  int ordinalOfOverwrite, int consolidateAllSensorsToOneRecord
-) {
+String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName, int ordinalOfOverwrite, int consolidateAllSensorsToOneRecord) {
   if(ci[POLLING_SKIP_LEVEL] < 10) {
     return "";
   }
@@ -238,9 +231,9 @@ String weatherDataString(
   double pressureFromSensor = NAN;
   double gasFromSensor = NAN;
   String sensorValueStr = "";
-
-  if (deviceFeatureId == 0) objectCursor = 0;
-  
+  if (deviceFeatureId == 0) {
+    objectCursor = 0;
+  }
   // sensor-reading branches (unchanged)
   if (ci[SENSOR_ID] == 1) {
     if (powerPin > -1) {
@@ -368,18 +361,48 @@ String weatherDataString(
       }
       pos += (size_t)n;
       if (pos >= bufSize) { 
-        tx[bufSize - 1] = '\0'; return String(tx); 
+        tx[bufSize - 1] = '\0'; 
+        return String(tx); 
       }
     }
   }
-
-  // append reserved stars (13 chars)
-  if (pos + 13 < bufSize) {
-    memcpy(tx + pos, "*************", 13);
-    pos += 13;
+  //send memory telemetry in reserved fields if configured to
+  if(ci[SEND_MEM_DATA_IN_RESERVED] == 1) {
+    uint32_t freeHeap = ESP.getFreeHeap();
+    uint32_t maxBlock = ESP.getMaxFreeBlockSize();
+    uint32_t fragPct = 100 - (maxBlock * 100 / freeHeap);
+    
+    // worst case size estimate:
+    // 9 stars + 3 numbers (~10 digits each) + 2 separators + null ˜ ~45 chars
+    int n = snprintf(
+      tx + pos,
+      bufSize - pos,
+      "*********%u*%u*%u**",
+      freeHeap,
+      maxBlock,
+      fragPct
+    );
+    
+    if (n < 0) {
+      tx[bufSize - 1] = '\0';
+      return String(tx);
+    }
+    
+    pos += (size_t)n;
+    
+    if (pos >= bufSize) {
+      tx[bufSize - 1] = '\0';
+      return String(tx);
+    }
   } else {
-    tx[bufSize - 1] = '\0';
-    return String(tx);
+    // append reserved stars (13 chars)
+    if (pos + 13 < bufSize) {
+      memcpy(tx + pos, "*************", 13);
+      pos += 13;
+    } else {
+      tx[bufSize - 1] = '\0';
+      return String(tx);
+    }
   }
 
   // offline FRAM logging (keeps existing behavior)
@@ -407,7 +430,7 @@ String weatherDataString(
         }
         writeRecordToFRAM(framWeatherRecord);
         if(ci[DEBUG] > 0) {
-          Serial.println("Saved a record to FRAM.");
+          Serial.println(F("Saved a record to FRAM."));
         }
         // print trimmed tx for info
         tx[(pos < bufSize - 1) ? pos : bufSize - 1] = '\0';
@@ -495,11 +518,11 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
   } else if (sensorIdLocal == 2320) { //AHT20
     if (AHT[objectCursor].begin()) {
       if(ci[DEBUG] > 0) {
-        Serial.println("Found AHT20");
+        Serial.println(F("Found AHT20"));
       }
     } else {
       if(ci[DEBUG] > 0) {
-        Serial.println("Didn't find AHT20");
+        Serial.println(F("Didn't find AHT20"));
       }
     }  
   } else if (sensorIdLocal == 7410) { //adt7410
@@ -514,15 +537,15 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
     BMP085d[objectCursor].begin();
   } else if (sensorIdLocal == 280) {
     if(ci[DEBUG] > 0) {
-      Serial.print("Initializing BMP280 at i2c: ");
+      Serial.print(F("Initializing BMP280 at i2c: "));
       Serial.print((int)i2c);
-      Serial.print(" objectcursor:");
+      Serial.print(F(" objectcursor:"));
       Serial.print((int)objectCursor);
       Serial.println();
     }
     if(!BMP280[objectCursor].begin(i2c)){
       if(ci[DEBUG] > 0) {
-        Serial.println("Couldn't find BMX280!");
+        Serial.println(F("Couldn't find BMX280!"));
       }
     }
   }
@@ -534,15 +557,8 @@ void handleWeatherData() {
   server.send(200, "text/plain", transmissionString); //Send values only to client ajax request
 }
 
-void compileAndSendDeviceData(
-    const String& weatherData,
-    const String& whereWhenData,
-    const String& powerData,
-    bool doPinCursorChanges,
-    uint16_t fRAMOrdinal
-) {
-    if(ci[POLLING_SKIP_LEVEL] < 8)
-    {
+void compileAndSendDeviceData(const String& weatherData,const String& whereWhenData, const String& powerData, bool doPinCursorChanges, uint16_t fRAMOrdinal) {
+    if(ci[POLLING_SKIP_LEVEL] < 8){
       return;
     }
     // Large fixed buffer (adjust as needed)
@@ -553,12 +569,7 @@ void compileAndSendDeviceData(
     if (weatherData.length() > 0) {
         pos += snprintf(tx + pos, sizeof(tx) - pos, "%s", weatherData.c_str());
     } else if (ci[SENSOR_ID] > -1) {
-        String s = weatherDataString(
-            ci[SENSOR_ID], ci[SENSOR_SUB_TYPE],
-            ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN],
-            ci[SENSOR_I2C], NULL, 0,
-            deviceName, -1, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]
-        );
+        String s = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, -1, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
         pos += snprintf(tx + pos, sizeof(tx) - pos, "%s", s.c_str());
     }
 
@@ -574,13 +585,11 @@ void compileAndSendDeviceData(
     if (whereWhenData.length() > 0) {
         pos += snprintf(tx + pos, sizeof(tx) - pos, "|%s", whereWhenData.c_str());
     } else {
-        pos += snprintf(tx + pos, sizeof(tx) - pos, "|*%lu*%lu*",
-                        millis(), timeClient.getEpochTime());
+        pos += snprintf(tx + pos, sizeof(tx) - pos, "|*%lu*%lu*", millis(), timeClient.getEpochTime());
     }
     // latency
     if (latencyCount > 0) {
-        pos += snprintf(tx + pos, sizeof(tx) - pos, "%u",
-                        (1000 * latencySum) / latencyCount);
+        pos += snprintf(tx + pos, sizeof(tx) - pos, "%u", (1000 * latencySum) / latencyCount);
     }
     // latitude*longitude*elevation*velocity*uncertainty placeholder
     pos += snprintf(tx + pos, sizeof(tx) - pos, "*****");
@@ -593,8 +602,7 @@ void compileAndSendDeviceData(
     if (powerData.length() > 0) {
         pos += snprintf(tx + pos, sizeof(tx) - pos, "|%s", powerData.c_str());
     } else {
-        pos += snprintf(tx + pos, sizeof(tx) - pos, "|*%f*%f",
-                        measuredVoltage, measuredAmpage);
+        pos += snprintf(tx + pos, sizeof(tx) - pos, "|*%f*%f", measuredVoltage, measuredAmpage);
     }
     // future expansion
     pos += snprintf(tx + pos, sizeof(tx) - pos, "|||");
@@ -705,16 +713,16 @@ void wiFiConnect() {
           Serial.println(wifiTimeoutToUse);
           if(ci[DEBUG] > 0) {
             Serial.println("");
-            Serial.println("WiFi taking too long");
+            Serial.println(F("WiFi taking too long"));
           }
           if(ci[MOXEE_POWER_SWITCH] > 0) {
             if(ci[DEBUG] > 0) {
-              Serial.println("rebooting Moxee");
+              Serial.println(F("rebooting Moxee"));
             }
             rebootMoxee();
           }
           if(ci[DEBUG] > 0) {
-            Serial.println("trying another");
+            Serial.println(F("trying another"));
           }
           wiFiSeconds = 0;
           initialAttemptPhase = false;
@@ -741,7 +749,7 @@ void wiFiConnect() {
   if (!connected) {
     if(validWiFiAttempts > 0) {
       if(ci[DEBUG] > 0) {
-        Serial.println("\nAll WiFi attempts failed.");
+        Serial.println(F("\nAll WiFi attempts failed."));
       }
     }
     if (ci[FRAM_ADDRESS] > 0){
@@ -830,7 +838,7 @@ void runRemoteTask() {
           yield();
           if(ci[DEBUG] > 1) {
             Serial.println();
-            Serial.print("Connection failed (host): ");
+            Serial.print(F("Connection failed (host): "));
             Serial.println(cs[HOST_GET]);
           }
           // finish the task
@@ -972,6 +980,7 @@ void runRemoteTask() {
         // check: remoteMode (still a String, but not created in loop)
         bool validMode = (remoteMode == F("saveData") || remoteMode == F("commandout") || remoteMode == F("savePacket"));
         if (!hasError && validMode && validStart) {
+          permissionErrorCount = 0;
           lastDataLogTime = millis();
           moxeeRebootCount = 0;
           for (int i = 0; i < 11; i++){
@@ -990,6 +999,11 @@ void runRemoteTask() {
           }
           outputMode = 0;
           responseBuffer = "";
+        } else if(hasError) {
+          permissionErrorCount++;
+        }
+        if(permissionErrorCount > 10) {
+          initMasterDefaults(); //if we come up with the wrong configuration stored in alterable storage, we will have repeated permission errors, so, we need to use the baked-in configuration
         }
         // ============================
         // HANDLE CASES 
@@ -1017,7 +1031,7 @@ void runRemoteTask() {
           break;
         } else if (first == '|') {
           if (ci[DEBUG] > 1) {
-            Serial.print("delimited: ");
+            Serial.print(F("delimited: "));
             Serial.println(line);
           }
           // split in-place on '!'
@@ -1707,7 +1721,7 @@ void sendIr(String rawDataStr) {
   // Send the parsed raw data
   irsend.sendRaw(rawData, rawDataLength, 38);
   if(ci[DEBUG] > 1) {
-    Serial.println("IR signal sent!");
+    Serial.println(F("IR signal sent!"));
   }
   free(rawData); // Free memory
 }
@@ -1777,16 +1791,16 @@ void setup(){
   setSerialRate((byte)ci[BAUD_RATE_LEVEL]); 
   if(loadAllConfig(0, 0) != 1) {
     if(ci[DEBUG] > 0) {
-      Serial.println("\nNo config found in storage");
+      Serial.println(F("\nNo config found in storage"));
     }
     initMasterDefaults();
   } else {
     if(ci[DEBUG] > 0) {
-      Serial.print("\nConfiguration retrieved from ");
+      Serial.print(F("\nConfiguration retrieved from "));
       if(ci[CONFIG_PERSIST_METHOD] == 1) {
-        Serial.println("slave EEPROM");
+        Serial.println(F("slave EEPROM"));
       } else {
-        Serial.println("local flash");
+        Serial.println(F("local flash"));
       }
     }
   }
@@ -1834,7 +1848,7 @@ void setup(){
     ina219 = new Adafruit_INA219(ci[INA219_ADDRESS]);
     if (!ina219->begin()) {
       if(ci[DEBUG] > 0) {
-        Serial.println("Failed to find INA219 chip");
+        Serial.println(F("Failed to find INA219 chip"));
       }
     } else {
       ina219->setCalibration_16V_400mA();
@@ -1843,11 +1857,11 @@ void setup(){
   if(ci[FRAM_ADDRESS] > 0) {
     if (!fram.begin(ci[FRAM_ADDRESS])) {
       if(ci[DEBUG] > 0) {
-        Serial.println("Could not find FRAM (or EEPROM).");
+        Serial.println(F("Could not find FRAM (or EEPROM)."));
       }
     } else {
       if(ci[DEBUG] > 0) {
-        Serial.println("FRAM or EEPROM found");
+        Serial.println(F("FRAM or EEPROM found"));
       }
     }
       currentRecordCount = readRecordCountFromFRAM();
@@ -1860,7 +1874,7 @@ void setup(){
   }
   if (!LittleFS.begin()) {
     if(ci[DEBUG] > 0) {
-      Serial.println("LittleFS mount failed!");
+      Serial.println(F("LittleFS mount failed!"));
     }
   }
   //clearFramLog();
@@ -2070,7 +2084,7 @@ void doSerialCommands() {
     if (c == '\r' || c == '\n') {
       if (command.length() > 0) {
         if (ci[DEBUG] > 0) {
-          Serial.print("Serial command: ");
+          Serial.print(F("Serial command: "));
           Serial.println(command);
         }
         String fullCommand = "!-1|" + command;
@@ -2122,7 +2136,7 @@ void localSetData() {
       pinMap.erase(key);
       pinMap[key] = onValue;
       if(ci[DEBUG] > 0) {
-        Serial.print("LOCAL SOURCE TRUE :");
+        Serial.print(F("LOCAL SOURCE TRUE :"));
         Serial.println(onValue);
       }
       localSource = true; //sets the NodeMCU into a mode it cannot get out of until the server sends back confirmation it got the data
@@ -2546,9 +2560,9 @@ void changeDelimiterOnRecord(uint16_t index, uint8_t newDelimiter) {
   yield();
   uint8_t bytesPerLine = getRecordSizeFromFRAM(location);
   if(ci[DEBUG] > 0) {
-    Serial.print("Bytes per line: ");
+    Serial.print(F("Bytes per line: "));
     Serial.println(bytesPerLine);
-    Serial.print("index in: ");
+    Serial.print(F("index in: "));
     Serial.println(index);
   }
   //bytes per line should be 25
@@ -3149,10 +3163,10 @@ void saveAllConfigToFlash(uint16_t param) {
         f.write((uint8_t)0);
         yield();
     }
-
     f.close();
 }
 
+//serve a file from the LittleFS file system via http 
 void handleFileRequest() {
   String path = server.uri(); // "/file.txt"
   if (path.startsWith("/")) {
@@ -3170,11 +3184,17 @@ void handleFileRequest() {
   }
   // Basic MIME type detection
   String contentType = "text/plain";
-  if (path.endsWith(".html")) contentType = "text/html";
-  else if (path.endsWith(".css")) contentType = "text/css";
-  else if (path.endsWith(".js")) contentType = "application/javascript";
-  else if (path.endsWith(".png")) contentType = "image/png";
-  else if (path.endsWith(".jpg") || path.endsWith(".jpeg")) contentType = "image/jpeg";
+  if (path.endsWith(".html")) {
+    contentType = "text/html";
+  } else if (path.endsWith(".css")){
+    contentType = "text/css";
+  } else if (path.endsWith(".js")) {
+    contentType = "application/javascript";
+  } else if (path.endsWith(".png")) {
+    contentType = "image/png";
+  } else if (path.endsWith(".jpg") || path.endsWith(".jpeg")) {
+    contentType = "image/jpeg";
+  }
   server.streamFile(file, contentType);
   file.close();
 }
