@@ -82,72 +82,74 @@ struct CommandDef {
   CommandHandler handler;
   int maxArgs;
   bool exactMatch;
+  uint8_t configuration; //see below
+  //bits specifying requirements in the higher byte:  <requires_deferment><unused><unused><requires_ir> 
+  //bits specifying requirements in the lower byte:  <requires_rtc><requires_fram><requires_slave><requires_fs>
 };
  
-
 CommandDef commands[] = {
-  {"reboot now", cmdRebootEsp, 0, true},
-  {"reboot slave", cmdRebootSlave, 0, true},
-  {"watchdog reboot", cmdRebootMasterFromSlave, 0, true},
-  {"reboot", cmdDeferredReboot, 0, true},
-  {"update firmware", cmdUpdateFirmware, 1, true},
-  {"version", cmdVersion, 0, true},
-  {"run slave sketch", cmdRunSlaveSketch, 0, true},
-  {"slave bootloader", cmdRunSlaveBootloader, 0, true},
-  {"pet watchdog", cmdPetWatchdog, 0, true},
-  {"get weather sensors", cmdGetWeatherSensors, 0, true},
-  {"one pin at a time", cmdOnePinAtATime, 0, false},
-  {"clear latency average", cmdClearLatencyAverage, 0, true},
-  {"ir", cmdIr, 1, false},
-  {"clear fram", cmdClearFram, 0, true},
-  {"dump fram", cmdDumpFram, 0, true},
-  {"dump fram hex", cmdDumpFramHex, 1, false}, 
-  {"dump fram hex#", cmdDumpFramHexAt, 1, false}, 
-  {"swap fram", cmdSwapFram, 0, true},
-  {"dump fram record", cmdDumpFramRecord, 1, false},
-  {"get fram index", cmdGetFramIndex, 0, true},
-  {"set date", cmdSetDate, 1, false},
-  {"get date", cmdGetDate, 0, true},
-  {"get watchdog info", cmdGetWatchdogInfo, 0, true},
-  {"get watchdog data", cmdGetWatchdogData, 0, true},
-  {"ls", cmdListFiles, 0, true},
-  {"save master config", cmdSaveMasterConfig, 0, true},
-  {"save slave config", cmdSaveSlaveConfig, 0, true},
-  {"init master defaults", cmdInitMasterDefaults, 0, true}, 
-  {"init slave defaults", cmdInitSlaveDefaults, 0, true},
-  {"get uptime", cmdGetUptime, 0, true},
-  {"get wifi uptime", cmdGetWifiUptime, 0, true},
-  {"get lastpoll", cmdGetLastpoll, 0, true},
-  {"get lastdatalog", cmdGetLastdatalog, 0, true},
-  {"memory", cmdMemory, 0, true},
-  {"dump parsed serial packet", cmdDumpSerialPacket, 0, true},
-  {"format file system", cmdFormatFileSystem, 0, true},
+  {"reboot now", cmdRebootEsp, 0, true,                           0b00000000},
+  {"reboot slave", cmdRebootSlave, 0, true,                       0b00000010},
+  {"watchdog reboot", cmdRebootMasterFromSlave, 0, true,          0b10000010},
+  {"reboot", cmdDeferredReboot, 0, true,                          0b10000000},
+  {"update firmware", cmdUpdateFirmware, 1, true,                 0b10000000},
+  {"version", cmdVersion, 0, true,                                0b00000000},
+  {"run slave sketch", cmdRunSlaveSketch, 0, true,                0b00000010},
+  {"slave bootloader", cmdRunSlaveBootloader, 0, true,            0b00000010},
+  {"pet watchdog", cmdPetWatchdog, 0, true,                       0b00000010},
+  {"get weather sensors", cmdGetWeatherSensors, 0, true,          0b00000000},
+  {"one pin at a time", cmdOnePinAtATime, 0, false,               0b00000000},
+  {"clear latency average", cmdClearLatencyAverage, 0, true,      0b00000000},
+  {"ir", cmdIr, 1, false,                                         0b00010000},
+  {"clear fram", cmdClearFram, 0, true,                           0b00000100},
+  {"dump fram", cmdDumpFram, 0, true,                             0b00000100},
+  {"dump fram hex", cmdDumpFramHex, 1, false,                     0b00000100}, 
+  {"dump fram hex#", cmdDumpFramHexAt, 1, false,                  0b00000100}, 
+  {"swap fram", cmdSwapFram, 0, true,                             0b00000100},
+  {"dump fram record", cmdDumpFramRecord, 1, false,               0b00000100},
+  {"get fram index", cmdGetFramIndex, 0, true,                    0b00000100},
+  {"set date", cmdSetDate, 1, false,                              0b00001000},
+  {"get date", cmdGetDate, 0, true,                               0b00001000},
+  {"get watchdog info", cmdGetWatchdogInfo, 0, true,              0b00000010},
+  {"get watchdog data", cmdGetWatchdogData, 0, true,              0b00000010},
+  {"ls", cmdListFiles, 0, true,                                   0b00000001},
+  {"save master config",    cmdSaveMasterConfig, 0, true,         0b00000000},
+  {"save slave config",     cmdSaveSlaveConfig, 0, true,          0b00000010},
+  {"init master defaults",  cmdInitMasterDefaults, 0, true,       0b00000000}, 
+  {"init slave defaults",   cmdInitSlaveDefaults, 0, true,        0b00000010},
+  {"get uptime",            cmdGetUptime, 0, true,                0b00000000},
+  {"get wifi uptime",       cmdGetWifiUptime, 0, true,            0b00000000},
+  {"get lastpoll",          cmdGetLastpoll, 0, true,              0b00000000},
+  {"get lastdatalog",       cmdGetLastdatalog, 0, true,           0b00000000},
+  {"memory",                cmdMemory, 0, true,                   0b00000000},
+  {"dump parsed serial packet", cmdDumpSerialPacket, 0, true,     0b00000010},
+  {"format file system", cmdFormatFileSystem, 0, true,            0b00000001},
   ///////////
-  {"rm", cmdDel, 1, false},
-  {"download", cmdDownload, 1, false},
-  //{"mkdir", cmdMkdir, 1, false},
-  {"upload", cmdUpload, 1, false},
-  {"cat", cmdCat, 1, false},
-  {"read slave eeprom", cmdReadSlaveEeprom, 1, false},
-  {"reset serial", cmdResetSerial, 0, false},
-  {"dump config eeprom", cmdConfigEeprom, 0, false},
-  {"dump slave config eeprom", cmdDumpSlaveEeprom, 0, false},
-  {"send slave serial", cmdSendSlaveSerial, 1, false},
-  {"set slave time", cmdSetSlaveTime, 1, false},
-  {"get slave time", cmdGetSlaveTime, 0, false},
-  {"init slave serial", cmdInitSlaveSerial, 0, false},
-  {"get slave serial", getSlaveSerial, 0, false},
-  {"get slave parsed datum", getSlaveParsedDatum, 1, false},
-  {"update slave firmware", updateSlaveFirmware, 1, false},
-  {"get master eeprom used", getMasterEepromUsed, 0, false},
-  {"get slave eeprom used", getSlaveEepromUsed, 0, false},
-  {"get slave", getSlave, 1, false},
-  {"set slave parser basis", setSlaveParserBasis, 2, false},
-  {"set slave basis", setSlaveBasis, 2, false},
-  {"set slave", setSlave, 2, false},
-  {"run slave", runSlave, 2, false},
-  {"set", cmdSet, 2, false},
-  {"get", cmdGet, 1, false},
+  {"rm", cmdDel, 1, false,                                        0b00000001},
+  {"download", cmdDownload, 1, false,                             0b00000001},
+  //{"mkdir", cmdMkdir, 1, false, 0b00000000},
+  {"upload", cmdUpload, 1, false,                                 0b00000001},
+  {"cat", cmdCat, 1, false,                                       0b00000001},
+  {"read slave eeprom", cmdReadSlaveEeprom, 1, false,             0b00000010},
+  {"reset serial", cmdResetSerial, 0, false,                      0b00000000},
+  {"dump config eeprom", cmdConfigEeprom, 0, false,               0b00000010},
+  {"dump slave config eeprom", cmdDumpSlaveEeprom, 0, false,      0b00000010},
+  {"send slave serial", cmdSendSlaveSerial, 1, false,             0b00000010},
+  {"set slave time", cmdSetSlaveTime, 1, false,                   0b00000010},
+  {"get slave time", cmdGetSlaveTime, 0, false,                   0b00000010},
+  {"init slave serial", cmdInitSlaveSerial, 0, false,             0b00000010},
+  {"get slave serial", getSlaveSerial, 0, false,                  0b00000010},
+  {"get slave parsed datum", getSlaveParsedDatum, 1, false,       0b00000010},
+  {"update slave firmware", updateSlaveFirmware, 1, false,        0b00000010},
+  {"get master eeprom used", getMasterEepromUsed, 0, false,       0b00000010},
+  {"get slave eeprom used", getSlaveEepromUsed, 0, false,         0b00000010},
+  {"get slave", getSlave, 1, false,                               0b00000010},
+  {"set slave parser basis", setSlaveParserBasis, 2, false,       0b00000010},
+  {"set slave basis", setSlaveBasis, 2, false,                    0b00000010},
+  {"set slave", setSlave, 2, false,                               0b00000010},
+  {"run slave", runSlave, 2, false,                               0b00000010},
+  {"set", cmdSet, 2, false,                                       0b00000010},
+  {"get", cmdGet, 1, false,                                       0b00000010},
   // add more here…
 };
 
@@ -1472,7 +1474,20 @@ void runCommandsFromJson(char * json){
 }
 */
 
-void notYetDeferred(const char * nonJsonLine, int commandId, int commandType){
+///////////////////////////////////////////////
+//command functions
+///////////////////////////////////////////////
+#define CFG_REQ_FS        0b00000001
+#define CFG_REQ_SLAVE     0b00000010
+#define CFG_REQ_FRAM      0b00000100
+#define CFG_REQ_RTC       0b00001000
+///////////////////////////////
+#define CFG_REQ_IR        0b00010000
+#define CFG_UNUSED_1      0b00100000
+#define CFG_UNUSED_2      0b01000000
+#define CFG_REQ_DEFER     0b10000000
+  
+void notYetDeferred(const char * commandText, int commandId, int commandType){
   //Serial.println("NOT DEFERRED");
   if(lastCommandLogId > 0 || commandId <0) {
     //Serial.println("SAVING COMMAND STATE");
@@ -1481,15 +1496,15 @@ void notYetDeferred(const char * nonJsonLine, int commandId, int commandType){
   String command;
   //Serial.println("**********************");
   //Serial.println(command);
-  if (nonJsonLine == nullptr) {
+  if (commandText == nullptr) {
     return;
   }
-  size_t len = strlen(nonJsonLine);
+  size_t len = strlen(commandText);
   if (deferredCommand != nullptr) {
     delete[] deferredCommand;
   }
   deferredCommand = new char[len + 1];  // +1 for null terminator
-  strcpy(deferredCommand, nonJsonLine);
+  strcpy(deferredCommand, commandText);
   if(commandId == -1) {
     //our command is via serial, so handle deferred commands immediately
     runCommand(deferredCommand, true);
@@ -1497,7 +1512,7 @@ void notYetDeferred(const char * nonJsonLine, int commandId, int commandType){
   return;
 }
 
-void runCommand(const char * nonJsonLine, bool deferred){
+void runCommand(const char * commandText, bool deferred){
   //can change the default values of some config data for things like polling
   //dumpMemoryStats(99);
   //return;
@@ -1507,7 +1522,7 @@ void runCommand(const char * nonJsonLine, bool deferred){
   String commandArray[4];
   int latency;
   //first get rid of the first character, since all it does is signal that we are receiving a command:
-  const char* cmd = nonJsonLine + 1;
+  const char* cmd = commandText + 1;
   splitString(cmd, '|', commandArray, 3);
   commandId = commandArray[0].toInt();
   command = commandArray[1];
@@ -1525,9 +1540,9 @@ void runCommand(const char * nonJsonLine, bool deferred){
   if(commandId) {
     //Serial.println(command);
     handleCommand(command, deferred);
-    if(!deferred && (command == F("watchdog reboot")  || command == F("reboot") || command.startsWith(F("update firmware")))) {
+    if(!deferred && (commandRequiresDeferment(command))) {
       //Serial.println("--------+"  + command + "*-----");
-      notYetDeferred(nonJsonLine, commandId, (int32_t)(command.startsWith(F("update firmware"))));
+      notYetDeferred(commandText, commandId, (int32_t)(command.startsWith(F("update firmware"))));
     }
     command = "";
     if(commandId > 0) { //don't reset lastCommandId if the command came via serial port
@@ -1539,20 +1554,44 @@ void runCommand(const char * nonJsonLine, bool deferred){
 void handleCommand(String input, bool deferred) {
   String results[5];
   int resultCount = 0;
-  if(input == "") {
+  if (input == "") {
     return;
   }
   int commandNumber = sizeof(commands) / sizeof(commands[0]);
   for (int i = 0; i < commandNumber; i++) {
     yield();
-    
     if (parseCommand(input, commands[i].name, results, resultCount, commands[i].maxArgs)) {
+      uint8_t cfg = commands[i].configuration;
+      // 🚫 Capability checks
+      if ((cfg & CFG_REQ_RTC) && !(ci[RTC_ADDRESS] > 0)) {
+        textOut(F("Error: RTC capability required\n"));
+        return;
+      }
+      if ((cfg & CFG_REQ_FRAM) && !(ci[FRAM_ADDRESS] > 0)) {
+        textOut(F("Error: FRAM capability required\n"));
+        return;
+      }
+      if ((cfg & CFG_REQ_SLAVE) && !(ci[SLAVE_I2C] > 0)) {
+        textOut(F("Error: Slave capability required\n"));
+        return;
+      }
+      if ((cfg & CFG_REQ_IR) && !(ci[IR_PIN] > -1)) {
+        textOut(F("Error: IR capability required\n"));
+        return;
+      }
+      /*
+      // ⏳ Deferred requirement check (if you want it enforced)
+      if ((cfg & CFG_REQ_DEFER) && !deferred) {
+        textOut(F("Error: Command must be deferred\n"));
+        return;
+      }
+      */
+      // ✅ All checks passed, execute
       commands[i].handler(results, resultCount, deferred);
       return;
     }
   }
   textOut(F("Command '") + input + F("' does not exist\n"));
-  return;
 }
 
 bool parseCommand(const String& input, const String& command, String* results, int& resultCount, int maxResults) {
@@ -1568,15 +1607,12 @@ bool parseCommand(const String& input, const String& command, String* results, i
     s.trim();
     bool inQuotes = false;
     String current = "";
-
     for (unsigned int i = 0; i < s.length(); i++) {
         char c = s[i];
-
         if (c == '"') {
             inQuotes = !inQuotes;
             continue; // don't include the quote
         }
-
         if (c == ' ' && !inQuotes) {
             if (current.length() > 0) {
                 if (resultCount < maxResults) {
@@ -1593,6 +1629,24 @@ bool parseCommand(const String& input, const String& command, String* results, i
         results[resultCount++] = current;
     }
     return true;
+}
+
+bool commandRequiresDeferment(String input) {
+  String results[5];
+  int resultCount = 0;
+  if (input == "") {
+    return false;
+  }
+  int commandNumber = sizeof(commands) / sizeof(commands[0]);
+  for (int i = 0; i < commandNumber; i++) {
+    yield();
+
+    if (parseCommand(input, commands[i].name, results, resultCount, commands[i].maxArgs)) {
+      return (commands[i].configuration & CFG_REQ_DEFER) != 0;
+    }
+  }
+  // Command not found → no deferment requirement (you could argue either way)
+  return false;
 }
 
 void saveCommandState(uint32_t lastCommandLogId, uint16_t version, int32_t commandId, int32_t commandType) {
@@ -1621,6 +1675,11 @@ int32_t loadCommandStateVersion(int dataToReturn) {
     }
     return lines[dataToReturn];
 }
+
+///////////////////////////////////////////////
+//end of command functions
+///////////////////////////////////////////////
+
 
 void sendIr(String rawDataStr) {
   irsend.begin();
