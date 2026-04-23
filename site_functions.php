@@ -2646,7 +2646,8 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
     }
     $sql = $reportData["sql"];
     $form = $reportData["form"];
-    $outputTemplate = $reportData["output_template"];
+    $outputTemplate = gvfa("output_template", $reportData); 
+
     $decodedForm = "";
     $decodedFormToUse = "";
     $output = null;
@@ -2656,6 +2657,10 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
       if(!$decodedForm && $form!=""){
         $errors[] ="There was malformed JSON in the Form.</div>";
       } else if ($decodedForm){
+
+        $postProcessing = gvfa("post_processing", $decodedForm);
+        //var_dump($postProcessing);
+
         if(array_key_exists("output", $decodedForm)) {
           $output = $decodedForm["output"];
           if(is_array($output)){
@@ -2786,8 +2791,25 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
               $rows = mysqli_fetch_all($reportResult, MYSQLI_ASSOC);
               $count = count($rows);
             }
-            //var_dump($rows);
-            if($rows) {
+            if($rows){
+              if($postProcessing) {
+                  foreach($rows as &$row) {
+                    foreach($row as $key=>&$val) {
+                      if(array_key_exists($key, $postProcessing)) {
+                        try{
+                          $function = tokenReplace($postProcessing[$key], $row) . ";";
+                          //echo $function  . "<BR>";
+                          eval('$value = ' . $function . ";");
+                          $val = $value;
+                        }
+                        catch(Exception  $err){
+                                  //echo $err;
+
+                        }
+                      }
+                    }
+                  }
+              }
               if(strtolower($outputFormat) == "csv") {
                 $content = generateCsvContent($rows);
                 if($zip) {
