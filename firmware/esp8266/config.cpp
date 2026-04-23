@@ -51,6 +51,7 @@ void initConfig(void) {
   ci[LOCAL_WEB_SERVICE_RESPONSIVENESS] = 1;
   ci[BAUD_RATE_LEVEL] = 9;
   ci[CONFIG_PERSIST_METHOD] = 1;
+  ci[SEND_MEM_DATA_IN_RESERVED] = 0;
 }
 
 
