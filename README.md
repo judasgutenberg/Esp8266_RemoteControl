@@ -157,14 +157,13 @@ Management_rules can be edited in the management_rule editor, which looks like t
 At the bottom is a tool you can use to automatically construct a value token (which will resemble a self-closing XML tag) to place in conditions.  Treat these as variables in an expression to be evaluated as true or false.  You can use multiple tokens, parentheses, arithmatic operators, and scalar numbers in such expressions.
 Since manual changes to the status of device_features are usually at odds with automation, whenever a manual change to a device_feature is made, automation is automatically suspended for restore_automation_after hours, starting at the instant of the manual change.
 
-## Commands
-# 📡 ESP8266 Remote Command Interface
+# 📡 Commands
 
 A lightweight command system for controlling an ESP8266-based device and its peripherals (slave MCU, FRAM, RTC, filesystem, etc.).
 
 ---
 
-## 🧠 Command Format
+### 🧠 Command Format
 
 All commands are sent as a structured string:
 
@@ -172,7 +171,7 @@ All commands are sent as a structured string:
 <marker><commandId>|<command>|<args>|<latency>
 ```
 
-### Fields
+##### Fields
 
 | Field | Description |
 |------|------------|
@@ -182,7 +181,7 @@ All commands are sent as a structured string:
 | `args` | Space-delimited arguments (quotes supported) |
 | `latency` | Timing metric for diagnostics |
 
-### Special `commandId` Values
+##### Special `commandId` Values
 
 | Value | Meaning |
 |------|--------|
@@ -192,7 +191,7 @@ All commands are sent as a structured string:
 
 ---
 
-## 🧩 Command Parsing
+### 🧩 Command Parsing
 
 - Commands are matched using `startsWith()`
 - Arguments:
@@ -204,11 +203,11 @@ All commands are sent as a structured string:
 
 ---
 
-## ⚙️ Capability Flags
+### ⚙️ Capability Flags
 
 Commands may require specific hardware or system features.
 
-### Lower Byte (Hardware Requirements)
+##### Lower Byte (Hardware Requirements)
 
 | Flag | Description |
 |------|------------|
@@ -217,7 +216,7 @@ Commands may require specific hardware or system features.
 | `CFG_REQ_FRAM` | FRAM storage required |
 | `CFG_REQ_RTC` | RTC required |
 
-### Upper Byte (Execution Requirements)
+##### Upper Byte (Execution Requirements)
 
 | Flag | Description |
 |------|------------|
@@ -228,28 +227,28 @@ If a requirement is not met, execution is aborted with an error.
 
 ---
 
-## ⏳ Deferred Execution
+### ⏳ Deferred Execution
 
 Some commands run in two phases:
 
-### Phase 1 (`deferred = false`)
+##### Phase 1 (`deferred = false`)
 - Announces action
 - Saves command state
 - Queues command
 
-### Phase 2 (`deferred = true`)
+##### Phase 2 (`deferred = true`)
 - Executes the actual operation
 
-### Used for:
+##### Used for:
 - Reboots
 - Firmware updates
 - Risky operations
 
 ---
 
-## 📚 Command Reference
+### 📚 Command Reference
 
-### 🔄 System Control
+##### 🔄 System Control
 
 | Command | Args | Description |
 |--------|------|------------|
@@ -263,7 +262,7 @@ Some commands run in two phases:
 
 ---
 
-### 🤖 Slave Control
+##### 🤖 Slave Control
 
 | Command | Args | Description |
 |--------|------|------------|
@@ -277,7 +276,7 @@ Some commands run in two phases:
 
 ---
 
-### 🧠 Watchdog
+##### 🧠 Watchdog
 
 | Command | Args | Description |
 |--------|------|------------|
@@ -287,7 +286,7 @@ Some commands run in two phases:
 
 ---
 
-### 🌦️ Sensors
+##### 🌦️ Sensors
 
 | Command | Args | Description |
 |--------|------|------------|
@@ -295,7 +294,7 @@ Some commands run in two phases:
 
 ---
 
-### 🧮 Diagnostics
+##### 🧮 Diagnostics
 
 | Command | Args | Description |
 |--------|------|------------|
@@ -306,7 +305,7 @@ Some commands run in two phases:
 
 ---
 
-### 📡 IR
+##### 📡 IR
 
 | Command | Args | Description |
 |--------|------|------------|
@@ -314,7 +313,7 @@ Some commands run in two phases:
 
 ---
 
-### 🧱 FRAM
+##### 🧱 FRAM
 
 | Command | Args | Description |
 |--------|------|------------|
@@ -328,7 +327,7 @@ Some commands run in two phases:
 
 ---
 
-### 🕰️ RTC
+##### 🕰️ RTC
 
 | Command | Args | Description |
 |--------|------|------------|
@@ -337,7 +336,7 @@ Some commands run in two phases:
 
 ---
 
-### 📁 File System (LittleFS)
+##### 📁 File System (LittleFS)
 
 | Command | Args | Description |
 |--------|------|------------|
@@ -350,7 +349,7 @@ Some commands run in two phases:
 
 ---
 
-### ⚙️ Configuration
+##### ⚙️ Configuration
 
 | Command | Args | Description |
 |--------|------|------------|
@@ -363,7 +362,7 @@ Some commands run in two phases:
 
 ---
 
-### 🔌 Serial / EEPROM
+##### 🔌 Serial / EEPROM
 
 | Command | Args | Description |
 |--------|------|------------|
@@ -376,7 +375,7 @@ Some commands run in two phases:
 
 ---
 
-### 🧬 Debug
+##### 🧬 Debug
 
 | Command | Args | Description |
 |--------|------|------------|
@@ -385,21 +384,21 @@ Some commands run in two phases:
 
 ---
 
-## ⚠️ Error Handling
+### ⚠️ Error Handling
 
-### Unknown Command
+##### Unknown Command
 ```
 Command '<input>' does not exist
 ```
 
-### Missing Capability
+##### Missing Capability
 ```
 Error: <capability> required
 ```
 
 ---
 
-## 🧠 Internal Flow
+### 🧠 Internal Flow
 
 ```
 runCommand()
@@ -413,7 +412,7 @@ runCommand()
 
 ---
 
-## 🧩 Notes
+### 🧩 Notes
 
 - Deferred commands are automatically detected via `CFG_REQ_DEFER`
 - OTA updates support:
@@ -424,6 +423,7 @@ runCommand()
 - Config values stored in:
   - `ci[]` → integers
   - `cs[]` → strings
+
 
 
 ## Reports
