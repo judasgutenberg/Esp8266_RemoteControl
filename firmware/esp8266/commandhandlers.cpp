@@ -13,13 +13,11 @@ void cmdDeferredReboot(String* param, int argCount, bool deferred) {
 
 
 void cmdRebootMasterFromSlave(String* param, int argCount, bool deferred) {
-  if(ci[SLAVE_I2C] > 0) {
-    if(!deferred) {
-      textOut(F("Slave instigating master reboot... \n"));
-      //notYetDeferred();
-    } else {
-      requestLong(ci[SLAVE_I2C], 134);
-    }
+  if(!deferred) {
+    textOut(F("Slave instigating master reboot... \n"));
+    //notYetDeferred();
+  } else {
+    requestLong(ci[SLAVE_I2C], 134);
   }
 }
 
@@ -48,25 +46,25 @@ void cmdUpdateFirmware(String* param, int argCount, bool deferred) {
        switch (ret) {
         case HTTP_UPDATE_FAILED:
           possibleResult = F("Update failed; error (") + String(ESPhttpUpdate.getLastError()) + ") " + ESPhttpUpdate.getLastErrorString() + "\n";
-          textOut(possibleResult);
+          //textOut(possibleResult);
           possibleEndingMessage = possibleResult;
           break;
       
         case HTTP_UPDATE_NO_UPDATES:
           possibleResult = F("No update available\n");
-          textOut(possibleResult);
+          //textOut(possibleResult);
           possibleEndingMessage = possibleResult;
           break;
       
         case HTTP_UPDATE_OK:
           possibleResult = F("Update successful; rebooting...\n");
-          textOut(possibleResult);
+          //textOut(possibleResult);
           possibleEndingMessage = possibleResult;
           break;
       }
     } else {
       possibleResult = flashUrl + F(" does not exist; no action taken\n");
-      textOut(possibleEndingMessage);
+      //textOut(possibleEndingMessage);
       possibleEndingMessage = possibleResult;
     }
   }
@@ -122,93 +120,67 @@ void cmdIr(String* param, int argCount, bool deferred) {
 }
 
 void cmdClearFram(String* param, int argCount, bool deferred) {
-  if(ci[FRAM_ADDRESS] > 0) {
-    clearFramLog(); 
-    textOut(F("FRAM log cleared\n"));
-  }
+  clearFramLog(); 
+  textOut(F("FRAM log cleared\n"));
 }
 
 void cmdDumpFram(String* param, int argCount, bool deferred) {
-  if(ci[FRAM_ADDRESS] > 0) {
-    displayAllFramRecords(); 
-  }
+  displayAllFramRecords(); 
 }
 
 void cmdDumpFramHex(String* param, int argCount, bool deferred) {
   String commandData = param[0];
-  if(ci[FRAM_ADDRESS] > 0) {
-    if(commandData == "") {
-      hexDumpFRAM(2 * ci[FRAM_INDEX_SIZE], lastRecordSize, 15);
-    } else {
-      hexDumpFRAM(param[0].toInt(), lastRecordSize, 15);
-    }
+  if(commandData == "") {
+    hexDumpFRAM(2 * ci[FRAM_INDEX_SIZE], lastRecordSize, 15);
+  } else {
+    hexDumpFRAM(param[0].toInt(), lastRecordSize, 15);
   }
 }
 
 void cmdDumpFramHexAt(String* param, int argCount, bool deferred) {
-  if(ci[FRAM_ADDRESS] > 0) {
-    hexDumpFRAMAtIndex(param[0].toInt(), lastRecordSize, 15); 
-  }
+  hexDumpFRAMAtIndex(param[0].toInt(), lastRecordSize, 15); 
 }
 
 void cmdSwapFram(String* param, int argCount, bool deferred) {
-  if(ci[FRAM_ADDRESS] > 0) {
-    swapFRAMContents(ci[FRAM_INDEX_SIZE] * 2, 554, lastRecordSize);
-  }
+  swapFRAMContents(ci[FRAM_INDEX_SIZE] * 2, 554, lastRecordSize);
 }
 
 void cmdDumpFramRecord(String* param, int argCount, bool deferred) {
-  if(ci[FRAM_ADDRESS] > 0) {
-    displayFramRecord((uint16_t)param[0].toInt()); 
-  }
+  displayFramRecord((uint16_t)param[0].toInt()); 
 }
 
 void cmdGetFramIndex(String* param, int argCount, bool deferred) {
-  if(ci[FRAM_ADDRESS] > 0) {
-    dumpFramRecordIndexes();
-  }
+  dumpFramRecordIndexes();
 }
 
 void cmdRebootSlave(String* param, int argCount, bool deferred) {
-  if(ci[SLAVE_I2C] > 0) {
-    requestLong(ci[SLAVE_I2C], 128);
-    textOut("Slave rebooted\n");
-  }
+  requestLong(ci[SLAVE_I2C], 128);
+  textOut("Slave rebooted\n");
 }
 
-
-
 void cmdSetDate(String* param, int argCount, bool deferred) { //params must be comma-delimited
-  if(ci[RTC_ADDRESS] > 0) {
-    String dateArray[7];
-    splitString(param[0], ',', dateArray, 7);
-    setDateDs1307((byte) dateArray[0].toInt(), 
-                 (byte) dateArray[1].toInt(),     
-                 (byte) dateArray[2].toInt(),  
-                 (byte) dateArray[3].toInt(),  
-                 (byte) dateArray[4].toInt(),   
-                 (byte) dateArray[5].toInt(),      
-                 (byte) dateArray[6].toInt()); 
-    textOut(F("Date set\n"));
-  }
+  String dateArray[7];
+  splitString(param[0], ',', dateArray, 7);
+  setDateDs1307((byte) dateArray[0].toInt(), 
+               (byte) dateArray[1].toInt(),     
+               (byte) dateArray[2].toInt(),  
+               (byte) dateArray[3].toInt(),  
+               (byte) dateArray[4].toInt(),   
+               (byte) dateArray[5].toInt(),      
+               (byte) dateArray[6].toInt()); 
+  textOut(F("Date set\n"));
 }
 
 void cmdGetDate(String* param, int argCount, bool deferred) {
-  if(ci[RTC_ADDRESS] > 0) {
-    printRTCDate();
-  }
+  printRTCDate();
 }
 
 void cmdGetWatchdogInfo(String* param, int argCount, bool deferred) {
-  if(ci[SLAVE_I2C] > 0) {
-    slaveWatchdogInfo();
-  }
+  slaveWatchdogInfo();
 }
 
 void cmdGetWatchdogData(String* param, int argCount, bool deferred) {
-  if(ci[SLAVE_I2C] > 0) {
-    textOut(slaveWatchdogData() + "\n");
-  }
+  textOut(slaveWatchdogData() + "\n");
 }
 
 void cmdListFiles(String* param, int argCount, bool deferred) {
@@ -216,35 +188,37 @@ void cmdListFiles(String* param, int argCount, bool deferred) {
 }
 
 void cmdSaveMasterConfig(String* param, int argCount, bool deferred) {
+  String toWord = param[0];
+  String dest = param[1];
   String initialBlurb = F("Configuration saved to");
-  if(ci[SLAVE_I2C] > 0 && ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_I2C_SLAVE) {
+  /*
+  Serial.print(toWord);
+  Serial.print("*");
+  Serial.println(dest);
+  Serial.println("*");
+  */
+  if(ci[SLAVE_I2C] > 0 && ((ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_I2C_SLAVE && dest == "") || dest == "slave")) {
     saveAllConfigToEEPROM(0);
-    textOut(initialBlurb + F(" EEPROM\n"));
-  } else if (ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_FLASH) {
+    textOut(initialBlurb + F(" slave EEPROM\n"));
+  } else if ((ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_FLASH && dest == "") || dest == "flash") {
     saveAllConfigToFlash(0);
-    textOut(initialBlurb + F(" flash\n"));
+    textOut(initialBlurb + F(" local flash\n"));
   }
 }
 
 void cmdSaveSlaveConfig(String* param, int argCount, bool deferred) {
-  if(ci[SLAVE_I2C] > 0) {
-    saveAllConfigToEEPROM(512);
-    textOut("Configuration saved\n");
-  }
+  saveAllConfigToEEPROM(512);
+  textOut("Configuration saved\n");
 }
 
 void cmdInitMasterDefaults(String* param, int argCount, bool deferred) {
-  if(ci[SLAVE_I2C] > 0) {
-    initMasterDefaults();
-    textOut("Master config initialized\n");
-  }
+  initMasterDefaults();
+  textOut("Master config initialized\n");
 }
 
 void cmdInitSlaveDefaults(String* param, int argCount, bool deferred) {
-  if(ci[SLAVE_I2C] > 0) {
-    initSlaveDefaults();
-    textOut(F("Slave config initialized\n"));
-  }
+  initSlaveDefaults();
+  textOut(F("Slave config initialized\n"));
 }
 
 void cmdGetUptime(String* param, int argCount, bool deferred) {
@@ -275,7 +249,6 @@ void cmdDumpSerialPacket(String* param, int argCount, bool deferred) {
   bytesToHex(parsedSerialData, 20, buffer);
   textOut(F("Parsed serial packet: ") + String(buffer) + "\n");
 }
-
 
 void cmdFormatFileSystem(String* param, int argCount, bool deferred) {
   formatFileSystem();
@@ -426,6 +399,7 @@ void getSlaveEepromUsed(String* param, int argCount, bool deferred) {
 void getSlave(String* param, int argCount, bool deferred) {
   param[0].trim(); 
   uint16_t result = getSlaveConfigItem((byte)param[0].toInt()); 
+  textOut(F("Sought slave configuration: ") + String(result) + "\n");
 }
 
 void setSlaveParserBasis(String* param, int argCount, bool deferred) {
@@ -433,11 +407,8 @@ void setSlaveParserBasis(String* param, int argCount, bool deferred) {
   int ordinal = ordinalString.toInt();
   String value = param[1];
   css[ordinal] = strdup(value.c_str());
-  textOut("Slave parser basis #" + ordinalString + " set to " + value + "\n");
+  textOut(F("Slave parser basis #") + ordinalString + " set to " + value + "\n");
 }
-
-//hmmmmmmm
-
 
 
 void setSlaveBasis(String* param, int argCount, bool deferred) {
