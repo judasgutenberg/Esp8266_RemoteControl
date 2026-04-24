@@ -158,8 +158,166 @@ At the bottom is a tool you can use to automatically construct a value token (wh
 Since manual changes to the status of device_features are usually at odds with automation, whenever a manual change to a device_feature is made, automation is automatically suspended for restore_automation_after hours, starting at the instant of the manual change.
 
 ## Commands
-The ESP8266 is responsive to commands sent via the serial line. These commands can do things like display or change any setting in the configuration, reboot the ESP8266, display how much memory is available, send infrared commands, get the amount of time since the last reboot or connection to WiFi, configure or send commands to an I2C slave if there is one, and dump stored records from the FRAM (if there is one).  If these commands are instead sent via the Instant Command tool (reachable via the Utilities tab in the web app), then they are sent via the internet to the device specified in the device dropdown, that is, not via serial, and any responses from the command are sent back to that same window via the internet as well.  The web version of the command system, like the device_feature control system, has an inherent latency dictated by the polling rate of the ESP8266 (set in config.cpp, but also changeable via command), but it's fast enough for most debugging or control needs. When the serial version of the command system is being used, there is no latency, and it behaves like a Unix shell or a Python REPL.  Example commands include **reboot**, **clear fram**, **dump fram**, **reset serial**, **set date**, **get date**, **get memory**, **get uptime**, **dump slave config eeprom**, and even **update firmware**.  There are a few Unix-like commands such as **ls** (to list the directory in the LittleFS flash drive) and **cat** (to dump the contents of a file given its name). There is also a database-backed system for sending commands that seems in retrospect like sort of a mis-step, but it's still there. Commands are very powerful and it is possible to put your remote device in a state where you will have to physically go to it to make it recover, especially if you put errant data in the slave EEPROM the master uses to persist its configuration.
+📡 ESP8266 Remote Command Interface
 
+A lightweight command system for controlling an ESP8266-based device and its peripherals (slave MCU, FRAM, RTC, filesystem, etc.).
+
+🧠 Command Format
+
+All commands are sent as a structured string:
+
+<marker><commandId>|<command>|<args>|<latency>
+Fields
+Field	Description
+marker	First character is ignored (used as signal)
+commandId	Unique ID for tracking/logging
+command	Command string
+args	Space-delimited arguments (quotes supported)
+latency	Timing metric for diagnostics
+Special commandId Values
+Value	Meaning
+> 0	Normal command
+-1	Serial command (executes immediately if deferred)
+-2	Switch output mode
+🧩 Command Parsing
+Commands are matched using startsWith()
+Arguments:
+Space-separated
+"quoted strings" supported
+Each command defines:
+maxArgs
+exactMatch (not strictly enforced)
+⚙️ Capability Flags
+
+Commands may require specific hardware or system features.
+
+Lower Byte (Hardware Requirements)
+Flag	Description
+CFG_REQ_FS	File system (LittleFS) required
+CFG_REQ_SLAVE	I2C slave required
+CFG_REQ_FRAM	FRAM storage required
+CFG_REQ_RTC	RTC required
+Upper Byte (Execution Requirements)
+Flag	Description
+CFG_REQ_IR	IR transmitter required
+CFG_REQ_DEFER	Must be executed in deferred mode
+
+If a requirement is not met, execution is aborted with an error.
+
+⏳ Deferred Execution
+
+Some commands run in two phases:
+
+Phase 1 (deferred = false)
+Announces action
+Saves command state
+Queues command
+Phase 2 (deferred = true)
+Executes the actual operation
+Used for:
+Reboots
+Firmware updates
+Risky operations
+📚 Command Reference
+🔄 System Control
+Command	Args	Description
+reboot now	–	Immediate reboot
+reboot	–	Deferred reboot
+watchdog reboot	–	Slave triggers master reboot
+update firmware <url>	1	OTA firmware update
+version	–	Print firmware version
+uptime	–	Time since last boot
+memory	–	Memory statistics
+🤖 Slave Control
+Command	Args	Description
+reboot slave	–	Reboot slave device
+run slave sketch	–	Execute slave firmware
+slave bootloader	–	Enter bootloader mode
+update slave firmware <url>	1	OTA update slave
+run slave <cmd> <value>	2	Execute command on slave
+get slave <index>	1	Read config value
+set slave <index> <value>	2	Write config value
+🧠 Watchdog
+Command	Args	Description
+pet watchdog	–	Reset watchdog timer
+get watchdog info	–	Status info
+get watchdog data	–	Raw watchdog data
+🌦️ Sensors
+Command	Args	Description
+get weather sensors	–	Returns formatted sensor data
+🧮 Diagnostics
+Command	Args	Description
+get wifi uptime	–	WiFi connection duration
+get lastpoll	–	Last poll timestamp
+get lastdatalog	–	Last data log
+clear latency average	–	Reset latency stats
+📡 IR
+Command	Args	Description
+ir <data>	1	Send IR signal (space → comma converted)
+🧱 FRAM
+Command	Args	Description
+clear fram	–	Erase logs
+dump fram	–	Dump all records
+dump fram hex [offset]	1	Hex dump
+dump fram hex# <index>	1	Dump at index
+dump fram record <index>	1	Show record
+swap fram	–	Swap memory regions
+get fram index	–	List record indexes
+🕰️ RTC
+Command	Args	Description
+set date <csv>	1	Set RTC (7 comma-separated values)
+get date	–	Print current time
+📁 File System (LittleFS)
+Command	Args	Description
+ls	–	List files
+cat <file>	1	Print file
+rm <file>	1	Delete file
+download <file>	1	Send file to server
+upload <file>	1	Upload file
+format file system	–	Format FS
+⚙️ Configuration
+Command	Args	Description
+set <index> <value>	2	Set config value
+get <index>	1	Get config value
+save master config [dest]	2	Save config (flash/slave)
+save slave config	–	Save slave config
+init master defaults	–	Reset master config
+init slave defaults	–	Reset slave config
+🔌 Serial / EEPROM
+Command	Args	Description
+reset serial	–	Reset UART
+send slave serial <data>	1	Send raw serial
+get slave serial	–	Read serial buffer
+read slave eeprom <addr>	1	Read EEPROM
+dump config eeprom	–	Dump master config
+dump slave config eeprom	–	Dump slave config
+🧬 Debug
+Command	Args	Description
+dump parsed serial packet	–	Hex dump parsed data
+one pin at a time <0/1>	1	GPIO debug mode
+⚠️ Error Handling
+Unknown Command
+Command '<input>' does not exist
+Missing Capability
+Error: <capability> required
+🧠 Internal Flow
+runCommand()
+  ├── parse input
+  ├── handleCommand()
+  │     ├── match command
+  │     ├── check capabilities
+  │     └── execute handler
+  └── defer if required
+🧩 Notes
+Deferred commands are automatically detected via CFG_REQ_DEFER
+OTA updates support:
+Full URLs
+Relative paths (/firmware.bin)
+Backend lookup via encrypted token
+File uploads are single-threaded (one at a time)
+Config values stored in:
+ci[] → integers
+cs[] → strings
 ## Reports
 The great thing about storing the data from your IoT devices in your own database is that you then have lots of ways to examine this data. If you're handy with SQL, then you can find data in any form you want it matching any criteria you can come up with.  With this in mind, I built an elaborate reporting system that allows me to save parameterized SQL queries and run them with forms to make entering the parameters easy.  Not only that, but every report you run is remembered in the report_log table, allowing you to re-run the report with the same parameters (or tweak the parameters as needed).  Reports are reached via the Reports tab, where the ones you've created (or that are created with your tenancy)  are listed. From there you can run or edit them. The core of every report is a SQL statement (or semicolon-separated sequence of SQL statements) that is run to produce one or more tables of data, graphs, or, in some cases, locations on a map.  They are defined as a form (represented in JSON and using the form description system used throughout the admin website), possibly an output configuration, an output template, and SQL. Simple reports can just be SQL, though if you need to send parameters to a report, you will need to define a form. And if you need your data presented a certain way, you will need an output_template. Perhaps forms definitions are best shown by example.
 
