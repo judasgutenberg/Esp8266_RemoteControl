@@ -113,7 +113,7 @@ CommandDef commands[] = {
   {"get watchdog info",     cmdGetWatchdogInfo, 0,  true,         0b00000010},
   {"get watchdog data",     cmdGetWatchdogData, 0,  true,         0b00000010},
   {"ls",                    cmdListFiles, 0,        true,         0b00000001},
-  {"save master config",    cmdSaveMasterConfig, 0, true,         0b00000000},
+  {"save master config",    cmdSaveMasterConfig, 2, false,         0b00000000},
   {"save slave config",     cmdSaveSlaveConfig, 0,  true,         0b00000010},
   {"init master defaults",  cmdInitMasterDefaults, 0, true,       0b00000000}, 
   {"init slave defaults",   cmdInitSlaveDefaults, 0, true,        0b00000010},
@@ -766,16 +766,23 @@ void wiFiConnect() {
 
 // Call this frequently from loop()
 void runRemoteTask() {
+  yield();
   if(offlineMode) {
     return;
   }
   switch(remoteState) {
 
     case RS_IDLE:
+      if(ci[DEBUG] > 20) {
+        Serial.println(F("RS_IDLE"));
+      }
       return;
 
     // -------------------- prepare the URL and initial decisions --------------------
     case RS_PREPARE: {
+      if(ci[DEBUG] > 10) {
+        Serial.println(F("RS_PREPARE"));
+      }
       // Reproduce the decision logic in your original function:
       // decide if mode should become saveData etc
       if(remoteMode == "getDeviceData") {
@@ -805,6 +812,9 @@ void runRemoteTask() {
 
     // -------------------- attempt non-blocking connect --------------------
     case RS_CONNECTING: {
+      if(ci[DEBUG] > 10) {
+        Serial.println(F("RS_CONNECTING"));
+      }
       // space out attempts by CONNECT_RETRY_SPACING_MS without blocking
       if(millis() < connectBackoffUntil) {
         // still waiting to try again
@@ -813,6 +823,9 @@ void runRemoteTask() {
         return;
       }
       if (clientGet.connected()) {
+         if(ci[DEBUG] > 20) {
+          Serial.println(F("RS_CONNECTING...connected"));
+        }
         // should not be connected here, but if it is, go send request
         remoteState = RS_SENDING_REQUEST;
         stateStartMs = millis();
@@ -821,11 +834,17 @@ void runRemoteTask() {
       }
       // Try to connect once
       if(clientGet.connect(cs[HOST_GET], 80)) {
+        if(ci[DEBUG] > 20) {
+          Serial.println(F("RS_CONNECTING...port 80"));
+        }
         remoteState = RS_SENDING_REQUEST;
         stateStartMs = millis();
         connectionFailureMode = false;
         yield();
       } else {
+         if(ci[DEBUG] > 20) {
+          Serial.println(F("RS_CONNECTING...otherwise"));
+        }
         yield();
         attemptCount++;
         connectBackoffUntil = millis() + CONNECT_RETRY_SPACING_MS;
@@ -852,6 +871,9 @@ void runRemoteTask() {
     }
 
     case RS_CONNECT_WAIT: {
+      if(ci[DEBUG] > 10) {
+        Serial.println(F("RS_CONNECT_WAIT"));
+      }
       // just transition back to CONNECTING when time has passed
       yield();
       if(millis() >= connectBackoffUntil) {
@@ -861,6 +883,9 @@ void runRemoteTask() {
     }
     // -------------------- send the HTTP request (non-blocking single-shot) --------------------
     case RS_SENDING_REQUEST: {
+      if(ci[DEBUG] > 10) {
+        Serial.println(F("RS_SENDING_REQUEST"));
+      }
       yield();
       // send the GET request in one go (small, so ok)
       clientGet.println(F("GET ") + remoteURL + " HTTP/1.1");
@@ -870,11 +895,15 @@ void runRemoteTask() {
       clientGet.println(F("Accept-Encoding: identity"));
       clientGet.println(F("Connection: close"));
       clientGet.println();
+      yield();
       remoteState = RS_WAITING_FOR_REPLY;
       return;
     }
     // -------------------- wait for any reply (with timeout) --------------------
     case RS_WAITING_FOR_REPLY: {
+      if(ci[DEBUG] > 10) {
+        Serial.println(F("RS_WAITING_FOR_REPLY"));
+      }
       if(clientGet.available() > 0) {
         yield();
         // Got first bytes — start reading
@@ -896,6 +925,9 @@ void runRemoteTask() {
     }
     // -------------------- drain the socket into responseBufferSM (non-blocking) --------------------
     case RS_READING_REPLY: {
+      if(ci[DEBUG] > 10) {
+        Serial.println(F("RS_READING_REPLY"));
+      }
       // Read everything currently available; do not block waiting for more
       while (clientGet.available() > 0) {
         yield();
@@ -925,6 +957,7 @@ void runRemoteTask() {
         stateStartMs = millis();
         return;
       }
+      yield();
       // If we've been waiting too long since first byte, close and process what we have
       if (millis() - stateStartMs > CONNECT_TIMEOUT_MS) {
         yield();
@@ -938,6 +971,9 @@ void runRemoteTask() {
     }
     // -------------------- process the response AFTER socket is closed --------------------
     case RS_PROCESSING_REPLY: {
+      if(ci[DEBUG] > 10) {
+        Serial.println(F("RS_PROCESSING_REPLY"));
+      }
       bool receivedData = false;
       bool receivedDataJson = false;
       // Make a mutable working buffer ONCE
@@ -1110,6 +1146,9 @@ void runRemoteTask() {
     }
     // -------------------- finish and reset state --------------------
     case RS_DONE: {
+      if(ci[DEBUG] > 10) {
+        Serial.println(F("RS_DONE"));
+      }
       // clean up and go idle. clientGet should already be stopped in prior steps, but be safe:
       if(clientGet.connected()) clientGet.stop();
       remoteState = RS_IDLE;
@@ -1501,31 +1540,6 @@ void runCommandsFromJson(char * json){
 #define CFG_UNUSED_2      0b01000000
 #define CFG_REQ_DEFER     0b10000000
   
-void notYetDeferred(const char * commandText, int commandId, int commandType){
-  //Serial.println("NOT DEFERRED");
-  if(lastCommandLogId > 0 || commandId <0) {
-    //Serial.println("SAVING COMMAND STATE");
-    saveCommandState(lastCommandLogId, VERSION, commandId, commandType);
-  }
-  String command;
-  //Serial.println("**********************");
-  //Serial.println(command);
-  if (commandText == nullptr) {
-    return;
-  }
-  size_t len = strlen(commandText);
-  if (deferredCommand != nullptr) {
-    delete[] deferredCommand;
-  }
-  deferredCommand = new char[len + 1];  // +1 for null terminator
-  strcpy(deferredCommand, commandText);
-  if(commandId == -1) {
-    //our command is via serial, so handle deferred commands immediately
-    runCommand(deferredCommand, true);
-  }
-  return;
-}
-
 void runCommand(const char * commandText, bool deferred){
   //can change the default values of some config data for things like polling
   //dumpMemoryStats(99);
@@ -1606,6 +1620,27 @@ void handleCommand(String input, bool deferred) {
     }
   }
   textOut(F("Command '") + input + F("' does not exist\n"));
+}
+
+void notYetDeferred(const char * commandText, int commandId, int commandType){
+  if(lastCommandLogId > 0 || commandId <0) {
+    saveCommandState(lastCommandLogId, VERSION, commandId, commandType);
+  }
+  String command;
+  if (commandText == nullptr) {
+    return;
+  }
+  size_t len = strlen(commandText);
+  if (deferredCommand != nullptr) {
+    delete[] deferredCommand;
+  }
+  deferredCommand = new char[len + 1];  // +1 for null terminator
+  strcpy(deferredCommand, commandText);
+  if(commandId == -1) {
+    //our command is via serial, so handle deferred commands immediately
+    runCommand(deferredCommand, true);
+  }
+  return;
 }
 
 bool parseCommand(const String& input, const String& command, String* results, int& resultCount, int maxResults) {
@@ -1895,7 +1930,7 @@ void flashUpdateFeedback(uint32_t nowTime) {
   if(oldVersion > 0) {
     versionMessage = String(F("Update of firmware was successful; version ") + String(oldVersion) + F(" changed to version ")) + VERSION + "\n";
   }
-  if((preRebootCommandId > 0 || oldCommandId < 0) && commandType >0 && lastCommandLogId == 0  && deviceName != "" && remoteState == RS_IDLE) {
+  if((preRebootCommandId > 0 || oldCommandId < 0) && commandType > 0 && lastCommandLogId == 0  && deviceName != "" && remoteState == RS_IDLE) {
     //Serial.println("alpha");
     //we rebooted and came up from it, so let's cap that command with something:
     if(millisAtPossibleReboot < nowTime  && millisAtPossibleReboot > 0 && possibleEndingMessage != "") { 
@@ -2002,6 +2037,7 @@ void loop(){
   //Serial.print(granularityToUse);
   //Serial.print(" ");
   //Serial.println(connectionFailureTime);
+  yield();
   if(nowTime < granularityToUse * 1000 || (nowTime - lastPoll)/1000 > granularityToUse || connectionFailureTime>0 && connectionFailureTime + ci[CONNECTION_FAILURE_RETRY_SECONDS] * 1000 > nowTime) {  //send data to backend server every <ci[POLLING_GRANULARITY]> seconds or so
     //Serial.println(granularityToUse);
     //Serial.print("Connection failure time: ");
@@ -2011,6 +2047,10 @@ void loop(){
     //Serial.println("Epoch time:");
     //Serial.println(timeClient.getEpochTime());
     //compileAndSendDeviceData(String weatherdata, String wherewhen, String powerdata, bool doPinCursorChanges, uint16_t fRAMOrdinal)
+    yield();
+    if(ci[DEBUG] > 20) {
+      Serial.println(F("about to compileAndSendDeviceData"));
+    }
     compileAndSendDeviceData("", "", "", true, 0xFFFF);
     lastPoll = nowTime;
   }
@@ -2059,6 +2099,9 @@ void loop(){
     }
   }
   yield();
+  if(ci[DEBUG] > 20) {
+    Serial.println(F("about to flashUpdateFeedback"));
+  }
   flashUpdateFeedback(nowTime);
   if(canSleep) {
     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
@@ -2066,7 +2109,7 @@ void loop(){
       textOut("sleeping...\n");
       ESP.deepSleep(ci[DEEP_SLEEP_TIME_PER_LOOP] * 1e6); 
     }
-     //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
+    //this will only work if GPIO16 and EXT_RSTB are wired together. see https://www.electronicshub.org/esp8266-deep-sleep-mode/
     if(ci[LIGHT_SLEEP_TIME_PER_LOOP] > 0) {
       textOut("snoozing...\n");
       sleepForSeconds(ci[LIGHT_SLEEP_TIME_PER_LOOP]);
