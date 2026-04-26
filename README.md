@@ -159,7 +159,7 @@ Since manual changes to the status of device_features are usually at odds with a
 
 ## Commands
 
-A lightweight command system for controlling an ESP8266-based device and its peripherals (slave MCU, FRAM, RTC, filesystem, etc.).
+Includes a lightweight command system for configuration and control.
 
 ---
 
@@ -256,6 +256,7 @@ Some commands run in two phases:
 | `reboot` | – | Deferred reboot |
 | `watchdog reboot` | – | Slave triggers master reboot |
 | `update firmware <url>` | 1 | OTA firmware update |
+| `local update firmware <url>` | 1 | firmware update from local file (does not work because of the limitations of <b>download</b>) |
 | `version` | – | Print firmware version |
 | `uptime` | – | Time since last boot |
 | `memory` | – | Memory statistics |
