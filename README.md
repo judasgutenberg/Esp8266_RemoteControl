@@ -342,12 +342,14 @@ Some commands run in two phases:
 | Command | Args | Description |
 |--------|------|------------|
 | `ls` | – | List files |
-| `cat <file>` | 1 | Print file |
+| `cat <file>` | 1 | Print file to console |
+| `mv <source>` <destination> |  2| Rename (or move) file |
 | `rm <file>` | 1 | Delete file |
-| `download <file>` | 1 | Send file to server |
+| `download <file>` | 1 | Retrieve file from the internet, saving to local LittleFS file system preserving file name.  Does not work for files larger than 28 kilobytes for some reason. |
 | `upload <file>` | 1 | Upload file |
 | `format file system` | – | Format FS |
 
+note:  there are no directories or subdirectories on microcontrollers in this system, so commands like <b>mkdir</b> and <b>cd</b> have not been implemented
 ---
 
 ##### ⚙️ Configuration
