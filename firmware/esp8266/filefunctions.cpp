@@ -1,4 +1,5 @@
 #include "filefunctions.h"
+#include <Updater.h>
 #include <LittleFS.h>
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
@@ -10,67 +11,127 @@
 //file system routines
 /////////////////////////////////////////////
 
+bool flashFromLittleFS(const char* path) {
+  File firmware = LittleFS.open(path, "r");
+  if (!firmware) {
+    textOut("Failed to open firmware file");
+    return false;
+  }
+  String bytesString =  F(" bytes\n");
+  size_t size = firmware.size();
+  textOut(F("Firmware size: ") + String(size) + bytesString);
+
+  if (!Update.begin(size)) {
+    textOut(F("Not enough space for OTA"));
+    firmware.close();
+    return false;
+  }
+
+  size_t written = Update.writeStream(firmware);
+
+  if (written != size) {
+    textOut(F("Only wrote ") + String(written) +  "/" + String(size) + bytesString);
+    firmware.close();
+    //Update.abort();
+    return false;
+  }
+
+  if (!Update.end()) {
+    String errorString = F("unknown");
+    //errorString = Update.errorString();
+    textOut(F("Update failed:  ") + errorString + "\n");
+    firmware.close();
+    return false;
+  }
+
+  firmware.close();
+
+  textOut(F("Update complete. Rebooting..."));
+  ESP.restart();
+  return true;
+}
+
+//does not seem to work for files larger than about 28 kilobytes
 bool downloadFile(const char* url, const char* localPath) {
   if (!LittleFS.begin()) {
-    textOut("LittleFS mount failed\n");
+    textOut(F("LittleFS mount failed\n"));
     return false;
   }
   WiFiClient client;
   HTTPClient http;
-  textOut("Downloading: ");
+  textOut(F("Downloading: "));
   textOut(String(url) + "\n");
   if (!http.begin(client, url)) {
-    textOut("HTTP begin failed\n");
+    textOut(F("HTTP begin failed\n"));
     return false;
   }
-  int httpCode = http.GET();
-  //Serial.println(http.header("Content-Encoding"));
-  //Serial.println(http.header("Content-Type"));
-  if (httpCode != HTTP_CODE_OK) {
-    textOut("HTTP GET failed, code: " + String(httpCode) + "\n");
+
+  int code = http.GET();
+  if (code != HTTP_CODE_OK) {
+    textOut(F("HTTP GET failed\n"));
     http.end();
     return false;
   }
+  WiFiClient* stream = http.getStreamPtr();
   File file = LittleFS.open(localPath, "w");
   if (!file) {
-    textOut("Failed to open local file for writing\n");
+    textOut(F("File open failed\n"));
     http.end();
     return false;
   }
-  WiFiClient *stream = http.getStreamPtr();
-  uint8_t buffer[128];
-  int len = http.getSize();
+  uint8_t buf[256];
   int total = 0;
-  while (http.connected() || stream->available()) {
-    size_t available = stream->available();
-    if (available) {
-      int c = stream->readBytes(buffer, min(available, sizeof(buffer)));
-      file.write(buffer, c);
-      total += c;
-    } else {
-      delay(1);  // give network time to breathe
+  while (http.connected() && (stream->available() || stream->connected())) {
+    int avail = stream->available();
+    if (!avail) {
+      delay(2);
+      yield();
+      continue;
     }
-    yield();
+    int toRead = min(avail, (int)sizeof(buf));
+    int c = stream->readBytes(buf, toRead);
+
+    if (c > 0) {
+      size_t w = file.write(buf, c);
+
+      if (w != c) {
+        textOut(F("Write mismatch!\n"));
+        break;
+      }
+      total += w;
+      // ?? critical: force periodic flash commit
+      if (total % 4096 == 0) {
+        file.flush();
+        yield();
+      }
+    }
   }
+  file.flush();
   file.close();
   http.end();
-  textOut("Downloaded " + String(total) + " bytes\n");
-  return true;
+  textOut(F("Written bytes: "));
+  textOut(String(total) + F("\n"));
+  File verify = LittleFS.open(localPath, "r");
+  size_t size = verify.size();
+  verify.close();
+  textOut(F("Verified file size: "));
+  textOut(String(size) + F("\n"));
+  return (size > 0);
 }
 
 bool makeDir(const char* path) {
   if (!LittleFS.begin()) {
-    textOut("LittleFS mount failed\n");
+    textOut(F("LittleFS mount failed\n"));
     return false;
   }
   // Ensure leading slash
   if (path[0] != '/') {
-    textOut("Path must start with /\n");
+    textOut(F("Path must start with /\n"));
     return false;
   }
   // Check if already exists
   if (LittleFS.exists(path)) {
-    textOut("Folder already exists (or a file blocks it): ");
+    textOut(F("Folder already exists (or a file blocks it): "));
     textOut(path);
     textOut("\n");
     return true;  // treat as success
@@ -80,12 +141,12 @@ bool makeDir(const char* path) {
   File f = LittleFS.open(placeholder.c_str(), "w");
   if (f) {
     f.close();
-    textOut("Created folder with placeholder: ");
+    textOut(F("Created folder with placeholder: "));
     textOut(path);
     textOut("\n");
     return true;
   } else {
-    textOut("Failed to create folder placeholder: ");
+    textOut(F("Failed to create folder placeholder: "));
     textOut(path);
     textOut("\n");
     return false;
@@ -115,22 +176,22 @@ void renameFile(const char* originalFileName, const char* newFileName) {
 
 bool deleteFile(const char* path) {
   if (!LittleFS.begin()) {
-    textOut("LittleFS mount failed\n");
+    textOut(F("LittleFS mount failed\n"));
     return false;
   }
   if (!LittleFS.exists(path)) {
-    textOut("file does not exist: ");
+    textOut(F("file does not exist: "));
     textOut(path);
     textOut("\n");
     return false;
   }
   if (LittleFS.remove(path)) {
-    textOut("deleted: ");
+    textOut(F("deleted: "));
     textOut(path);
     textOut("\n");
     return true;
   } else {
-    textOut("failed to delete: ");
+    textOut(F("failed to delete: "));
     textOut(path);
     textOut("\n");
     return false;
@@ -143,7 +204,7 @@ void dumpFile(const char* filename) {
     }
     File f = LittleFS.open(filename, "r");
     if (!f) {
-        textOut("File open failed\n");
+        textOut(F("File open failed\n"));
         return;
     }
     const int BUF_SIZE = 128;
@@ -163,7 +224,7 @@ void dumpFile(const char* filename) {
 void formatFileSystem() {
   LittleFS.format();
   LittleFS.begin();
-  textOut("File system formatted\n");
+  textOut(F("File system formatted\n"));
 }
 
 void listFiles() {
@@ -172,7 +233,7 @@ void listFiles() {
   }
   Dir dir = LittleFS.openDir("/");
   while (dir.next()) {
-    textOut("FILE: " + String(dir.fileName()) + " (" + String(dir.fileSize()) + " bytes)\n");
+    textOut(F("FILE: ") + String(dir.fileName()) + " (" + String(dir.fileSize()) + F(" bytes)\n"));
     yield();
   }
 }
@@ -181,7 +242,7 @@ int loadAllConfigFromFlash(int mode, uint16_t param) { //can also be used to rec
     if (!LittleFS.begin()) {
         return 0;
     }
-    File f = LittleFS.open("/config.cfg", "r");
+    File f = LittleFS.open(F("/config.cfg"), "r");
     if (!f) {
         return 0;
     }
@@ -286,7 +347,7 @@ void saveAllConfigToFlash(uint16_t param) {
     if(!LittleFS.begin()) {
         return;
     }
-    File f = LittleFS.open("/config.cfg", "w");
+    File f = LittleFS.open(F("/config.cfg"), "w");
     if(!f) {
         return;
     }
@@ -342,26 +403,26 @@ void handleFileRequest() {
   }
   if (path.length() == 0 || !LittleFS.exists("/" + path)) {
     // File doesn't exist, pass control to default 404
-    server.send(404, "text/plain", "Not Found");
+    server.send(404, F("text/plain"), F("Not Found"));
     return;
   }
   File file = LittleFS.open("/" + path, "r");
   if (!file) {
-    server.send(500, "text/plain", "Failed to open file");
+    server.send(500, F("text/plain"), F("Failed to open file"));
     return;
   }
   // Basic MIME type detection
-  String contentType = "text/plain";
-  if (path.endsWith(".html")) {
+  String contentType = F("text/plain");
+  if (path.endsWith(F(".html"))) {
     contentType = "text/html";
-  } else if (path.endsWith(".css")){
-    contentType = "text/css";
+  } else if (path.endsWith(F(".css"))){
+    contentType = F("text/css");
   } else if (path.endsWith(".js")) {
-    contentType = "application/javascript";
-  } else if (path.endsWith(".png")) {
-    contentType = "image/png";
-  } else if (path.endsWith(".jpg") || path.endsWith(".jpeg")) {
-    contentType = "image/jpeg";
+    contentType = F("application/javascript");
+  } else if (path.endsWith(F(".png"))) {
+    contentType = F("image/png");
+  } else if (path.endsWith(F(".jpg")) || path.endsWith(F(".jpeg"))) {
+    contentType = F("image/jpeg");
   }
   server.streamFile(file, contentType);
   file.close();
