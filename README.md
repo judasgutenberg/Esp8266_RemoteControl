@@ -185,7 +185,7 @@ All commands are sent to the microcontroller as a structured string:
 
 | Value | Meaning |
 |------|--------|
-| `> 0` | Classic command (where specific commands had IDs (largely supplanted by instant commands) |
+| `> 0` | Classic command ID (where specific commands had IDs (largely supplanted by instant commands) |
 | `-1` | Instant command via serial (executes immediately if deferred) |
 | `-2` | Instant command from web-based tool |
 
