@@ -22,6 +22,7 @@
 #include "utilities.h"
 #include "slaveupdate.h"
 #include "commandhandlers.h"
+#include "filefunctions.h"
 
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
@@ -126,6 +127,7 @@ CommandDef commands[] = {
   {"format file system",    cmdFormatFileSystem, 0, true,         0b00000001},
   ///////////
   {"rm",                    cmdDel, 1, false,                     0b00000001},
+  {"mv",                    cmdRenameFile, 2, false,                     0b00000001},
   {"download",              cmdDownload, 1, false,                0b00000001},
   //{"mkdir", cmdMkdir, 1, false, 0b00000000},
   {"upload",                cmdUpload, 1, false,                  0b00000001},
@@ -1276,21 +1278,46 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
     }
     for (int i = beginLoop; i < endLoop; i++) {
         yield();
-
+        if(ci[DEBUG] > 7) {
+          Serial.print(i);
+        }
         strncpy(nonJsonDatum, nonJsonPinArray[i], sizeof(nonJsonDatum) - 1);
+        if(ci[DEBUG] > 7) {
+          Serial.print(":");
+        }
         nonJsonDatum[sizeof(nonJsonDatum) - 1] = '\0';
-
-        if (!strchr(nonJsonDatum, '*')) continue;
-
+        if(ci[DEBUG] > 7) {
+          Serial.print("+");
+        }
+        if (!strchr(nonJsonDatum, '*')){
+          continue;
+        }
+        if(ci[DEBUG] > 7) {
+          if(i > 6) {
+            Serial.println("\n~" + String(nonJsonDatum) + "~");
+          }
+          Serial.print("*");
+        }
         splitStringToCharArrays(nonJsonDatum, '*', nonJsonPinDatum, 5);
+        if(ci[DEBUG] > 7) {
+          Serial.print("|");
+        }
         yield();
 
         // ----------------------------
         // SAFE COPY (DO NOT MUTATE ORIGINAL)
         // ----------------------------
+        if(ci[DEBUG] > 7) {
+          Serial.print("-");
+        }
         strncpy(pinIdCopy, nonJsonPinDatum[1], sizeof(pinIdCopy) - 1);
+        if(ci[DEBUG] > 7) {
+          Serial.print("=");
+        }
         pinIdCopy[sizeof(pinIdCopy) - 1] = '\0';
-
+        if(ci[DEBUG] > 7) {
+          Serial.print("^");
+        }
         char *dotPos = strchr(pinIdCopy, '.');
         if (dotPos) {
             *dotPos = '\0';
@@ -1300,11 +1327,15 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
             i2c = 0;
             pinNumber = atoi(pinIdCopy);
         }
-
+        if(ci[DEBUG] > 7) {
+          Serial.print("$");
+        }
         value = atoi(nonJsonPinDatum[2]);
         canBeAnalog = atoi(nonJsonPinDatum[3]);
         serverSaved = atoi(nonJsonPinDatum[4]);
-
+        if(ci[DEBUG] > 7) {
+          Serial.print("@");
+        }
         strncpy(friendlyPinName, nonJsonPinDatum[0], sizeof(friendlyPinName) - 1);
         friendlyPinName[sizeof(friendlyPinName) - 1] = '\0';
 
@@ -1315,7 +1346,9 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
 
         pinName[foundPins] = friendlyPinName;
         pinList[foundPins] = rawKey;
-
+        if(ci[DEBUG] > 7) {
+          Serial.print("#");
+        }
         // ----------------------------
         // SAFE MAP ACCESS (NO operator[] INSERT SIDE EFFECTS)
         // ----------------------------
@@ -1324,7 +1357,9 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
         if (it != pinMap.end()) {
             existingValue = it->second;
         }
-
+        if(ci[DEBUG] > 7) {
+          Serial.print("(");
+        }
         if (!localSource || serverSaved == 1) {
             if (serverSaved == 1) {
                 localSource = false;
@@ -1337,19 +1372,24 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
                 Serial.print(" ");
                 */
                 auto it = pinMap.find(rawKey);
-               
+                if(ci[DEBUG] > 7) {
+                  Serial.print("[");
+                }
                 
                 pinMap.erase(rawKey);
                 if(strlen(rawKey) < 8 && (it != pinMap.end()  || initialPinMapSize==0)) { //only insert if initialPinMapSize is 0 or pinMap key was found
                   pinMap.insert({rawKey, value});
                 }
+                if(ci[DEBUG] > 7) {
+                  Serial.print("]");
+                }
                 //Serial.println(pinMap.size());
             }
         }
-
-        // ----------------------------
-        // OUTPUT SIDE EFFECTS (UNCHANGED LOGIC)
-        // ----------------------------
+        if(ci[DEBUG] > 7) {
+          Serial.print(")");
+        }
+        //where we actually change GPIO states on both master and any slaves, but only if there has been an actual change
         if (existingValue != value || resendSlavePinInfo) {
             if (i2c > 0) {
                 if(ci[DEBUG] > 7) {
@@ -1947,7 +1987,7 @@ void flashUpdateFeedback(uint32_t nowTime) {
   String versionMessage;
   versionMessage.reserve(80);  // preallocate once
   versionMessage = String(F("After reboot: version: ")) + VERSION  + "\n";
-  if(oldVersion > 0) {
+  if(oldVersion > 0  && commandType > 0) {
     versionMessage = String(F("Update of firmware was successful; version ") + String(oldVersion) + F(" changed to version ")) + VERSION + "\n";
   }
   if((preRebootCommandId > 0 || oldCommandId < 0) && commandType > 0 && lastCommandLogId == 0  && deviceName != "" && remoteState == RS_IDLE) {
@@ -2922,345 +2962,6 @@ int loadAllConfig(int mode, uint16_t param){
 }
 
 
-/////////////////////////////////////////////
-//file system routines
-/////////////////////////////////////////////
-
-bool downloadFile(const char* url, const char* localPath) {
-  if (!LittleFS.begin()) {
-    textOut("LittleFS mount failed\n");
-    return false;
-  }
-  WiFiClient client;
-  HTTPClient http;
-  textOut("Downloading: ");
-  textOut(String(url) + "\n");
-  if (!http.begin(client, url)) {
-    textOut("HTTP begin failed\n");
-    return false;
-  }
-  int httpCode = http.GET();
-  //Serial.println(http.header("Content-Encoding"));
-  //Serial.println(http.header("Content-Type"));
-  if (httpCode != HTTP_CODE_OK) {
-    textOut("HTTP GET failed, code: " + String(httpCode) + "\n");
-    http.end();
-    return false;
-  }
-  File file = LittleFS.open(localPath, "w");
-  if (!file) {
-    textOut("Failed to open local file for writing\n");
-    http.end();
-    return false;
-  }
-  WiFiClient *stream = http.getStreamPtr();
-  uint8_t buffer[128];
-  int len = http.getSize();
-  int total = 0;
-  while (http.connected() || stream->available()) {
-    size_t available = stream->available();
-    if (available) {
-      int c = stream->readBytes(buffer, min(available, sizeof(buffer)));
-      file.write(buffer, c);
-      total += c;
-    } else {
-      delay(1);  // give network time to breathe
-    }
-    yield();
-  }
-  file.close();
-  http.end();
-  textOut("Downloaded " + String(total) + " bytes\n");
-  return true;
-}
-
-bool makeDir(const char* path) {
-  if (!LittleFS.begin()) {
-    textOut("LittleFS mount failed\n");
-    return false;
-  }
-  // Ensure leading slash
-  if (path[0] != '/') {
-    textOut("Path must start with /\n");
-    return false;
-  }
-  // Check if already exists
-  if (LittleFS.exists(path)) {
-    textOut("Folder already exists (or a file blocks it): ");
-    textOut(path);
-    textOut("\n");
-    return true;  // treat as success
-  }
-  // Create placeholder file to force the directory to exist
-  String placeholder = String(path) + "/.placeholder";
-  File f = LittleFS.open(placeholder.c_str(), "w");
-  if (f) {
-    f.close();
-    textOut("Created folder with placeholder: ");
-    textOut(path);
-    textOut("\n");
-    return true;
-  } else {
-    textOut("Failed to create folder placeholder: ");
-    textOut(path);
-    textOut("\n");
-    return false;
-  }
-}
-
-bool deleteFile(const char* path) {
-  if (!LittleFS.begin()) {
-    textOut("LittleFS mount failed\n");
-    return false;
-  }
-  if (!LittleFS.exists(path)) {
-    textOut("file does not exist: ");
-    textOut(path);
-    textOut("\n");
-    return false;
-  }
-  if (LittleFS.remove(path)) {
-    textOut("deleted: ");
-    textOut(path);
-    textOut("\n");
-    return true;
-  } else {
-    textOut("failed to delete: ");
-    textOut(path);
-    textOut("\n");
-    return false;
-  }
-}
-
-void dumpFile(const char* filename) {
-    if (!LittleFS.begin()) {
-        return;
-    }
-    File f = LittleFS.open(filename, "r");
-    if (!f) {
-        textOut("File open failed\n");
-        return;
-    }
-    const int BUF_SIZE = 128;
-    char buffer[BUF_SIZE + 1];
-    textOut("\n");
-    while (f.available()) {
-
-        size_t n = f.readBytes(buffer, BUF_SIZE);
-        buffer[n] = 0;  // null terminate
-
-        textOut(buffer);  // ?? send this chunk immediately
-    }
-    textOut("\n");
-    f.close();
-}
-
-void formatFileSystem() {
-  LittleFS.format();
-  LittleFS.begin();
-  textOut("File system formatted\n");
-}
-
-void listFiles() {
-  if(!LittleFS.begin()) {
-    return;
-  }
-  Dir dir = LittleFS.openDir("/");
-  while (dir.next()) {
-    textOut("FILE: " + String(dir.fileName()) + " (" + String(dir.fileSize()) + " bytes)\n");
-    yield();
-  }
-}
-
-int loadAllConfigFromFlash(int mode, uint16_t param) { //can also be used to recover values from FLASH
-    if (!LittleFS.begin()) {
-        return 0;
-    }
-    File f = LittleFS.open("/config.cfg", "r");
-    if (!f) {
-        return 0;
-    }
-    int*  activeCi;
-    char** activeCs;
-    int totalConfigItems       = CONFIG_TOTAL_COUNT;
-    int totalStringConfigItems = CONFIG_STRING_COUNT;
-    //Serial.println("----------SIZES");
-    //Serial.println(totalConfigItems);
-    //Serial.println(totalStringConfigItems);
-    activeCi = ci;
-    activeCs = cs;
-    // ============================================================
-    // 1. Read marker (must be "DATA")
-    // ============================================================
-    char marker[5];
-    if (f.readBytes(marker, 5) != 5) {
-        f.close();
-        return 0;
-    }
-    
-    marker[4] = '\0';
- 
-    if (strcmp(marker, "DATA") != 0) {
-        f.close();
-        return 0;
-    }
- 
-    // ============================================================
-    // 2. Read all integer configs (int16)
-    // ============================================================
-    for (int i = 0; i < totalConfigItems; i++) {
-        uint8_t lo = f.read();
-        uint8_t hi = f.read();
-        int16_t v = (hi << 8) | lo;
-        //Serial.print("value for #" + String(i) + ": ");
-        //Serial.println(v);
-        if (mode == 0) {
-            activeCi[i] = v;
-        } else if (mode == 1) {
-            textOut(String(v));
-            textOut("\n");
-        }
-        yield();
-    }
-
-    // ============================================================
-    // 3. Read all string configs
-    // ============================================================
-    for (int i = 0; i < totalStringConfigItems; i++) {
-        char buffer[128];
-        int pos = 0;
-
-        while (pos < 127 && f.available()) {
-            char c = f.read();
-            buffer[pos++] = c;
-            if (c == 0) break;
-        }
-        buffer[127] = 0;
-        yield();
-        if (mode == 0) {
-            size_t len = strlen(buffer);
-
-            if (!activeCs[i]) {
-                activeCs[i] = (char*)malloc(len + 1);
-            } else if (strlen(activeCs[i]) < len) {
-                char* tmp = (char*)realloc(activeCs[i], len + 1);
-                if (tmp) activeCs[i] = tmp;
-            }
-
-            if (activeCs[i]) {
-                memcpy(activeCs[i], buffer, len + 1);
-            }
-            //Serial.print("string value for #" + String(i) + ": ");
-            //Serial.println(buffer);
-        } else if (mode == 1) {
-            textOut(buffer);
-            textOut("\n");
-        }
-    }
-
-    f.close();
-
-    if (mode == 0) return 1;
-    return 0;
-}
-
-void saveAllConfigToFlash(uint16_t param) {
-    int* activeCi;
-    char** activeCs;
-    uint32_t slaveConfigLocation = requestLong(ci[SLAVE_I2C], 164);
-    int totalConfigItems = CONFIG_TOTAL_COUNT;
-    int totalStringConfigItems = CONFIG_STRING_COUNT;
-    activeCi = ci;
-    activeCs = cs;
-    if(false && param >= slaveConfigLocation) {
-        totalConfigItems = CONFIG_SLAVE_TOTAL_COUNT;
-        totalStringConfigItems = CONFIG_SLAVE_STRING_COUNT;
-        activeCi = cis;
-        activeCs = css;
-    }
-    if(!LittleFS.begin()) {
-        return;
-    }
-    File f = LittleFS.open("/config.cfg", "w");
-    if(!f) {
-        return;
-    }
-
-    // ============================================================
-    // 1. Write marker "DATA\0"
-    // ============================================================
-
-    f.write((const uint8_t*)"DATA", 4);
-    f.write((uint8_t)0);
-
-    // ============================================================
-    // 2. Write integer configs (2 bytes each)
-    // ============================================================
-
-    for(int i = 0; i < totalConfigItems; i++) {
-        //Serial.println(i);
-        int16_t v = activeCi[i];
-
-        uint8_t lo = v & 0xFF;
-        uint8_t hi = (v >> 8) & 0xFF;
-
-        f.write(lo);
-        f.write(hi);
-        yield();
-    }
-    // ============================================================
-    // 3. Write strings (null terminated)
-    // ============================================================
-    for(int i = 0; i < totalStringConfigItems; i++) {
-        //Serial.println(i);
-        const char* s = activeCs[i];
-        if(s == NULL) s = "";
-    
-        //Serial.print("Value: ");
-        //Serial.println(s);
-        if(s == NULL) {
-          s = "";
-        }
-        size_t len = strlen(s);
-        f.write((const uint8_t*)s, len);
-        f.write((uint8_t)0);
-        yield();
-    }
-    f.close();
-}
-
-//serve a file from the LittleFS file system via http 
-void handleFileRequest() {
-  String path = server.uri(); // "/file.txt"
-  if (path.startsWith("/")) {
-    path = path.substring(1); // "file.txt"
-  }
-  if (path.length() == 0 || !LittleFS.exists("/" + path)) {
-    // File doesn't exist, pass control to default 404
-    server.send(404, "text/plain", "Not Found");
-    return;
-  }
-  File file = LittleFS.open("/" + path, "r");
-  if (!file) {
-    server.send(500, "text/plain", "Failed to open file");
-    return;
-  }
-  // Basic MIME type detection
-  String contentType = "text/plain";
-  if (path.endsWith(".html")) {
-    contentType = "text/html";
-  } else if (path.endsWith(".css")){
-    contentType = "text/css";
-  } else if (path.endsWith(".js")) {
-    contentType = "application/javascript";
-  } else if (path.endsWith(".png")) {
-    contentType = "image/png";
-  } else if (path.endsWith(".jpg") || path.endsWith(".jpeg")) {
-    contentType = "image/jpeg";
-  }
-  server.streamFile(file, contentType);
-  file.close();
-}
 /////////////////////////////////////////////
 //processor-specific
 /////////////////////////////////////////////
