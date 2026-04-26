@@ -94,6 +94,8 @@ CommandDef commands[] = {
   {"watchdog reboot",       cmdRebootMasterFromSlave, 0, true,    0b10000010},
   {"reboot",                cmdDeferredReboot, 0,   true,         0b10000000},
   {"update firmware",       cmdUpdateFirmware, 1,   true,         0b10000000},
+  {"local update firmware", cmdLocalUpdateFirmware, 1,   true,    0b10000001},
+  
   {"version",               cmdVersion, 0,          true,         0b00000000},
   {"run slave sketch",      cmdRunSlaveSketch, 0,   true,         0b00000010},
   {"slave bootloader",      cmdRunSlaveBootloader, 0, true,       0b00000010},
@@ -127,7 +129,7 @@ CommandDef commands[] = {
   {"format file system",    cmdFormatFileSystem, 0, true,         0b00000001},
   ///////////
   {"rm",                    cmdDel, 1, false,                     0b00000001},
-  {"mv",                    cmdRenameFile, 2, false,                     0b00000001},
+  {"mv",                    cmdRenameFile, 2, false,              0b00000001},
   {"download",              cmdDownload, 1, false,                0b00000001},
   //{"mkdir", cmdMkdir, 1, false, 0b00000000},
   {"upload",                cmdUpload, 1, false,                  0b00000001},
@@ -1630,7 +1632,7 @@ void runCommand(const char * commandText, bool deferred){
     handleCommand(command, deferred);
     if(!deferred && (commandRequiresDeferment(command))) {
       //Serial.println("--------+"  + command + "*-----");
-      notYetDeferred(commandText, commandId, (int32_t)(command.startsWith(F("update firmware"))));
+      notYetDeferred(commandText, commandId, (int32_t)(command.indexOf(F("update firmware"))>-1));
     }
     command = "";
     if(commandId > 0) { //don't reset lastCommandId if the command came via serial port
