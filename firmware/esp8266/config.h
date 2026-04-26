@@ -57,9 +57,17 @@
 #define LOCAL_WEB_SERVICE_RESPONSIVENESS 47
 #define BAUD_RATE_LEVEL 48
 #define CONFIG_PERSIST_METHOD 49
+#define SEND_MEM_DATA_IN_RESERVED 50
+
+#define SENSOR_PARAM_1 51
+#define SENSOR_PARAM_2 52
+#define SENSOR_PARAM_3 53
+#define SENSOR_PARAM_4 54
+#define SENSOR_PARAM_5 55
+#define SENSOR_PARAM_6 56
 ///////////////////////
 #define CONFIG_STRING_COUNT 16
-#define CONFIG_TOTAL_COUNT 50
+#define CONFIG_TOTAL_COUNT 57
 //////////////////////
 #define CONFIG_SLAVE_STRING_COUNT 5 //for strings used specifically by the slave
 #define CONFIG_SLAVE_TOTAL_COUNT 10  //total config items on slave
