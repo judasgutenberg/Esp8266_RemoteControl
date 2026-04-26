@@ -82,7 +82,7 @@ uint8_t outputMode = 0;
 String responseBuffer = "";
 unsigned long lastPet = 0;
 int currentWifiIndex = 0;
-
+int permissionErrorCount = 0;
 
 //https://github.com/spacehuhn/SimpleMap
 /*

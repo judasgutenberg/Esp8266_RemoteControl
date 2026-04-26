@@ -21,15 +21,8 @@ void addOfflineRecord(std::vector<std::tuple<uint8_t, uint8_t, double>>& record,
 
 void rebootEsp();
 String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName, int ordinalOfOverwrite, int consolidateAllSensorsToOneRecord); 
-bool downloadFile(const char* url, const char* localPath);
-bool makeDir(const char* path);
-bool deleteFile(const char* path);
-void dumpFile(const char* filename);
-void formatFileSystem();
-void listFiles();
-int loadAllConfigFromFlash(int mode, uint16_t param);
-void saveAllConfigToFlash(uint16_t param);
-void handleFileRequest();
+
+
 
 
 int freeMemory();

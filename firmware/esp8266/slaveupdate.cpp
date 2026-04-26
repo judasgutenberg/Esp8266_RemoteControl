@@ -38,7 +38,7 @@ uint8_t hexToByte(String hex) {
 // Send arbitrary-length data to the slave in safe chunks, retries included
 bool sendFlashPage(uint32_t pageAddr, uint8_t *data, int totalBytes, bool debug) {
     if (debug) {
-        Serial.print("Flashing page at 0x");
+        Serial.print(F("Flashing page at 0x"));
         Serial.println(pageAddr, HEX);
     }
 
@@ -75,7 +75,7 @@ bool sendFlashPage(uint32_t pageAddr, uint8_t *data, int totalBytes, bool debug)
 
                 uint16_t byteAddr = pageAddr + offsetInPage;
                 if (debug) {
-                    Serial.print("Address on slave: 0x");
+                    Serial.print(F("Address on slave: 0x"));
                     Serial.println(byteAddr, HEX);
                 }
                 Wire.write((byteAddr >> 8) & 0xFF);
@@ -96,11 +96,11 @@ bool sendFlashPage(uint32_t pageAddr, uint8_t *data, int totalBytes, bool debug)
                     sent = true;
                     chunkSent = true;
                 } else if (debug) {
-                    Serial.print(" ERROR sending chunk at offset ");
+                    Serial.print(F(" ERROR sending chunk at offset "));
                     Serial.print(offsetInPage);
-                    Serial.print(" (attempt ");
+                    Serial.print(F(" (attempt "));
                     Serial.print(attempt);
-                    Serial.print("), bytesThisChunk=");
+                    Serial.print(F("), bytesThisChunk="));
                     Serial.println(bytesThisChunk);
                 }
 
@@ -111,12 +111,12 @@ bool sendFlashPage(uint32_t pageAddr, uint8_t *data, int totalBytes, bool debug)
                 if (chunkSize > MIN_CHUNK_SIZE) {
                     chunkSize /= 2;
                     if (debug) {
-                        Serial.print(" Reducing chunk size to ");
+                        Serial.print(F(" Reducing chunk size to "));
                         Serial.println(chunkSize);
                     }
                 } else {
                     if (debug) {
-                        Serial.print(" FAILED chunk at offset ");
+                        Serial.print(F(" FAILED chunk at offset "));
                         Serial.println(offsetInPage);
                     }
                     return false;
@@ -130,7 +130,7 @@ bool sendFlashPage(uint32_t pageAddr, uint8_t *data, int totalBytes, bool debug)
     }
 
     if (debug) {
-        Serial.println(" OK -- send flash page");
+        Serial.println(F(" OK -- send flash page"));
     }
     return true;
 }
@@ -141,12 +141,12 @@ bool sendFlashPage(uint32_t pageAddr, uint8_t *data, int totalBytes, bool debug)
 void flushPage(uint8_t *pageBuffer, bool debug) {
     if (currentPageBase != 0xFFFFFFFF && pagePending) {
         if (debug) {
-            Serial.print("Flushing last page at 0x");
+            Serial.print(F("Flushing last page at 0x"));
             Serial.println(currentPageBase, HEX);
         }
         sendFlashPage(currentPageBase, pageBuffer, flashUnitSize, debug);
         if (debug) {
-          Serial.println("........ OK");
+          Serial.println(F("........ OK"));
         }
         currentPageBase = 0xFFFFFFFF;
         pagePending = false;
@@ -230,7 +230,7 @@ void updateSlaveFirmware(String url) {
 // Finalize the update: flush last page + jump to application
 void finalizeBootloaderUpdate(uint8_t *pageBuffer, bool debug) {
     if (debug) {
-      Serial.println("Flushing last page if needed...");
+      Serial.println(F("Flushing last page if needed..."));
     }
 
     Wire.beginTransmission(ci[SLAVE_I2C]);
@@ -243,7 +243,7 @@ void finalizeBootloaderUpdate(uint8_t *pageBuffer, bool debug) {
     flushPage(pageBuffer, debug);
     delay(40);
     if (debug) {
-      Serial.println("Requesting slave to jump to application...");
+      Serial.println(F("Requesting slave to jump to application..."));
     }
 
     Wire.beginTransmission(ci[SLAVE_I2C]);
@@ -252,7 +252,7 @@ void finalizeBootloaderUpdate(uint8_t *pageBuffer, bool debug) {
     Wire.endTransmission();
 
     if (debug) {
-      Serial.println("Jump command sent successfully.");
+      Serial.println(F("Jump command sent successfully."));
     }
 }
 

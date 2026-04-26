@@ -1,4 +1,5 @@
  #include "commandhandlers.h"
+ #include "filefunctions.h"
  #include "globals.h"
 
 
@@ -257,6 +258,9 @@ void cmdFormatFileSystem(String* param, int argCount, bool deferred) {
 ///////////////////////
 
 
+void cmdRenameFile(String* param, int argCount, bool deferred) {
+  renameFile(param[0].c_str(), param[1].c_str());
+}
 
 void cmdDel(String* param, int argCount, bool deferred) {
   deleteFile(param[0].c_str());

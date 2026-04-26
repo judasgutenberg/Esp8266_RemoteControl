@@ -84,7 +84,7 @@ void cmdDumpSerialPacket(String* param, int argCount, bool deferred);
 void cmdFormatFileSystem(String* param, int argCount, bool deferred);
 
 
-
+void cmdRenameFile(String* param, int argCount, bool deferred);
 void cmdDel(String* param, int argCount, bool deferred);
 void cmdDownload(String* param, int argCount, bool deferred);
 void cmdUpload(String* param, int argCount, bool deferred);

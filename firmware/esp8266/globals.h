@@ -1,12 +1,12 @@
-#define VERSION 2177
-
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
+
+#define VERSION 2193
 #include <Arduino.h>
 #include <WiFiUdp.h>
 #include <NTPClient.h>
-#include <ESP8266WebServer.h>7
+#include <ESP8266WebServer.h>
 #include <Adafruit_ADT7410.h>
 #include <DHT.h>
 #include <Adafruit_AHTX0.h>
@@ -101,6 +101,7 @@ extern uint8_t outputMode;
 extern String responseBuffer;
 extern unsigned long lastPet;
 extern int currentWifiIndex;
+extern int permissionErrorCount;
 
 //extern SimpleMap<String, int> *pinMap;
 extern  std::map<String, int> pinMap;

@@ -516,7 +516,7 @@ void testRead() {
 
     // 3. Request 4 bytes
     Wire.requestFrom(ci[SLAVE_I2C], 4);
-    Serial.println("\n\nEEPROM readback:");
+    Serial.println(F("\n\nEEPROM readback:"));
     for (int i = 0; i < 4; i++) {
         if (Wire.available()) {
             byte b = Wire.read();
@@ -834,7 +834,7 @@ void slaveWatchdogInfo() {
   long lastWePetted  = requestLong(ci[SLAVE_I2C], COMMAND_LASTWATCHDOGPET);
   long lastPetAtBite  = requestLong(ci[SLAVE_I2C], COMMAND_LASTPETATBITE);
   lastSlavePowerMode  = getSlaveConfigItem(SLAVE_POWER_MODE);
-  textOut("Watchdog millis: " + String(ms) + "; Last reboot at: " + String(lastReboot) + " (" + msTimeAgo(ms, lastReboot) + "); Reboot count: " + String(rebootCount) + "; Last petted: " + String(lastWePetted) + " (" + msTimeAgo(ms, lastWePetted) + "); Bit " + String(lastPetAtBite) + " seconds after pet\n");
+  textOut(F("Watchdog millis: ") + String(ms) + F("; Last reboot at: ") + String(lastReboot) + " (" + msTimeAgo(ms, lastReboot) + F("); Reboot count: ") + String(rebootCount) + F("; Last petted: ") + String(lastWePetted) + " (" + msTimeAgo(ms, lastWePetted) + F("); Bit ") + String(lastPetAtBite) + F(" seconds after pet\n"));
 } 
 
 String slaveWatchdogData() {
