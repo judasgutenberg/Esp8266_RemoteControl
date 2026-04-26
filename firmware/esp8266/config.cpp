@@ -50,8 +50,16 @@ void initConfig(void) {
   ci[POLLING_SKIP_LEVEL] = 50;
   ci[LOCAL_WEB_SERVICE_RESPONSIVENESS] = 1;
   ci[BAUD_RATE_LEVEL] = 9;
-  ci[CONFIG_PERSIST_METHOD] = 1;
+  ci[CONFIG_PERSIST_METHOD] = 1;  
   ci[SEND_MEM_DATA_IN_RESERVED] = 0;
+
+
+  ci[SENSOR_PARAM_1] = 0;
+  ci[SENSOR_PARAM_2] = 0;
+  ci[SENSOR_PARAM_3] = 0;
+  ci[SENSOR_PARAM_4] = 0;
+  ci[SENSOR_PARAM_5] = 0;
+  ci[SENSOR_PARAM_6] = 0;
 }
 
 
