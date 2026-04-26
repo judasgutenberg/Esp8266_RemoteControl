@@ -349,7 +349,9 @@ Some commands run in two phases:
 | `upload <file>` | 1 | Upload file |
 | `format file system` | – | Format FS |
 
+
 note:  there are no directories or subdirectories on microcontrollers in this system, so commands like <b>mkdir</b> and <b>cd</b> have not been implemented
+
 ---
 
 ##### ⚙️ Configuration
