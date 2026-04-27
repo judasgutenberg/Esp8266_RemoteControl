@@ -52,7 +52,7 @@ void initConfig(void) {
   ci[BAUD_RATE_LEVEL] = 9;
   ci[CONFIG_PERSIST_METHOD] = 1;  
   ci[SEND_MEM_DATA_IN_RESERVED] = 0;
-
+  ci[ANOMALY_LOG_LEVEL] = 1;
 
   ci[SENSOR_PARAM_1] = 0;
   ci[SENSOR_PARAM_2] = 0;
