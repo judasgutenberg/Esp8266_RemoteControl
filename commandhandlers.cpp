@@ -1,4 +1,5 @@
  #include "commandhandlers.h"
+ #include "filefunctions.h"
  #include "globals.h"
 
 
@@ -19,6 +20,11 @@ void cmdRebootMasterFromSlave(String* param, int argCount, bool deferred) {
   } else {
     requestLong(ci[SLAVE_I2C], 134);
   }
+}
+
+
+void cmdLocalUpdateFirmware(String* param, int argCount, bool deferred) {
+  flashFromLittleFS(param[0].c_str());
 }
 
 void cmdUpdateFirmware(String* param, int argCount, bool deferred) {
@@ -188,13 +194,21 @@ void cmdListFiles(String* param, int argCount, bool deferred) {
 }
 
 void cmdSaveMasterConfig(String* param, int argCount, bool deferred) {
+  String toWord = param[0];
+  String dest = param[1];
   String initialBlurb = F("Configuration saved to");
-  if(ci[SLAVE_I2C] > 0 && ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_I2C_SLAVE) {
+  /*
+  Serial.print(toWord);
+  Serial.print("*");
+  Serial.println(dest);
+  Serial.println("*");
+  */
+  if(ci[SLAVE_I2C] > 0 && ((ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_I2C_SLAVE && dest == "") || dest == "slave")) {
     saveAllConfigToEEPROM(0);
-    textOut(initialBlurb + F(" EEPROM\n"));
-  } else if (ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_FLASH) {
+    textOut(initialBlurb + F(" slave EEPROM\n"));
+  } else if ((ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_FLASH && dest == "") || dest == "flash") {
     saveAllConfigToFlash(0);
-    textOut(initialBlurb + F(" flash\n"));
+    textOut(initialBlurb + F(" local flash\n"));
   }
 }
 
@@ -244,11 +258,17 @@ void cmdDumpSerialPacket(String* param, int argCount, bool deferred) {
 
 void cmdFormatFileSystem(String* param, int argCount, bool deferred) {
   formatFileSystem();
-  textOut(F("File system formatted\n"));
+  //textOut(F("File system formatted\n"));
 }
 ///////////////////////
 
+void cmdAnomalyLogTest(String* param, int argCount, bool deferred) {
+  anomalyLog(param[0]);
+}
 
+void cmdRenameFile(String* param, int argCount, bool deferred) {
+  renameFile(param[0].c_str(), param[1].c_str());
+}
 
 void cmdDel(String* param, int argCount, bool deferred) {
   deleteFile(param[0].c_str());

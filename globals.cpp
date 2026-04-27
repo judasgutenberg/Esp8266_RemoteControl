@@ -13,7 +13,7 @@ Adafruit_ADT7410 adt7410[4];
 DHT* dht[4];
 Adafruit_AHTX0 AHT[2];
 SFE_BMP180 BMP180[2];
-BME680_Class BME680[2];
+Adafruit_BME680 BME680[2];
 Adafruit_BMP085 BMP085d[2];
 Generic_LM75 LM75[2];
 Adafruit_BMP280 BMP280[2];
@@ -95,11 +95,14 @@ SimpleMap<String, int> *pinMap = new SimpleMap<String, int>([](String &a, String
 
  
 std::map<String, int> pinMap;
+std::map<String, int> sensorObjectCursor;
+/*
 SimpleMap<String, int> *sensorObjectCursor = new SimpleMap<String, int>([](String &a, String &b) -> int {
   if (a == b) return 0;      // a and b are equal
   else if (a > b) return 1;  // a is bigger than b
   else return -1;            // a is smaller than b
 });
+*/
 
 uint32_t moxeeRebootTimes[] = {0,0,0,0,0,0,0,0,0,0,0};
 int moxeeRebootCount = 0;
