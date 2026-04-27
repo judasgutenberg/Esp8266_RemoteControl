@@ -1243,6 +1243,28 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
  return out;
 }
 
+bool hardwareControlStringInvalid(const char *str) {
+  while (*str) {
+    char c = *str;
+
+    bool isValid =
+      (c >= 'A' && c <= 'Z') ||   // uppercase
+      (c >= 'a' && c <= 'z') ||   // lowercase
+      (c >= '0' && c <= '9') ||   // digits
+      (c == '*') ||
+      (c == ' ') ||
+      (c == '-');
+
+    if (!isValid) {
+      return true; // found a forbidden character
+    }
+
+    str++;
+  }
+
+  return false; // all characters are acceptable citizens
+}
+
 //if the backend sends too much text data at once, it is likely to get gzipped, which is hard to deal with on a microcontroller with limited resources
 //so a better strategy is to send double-delimited data instead of JSON, with data consistently in known ordinal positions
 //thereby making the data payloads small enough that the server never gzips them
@@ -1302,8 +1324,12 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
           continue;
         }
 
+        if(hardwareControlStringInvalid(nonJsonDatum)) { //this will handle almost any junked up control string
+          continue;
+        }
+
         if(i > 8) {
-          anomalyLog(String(nonJsonDatum));
+          //anomalyLog(String(nonJsonDatum));
           Serial.println("\n~" + String(nonJsonDatum) + "~");
         }
         if(ci[DEBUG] == 7) {
