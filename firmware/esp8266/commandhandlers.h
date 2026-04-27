@@ -24,20 +24,16 @@
 #include <WiFiUdp.h>
 #include <NTPClient.h>
 #include <ESP8266WebServer.h>
-#include <Adafruit_ADT7410.h>
-#include <DHT.h>
-#include <Adafruit_AHTX0.h>
-#include <SFE_BMP180.h>
-#include "Zanshin_BME680.h"  // Include the BME680 Sensor library
-#include <Adafruit_BMP085.h>
-#include <Temperature_LM75_Derived.h>
-#include <Adafruit_BMP280.h>
+
+
+
+
 #include <IRremoteESP8266.h>
 #include <IRsend.h>
 #include <Adafruit_INA219.h>
 #include <Adafruit_VL53L0X.h>
 #include <Adafruit_FRAM_I2C.h>
-#include "SimpleMap.h" // assuming you have this header
+ 
 
 #include <tuple>
 #include <cmath> 
@@ -46,6 +42,7 @@
 #include <LittleFS.h>
 
 void cmdDeferredReboot(String* param, int argCount, bool deferred);
+void cmdLocalUpdateFirmware(String* param, int argCount, bool deferred); 
 void cmdUpdateFirmware(String* param, int argCount, bool deferred);
 
 void cmdVersion(String* param, int argCount, bool deferred);
@@ -83,7 +80,7 @@ void cmdMemory(String* param, int argCount, bool deferred);
 void cmdDumpSerialPacket(String* param, int argCount, bool deferred);
 void cmdFormatFileSystem(String* param, int argCount, bool deferred);
 
-
+void cmdAnomalyLogTest(String* param, int argCount, bool deferred);
 void cmdRenameFile(String* param, int argCount, bool deferred);
 void cmdDel(String* param, int argCount, bool deferred);
 void cmdDownload(String* param, int argCount, bool deferred);

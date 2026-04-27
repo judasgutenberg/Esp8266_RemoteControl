@@ -22,6 +22,11 @@ void cmdRebootMasterFromSlave(String* param, int argCount, bool deferred) {
   }
 }
 
+
+void cmdLocalUpdateFirmware(String* param, int argCount, bool deferred) {
+  flashFromLittleFS(param[0].c_str());
+}
+
 void cmdUpdateFirmware(String* param, int argCount, bool deferred) {
   if(!deferred) {
     textOut(F("Attempting firmware update...\n"));
@@ -257,6 +262,9 @@ void cmdFormatFileSystem(String* param, int argCount, bool deferred) {
 }
 ///////////////////////
 
+void cmdAnomalyLogTest(String* param, int argCount, bool deferred) {
+  anomalyLog(param[0]);
+}
 
 void cmdRenameFile(String* param, int argCount, bool deferred) {
   renameFile(param[0].c_str(), param[1].c_str());

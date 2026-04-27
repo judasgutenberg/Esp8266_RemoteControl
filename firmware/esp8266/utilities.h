@@ -5,7 +5,6 @@
 #include <stdint.h>
 #include <Wire.h>
 #include "config.h"     // <-- gives access to ci[] and cs[]
-#include <SimpleMap.h>
 #include <Arduino.h>
 #include <tuple>
 #include <cmath> 
@@ -20,7 +19,7 @@ void dumpMemoryStats(int marker);
 String urlEncode(String str, bool minimizeImpact);
 String joinValsOnDelimiter(uint32_t vals[], String delimiter, int numberToDo);
 String joinStdMapValsOnDelimiter(const std::map<String, int>& pinMap, const String& delimiter);
-String joinMapValsOnDelimiter(SimpleMap<String, int> *pinMap, String delimiter);
+//String joinMapValsOnDelimiter(SimpleMap<String, int> *pinMap, String delimiter);
 bool isInteger(const String &s);
 static int appendNullOrNumber(char *buf, size_t bufSize, size_t pos, double val, const char *fmt);
 static int appendNullOrInt(char *buf, size_t bufSize, size_t pos, long val);

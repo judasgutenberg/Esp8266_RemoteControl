@@ -2,7 +2,7 @@
 #define GLOBALS_H
 
 
-#define VERSION 2193
+#define VERSION 2195
 #include <Arduino.h>
 #include <WiFiUdp.h>
 #include <NTPClient.h>
@@ -11,16 +11,15 @@
 #include <DHT.h>
 #include <Adafruit_AHTX0.h>
 #include <SFE_BMP180.h>
-#include "Zanshin_BME680.h"  // Include the BME680 Sensor library
 #include <Adafruit_BMP085.h>
 #include <Temperature_LM75_Derived.h>
 #include <Adafruit_BMP280.h>
+#include <Adafruit_BME680.h>
 #include <IRremoteESP8266.h>
 #include <IRsend.h>
 #include <Adafruit_INA219.h>
 #include <Adafruit_VL53L0X.h>
 #include <Adafruit_FRAM_I2C.h>
-#include "SimpleMap.h" // assuming you have this header
 #include <map>
 
 // Sensor objects
@@ -28,7 +27,7 @@ extern Adafruit_ADT7410 adt7410[4];
 extern DHT* dht[4];
 extern Adafruit_AHTX0 AHT[2];
 extern SFE_BMP180 BMP180[2];
-extern BME680_Class BME680[2];
+extern Adafruit_BME680 BME680[2];
 extern Adafruit_BMP085 BMP085d[2];
 extern Generic_LM75 LM75[2];
 extern Adafruit_BMP280 BMP280[2];
@@ -102,10 +101,9 @@ extern String responseBuffer;
 extern unsigned long lastPet;
 extern int currentWifiIndex;
 extern int permissionErrorCount;
-
-//extern SimpleMap<String, int> *pinMap;
+ 
 extern  std::map<String, int> pinMap;
-extern SimpleMap<String, int> *sensorObjectCursor;
+extern std::map<String, int> sensorObjectCursor;
 
 extern uint32_t moxeeRebootTimes[];
 extern int moxeeRebootCount;

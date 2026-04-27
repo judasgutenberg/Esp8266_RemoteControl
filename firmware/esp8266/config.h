@@ -69,7 +69,6 @@
 ///////////////////////
 #define CONFIG_STRING_COUNT 16
 #define CONFIG_TOTAL_COUNT 58
- 
 //////////////////////
 #define CONFIG_SLAVE_STRING_COUNT 5 //for strings used specifically by the slave
 #define CONFIG_SLAVE_TOTAL_COUNT 10  //total config items on slave
