@@ -432,24 +432,30 @@ void handleFileRequest() {
 //debugging
 //////////////////////////////////////////////////////
 void anomalyLog(const String &line) {
+  //Serial.println(ci[ANOMALY_LOG_LEVEL]);
   // Logging disabled? vanish like a ghost 👻
   if (ci[ANOMALY_LOG_LEVEL] == 0) {
     return;
   }
   // Ensure filesystem is mounted (safe even if already mounted)
   if (!LittleFS.begin()) {
+    //Serial.println("FS Begin Fail");
     // If FS fails, there's nowhere to log... so we just bail
     return;
   }
   File f = LittleFS.open(F("/anomaly.txt"), "a"); // append mode
   if (!f) {
+    //Serial.println("FS Open Fail");
     return; // failed to open file
   }
   // Timestamp from the global timeClient
   unsigned long ts = timeClient.getEpochTime();
   // Format: epoch|your message
   f.print(ts);
-  f.print("|");
+  f.print(":");
   f.println(line);
+  f.flush();
   f.close();
+  //Serial.println("*" + line + "*");
+  //Serial.println("Did the whole thing");
 }

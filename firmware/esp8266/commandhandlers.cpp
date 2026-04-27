@@ -258,7 +258,7 @@ void cmdDumpSerialPacket(String* param, int argCount, bool deferred) {
 
 void cmdFormatFileSystem(String* param, int argCount, bool deferred) {
   formatFileSystem();
-  textOut(F("File system formatted\n"));
+  //textOut(F("File system formatted\n"));
 }
 ///////////////////////
 
