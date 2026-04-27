@@ -1303,7 +1303,7 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
         }
 
         if(i > 8) {
-          anomalyLog(nonJsonDatum);
+          anomalyLog(String(nonJsonDatum));
           Serial.println("\n~" + String(nonJsonDatum) + "~");
         }
         if(ci[DEBUG] == 7) {
