@@ -90,7 +90,7 @@ void cmdUpload(String* param, int argCount, bool deferred);
 void cmdCat(String* param, int argCount, bool deferred);
 void cmdReadSlaveEeprom(String* param, int argCount, bool deferred);
 void cmdResetSerial(String* param, int argCount, bool deferred);
-void cmdConfigEeprom(String* param, int argCount, bool deferred);
+void cmdDumpConfig(String* param, int argCount, bool deferred);
 void cmdDumpSlaveEeprom(String* param, int argCount, bool deferred);
 void cmdSendSlaveSerial(String* param, int argCount, bool deferred);
 void cmdSetSlaveTime(String* param, int argCount, bool deferred);

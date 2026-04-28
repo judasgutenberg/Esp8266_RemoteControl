@@ -4,6 +4,7 @@
 
 #define CONFIG_PERSIST_METHOD_FLASH 0
 #define CONFIG_PERSIST_METHOD_I2C_SLAVE 1
+#define CONFIG_PERSIST_METHOD_FRAM 2
 
 // ===== AUTO-GENERATED CONFIGURATION INDEX DEFINITIONS =====
 
@@ -52,7 +53,7 @@
 #define RTC_ADDRESS 42
 #define SLAVE_I2C 43
 #define SLAVE_PET_WATCHDOG_COMMAND 44
-#define DEBUG 45
+#define DEBUG 45 //sets the debug level.  smaller is less debugging crap in your serial feed. 0 shows almost none, and 1 shows just a small amount as the device boots up
 #define POLLING_SKIP_LEVEL 46
 #define LOCAL_WEB_SERVICE_RESPONSIVENESS 47
 #define BAUD_RATE_LEVEL 48

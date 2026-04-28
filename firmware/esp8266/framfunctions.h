@@ -36,6 +36,8 @@ void hexDumpFRAMAtIndex(uint16_t index, uint8_t bytesPerLine, uint16_t maxLines)
 void hexDumpFRAM(uint16_t startAddress, uint8_t bytesPerLine, uint16_t maxLines);
 void swapFRAMContents(uint16_t location1, uint16_t location2, uint16_t length);
 void addOfflineRecord(std::vector<std::tuple<uint8_t, uint8_t, double>>& record, uint8_t ordinal, uint8_t type, double value);
-
+void swapFRAMContents(uint16_t location1, uint16_t location2, uint16_t length);
+void saveAllConfigToFRAM(uint16_t addr);
+int loadAllConfigFromFRAM(int mode, uint16_t addr);
 
 #endif

@@ -392,6 +392,9 @@ int loadAllConfigFromEEPROM(int mode, uint16_t addr) { //can also be used to rec
 
     if (strcmp(marker, "DATA") != 0) {
         // No valid data stored
+        if (mode == 1) {
+          textOut(F("No data found"));
+        }
         return 0;
     }
     

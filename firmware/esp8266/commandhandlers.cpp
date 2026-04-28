@@ -213,6 +213,9 @@ void cmdSaveMasterConfig(String* param, int argCount, bool deferred) {
   } else if ((ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_FLASH && dest == "") || dest == "flash") {
     saveAllConfigToFlash(0);
     textOut(initialBlurb + F(" local flash\n"));
+  } else if ((ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_FRAM && dest == "") || dest == "fram") {
+    saveAllConfigToFRAM(0);
+    textOut(initialBlurb + F(" fram\n"));
   }
 }
 
@@ -318,8 +321,16 @@ void cmdResetSerial(String* param, int argCount, bool deferred) {
   textOut("Serial reset\n");
 }
 
-void cmdConfigEeprom(String* param, int argCount, bool deferred) {
-  loadAllConfigFromEEPROM(1, 0);
+void cmdDumpConfig(String* param, int argCount, bool deferred) {
+  String fromWord = param[0];
+  String source = param[1];
+  if(ci[SLAVE_I2C] > 0 && ((ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_I2C_SLAVE && source == "") || source == "slave")) {
+    loadAllConfigFromEEPROM(1, 0);
+  } else if ((ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_FLASH && source == "") || source == "flash") {
+    loadAllConfigFromFlash(1, 0);
+  } else if ((ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_FRAM && source == "") || source == "fram") {
+    loadAllConfigFromFRAM(1, 0);
+  }
 }
 
 void cmdDumpSlaveEeprom(String* param, int argCount, bool deferred) {
