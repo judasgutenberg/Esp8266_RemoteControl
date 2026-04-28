@@ -6,16 +6,8 @@
  * since those do not include watchdog behaviors
  */
 
- //note:  this needs to be compiled in the Arduino environment alongside:
- //config.cpp
- //config.h
- //globals.cpp
- //globals.h
- //i2cslave.cpp
- //i2cslave.h
- //index.h
- //utilities.cpp
- //utilities.h
+ //note:  this needs to be compiled in the Arduino environment alongside other files in the repo directory
+ 
 
 #include "globals.h"
 #include "i2cslave.h"
@@ -74,10 +66,7 @@ static int attemptCount = 0;
 static String responseBufferSM;      // accumulate response
 static uint32_t taskStartTimeMs = 0; // logging timer
 //Jonathan Lemire had some ideas an ETSY, so he should've been in a subtrerrainian
-void listFiles();
-void formatFileSystem();
-int loadAllConfigFromFlash(int mode, uint16_t addr);
-
+ 
 typedef void (*CommandHandler)(String* args, int argCount, bool deferred);
 
 struct CommandDef {
@@ -142,7 +131,7 @@ CommandDef commands[] = {
   {"cat",                   cmdCat, 1,              false,        0b00000001},
   {"read slave eeprom",     cmdReadSlaveEeprom, 1,  false,        0b00000010},
   {"reset serial",          cmdResetSerial, 0,      false,        0b00000000},
-  {"dump config eeprom",    cmdConfigEeprom, 0,     false,        0b00000010},
+  {"dump config",           cmdDumpConfig, 2,       false,        0b00000010},
   {"dump slave config eeprom", cmdDumpSlaveEeprom, 0, false,      0b00000010},
   {"send slave serial",     cmdSendSlaveSerial, 1, false,         0b00000010},
   {"set slave time",        cmdSetSlaveTime, 1, false,            0b00000010},
@@ -1112,7 +1101,7 @@ void runRemoteTask() {
             Serial.println(F("after set local hardware"));
           }
           if (part > 1 && strlen(parts[1]) > 5) {
-            if (ci[DEBUG] > 1) {
+            if (ci[DEBUG] > 3) {
               Serial.print(F("COMMAND: "));
               Serial.println(parts[1]);
             }
@@ -1930,7 +1919,26 @@ void setup(){
   //Serial.setDebugOutput(true);
   delay(10);
   initMasterDefaults();
+  yield();
   setSerialRate((byte)ci[BAUD_RATE_LEVEL]); 
+  Serial.println("XXXXXXXXXXXXXXXXXXXXXXXXX");
+  yield();
+  if(ci[FRAM_ADDRESS] > 0) {
+    if (!fram.begin(ci[FRAM_ADDRESS])) {
+      if(ci[DEBUG] > 0) {
+        Serial.println(F("Could not find FRAM (or EEPROM)."));
+      }
+    } else {
+      if(ci[DEBUG] > 0) {
+        Serial.println(F("FRAM or EEPROM found"));
+      }
+    }
+      currentRecordCount = readRecordCountFromFRAM();
+      if(lastRecordSize == 0) {
+        lastRecordSize = getRecordSizeFromFRAM(0xFFFF);
+      }
+  }
+  yield();
   if(loadAllConfig(0, 0) != 1) {
     if(ci[DEBUG] > 0) {
       Serial.println(F("\nNo config found in storage"));
@@ -1941,6 +1949,8 @@ void setup(){
       Serial.print(F("\nConfiguration retrieved from "));
       if(ci[CONFIG_PERSIST_METHOD] == 1) {
         Serial.println(F("slave EEPROM"));
+      } else if(ci[CONFIG_PERSIST_METHOD] == 2) {
+        Serial.println(F("FRAM"));
       } else {
         Serial.println(F("local flash"));
       }
@@ -1989,27 +1999,15 @@ void setup(){
   if(ci[INA219_ADDRESS] > 0) {
     ina219 = new Adafruit_INA219(ci[INA219_ADDRESS]);
     if (!ina219->begin()) {
-      if(ci[DEBUG] > 1) {
+      if(ci[DEBUG] > 0) {
         Serial.println(F("Failed to find INA219 chip"));
       }
     } else {
+      if(ci[DEBUG] > 0) {
+        Serial.println(F("INA219 chip found"));
+      }
       ina219->setCalibration_16V_400mA();
     }
-  }
-  if(ci[FRAM_ADDRESS] > 0) {
-    if (!fram.begin(ci[FRAM_ADDRESS])) {
-      if(ci[DEBUG] > 1) {
-        Serial.println(F("Could not find FRAM (or EEPROM)."));
-      }
-    } else {
-      if(ci[DEBUG] > 1) {
-        Serial.println(F("FRAM or EEPROM found"));
-      }
-    }
-      currentRecordCount = readRecordCountFromFRAM();
-      if(lastRecordSize == 0) {
-        lastRecordSize = getRecordSizeFromFRAM(0xFFFF);
-      }
   }
   if(ci[IR_PIN] > -1) {
     //irsend.begin(); //do this elsewhere?
@@ -2506,7 +2504,6 @@ void cleanup(){
   yield();    
 }
 
-
 /////////////////////////////////////////////
 //config routines
 /////////////////////////////////////////////
@@ -2515,6 +2512,8 @@ int loadAllConfig(int mode, uint16_t param){
     return loadAllConfigFromEEPROM(mode, param);
   } else if (ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_FLASH) {
     return loadAllConfigFromFlash(mode, param);
+  } else if (ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_FRAM) {
+    return loadAllConfigFromFRAM(mode, param);
   } else {
     return 0;
   }
