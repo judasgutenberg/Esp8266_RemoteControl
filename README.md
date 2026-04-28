@@ -361,7 +361,7 @@ note:  there are no directories or subdirectories on microcontrollers in this sy
 |--------|------|------------|
 | `set <index> <value>` | 2 | Set config value |
 | `get <index>` | 1 | Get config value |
-| `save master config [to dest]` | 2 | Save config (flash/slave).  If destination is left out, configuration is set according to ci[CONFIG_PERSIST_METHOD] |
+| `save master config [to dest]` | 2 | Save config (flash/fram/slave).  If destination is left out, configuration is set according to ci[CONFIG_PERSIST_METHOD] |
 | `save slave config` | – | Save slave config |
 | `init master defaults` | – | Reset master config |
 | `init slave defaults` | – | Reset slave config |
@@ -376,7 +376,7 @@ note:  there are no directories or subdirectories on microcontrollers in this sy
 | `send slave serial <data>` | 1 | Send raw serial |
 | `get slave serial` | – | Read serial buffer |
 | `read slave eeprom <addr>` | 1 | Read EEPROM |
-| `dump config eeprom` | – | Dump master config |
+| `dump config [from source]` | – | Dump master config from (flash/fram/slave). If source is left out, it is from however ci[CONFIG_PERSIST_METHOD] is set |
 | `dump slave config eeprom` | – | Dump slave config |
 
 ---
