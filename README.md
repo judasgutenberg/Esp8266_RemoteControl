@@ -159,7 +159,7 @@ Since manual changes to the status of device_features are usually at odds with a
 
 ## Commands
 
-Includes a lightweight command system for configuration and control.
+This system includes a lightweight command system for configuration and control that works either via a serial connection locally or via a web-based tool across the internet.
 
 ---
 
@@ -341,8 +341,9 @@ Some commands run in two phases:
 
 | Command | Args | Description |
 |--------|------|------------|
-| `ls` | – | List files |
+| `anomaly log test <test text> | 1 | Tests anomaly logging by adding a test line to anomaly.txt in the file system |
 | `cat <file>` | 1 | Print file to console |
+| `ls` | – | List files |
 | `mv <source>` <destination> |  2| Rename (or move) file |
 | `rm <file>` | 1 | Delete file |
 | `download <file>` | 1 | Retrieve file from the internet, saving to local LittleFS file system preserving file name.  Does not work for files larger than 28 kilobytes for some reason. |
