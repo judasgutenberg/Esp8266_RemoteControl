@@ -1,6 +1,5 @@
 #include "globals.h"
 #include "config.h"
-#include <SimpleMap.h>
 #include <map>
 
 

@@ -5,7 +5,8 @@
 #include "utilities.h"
 #include "slaveupdate.h"
 #include "rootfunctions.h"
-
+#include "filefunctions.h"
+#include "framfunctions.h"
 
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
@@ -45,6 +46,7 @@ void cmdDeferredReboot(String* param, int argCount, bool deferred);
 void cmdLocalUpdateFirmware(String* param, int argCount, bool deferred); 
 void cmdUpdateFirmware(String* param, int argCount, bool deferred);
 
+void cmdInitSensors(String* param, int argCount, bool deferred);
 void cmdVersion(String* param, int argCount, bool deferred);
 void cmdRunSlaveSketch(String* param, int argCount, bool deferred);
 void cmdRunSlaveBootloader(String* param, int argCount, bool deferred);
