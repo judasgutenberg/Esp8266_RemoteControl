@@ -271,9 +271,9 @@ Some commands run in two phases:
 | `run slave sketch` | – | Execute slave firmware |
 | `slave bootloader` | – | Enter bootloader mode |
 | `update slave firmware <url>` | 1 | OTA update slave |
-| `run slave <cmd> <value>` | 2 | Execute command on slave |
-| `get slave <index>` | 1 | Read config value |
-| `set slave <index> <value>` | 2 | Write config value |
+| `run slave <cmd> <value>` | 2 | Execute command on slave, sometimes returning a value |
+| `get slave <index>` | 1 | Read slave config value |
+| `set slave <index> <value>` | 2 | Write slave config value |
 
 ---
 
