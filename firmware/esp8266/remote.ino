@@ -97,7 +97,9 @@ CommandDef commands[] = {
   {"reboot",                cmdDeferredReboot, 0,   true,         0b10000000},
   {"update firmware",       cmdUpdateFirmware, 1,   true,         0b10000000},
   {"local update firmware", cmdLocalUpdateFirmware, 1,   true,    0b10000001},
-  
+
+
+  {"init sensors",          cmdInitSensors, 0,      true,         0b00000000},
   {"version",               cmdVersion, 0,          true,         0b00000000},
   {"run slave sketch",      cmdRunSlaveSketch, 0,   true,         0b00000010},
   {"slave bootloader",      cmdRunSlaveBootloader, 0, true,       0b00000010},
@@ -117,8 +119,8 @@ CommandDef commands[] = {
   {"get date",              cmdGetDate, 0,          true,         0b00001000},
   {"get watchdog info",     cmdGetWatchdogInfo, 0,  true,         0b00000010},
   {"get watchdog data",     cmdGetWatchdogData, 0,  true,         0b00000010},
-  {"ls",                    cmdListFiles, 0,        true,         0b00000001},
-  {"save master config",    cmdSaveMasterConfig, 2, false,         0b00000000},
+
+  {"save master config",    cmdSaveMasterConfig, 2, false,        0b00000000},
   {"save slave config",     cmdSaveSlaveConfig, 0,  true,         0b00000010},
   {"init master defaults",  cmdInitMasterDefaults, 0, true,       0b00000000}, 
   {"init slave defaults",   cmdInitSlaveDefaults, 0, true,        0b00000010},
@@ -130,16 +132,17 @@ CommandDef commands[] = {
   {"dump parsed serial packet", cmdDumpSerialPacket, 0, true,     0b00000010},
   {"format file system",    cmdFormatFileSystem, 0, true,         0b00000001},
   ///////////
-  {"anomaly log test",      cmdAnomalyLogTest, 1, false,          0b00000001},
-  {"rm",                    cmdDel, 1, false,                     0b00000001},
-  {"mv",                    cmdRenameFile, 2, false,              0b00000001},
-  {"download",              cmdDownload, 1, false,                0b00000001},
-  //{"mkdir", cmdMkdir, 1, false, 0b00000000},
-  {"upload",                cmdUpload, 1, false,                  0b00000001},
-  {"cat",                   cmdCat, 1, false,                     0b00000001},
-  {"read slave eeprom",     cmdReadSlaveEeprom, 1, false,         0b00000010},
-  {"reset serial",          cmdResetSerial, 0, false,             0b00000000},
-  {"dump config eeprom",    cmdConfigEeprom, 0, false,            0b00000010},
+  {"anomaly log test",      cmdAnomalyLogTest, 1,   false,        0b00000001},
+  {"ls",                    cmdListFiles, 0,        true,         0b00000001},
+  {"rm",                    cmdDel, 1,              false,        0b00000001},
+  {"mv",                    cmdRenameFile, 2,       false,        0b00000001},
+  {"download",              cmdDownload, 1,         false,        0b00000001},
+  //{"mkdir", cmdMkdir, 1, false, 0b00000000}, //i never got mkdir to work, so the file system is flat, like on a Commodore 64
+  {"upload",                cmdUpload, 1,           false,        0b00000001},
+  {"cat",                   cmdCat, 1,              false,        0b00000001},
+  {"read slave eeprom",     cmdReadSlaveEeprom, 1,  false,        0b00000010},
+  {"reset serial",          cmdResetSerial, 0,      false,        0b00000000},
+  {"dump config eeprom",    cmdConfigEeprom, 0,     false,        0b00000010},
   {"dump slave config eeprom", cmdDumpSlaveEeprom, 0, false,      0b00000010},
   {"send slave serial",     cmdSendSlaveSerial, 1, false,         0b00000010},
   {"set slave time",        cmdSetSlaveTime, 1, false,            0b00000010},
@@ -497,30 +500,33 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
       }
     }
   } else if(sensorIdLocal == 680) {
-if (ci[DEBUG] > 1) {
-  Serial.print(F("Initializing BME680 sensor...\n"));
-}
-
-if (!BME680[objectCursor].begin(i2c)) {
-  if (ci[DEBUG] > 1) {
-    Serial.print(F(" - Unable to find BME680.\n"));
-  }
-} else {
-  if (ci[DEBUG] > 1) {
-    Serial.print(F("- Setting 16x oversampling for all sensors\n"));
-  }
-  BME680[objectCursor].setTemperatureOversampling(BME680_OS_16X);
-  BME680[objectCursor].setHumidityOversampling(BME680_OS_16X);
-  BME680[objectCursor].setPressureOversampling(BME680_OS_16X);
-  if (ci[DEBUG] > 1) {
-    Serial.print(F("- Setting IIR filter to 4 samples\n"));
-  }
-  BME680[objectCursor].setIIRFilterSize(BME680_FILTER_SIZE_3);
-  if (ci[DEBUG] > 1) {
-    Serial.print(F("- Setting gas measurement to 320C for 150ms\n"));
-  }
-  BME680[objectCursor].setGasHeater(320, 150);
-}
+    if (ci[DEBUG] > 1) {
+      Serial.print(F("Initializing BME680 sensor...\n"));
+    }
+    
+    if (!BME680[objectCursor].begin(i2c)) {
+      if (ci[DEBUG] > 1) {
+        Serial.print(F(" - Unable to find BME680.\n"));
+      }
+    } else {
+      //consult this page: https://github.com/pchwalek/STM32_BME680/blob/master/bme68x_defs.h
+      //to get the actual integers you might want to use for the ci[SENSOR_PARAM_X] values
+      if (ci[DEBUG] > 1) {
+        Serial.print(F("- Setting oversampling for all sensors: "));
+        Serial.println(String(ci[SENSOR_PARAM_1]) + ", " + String(ci[SENSOR_PARAM_2]) + ", " + String(ci[SENSOR_PARAM_3]) + ", " + String(ci[SENSOR_PARAM_4]) + ", " + String(ci[SENSOR_PARAM_5]));
+      }
+      BME680[objectCursor].setTemperatureOversampling(ci[SENSOR_PARAM_1]);
+      BME680[objectCursor].setHumidityOversampling(ci[SENSOR_PARAM_2]);
+      BME680[objectCursor].setPressureOversampling(ci[SENSOR_PARAM_3]);
+      if (ci[DEBUG] > 1) {
+        Serial.print(F("- Setting IIR filter to 4 samples\n"));
+      }
+      BME680[objectCursor].setIIRFilterSize(ci[SENSOR_PARAM_4]);
+      if (ci[DEBUG] > 1) {
+        Serial.print(F("- Setting gas measurement to 320C for 150ms\n"));
+      }
+      BME680[objectCursor].setGasHeater(ci[SENSOR_PARAM_5], ci[SENSOR_PARAM_6]);
+    }
   } else if (sensorIdLocal == 2301) {
     if(ci[DEBUG] > 1) {
       Serial.print(F("Initializing DHT AM2301 sensor at pin: "));
