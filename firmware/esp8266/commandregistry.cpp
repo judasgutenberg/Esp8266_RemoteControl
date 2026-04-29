@@ -1,10 +1,7 @@
 #include "commandregistry.h"
 #include "commandhandlers.h"
 
-// Forward declarations of handlers (or include their headers)
-void cmdRebootEsp(String* args, int argCount, bool deferred);
-void cmdRebootSlave(String* args, int argCount, bool deferred);
-void cmdRebootMasterFromSlave(String* args, int argCount, bool deferred);
+ 
 
 
 CommandDef commands[] = {
