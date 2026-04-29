@@ -1838,6 +1838,8 @@ void setup(){
   yield();
   setSerialRate((byte)ci[BAUD_RATE_LEVEL]); 
   yield();
+ 
+  
   if(ci[FRAM_ADDRESS] > 0) {
     if (!fram.begin(ci[FRAM_ADDRESS])) {
       if(ci[DEBUG] > 0) {
@@ -1857,12 +1859,12 @@ void setup(){
   int loadResult = loadAllConfig(0, 0);
   if(loadResult < 0) {
     if(ci[DEBUG] > 0) {
-      Serial.println(F("\nNo config found in storage"));
+      Serial.println(F("No config found in storage"));
     }
     initMasterDefaults();
   } else {
     if(ci[DEBUG] > 0) {
-      Serial.print(F("\nConfiguration retrieved from "));
+      Serial.print(F("Configuration retrieved from "));
       if(loadResult == CONFIG_PERSIST_METHOD_I2C_SLAVE) {
         Serial.println(F("slave EEPROM"));
       } else if(loadResult == CONFIG_PERSIST_METHOD_FRAM) {
@@ -1872,6 +1874,7 @@ void setup(){
       }
     }
   }
+  textOut("Just started up...\n");
   //set specified pins to start low immediately, keeping devices from turning on
   int pinsToStartLow[10];
   int numToStartLow = splitAndParseInts(cs[PINS_TO_START_LOW], pinsToStartLow, 10);
@@ -1889,7 +1892,7 @@ void setup(){
   
   //Serial.setRxBufferSize(256);  
   Serial.setDebugOutput(false);
-  textOut("\n\nJust started up...\n");
+  
  
   
   //Wire.setClock(50000); // Set I2C speed to 100kHz (default is 400kHz)
