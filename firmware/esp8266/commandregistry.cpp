@@ -73,8 +73,8 @@ CommandDef commands[] = {
   {"set slave basis",       setSlaveBasis, 2,       false,        0b00000010},
   {"set slave",             setSlave, 2,            false,        0b00000010},
   {"run slave",             runSlave, 2,            false,        0b00000010},
-  {"set",                   cmdSet, 2,              false,        0b00000010},
-  {"get",                   cmdGet, 1,              false,        0b00000010},
+  {"set",                   cmdSet, 2,              false,        0b00000000},
+  {"get",                   cmdGet, 1,              false,        0b00000000},
   // add more here…
 };
 
