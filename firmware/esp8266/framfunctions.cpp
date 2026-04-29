@@ -9,7 +9,7 @@ currentRecordCount:
 
 FRAM MEMORY MAP:
 0->ci[FRAM_INDEX_SIZE] * 2: index
-top_of_precedin_index->>FRAM_LOG_TOP:  logged records
+top_of_preceding_index->>FRAM_LOG_TOP:  logged records
 FRAM_LOG_TOP:      two bytes of the number of FRAM records
 FRAM_LOG_TOP + 2:  two bytes of last byte transmitted to backend
 FRAM_LOG_TOP + 4:  alternative location for master configuration
