@@ -13,7 +13,9 @@ CommandDef commands[] = {
   {"update firmware",       cmdUpdateFirmware, 1,   true,         0b10000000},
   {"local update firmware", cmdLocalUpdateFirmware, 1,   true,    0b10000001},
 
-
+  {"get bad reboot info",       cmdBadReboots, 0,      true,          0b00000000},
+  {"clear safe mode",       cmdQuitSafeMode, 0,      true,        0b00000000},
+  
   {"init sensors",          cmdInitSensors, 0,      true,         0b00000000},
   {"version",               cmdVersion, 0,          true,         0b00000000},
   {"run slave sketch",      cmdRunSlaveSketch, 0,   true,         0b00000010},

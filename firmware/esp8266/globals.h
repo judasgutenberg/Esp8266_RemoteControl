@@ -1,8 +1,8 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-
-#define VERSION 2198
+#define VERSION 2197
+#define RTC_MAGIC 0xDEADCA75
 #include <Arduino.h>
 #include <WiFiUdp.h>
 #include <NTPClient.h>
@@ -50,6 +50,16 @@ enum RemoteState {
   RS_PROCESSING_REPLY,   // now do the heavy processing (commands, FRAM, etc.)
   RS_DONE
 };
+
+
+struct RTCBootInfo {
+  uint32_t magic;
+  uint32_t lastMillis;
+  uint32_t rebootCount;
+  uint32_t checksum;
+};
+
+extern RTCBootInfo rtc;
 
 extern const unsigned long CONNECT_RETRY_SPACING_MS;
 extern const unsigned long CONNECT_TIMEOUT_MS;

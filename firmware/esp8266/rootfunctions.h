@@ -6,5 +6,7 @@ void sendIr(String rawDataStr);
 
 String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName, int ordinalOfOverwrite, int consolidateAllSensorsToOneRecord); 
 
+void rtcMarkStable();
+
 void rebootEsp();
 int freeMemory();

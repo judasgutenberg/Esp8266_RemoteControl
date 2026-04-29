@@ -74,6 +74,20 @@ void cmdUpdateFirmware(String* param, int argCount, bool deferred) {
   }
 }
 
+/////////////////////
+void cmdQuitSafeMode(String* param, int argCount, bool deferred) {
+  rtcMarkStable();
+  textOut(F("Startup safe mode disabled\n"));
+}
+
+void cmdBadReboots(String* param, int argCount, bool deferred) {
+  textOut(F("Apparent bad reboot count: "));
+  textOut(String(rtc.rebootCount));
+  textOut(F("; millis up: "));
+  textOut(String(rtc.lastMillis));
+  textOut("\n");
+  
+}
 
 ////////////////////
 
