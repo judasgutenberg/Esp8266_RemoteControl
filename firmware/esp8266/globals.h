@@ -2,7 +2,7 @@
 #define GLOBALS_H
 
 
-#define VERSION 2197
+#define VERSION 2198
 #include <Arduino.h>
 #include <WiFiUdp.h>
 #include <NTPClient.h>
