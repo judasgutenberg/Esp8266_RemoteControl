@@ -341,7 +341,7 @@ Some commands run in two phases:
 
 | Command | Args | Description |
 |--------|------|------------|
-| `anomaly log test <test text> | 1 | Tests anomaly logging by adding a test line to anomaly.txt in the file system |
+| `anomaly log test <test text>` | 1 | Tests anomaly logging by adding a test line to anomaly.txt in the file system |
 | `cat <file>` | 1 | Print file to console |
 | `ls` | – | List files |
 | `mv <source>` <destination> |  2| Rename (or move) file |
@@ -351,7 +351,7 @@ Some commands run in two phases:
 | `format file system` | – | Format FS |
 
 
-note:  there are no directories or subdirectories on microcontrollers in this system, so commands like <b>mkdir</b> and <b>cd</b> have not been implemented
+note:  there are no directories or subdirectories on microcontrollers in this system, so Unix commands like <b>mkdir</b> and <b>cd</b> have not been implemented
 
 ---
 
