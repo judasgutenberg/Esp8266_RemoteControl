@@ -240,11 +240,11 @@ void listFiles() {
 
 int loadAllConfigFromFlash(int mode, uint16_t param) { //can also be used to recover values from FLASH
     if (!LittleFS.begin()) {
-        return 0;
+        return -1;
     }
     File f = LittleFS.open(F("/config.cfg"), "r");
     if (!f) {
-        return 0;
+        return -1;
     }
     int*  activeCi;
     char** activeCs;
@@ -261,14 +261,14 @@ int loadAllConfigFromFlash(int mode, uint16_t param) { //can also be used to rec
     char marker[5];
     if (f.readBytes(marker, 5) != 5) {
         f.close();
-        return 0;
+        return -1;
     }
     
     marker[4] = '\0';
  
     if (strcmp(marker, "DATA") != 0) {
         f.close();
-        return 0;
+        return -1;
     }
  
     // ============================================================
@@ -326,8 +326,10 @@ int loadAllConfigFromFlash(int mode, uint16_t param) { //can also be used to rec
 
     f.close();
 
-    if (mode == 0) return 1;
-    return 0;
+    if (mode == 0) {
+      return CONFIG_PERSIST_METHOD_FLASH;
+    }
+    return -1;
 }
 
 void saveAllConfigToFlash(uint16_t param) {

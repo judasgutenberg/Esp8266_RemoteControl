@@ -572,7 +572,7 @@ int loadAllConfigFromFRAM(int mode, uint16_t addr) {
           textOut(F("No data found"));
     
         }
-        return 0;
+        return -1;
     }
     addr += 5;
     // ============================================================
@@ -624,9 +624,9 @@ int loadAllConfigFromFRAM(int mode, uint16_t addr) {
         }
     }
     if (mode == 0) {
-        return 1;
+        return CONFIG_PERSIST_METHOD_FRAM;
     } else if (mode == 2) {
         return addr;
     }
-    return 0;
+    return -1;
 }

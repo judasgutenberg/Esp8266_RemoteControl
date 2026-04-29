@@ -362,7 +362,7 @@ void saveAllConfigToEEPROM(uint16_t addr) {
 
 int loadAllConfigFromEEPROM(int mode, uint16_t addr) { //can also be used to recover values from EEPROM
     if(ci[SLAVE_I2C] < 1) {
-      return 0;
+      return -1;
     }
     int* activeCi;
     char** activeCs;
@@ -395,7 +395,7 @@ int loadAllConfigFromEEPROM(int mode, uint16_t addr) { //can also be used to rec
         if (mode == 1) {
           textOut(F("No data found"));
         }
-        return 0;
+        return -1;
     }
     
 
@@ -450,11 +450,11 @@ int loadAllConfigFromEEPROM(int mode, uint16_t addr) { //can also be used to rec
     }
 
     if(mode == 0) {
-      return 1;
+      return CONFIG_PERSIST_METHOD_I2C_SLAVE;
     } else if (mode == 2) {
       return addr;
     }
-    return 0;
+    return -1;
 }
 
 void setAddress(uint16_t addr) {
