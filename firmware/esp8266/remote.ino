@@ -70,17 +70,9 @@ static uint32_t taskStartTimeMs = 0; // logging timer
 //////////////////////////////
 //safe mode implementation:
 
-struct RTCBootInfo {
-  uint32_t magic;
-  uint32_t lastMillis;
-  uint32_t rebootCount;
-  uint32_t checksum;
-};
 
 
-RTCBootInfo rtc;
 
-#define RTC_MAGIC 0xDEADCA75
 
 uint32_t rtcChecksum(const RTCBootInfo &d) {
   return d.magic ^ d.lastMillis ^ d.rebootCount;
@@ -118,6 +110,11 @@ void rtcInitOnBoot() {
 
 void rtcMarkStable() {
   rtc.rebootCount = 0;
+  rtcWrite(rtc);
+}
+
+void rtcUpdateHeartbeat() {
+  rtc.lastMillis = millis();
   rtcWrite(rtc);
 }
 ////////////////////////
@@ -1882,12 +1879,8 @@ int splitAndParseInts(const char* input, int* outputArray, int maxCount) {
 
 //SETUP----------------------------------------------------
 void setup(){
-  rtcInitOnBoot();
   bool useHardcodedConfig = false;
-  if (rtc.lastMillis < 5000 && rtc.rebootCount > 1) {
-    // 🚨 likely boot loop → skip external config
-    useHardcodedConfig = true;
-  }
+
   Wire.begin();
   yield();
   //Serial.begin(115200);    
@@ -1899,8 +1892,16 @@ void setup(){
   yield();
   setSerialRate((byte)ci[BAUD_RATE_LEVEL]); 
   yield();
- 
-  
+  if(ci[DEBUG] > 0) {
+    Serial.println("\n");
+  }
+  if (rtc.lastMillis < 5000 && rtc.rebootCount > 1) {
+    if(ci[DEBUG] > 0) {
+      Serial.println(F("Last uptime was only ") + String(rtc.lastMillis) + F(" milliseconds; entering safe mode\n"));
+    }
+    // 🚨 likely boot loop → skip external config
+    useHardcodedConfig = true;
+  }
   if(ci[FRAM_ADDRESS] > 0) {
     if (!fram.begin(ci[FRAM_ADDRESS])) {
       if(ci[DEBUG] > 0) {
@@ -2060,7 +2061,7 @@ void flashUpdateFeedback(uint32_t nowTime) {
 
 //LOOP----------------------------------------------------
 void loop(){
-  rtcMarkStable();
+  rtcUpdateHeartbeat();
   yield();
   doSerialCommands();
   yield();
