@@ -1,9 +1,6 @@
 #include "commandregistry.h"
 #include "commandhandlers.h"
 
- 
-
-
 CommandDef commands[] = {
   {"reboot now",            cmdRebootEsp, 0,        true,         0b00000000},
   {"reboot slave",          cmdRebootSlave, 0,      true,         0b00000010},
