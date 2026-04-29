@@ -1837,7 +1837,6 @@ void setup(){
   initMasterDefaults();
   yield();
   setSerialRate((byte)ci[BAUD_RATE_LEVEL]); 
-  Serial.println("XXXXXXXXXXXXXXXXXXXXXXXXX");
   yield();
   if(ci[FRAM_ADDRESS] > 0) {
     if (!fram.begin(ci[FRAM_ADDRESS])) {
@@ -1855,7 +1854,8 @@ void setup(){
       }
   }
   yield();
-  if(loadAllConfig(0, 0) != 1) {
+  int loadResult = loadAllConfig(0, 0);
+  if(loadResult < 0) {
     if(ci[DEBUG] > 0) {
       Serial.println(F("\nNo config found in storage"));
     }
@@ -1863,9 +1863,9 @@ void setup(){
   } else {
     if(ci[DEBUG] > 0) {
       Serial.print(F("\nConfiguration retrieved from "));
-      if(ci[CONFIG_PERSIST_METHOD] == 1) {
+      if(loadResult == CONFIG_PERSIST_METHOD_I2C_SLAVE) {
         Serial.println(F("slave EEPROM"));
-      } else if(ci[CONFIG_PERSIST_METHOD] == 2) {
+      } else if(loadResult == CONFIG_PERSIST_METHOD_FRAM) {
         Serial.println(F("FRAM"));
       } else {
         Serial.println(F("local flash"));
@@ -2423,6 +2423,7 @@ void cleanup(){
 /////////////////////////////////////////////
 //config routines
 /////////////////////////////////////////////
+//returns -1 if config not found or invalid, otherwise returns persist method (which might be 0 and valid if Flash)
 int loadAllConfig(int mode, uint16_t param){
   if(ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_I2C_SLAVE) {
     return loadAllConfigFromEEPROM(mode, param);
@@ -2431,9 +2432,9 @@ int loadAllConfig(int mode, uint16_t param){
   } else if (ci[CONFIG_PERSIST_METHOD] == CONFIG_PERSIST_METHOD_FRAM) {
     return loadAllConfigFromFRAM(mode, param);
   } else {
-    return 0;
+    return -1;
   }
-  return 0;
+  return -1;
 }
 
 
