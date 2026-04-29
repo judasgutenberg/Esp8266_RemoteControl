@@ -7,6 +7,8 @@
 #include "rootfunctions.h"
 #include "filefunctions.h"
 #include "framfunctions.h"
+#include "rtcfunctions.h"
+#include "commandregistry.h"
 
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
@@ -46,6 +48,7 @@ void cmdDeferredReboot(String* param, int argCount, bool deferred);
 void cmdLocalUpdateFirmware(String* param, int argCount, bool deferred); 
 void cmdUpdateFirmware(String* param, int argCount, bool deferred);
 
+void cmdInitSensors(String* param, int argCount, bool deferred);
 void cmdVersion(String* param, int argCount, bool deferred);
 void cmdRunSlaveSketch(String* param, int argCount, bool deferred);
 void cmdRunSlaveBootloader(String* param, int argCount, bool deferred);
@@ -89,7 +92,7 @@ void cmdUpload(String* param, int argCount, bool deferred);
 void cmdCat(String* param, int argCount, bool deferred);
 void cmdReadSlaveEeprom(String* param, int argCount, bool deferred);
 void cmdResetSerial(String* param, int argCount, bool deferred);
-void cmdConfigEeprom(String* param, int argCount, bool deferred);
+void cmdDumpConfig(String* param, int argCount, bool deferred);
 void cmdDumpSlaveEeprom(String* param, int argCount, bool deferred);
 void cmdSendSlaveSerial(String* param, int argCount, bool deferred);
 void cmdSetSlaveTime(String* param, int argCount, bool deferred);

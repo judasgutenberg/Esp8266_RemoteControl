@@ -1,5 +1,21 @@
 #include "framfunctions.h"
 #include "rootfunctions.h"
+
+//FRAM MEMORY MAP:
+/*
+GLOBALS:
+framIndexAddress:
+currentRecordCount:
+
+FRAM MEMORY MAP:
+0->ci[FRAM_INDEX_SIZE] * 2: index
+top_of_precedin_index->>FRAM_LOG_TOP:  logged records
+FRAM_LOG_TOP:      two bytes of the number of FRAM records
+FRAM_LOG_TOP + 2:  two bytes of last byte transmitted to backend
+FRAM_LOG_TOP + 4:  alternative location for master configuration
+*/
+
+
 //FRAM functions 
 
 void writeRecordToFRAM(const std::vector<std::tuple<uint8_t, uint8_t, double>>& record) {
@@ -10,6 +26,14 @@ void writeRecordToFRAM(const std::vector<std::tuple<uint8_t, uint8_t, double>>& 
   uint16_t recordStartAddress = (currentRecordCount == 0) 
     ? framIndexAddress + (ci[FRAM_INDEX_SIZE] * 2)  // Leave space for the index table
     : read16(framIndexAddress + uint16_t((currentRecordCount -1) * 2)) + lastRecordSize + 1; //record.size is 4 now?
+  // 🔒 PROTECT CONFIG REGION
+  uint16_t nextStart = recordStartAddress + lastRecordSize + 1;
+  
+  if (nextStart >= ci[FRAM_LOG_TOP]) {
+    currentRecordCount = 0;
+  
+    recordStartAddress = framIndexAddress + (ci[FRAM_INDEX_SIZE] * 2);
+  }
   //Serial.println(record.size());
   uint16_t addr = recordStartAddress;
   //Serial.println(addr);
@@ -379,7 +403,6 @@ void displayAllFramRecords() { //want to get rid of after testing!
     displayFramRecord(i);
     textOut("\n"); // Add spacing between records
   }
-
   textOut("All records displayed.\n");
 }
 
@@ -486,4 +509,124 @@ void addOfflineRecord(std::vector<std::tuple<uint8_t, uint8_t, double>>& record,
   if (!isnan(value)) {
     record.emplace_back(std::make_tuple(ordinal, type, value));  // ? Safer
   }
+}
+
+//////////////////////////////////////
+//if we save config in FRAM:
+/////////////////////////////////////
+
+void saveAllConfigToFRAM(uint16_t addr) {
+    addr = ci[FRAM_LOG_TOP] + 4; 
+
+    int* activeCi = ci;
+    char** activeCs = cs;
+
+    int totalConfigItems = CONFIG_TOTAL_COUNT;
+    int totalStringConfigItems = CONFIG_STRING_COUNT;
+
+    // ============================================================
+    // 1. Write marker "DATA"
+    // ============================================================
+    const char* marker = "DATA";
+    fram.write(addr, (uint8_t*)marker, 5); // includes null
+    addr += 5;
+
+    // ============================================================
+    // 2. Write integer config array (ci[])
+    // ============================================================
+    for (int i = 0; i < totalConfigItems; i++) {
+        uint8_t bytes[2] = {
+            (activeCi[i] >> 8) & 0xFF,
+            activeCi[i] & 0xFF
+        };
+        fram.write(addr, bytes, 2);
+        addr += 2;
+    }
+
+    // ============================================================
+    // 3. Write strings (null-terminated)
+    // ============================================================
+    for (int i = 0; i < totalStringConfigItems; i++) {
+        const char* s = activeCs[i];
+        if (s == NULL) s = "";
+
+        size_t len = strlen(s) + 1;
+        fram.write(addr, (uint8_t*)s, len);
+        addr += len;
+    }
+}
+
+int loadAllConfigFromFRAM(int mode, uint16_t addr) {
+    addr = ci[FRAM_LOG_TOP] + 4;
+    int* activeCi = ci;
+    char** activeCs = cs;
+    int totalConfigItems = CONFIG_TOTAL_COUNT;
+    int totalStringConfigItems = CONFIG_STRING_COUNT;
+    // ============================================================
+    // 1. Read marker
+    // ============================================================
+    char marker[5];
+    fram.read(addr, (uint8_t*)marker, 5);
+    if (strcmp(marker, "DATA") != 0) {
+        if (mode == 1) {
+          textOut(F("No data found"));
+    
+        }
+        return -1;
+    }
+    addr += 5;
+    // ============================================================
+    // 2. Read integer configs
+    // ============================================================
+    for (int i = 0; i < totalConfigItems; i++) {
+        uint8_t bytes[2];
+        fram.read(addr, bytes, 2);
+
+        int val = (bytes[0] << 8) | bytes[1];
+
+        if (mode == 0) {
+            activeCi[i] = val;
+        } else if (mode == 1) {
+            textOut(String(val));
+            textOut("\n");
+        }
+        addr += 2;
+    }
+    // ============================================================
+    // 3. Read string configs
+    // ============================================================
+    for (int i = 0; i < totalStringConfigItems; i++) {
+        char buffer[128];
+        int pos = 0;
+        while (pos < 127) {
+            uint8_t b;
+            fram.read(addr, &b, 1);
+            addr++;
+            buffer[pos++] = b;
+            if (b == 0) break;
+        }
+        buffer[127] = 0;
+        if (mode == 0) {
+            size_t len = strlen(buffer);
+
+            if (!activeCs[i]) {
+                activeCs[i] = (char*)malloc(len + 1);
+            } else if (strlen(activeCs[i]) < len) {
+                char* tmp = (char*)realloc(activeCs[i], len + 1);
+                if (tmp) activeCs[i] = tmp;
+            }
+            if (activeCs[i]) {
+                memcpy(activeCs[i], buffer, len + 1);
+            }
+        } else if (mode == 1) {
+            textOut(buffer);
+            textOut("\n");
+        }
+    }
+    if (mode == 0) {
+        return CONFIG_PERSIST_METHOD_FRAM;
+    } else if (mode == 2) {
+        return addr;
+    }
+    return -1;
 }

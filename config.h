@@ -1,0 +1,97 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+#include "globals.h"
+
+#define CONFIG_PERSIST_METHOD_FLASH 0
+#define CONFIG_PERSIST_METHOD_I2C_SLAVE 1
+#define CONFIG_PERSIST_METHOD_FRAM 2
+
+// ===== AUTO-GENERATED CONFIGURATION INDEX DEFINITIONS =====
+
+// String configuration options (0–11)
+#define STORAGE_PASSWORD 0
+#define URL_GET 1
+#define HOST_GET 2
+#define ENCRYPTION_SCHEME 3
+#define SENSOR_CONFIG_STRING 4
+#define PINS_TO_START_LOW 5
+#define WIFI_SSID 6
+#define WIFI_PASSWORD 7
+#define WIFI_SSID_1 8
+#define WIFI_PASSWORD_1 9
+#define WIFI_SSID_2 10
+#define WIFI_PASSWORD_2 11
+
+// Integer configuration options (12+)
+#define SENSOR_ID 16
+#define SENSOR_I2C 17
+#define CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD 18
+#define DEVICE_ID 19
+#define POLLING_GRANULARITY 20
+#define DATA_LOGGING_GRANULARITY 21
+#define OFFLINE_LOG_GRANULARITY 22
+#define WIFI_TIMEOUT 23
+#define OFFLINE_RECONNECT_INTERVAL 24
+#define FRAM_INDEX_SIZE 25
+#define FRAM_LOG_TOP 26
+#define CONNECTION_FAILURE_RETRY_SECONDS 27
+#define CONNECTION_RETRY_NUMBER 28
+#define GRANULARITY_WHEN_IN_MOXEE_PHASE_0  29
+#define GRANULARITY_WHEN_IN_MOXEE_PHASE_1  30
+
+#define NUMBER_OF_HOTSPOT_REBOOTS_OVER_LIMITED_TIMEFRAME_BEFORE_ESP_REBOOT 31
+#define HOTSPOT_LIMITED_TIME_FRAME 32
+#define MOXEE_POWER_SWITCH 33
+#define DEEP_SLEEP_TIME_PER_LOOP 34
+#define LIGHT_SLEEP_TIME_PER_LOOP 35
+#define SENSOR_DATA_PIN 36
+#define SENSOR_POWER_PIN 37
+#define SENSOR_SUB_TYPE 38
+#define IR_PIN 39
+#define INA219_ADDRESS 40
+#define FRAM_ADDRESS 41
+#define RTC_ADDRESS 42
+#define SLAVE_I2C 43
+#define SLAVE_PET_WATCHDOG_COMMAND 44
+#define DEBUG 45 //sets the debug level.  smaller is less debugging crap in your serial feed. 0 shows almost none, and 1 shows just a small amount as the device boots up
+#define POLLING_SKIP_LEVEL 46
+#define LOCAL_WEB_SERVICE_RESPONSIVENESS 47
+#define BAUD_RATE_LEVEL 48
+#define CONFIG_PERSIST_METHOD 49
+#define SEND_MEM_DATA_IN_RESERVED 50
+#define ANOMALY_LOG_LEVEL 51
+
+#define SENSOR_PARAM_1 52
+#define SENSOR_PARAM_2 53
+#define SENSOR_PARAM_3 54
+#define SENSOR_PARAM_4 55
+#define SENSOR_PARAM_5 56
+#define SENSOR_PARAM_6 57
+///////////////////////
+#define CONFIG_STRING_COUNT 16
+#define CONFIG_TOTAL_COUNT 58
+//////////////////////
+#define CONFIG_SLAVE_STRING_COUNT 5 //for strings used specifically by the slave
+#define CONFIG_SLAVE_TOTAL_COUNT 10  //total config items on slave
+//////////////////////
+//config parameters the slave stores locally for itself
+#define SLAVE_POWER_MODE 4
+#define SLAVE_PARSE_MODE 5
+#define SLAVE_BAUD_RATE_LEVEL 6
+#define SLAVE_I2C_ADDRESS 7
+#define SLAVE_REBOOT_PIN 8
+#define SLAVE_SERIAL_MODE 9
+
+// ==========================================================
+
+
+extern char* cs[CONFIG_STRING_COUNT]; // string configuration values
+extern int ci[CONFIG_TOTAL_COUNT];    // integer configuration values
+
+extern char* css[CONFIG_SLAVE_STRING_COUNT]; // string configuration values
+extern int cis[CONFIG_SLAVE_TOTAL_COUNT];    // integer configuration values
+
+void initMasterDefaults();
+void initSlaveDefaults();
+
+#endif
