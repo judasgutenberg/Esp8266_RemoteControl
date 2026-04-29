@@ -66,8 +66,63 @@ static unsigned long connectBackoffUntil = 0;
 static int attemptCount = 0;
 static String responseBufferSM;      // accumulate response
 static uint32_t taskStartTimeMs = 0; // logging timer
- 
- 
+
+//////////////////////////////
+//safe mode implementation:
+
+struct RTCBootInfo {
+  uint32_t magic;
+  uint32_t lastMillis;
+  uint32_t rebootCount;
+  uint32_t checksum;
+};
+
+
+RTCBootInfo rtc;
+
+#define RTC_MAGIC 0xDEADCA75
+
+uint32_t rtcChecksum(const RTCBootInfo &d) {
+  return d.magic ^ d.lastMillis ^ d.rebootCount;
+}
+
+bool rtcRead(RTCBootInfo &out) {
+  ESP.rtcUserMemoryRead(0, (uint32_t*)&out, sizeof(out));
+  if (out.magic != RTC_MAGIC) {
+    return false;
+  }
+  uint32_t check = rtcChecksum(out);
+  return (check == out.checksum);
+}
+
+void rtcWrite(RTCBootInfo &d) {
+  d.magic = RTC_MAGIC;
+  d.checksum = rtcChecksum(d);
+  ESP.rtcUserMemoryWrite(0, (uint32_t*)&d, sizeof(d));
+}
+
+
+void rtcInitOnBoot() {
+  if (!rtcRead(rtc)) {
+    // Fresh start (power loss or garbage)
+    rtc.magic = RTC_MAGIC;
+    rtc.lastMillis = 0;
+    rtc.rebootCount = 0;
+  }
+  // Each boot increments this
+  rtc.rebootCount++;
+  // Start fresh heartbeat
+  rtc.lastMillis = 0;
+  rtcWrite(rtc);
+}
+
+void rtcMarkStable() {
+  rtc.rebootCount = 0;
+  rtcWrite(rtc);
+}
+////////////////////////
+
+
 // Start a new remote task (replacement for original sendRemoteData)
 void startRemoteTask(const String& datastring, const String& mode, uint16_t fRAMordinal) {
   if(ci[POLLING_SKIP_LEVEL] < 1) {
@@ -1827,6 +1882,12 @@ int splitAndParseInts(const char* input, int* outputArray, int maxCount) {
 
 //SETUP----------------------------------------------------
 void setup(){
+  rtcInitOnBoot();
+  bool useHardcodedConfig = false;
+  if (rtc.lastMillis < 5000 && rtc.rebootCount > 1) {
+    // 🚨 likely boot loop → skip external config
+    useHardcodedConfig = true;
+  }
   Wire.begin();
   yield();
   //Serial.begin(115200);    
@@ -1856,10 +1917,18 @@ void setup(){
       }
   }
   yield();
-  int loadResult = loadAllConfig(0, 0);
+  int loadResult = -1;
+  if(!useHardcodedConfig) {
+    loadResult = loadAllConfig(0, 0);
+  }
   if(loadResult < 0) {
     if(ci[DEBUG] > 0) {
-      Serial.println(F("No config found in storage"));
+      if(useHardcodedConfig) {
+        Serial.println(F("In safe mode; using defaults"));
+      } else{
+        Serial.println(F("No config found in storage"));
+      }
+      
     }
     initMasterDefaults();
   } else {
@@ -1991,6 +2060,7 @@ void flashUpdateFeedback(uint32_t nowTime) {
 
 //LOOP----------------------------------------------------
 void loop(){
+  rtcMarkStable();
   yield();
   doSerialCommands();
   yield();
