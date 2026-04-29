@@ -1,6 +1,10 @@
 #include "commandregistry.h"
 #include "commandhandlers.h"
 
+//that bit array on the end is a set of requirements for the command
+//bits specifying requirements in the leftmost byte:  <requires_deferment><unused><unused><requires_ir> 
+//bits specifying requirements in the rightmost byte:  <requires_rtc><requires_fram><requires_slave><requires_fs>
+
 CommandDef commands[] = {
   {"reboot now",            cmdRebootEsp, 0,        true,         0b00000000},
   {"reboot slave",          cmdRebootSlave, 0,      true,         0b00000010},
