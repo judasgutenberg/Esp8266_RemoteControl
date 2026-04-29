@@ -59,7 +59,7 @@ CommandDef commands[] = {
   {"reset serial",          cmdResetSerial, 0,      false,        0b00000000},
   {"dump config",           cmdDumpConfig, 2,       false,        0b00000010},
   {"dump slave config eeprom", cmdDumpSlaveEeprom, 0, false,      0b00000010},
-  {"send slave serial",     cmdSendSlaveSerial, 1, false,         0b00000010},
+  {"send slave serial",     cmdSendSlaveSerial, 1,  false,        0b00000010},
   {"set slave time",        cmdSetSlaveTime, 1,     false,        0b00000010},
   {"get slave time",        cmdGetSlaveTime, 0,     false,        0b00000010},
   {"init slave serial",     cmdInitSlaveSerial, 0,  false,        0b00000010},
