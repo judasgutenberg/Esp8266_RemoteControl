@@ -248,7 +248,7 @@ Some commands run in two phases:
 
 ### Command Reference
 
-##### 🔄 System Control
+##### System Control
 
 | Command | Args | Description |
 |--------|------|------------|
@@ -263,7 +263,7 @@ Some commands run in two phases:
 
 ---
 
-##### 🤖 Slave Control
+##### Slave Control
 
 | Command | Args | Description |
 |--------|------|------------|
