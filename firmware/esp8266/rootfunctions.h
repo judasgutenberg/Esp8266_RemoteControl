@@ -3,7 +3,7 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
 void cleanup();
 void notYetDeferred();
 void sendIr(String rawDataStr);
-
+void rtcWrite(RTCBootInfo &d);
 String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName, int ordinalOfOverwrite, int consolidateAllSensorsToOneRecord); 
 
 void rtcMarkStable();

@@ -1,7 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define VERSION 2197
+#define VERSION 2217
 #define RTC_MAGIC 0xDEADCA75
 #include <Arduino.h>
 #include <WiFiUdp.h>
@@ -52,12 +52,17 @@ enum RemoteState {
 };
 
 
-struct RTCBootInfo {
+struct __attribute__((packed)) RTCBootInfo {
   uint32_t magic;
   uint32_t lastMillis;
   uint32_t rebootCount;
+  uint32_t lastCommandLogId;
+  uint32_t lastVersion;
+  int32_t lastCommandId;
+  int32_t lastCommandType;
   uint32_t checksum;
 };
+
 
 extern RTCBootInfo rtc;
 

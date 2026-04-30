@@ -75,20 +75,44 @@ void cmdUpdateFirmware(String* param, int argCount, bool deferred) {
 }
 
 /////////////////////
+
+void cmdBeforeBoot(String* param, int argCount, bool deferred) {
+  textOut(F("Apparent bad reboot count: "));
+  textOut(String(rtc.rebootCount));
+  textOut(F("; millis up: "));
+  textOut(String(rtc.lastMillis));
+
+  textOut(F("; version: "));
+  textOut(String(rtc.lastVersion));
+  textOut(F("; last commandLogId: "));
+  textOut(String(rtc.lastCommandLogId));
+  textOut(F("; last commandId: "));
+  textOut(String(rtc.lastCommandId));
+  textOut(F("; last commandType: "));
+  textOut(String(rtc.lastCommandType));
+  textOut("\n");
+}
+
 void cmdQuitSafeMode(String* param, int argCount, bool deferred) {
   rtcMarkStable();
   textOut(F("Startup safe mode disabled\n"));
 }
 
-void cmdBadReboots(String* param, int argCount, bool deferred) {
-  textOut(F("Apparent bad reboot count: "));
-  textOut(String(rtc.rebootCount));
-  textOut(F("; millis up: "));
-  textOut(String(rtc.lastMillis));
-  textOut("\n");
-  
+void cmdSetPreboot(String* param, int argCount, bool deferred) {
+  int loc = param[0].toInt();
+  uint32_t value = param[1].toInt();
+  if(loc == 1) {
+    rtc.lastVersion = value;
+  } else if (loc == 2)  {
+    rtc.lastCommandId = value;
+  } else if (loc == 3)  {
+    rtc.lastCommandType = value;
+  } else {
+    rtc.lastCommandLogId = value;
+  }
+  rtcWrite(rtc);
+  textOut(F("Setting location ") + String(loc) + F(" to value ") + String(value) + "\n");
 }
-
 ////////////////////
 
 void cmdInitSensors(String* param, int argCount, bool deferred) {

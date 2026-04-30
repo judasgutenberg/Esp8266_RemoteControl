@@ -48,8 +48,9 @@ void cmdDeferredReboot(String* param, int argCount, bool deferred);
 void cmdLocalUpdateFirmware(String* param, int argCount, bool deferred); 
 void cmdUpdateFirmware(String* param, int argCount, bool deferred);
 
+void cmdBeforeBoot(String* param, int argCount, bool deferred);
 void cmdQuitSafeMode(String* param, int argCount, bool deferred);
-void cmdBadReboots(String* param, int argCount, bool deferred);
+void cmdSetPreboot(String* param, int argCount, bool deferred);
 
 void cmdInitSensors(String* param, int argCount, bool deferred);
 void cmdVersion(String* param, int argCount, bool deferred);
