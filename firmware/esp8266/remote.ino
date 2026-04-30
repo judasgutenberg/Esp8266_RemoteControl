@@ -72,11 +72,10 @@ static uint32_t taskStartTimeMs = 0; // logging timer
 
 
 
-
-
 uint32_t rtcChecksum(const RTCBootInfo &d) {
-  return d.magic ^ d.lastMillis ^ d.rebootCount;
+  return d.magic ^ d.lastMillis ^ d.rebootCount ^ d.lastCommandLogId ^ d.lastVersion ^ d.lastCommandId ^ d.lastCommandType;
 }
+
 
 bool rtcRead(RTCBootInfo &out) {
   ESP.rtcUserMemoryRead(0, (uint32_t*)&out, sizeof(out));
@@ -89,10 +88,10 @@ bool rtcRead(RTCBootInfo &out) {
 
 void rtcWrite(RTCBootInfo &d) {
   d.magic = RTC_MAGIC;
-  d.checksum = rtcChecksum(d);
+  d.checksum = 0;             // Reset to 0 so it doesn't affect the XOR
+  d.checksum = rtcChecksum(d); // Now calculate
   ESP.rtcUserMemoryWrite(0, (uint32_t*)&d, sizeof(d));
 }
-
 
 void rtcInitOnBoot() {
   if (!rtcRead(rtc)) {
@@ -100,12 +99,16 @@ void rtcInitOnBoot() {
     rtc.magic = RTC_MAGIC;
     rtc.lastMillis = 0;
     rtc.rebootCount = 0;
+    rtc.lastCommandLogId = 0;
+    rtc.lastVersion = 0;
+    rtc.lastCommandId = 0;
+    rtc.lastCommandType = 0;
+    rtcWrite(rtc);
   }
   // Each boot increments this
   rtc.rebootCount++;
   // Start fresh heartbeat
   rtc.lastMillis = 0;
-  rtcWrite(rtc);
 }
 
 void rtcMarkStable() {
@@ -1034,11 +1037,26 @@ void runRemoteTask() {
           if (cs[SENSOR_CONFIG_STRING] != "") {
             // ⚠️ this still uses String, but outside tight loop frequency
             String tmp = line;
+            if (ci[DEBUG] > 41) {
+              Serial.println(F("About to do a replaceFirstOccurrenceAtChar"));
+            }
             tmp = replaceFirstOccurrenceAtChar(tmp, String(cs[SENSOR_CONFIG_STRING]), '|');
+            if (ci[DEBUG] > 41) {
+              Serial.println(F("About to do a strncpy"));
+            }
             strncpy(line, tmp.c_str(), len); // copy back
+            if (ci[DEBUG] > 41) {
+              Serial.println(F("Did a strncpy"));
+            }
           }
           additionalSensorInfo = line;
+          if (ci[DEBUG] > 40) {
+            Serial.println(F("About to handle device name"));
+          }
           handleDeviceNameAndAdditionalSensors((char *)additionalSensorInfo.c_str(), true);
+          if (ci[DEBUG] > 40) {
+            Serial.println(F("Handled device name"));
+          }
           break;
         } else if (first == '{') {
           if (ci[DEBUG] > 1) {
@@ -1793,7 +1811,30 @@ int32_t loadCommandStateVersion(int dataToReturn) {
     }
     return lines[dataToReturn];
 }
-
+/*
+//i had wanted to save command state in RTC memory, but it turns out that that memory does not survive firmware updates, so i couldn't use it. 
+//this is what the functions would look like if i could use it:
+void saveCommandState(uint32_t lastCommandLogId, uint16_t version, int32_t commandId, int32_t commandType) {
+    //Serial.println("saving command state");
+    rtc.lastCommandLogId = lastCommandLogId;
+    rtc.lastVersion = (uint32_t) version;
+    rtc.lastCommandId = commandId;
+    rtc.lastCommandType = commandType;
+    rtcWrite(rtc);
+}
+    
+int32_t loadCommandStateVersion(int dataToReturn) {
+    if(dataToReturn == 1){
+      return rtc.lastVersion;
+    } else if(dataToReturn == 2){
+      return rtc.lastCommandId;
+    } else if(dataToReturn == 3){
+      return rtc.lastCommandType;
+    } else {
+      return rtc.lastCommandLogId;
+    }
+}
+*/
 ///////////////////////////////////////////////
 //end of command functions
 ///////////////////////////////////////////////
@@ -1885,7 +1926,7 @@ int splitAndParseInts(const char* input, int* outputArray, int maxCount) {
 //SETUP----------------------------------------------------
 void setup(){
   bool useHardcodedConfig = false;
-
+  rtcInitOnBoot();
   Wire.begin();
   yield();
   //Serial.begin(115200);    
@@ -1932,7 +1973,7 @@ void setup(){
       if(useHardcodedConfig) {
         Serial.println(F("In safe mode; using defaults"));
       } else{
-        Serial.println(F("No config found in storage"));
+        Serial.println(F("No config found anywhere"));
       }
       
     }
@@ -2050,8 +2091,8 @@ void flashUpdateFeedback(uint32_t nowTime) {
       } else {
         startRemoteTask(commandToSend, "commandout", 0xFFFF);
       }
-      //setSlaveLong(0,0);
     }
+    //Serial.println("scenario one");
     saveCommandState(0, 0, 0, 0);
   } else if (preRebootCommandId > 0  && deviceName != "" && remoteState == RS_IDLE) {
     //Serial.println("delta");
@@ -2060,6 +2101,7 @@ void flashUpdateFeedback(uint32_t nowTime) {
     }
     String stringToSend = possibleEndingMessage + "\n" + preRebootCommandId;
     startRemoteTask(stringToSend, "commandout", 0xFFFF);
+    //Serial.println("scenario two");
     saveCommandState(0, 0, 0, 0);
   }
 }
