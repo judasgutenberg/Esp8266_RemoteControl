@@ -129,6 +129,7 @@ extern bool connectionFailureMode;
 extern int knownMoxeePhase;
 extern int moxeePhaseChangeCount;
 extern uint32_t lastCommandLogId;
+extern int consecutiveCommandOuts;
 
 extern byte parsedSerialData[64];
 extern bool slaveUnpetted;

@@ -117,6 +117,7 @@ bool connectionFailureMode = true;  //when we're in connectionFailureMode, we ch
 int knownMoxeePhase = -1;  //-1 is unknown. 0 is stupid "show battery level", 1 is operational
 int moxeePhaseChangeCount = 0;
 uint32_t lastCommandLogId = 0;
+int consecutiveCommandOuts = 0;
 
 byte parsedSerialData[64];
 bool slaveUnpetted = true;
