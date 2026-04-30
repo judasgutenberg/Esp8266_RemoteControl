@@ -132,6 +132,11 @@ void startRemoteTask(const String& datastring, const String& mode, uint16_t fRAM
     //Serial.println("////////////////////////not idle!");
     return;
   }
+  if(mode == "commandout") {
+    consecutiveCommandOuts++;
+  } else {
+    consecutiveCommandOuts = 0;
+  }
   remoteDatastring = datastring;
   remoteMode = mode;
   remoteFRAMordinal = fRAMordinal;
@@ -2109,6 +2114,10 @@ void loop(){
   cleanup();
   if(lastCommandLogId > 0 || responseBuffer != "") {
     String stringToSend = responseBuffer + "\n" + lastCommandLogId;
+    if(consecutiveCommandOuts > 10) { //too many commandout; something bad happened with current command
+      stringToSend = F("Command auto-aborted\n") +  String(lastCommandLogId);
+    }
+ 
     startRemoteTask(stringToSend, "commandout", 0xFFFF);
   }
   timeClient.update();
