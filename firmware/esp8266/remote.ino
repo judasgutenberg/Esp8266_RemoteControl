@@ -237,7 +237,7 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
  
     humidityFromSensor = (double)BME680[objectCursor].humidity;
     temperatureFromSensor = (double)BME680[objectCursor].temperature;
-    pressureFromSensor = (double)BME680[objectCursor].pressure;
+    pressureFromSensor = (double)BME680[objectCursor].pressure/100;
     gasFromSensor = (double)BME680[objectCursor].gas_resistance;
   } else if (sensorId == 2301) {
     if (powerPin > -1) {
