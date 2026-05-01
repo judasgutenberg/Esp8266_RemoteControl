@@ -277,7 +277,7 @@ Some commands run in two phases:
 
 ---
 
-##### 🧠 Watchdog
+##### Watchdog
 
 | Command | Args | Description |
 |--------|------|------------|
@@ -287,7 +287,7 @@ Some commands run in two phases:
 
 ---
 
-##### 🌦️ Sensors
+##### Sensors
 
 | Command | Args | Description |
 |--------|------|------------|
