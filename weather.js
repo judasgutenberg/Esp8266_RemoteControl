@@ -297,9 +297,9 @@ function getWeatherData(yearsAgo) {
 	const queryParams = new URLSearchParams(window.location.search);
 	let deviceIdArray = [];
 	let scale = queryParams.get('scale');
-	let deviceId = queryParams.get('location_id');
+	let deviceId = queryParams.get('device_id');
 	let periodAgo = queryParams.get('period_ago');
-	let deviceIds = queryParams.get('location_ids');
+	let deviceIds = queryParams.get('device_ids');
 	let plotType = "single";
 	let specificColumn = queryParams.get('specific_column');
 	let absoluteTimespanCusps = queryParams.get('absolute_timespan_cusps');
@@ -355,7 +355,7 @@ function getWeatherData(yearsAgo) {
 	if(!deviceId){
 		deviceId = defaultdeviceId;
 	}
-	url.searchParams.set("location_id", deviceId);
+	url.searchParams.set("device_id", deviceId);
 	if(deviceIds == null || !deviceIds) {
 		deviceIds = "";//deviceId; //nope!
 		//if(!justLoaded){
@@ -401,7 +401,7 @@ function getWeatherData(yearsAgo) {
 		}
 	}
 	deviceIdArray = deviceIds.split(",");
-	url.searchParams.set("location_ids", deviceIds);
+	url.searchParams.set("device_ids", deviceIds);
 	//make the startDateDropdown switch to the appropriate item on the new scale:
 	let periodAgoDropdown = document.getElementById('startDateDropdown');	
 
@@ -445,7 +445,7 @@ function getWeatherData(yearsAgo) {
 	if(plotType == 'multi'){
 		document.getElementById("singleplotdiv").style.opacity ='0.5';
 		document.getElementById("multiplotdiv").style.opacity ='1';
-		endpointUrl += "&specific_column=" + specificColumn + "&location_ids=" + deviceIds;
+		endpointUrl += "&specific_column=" + specificColumn + "&device_id=" + deviceIds;
 		deviceIdDropdown.disabled = true;
 		specificColumnSelect.disabled = false;
 		for(let specificDevice of specificDevices) {
@@ -673,7 +673,7 @@ function updateColumnsWeCareAbout(devices, deviceIds){
 
 function editColumns(){
 	const queryParams = new URLSearchParams(window.location.search);
-	const deviceId = queryParams.get('location_id');
+	const deviceId = queryParams.get('device_id');
 	window.location = "tool.php?table=device_column_map&device_id=" + deviceId;
 }
 

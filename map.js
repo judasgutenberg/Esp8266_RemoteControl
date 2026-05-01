@@ -16,11 +16,11 @@ window.initMap = async function () {
       liveData = 1;
     }
     //if liveData, not clear everything
-    let locationIdArray = [];
+    let deviceIdArray = [];
     let scale = queryParams.get('scale');
-    let locationId = queryParams.get('location_id');
+    let deviceId = queryParams.get('device_id');
     let periodAgo = queryParams.get('period_ago');
-    let locationIds = queryParams.get('location_ids');
+    let deviceIds = queryParams.get('device_ids');
     let plotType = "single";
     let absoluteTimespanCusps = queryParams.get('absolute_timespan_cusps');
     let atcCheckbox = document.getElementById("atc_id");
@@ -38,9 +38,9 @@ window.initMap = async function () {
     if(!scale){
       scale = "day";
     }
-    let locationIdDropdown = document.getElementById('locationDropdown');
+    let deviceIdDropdown = document.getElementById('locationDropdown');
     if(!justLoaded){
-      locationId  = locationIdDropdown[locationIdDropdown.selectedIndex].value
+      deviceId  = deviceIdDropdown[deviceIdDropdown.selectedIndex].value
     }
 
 
