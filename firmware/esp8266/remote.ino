@@ -95,6 +95,9 @@ void rtcWrite(RTCBootInfo &d) {
 
 void rtcInitOnBoot() {
   if (!rtcRead(rtc)) {
+    if(ci[DEBUG] > 0) {
+      //Serial.println(F("Had to re-init RTC data"));
+    }   
     // Fresh start (power loss or garbage)
     rtc.magic = RTC_MAGIC;
     rtc.lastMillis = 0;
@@ -108,7 +111,7 @@ void rtcInitOnBoot() {
   // Each boot increments this
   rtc.rebootCount++;
   // Start fresh heartbeat
-  rtc.lastMillis = 0;
+  //rtc.lastMillis = 0;
 }
 
 void rtcMarkStable() {
@@ -478,17 +481,17 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
       //to get the actual integers you might want to use for the ci[SENSOR_PARAM_X] values
       if (ci[DEBUG] > 1) {
         Serial.print(F("- Setting oversampling for all sensors: "));
-        Serial.println(String(ci[SENSOR_PARAM_1]) + ", " + String(ci[SENSOR_PARAM_2]) + ", " + String(ci[SENSOR_PARAM_3]) + ", " + String(ci[SENSOR_PARAM_4]) + ", " + String(ci[SENSOR_PARAM_5]));
+        Serial.println(String(ci[SENSOR_PARAM_1]) + ", " + String(ci[SENSOR_PARAM_2]) + ", " + String(ci[SENSOR_PARAM_3]) + ", " + String(ci[SENSOR_PARAM_4]) + ", " + String(ci[SENSOR_PARAM_5]) + ", " + String(ci[SENSOR_PARAM_6]));
       }
       BME680[objectCursor].setTemperatureOversampling(ci[SENSOR_PARAM_1]);
       BME680[objectCursor].setHumidityOversampling(ci[SENSOR_PARAM_2]);
       BME680[objectCursor].setPressureOversampling(ci[SENSOR_PARAM_3]);
       if (ci[DEBUG] > 1) {
-        Serial.print(F("- Setting IIR filter to 4 samples\n"));
+        Serial.print(F("- Setting IIR filter to ") + String(ci[SENSOR_PARAM_4]) + F(" samples\n"));
       }
       BME680[objectCursor].setIIRFilterSize(ci[SENSOR_PARAM_4]);
       if (ci[DEBUG] > 1) {
-        Serial.print(F("- Setting gas measurement to 320C for 150ms\n"));
+        Serial.print(F("- Setting gas measurement to ") + String(ci[SENSOR_PARAM_5]) + F("°C at ") + String(ci[SENSOR_PARAM_6]) + F(" milliseconds\n"));
       }
       BME680[objectCursor].setGasHeater(ci[SENSOR_PARAM_5], ci[SENSOR_PARAM_6]);
     }
@@ -1044,12 +1047,27 @@ void runRemoteTask() {
             if (ci[DEBUG] > 41) {
               Serial.println(F("About to do a strncpy"));
             }
-            strncpy(line, tmp.c_str(), len); // copy back
+            int newLen = tmp.length();
+            char *newBuf = (char*)realloc(buf, newLen + 1);
+            if (newBuf == nullptr) {
+                // handle allocation failure
+                if (ci[DEBUG] > 1) {
+                  Serial.println("ALLOCATION FAILURE");
+                } 
+            } else {
+                buf = newBuf;
+                line = buf;
+                len = newLen + 1;  // capacity INCLUDING null
+            }
+            snprintf(line, len, "%s", tmp.c_str());
+            //strncpy(line, tmp.c_str(), len); // copy back
+            //line[len - 1] = '\0';
             if (ci[DEBUG] > 41) {
               Serial.println(F("Did a strncpy"));
             }
+            //still crashing right about here
           }
-          additionalSensorInfo = line;
+          additionalSensorInfo = String(line);
           if (ci[DEBUG] > 40) {
             Serial.println(F("About to handle device name"));
           }
@@ -1938,9 +1956,11 @@ void setup(){
   yield();
   setSerialRate((byte)ci[BAUD_RATE_LEVEL]); 
   yield();
+  delay(100);
   if(ci[DEBUG] > 0) {
     Serial.println("\n");
   }
+  
   if (rtc.lastMillis < 5000 && rtc.rebootCount > 1) {
     if(ci[DEBUG] > 0) {
       Serial.println(F("Last uptime was only ") + String(rtc.lastMillis) + F(" milliseconds; entering safe mode\n"));
@@ -2013,7 +2033,9 @@ void setup(){
   
   //Wire.setClock(50000); // Set I2C speed to 100kHz (default is 400kHz)
   //Wire.setClock(100000);
-  startWeatherSensors(ci[SENSOR_ID],  ci[SENSOR_SUB_TYPE], ci[SENSOR_I2C], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN]);
+  if(ci[SENSOR_ID] > 0) {
+    startWeatherSensors(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_I2C], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN]);
+  }
   wiFiConnect();
   server.on("/", handleRoot);      //Displays a form where devices can be turned on and off and the outputs of sensors
   server.on("/readLocalData", localShowData);
