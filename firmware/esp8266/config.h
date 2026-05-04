@@ -67,9 +67,12 @@
 #define SENSOR_PARAM_4 55
 #define SENSOR_PARAM_5 56
 #define SENSOR_PARAM_6 57
+
+#define SERIAL_DEBUG_LEVEL 58
+#define SERIAL_FOR_COMMANDS_ONLY 59
 ///////////////////////
 #define CONFIG_STRING_COUNT 16
-#define CONFIG_TOTAL_COUNT 58
+#define CONFIG_TOTAL_COUNT 60
 //////////////////////
 #define CONFIG_SLAVE_STRING_COUNT 5 //for strings used specifically by the slave
 #define CONFIG_SLAVE_TOTAL_COUNT 10  //total config items on slave
