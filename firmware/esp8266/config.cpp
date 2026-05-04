@@ -53,7 +53,7 @@ void initConfig(void) {
   ci[CONFIG_PERSIST_METHOD] = 1;  
   ci[SEND_MEM_DATA_IN_RESERVED] = 0;
   ci[ANOMALY_LOG_LEVEL] = 1;
-  
+
   //these were originally for the BE680 but for other sensors that take a complex configuration, these could be made params for those as well:
   ci[SENSOR_PARAM_1] = 5; // for the first three: 5 is  BME68X_OS_16X, 4 is 8X, 3 is 2X, 1 is 1X, 0 is none
   ci[SENSOR_PARAM_2] = 5;
@@ -61,6 +61,10 @@ void initConfig(void) {
   ci[SENSOR_PARAM_4] = 1; //should be in the range of 0 for no filter to 7 for BME68X_FILTER_SIZE_127                    
   ci[SENSOR_PARAM_5] = 0; //0 for 50 degrees, 34 for 100 degrees, 100 for 200, 233 for 400 degrees, 300 for 500 degrees
   ci[SENSOR_PARAM_6] = 0x59; //0x59 is 89 ms, 200 is 200 ms
+  
+  
+  ci[SERIAL_DEBUG_LEVEL] = 0;
+  ci[SERIAL_FOR_COMMANDS_ONLY] = 1;
 }
 
 
