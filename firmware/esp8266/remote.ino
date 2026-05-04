@@ -66,6 +66,56 @@ static unsigned long connectBackoffUntil = 0;
 static int attemptCount = 0;
 static String responseBufferSM;      // accumulate response
 static uint32_t taskStartTimeMs = 0; // logging timer
+/////////////////
+//serial parser setup:
+
+#define MAX_CFG_LEN 220
+#define PARSED_BUF_MAX 40   // bytes (15 values)
+
+int parsedStringPacketLen = 0;
+uint8_t parsedBuf[PARSED_BUF_MAX];// = {0xff, 0xff, 0x04, 0x00, 0x0a, 0x00, 0x01, 0x10};
+uint8_t blockCount = 0;
+int8_t activeBlock = -1;
+uint8_t parsedStringConfigCount = 0;
+
+struct CircularBuffer {
+  uint8_t* data;
+  uint16_t size;
+  volatile uint16_t head; // modified in ISR / main
+  volatile uint16_t tail;
+  volatile uint16_t count;
+};
+
+
+#define TX_SIZE 1000
+uint8_t txStorage[TX_SIZE];
+CircularBuffer txBuffer = {txStorage, TX_SIZE, 0, 0, 0};
+uint32_t lastDataParseTime = 0;
+
+
+#define PS_BIG_ENDIAN   0x04
+#define PS_CHAR_OFFSET  0x02
+#define PS_ASCII_VALUE  0x01
+
+#define MAX_BLOCKS 4
+#define MAX_ADDRS  3
+#define MAX_OFFSETS 8
+
+  
+struct ConfigBlock {
+  char start[32];
+  char end[32];
+  uint8_t addrCount;
+  char addr[MAX_ADDRS][12];
+  uint8_t offsets[MAX_ADDRS][MAX_OFFSETS];
+  uint8_t offsetCount[MAX_ADDRS];
+};
+
+ConfigBlock blocks[MAX_BLOCKS];
+
+
+
+
 
 //////////////////////////////
 //safe mode implementation:
@@ -213,7 +263,7 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
     objectCursor = 0;
   }
   // sensor-reading branches (unchanged)
-  if (ci[SENSOR_ID] == 1) {
+  if (sensorId == 1) {
     if (powerPin > -1) {
       digitalWrite(powerPin, HIGH);
     }
@@ -223,10 +273,13 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
     } else {
       sensorValueStr = String(analogRead(dataPin));
     }
+    //Serial.println("+++++++++++++++++++++");
+    //Serial.println(sensorValueStr);
+    
     if (powerPin > -1) {
       digitalWrite(powerPin, LOW);
     }
-  } else if (ci[SENSOR_ID] == 53) {
+  } else if (sensorId == 53) {
     VL53L0X_RangingMeasurementData_t measure;
     lox[objectCursor].rangingTest(&measure, false);
     if (measure.RangeStatus != 4) {
@@ -279,7 +332,41 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
   } else {
     // no sensor
   }
+ 
+  uint32_t freeHeap = ESP.getFreeHeap();
+  uint32_t maxBlock = ESP.getMaxFreeBlockSize();
+  uint32_t fragPct = 100 - (maxBlock * 100 / freeHeap);
 
+  String out="";
+  for(int fieldCounter = 0; fieldCounter<16; fieldCounter++) {
+    if(ordinalOfOverwrite == fieldCounter) {
+      out +=  sensorValueStr;
+    } else {
+      if (ci[SEND_MEM_DATA_IN_RESERVED] == 1) {
+        if (fieldCounter == 12) {
+          out += String(freeHeap);
+  
+        } else if (fieldCounter == 13) {
+          out += String(maxBlock);
+  
+        } else if (fieldCounter == 14) {
+          out += String(fragPct);
+        }
+      }
+      if(fieldCounter == 0) {
+        out += temperatureFromSensor;
+      } else if (fieldCounter == 1){
+        out += pressureFromSensor;
+      } else if (fieldCounter == 2) {
+        out += humidityFromSensor;
+      } else if (fieldCounter == 3) {
+        out += gasFromSensor;
+      }
+    }
+    out += "*";
+  }
+  /*
+  //WHAT A FUCKING MESS:
   // --- Move big buffers out of stack into static storage ---
   const int FIELDS = 12;
   const int FIELD_MAX = 48;   // reduced per-field size; adjust if you expect big fields
@@ -301,7 +388,10 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
   if (!isnan(gasFromSensor)){
     snprintf(fields[3], FIELD_MAX, "%.2f", gasFromSensor);
   }
-
+  //Serial.println("&&&&&&&&&&&&");
+  //Serial.print(ordinalOfOverwrite);
+  //Serial.print(": ");
+  //Serial.println(sensorValueStr);
   if (ordinalOfOverwrite >= 0 && ordinalOfOverwrite < FIELDS) {
     String useVal = sensorValueStr;
     if (useVal.length() == 0) {
@@ -315,6 +405,10 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
         useVal = String(temperatureFromSensor);
       }
     }
+    Serial.println("-----&&&&&&&&&&&&");
+    Serial.print(ordinalOfOverwrite);
+    Serial.print(": ");
+    Serial.println(useVal);
     strncpy(fields[ordinalOfOverwrite], useVal.c_str(), FIELD_MAX - 1);
     fields[ordinalOfOverwrite][FIELD_MAX - 1] = '\0';
   }
@@ -346,6 +440,12 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
     }
   }
   //send memory telemetry in reserved fields if configured to
+
+
+
+
+    
+  }
   if(ci[SEND_MEM_DATA_IN_RESERVED] == 1) {
     uint32_t freeHeap = ESP.getFreeHeap();
     uint32_t maxBlock = ESP.getMaxFreeBlockSize();
@@ -383,7 +483,7 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
       return String(tx);
     }
   }
-
+  */
   // offline FRAM logging (keeps existing behavior)
   if (offlineMode) {
     if (millis() - lastOfflineLog > 1000 * ci[OFFLINE_LOG_GRANULARITY]) {
@@ -412,16 +512,17 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
           Serial.println(F("Saved a record to FRAM."));
         }
         // print trimmed tx for info
-        tx[(pos < bufSize - 1) ? pos : bufSize - 1] = '\0';
         if(ci[DEBUG] > 1) {
-          Serial.print(tx);
+          Serial.print(out);
           Serial.println(millisVal);
         }
       }
       lastOfflineLog = millis();
     }
   }
-
+  out += String(sensorId) + "*" + deviceFeatureId +  "*" + sensorName + "*" + String(consolidateAllSensorsToOneRecord);
+  
+  /*
   // append sensor id, device feature id, name, consolidate flag
   int n = snprintf(tx + pos, bufSize - pos, "%ld*%d*%s*%d", (long)ci[SENSOR_ID], deviceFeatureId, sensorName.c_str(), consolidateAllSensorsToOneRecord);
   if (n > 0) {
@@ -431,6 +532,8 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
 
   tx[(pos < bufSize) ? pos : (bufSize - 1)] = '\0';
   return String(tx); // single String allocation only
+  */
+  return out;
 }
 
 void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int pinNumber, int powerPin) {
@@ -559,6 +662,9 @@ void compileAndSendDeviceData(const String& weatherData,const String& whereWhenD
         pos += snprintf(tx + pos, sizeof(tx) - pos, "%s", weatherData.c_str());
     } else if (ci[SENSOR_ID] > -1) {
         String s = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, -1, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
+        //add solar data here if known
+        
+        
         pos += snprintf(tx + pos, sizeof(tx) - pos, "%s", s.c_str());
     }
     // --- ADDITIONAL SENSOR DATA ---------------------------------------
@@ -592,8 +698,12 @@ void compileAndSendDeviceData(const String& weatherData,const String& whereWhenD
     } else {
         pos += snprintf(tx + pos, sizeof(tx) - pos, "|*%f*%f", measuredVoltage, measuredAmpage);
     }
+    pos += snprintf(tx + pos, sizeof(tx) - pos, "|");
+    char parsedSerial[parsedStringPacketLen]; 
+    bytesToHex(parsedBuf, parsedStringPacketLen, parsedSerial);
+    pos += snprintf(tx + pos, sizeof(tx) - pos, parsedSerial);
     // future expansion
-    pos += snprintf(tx + pos, sizeof(tx) - pos, "|||");
+    pos += snprintf(tx + pos, sizeof(tx) - pos, "||");
     // --- EXTRA INFO ----------------------------------------------------
     pos += snprintf(tx + pos, sizeof(tx) - pos, "|");
     // clean up IP address
@@ -696,9 +806,6 @@ void wiFiConnect() {
           wifiTimeoutToUse = ci[GRANULARITY_WHEN_IN_MOXEE_PHASE_1];
         }
         if (wiFiSeconds > wifiTimeoutToUse) {
-          Serial.print(wiFiSeconds);
-          Serial.print(" ");
-          Serial.println(wifiTimeoutToUse);
           if(ci[DEBUG] > 1) {
             Serial.println("");
             Serial.println(F("WiFi taking too long"));
@@ -1221,6 +1328,8 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
   for(int i=1; i<12; i++) {
     String sensorDatum = additionalSensorArray[i];
     if(sensorDatum.indexOf('*')>-1) {
+      //Serial.println("((((((((((((((((((((((((((((((((");
+      //Serial.println(sensorDatum);
       splitString(sensorDatum, '*', specificSensorData, 8);
       pinNumber = specificSensorData[0].toInt();
       powerPin = specificSensorData[1].toInt();
@@ -1260,6 +1369,8 @@ bool hardwareControlStringInvalid(const char *str) {
       (c >= '0' && c <= '9') ||   // digits
       (c == '*') ||
       (c == ' ') ||
+      (c == '.') ||
+      (c == ',') ||
       (c == '-');
 
     if (!isValid) {
@@ -1337,7 +1448,7 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
 
         if(i > 8) {
           //anomalyLog(String(nonJsonDatum));
-          Serial.println("\n~" + String(nonJsonDatum) + "~");
+          //Serial.println("\n~" + String(nonJsonDatum) + "~");
         }
         if(ci[DEBUG] == 7) {
           Serial.print("*");
@@ -2073,6 +2184,10 @@ void setup(){
     if(ci[DEBUG] > 1) {
       Serial.println(F("LittleFS mount failed!"));
     }
+  } 
+  if(ci[SERIAL_FOR_COMMANDS_ONLY] == 0) {
+    Serial.swap();
+    initSerialParser();
   }
   //clearFramLog();
   //displayAllFramRecords();
@@ -2132,7 +2247,12 @@ void flashUpdateFeedback(uint32_t nowTime) {
 void loop(){
   rtcUpdateHeartbeat();
   yield();
-  doSerialCommands();
+  if(ci[SERIAL_FOR_COMMANDS_ONLY] == 1) {
+    doSerialCommands();
+  } else {
+    processSerialStream();
+  }
+
   yield();
   runRemoteTask();
   //runSlaveUpdater();
@@ -2406,4 +2526,444 @@ void cleanup(){
 
 int freeMemory() {
     return ESP.getFreeHeap();
+}
+
+
+
+//////////////////////////////////////////////
+//parsing serial:
+
+
+
+int initSerialParser() {
+  char cfg[MAX_BLOCKS][MAX_CFG_LEN];
+  File file = LittleFS.open("/serialparser.cfg", "r");
+  if (!file) {
+    if(ci[DEBUG] > 0) {
+      Serial.println("Failed to open serial parser config for reading");
+      return 0;
+    }
+  }
+  int blockCount = 0;
+  while (file.available()) {
+    String line = file.readStringUntil('\n');
+    parseConfigString(line.c_str(), blocks[blockCount]);
+    //dumpConfigBlock(blocks[i]);
+    blockCount++;
+  }
+  return 1;
+}
+ 
+//only for debugging:
+void dumpConfigBlock(const ConfigBlock &b) {
+  Serial.println(F("=== ConfigBlock ==="));
+
+  Serial.print(F("start: "));
+  Serial.println(b.start);
+
+  Serial.print(F("end:   "));
+  Serial.println(b.end);
+
+  Serial.print(F("addrCount: "));
+  Serial.println(b.addrCount);
+
+  for (uint8_t i = 0; i < b.addrCount; i++) {
+    Serial.print(F("  addr["));
+    Serial.print(i);
+    Serial.print(F("]: "));
+    Serial.println(b.addr[i]);
+
+    Serial.print(F("    offsets ("));
+    Serial.print(b.offsetCount[i]);
+    Serial.print(F("): "));
+
+    for (uint8_t j = 0; j < b.offsetCount[i]; j++) {
+      Serial.print(b.offsets[i][j]);
+      if (j + 1 < b.offsetCount[i]) Serial.print(F(", "));
+    }
+    Serial.println();
+  }
+
+  Serial.println(F("==================="));
+}
+
+void parseConfigString(const char *cfg, ConfigBlock &out) {
+  char buf[128];
+  //Serial.println(cfg);
+  //Serial.println(strlen(cfg));
+  strncpy(buf, cfg, sizeof(buf));
+  buf[sizeof(buf) - 1] = 0;
+
+  char *tok = strtok(buf, ";");
+  if (!tok) {
+    return;
+  }
+  strncpy(out.start, tok, sizeof(out.start));
+  //Serial.println("-----");
+  //Serial.println( out.start);
+  //Serial.println( out.end);
+  tok = strtok(NULL, ";");
+  if (!tok) return;
+  strncpy(out.end, tok, sizeof(out.end));
+
+  out.addrCount = 0;
+  uint8_t curAddr = 255;
+
+  while ((tok = strtok(NULL, ";"))) {
+    //Serial.println(tok);
+    if (!isInteger(tok)) { //any token in the config that is not explicitly a decimal integer is a string to be searched for
+      curAddr = out.addrCount++;
+      
+      //Serial.println(tok);
+      strncpy(out.addr[curAddr], tok, sizeof(out.addr[curAddr]));
+      out.offsetCount[curAddr] = 0;
+    } else if (curAddr != 255) {
+      //Serial.print(out.offsetCount[curAddr] );
+      //Serial.print(": ");
+      //Serial.println(tok );
+      if (out.offsetCount[curAddr] < MAX_OFFSETS) {
+        out.offsets[curAddr][out.offsetCount[curAddr]++] = atoi(tok);
+        //increment the global containing the parsed packet size. since each 16 bit value in the packet gets a pair of offsets, 
+        //if we increment with every offset we get the correct number of bytes in the packet
+        parsedStringPacketLen++; 
+        //Serial.println(parsedStringPacketLen);
+      }
+    }
+  }
+  //dumpConfigBlock(out);
+}
+
+
+// Append 16-bit little-endian to global buffer
+inline void appendU16(uint16_t v,
+                      uint16_t bytePacketStart,
+                      int8_t  blockIdx,
+                      uint8_t addrIdx,
+                      uint8_t offsetIdx,
+                      uint8_t off1,
+                      uint8_t off2,
+                      uint8_t byteCount)
+{
+  //Serial.print(parsedStringPacketLen + 2);
+  //Serial.print(": ");
+  //Serial.print(PARSED_BUF_MAX);
+  if (parsedStringPacketLen + 2 > PARSED_BUF_MAX) return;
+
+  uint8_t lo = (uint8_t)(v & 0xFF);
+  uint8_t hi = (uint8_t)(v >> 8);
+
+  parsedBuf[bytePacketStart] = lo;
+  parsedBuf[bytePacketStart+1] = hi;
+  /*
+  // ---- DEBUG TRACE ----
+  Serial.print(F("[PARSE] blk="));
+  Serial.print(blockIdx);
+
+  Serial.print(F(" loc="));
+  Serial.print(bytePacketStart);
+
+  Serial.print(F(" addr="));
+  Serial.print(addrIdx);
+
+  Serial.print(F(" offIdx="));
+  Serial.print(offsetIdx);
+
+  Serial.print(F(" offs="));
+  Serial.print(off1);
+  if (off1 != off2) {
+    Serial.print(',');
+    Serial.print(off2);
+  }
+
+  Serial.print(F(" / "));
+  Serial.print(byteCount);
+
+  Serial.print(F("  bytes="));
+  if (lo < 16) Serial.print('0');
+  Serial.print(lo, HEX);
+  Serial.print(' ');
+  if (hi < 16) Serial.print('0');
+  Serial.print(hi, HEX);
+
+  Serial.print(F("  val="));
+  Serial.println(v);
+  */
+}
+
+
+uint16_t calculateOffsetIndex(const ConfigBlock *blocks,
+                         uint8_t blockCount,
+                         uint8_t blk,
+                         uint8_t addr)
+{
+  uint16_t sum = 0;
+
+  // 1. Sum all offsets in all previous blocks
+  for (uint8_t b = 0; b < blk && b < blockCount; b++) {
+    for (uint8_t a = 0; a < blocks[b].addrCount; a++) {
+      sum += blocks[b].offsetCount[a];
+    }
+  }
+
+  // 2. Sum offsets in previous addresses of this block
+  if (blk < blockCount) {
+    for (uint8_t a = 0; a < addr && a < blocks[blk].addrCount; a++) {
+      sum += blocks[blk].offsetCount[a];
+    }
+  }
+
+  return sum;
+}
+
+
+// Fill bytes[] with numeric values from a line, ignoring text tokens
+uint8_t extractHexBytes(const char *line,
+                             uint8_t *out,
+                             uint8_t maxOut)
+{
+  uint8_t count = 0;
+
+  while (*line && count < maxOut) {
+
+    // must start with hex digit
+    if (isxdigit(line[0]) &&
+        isxdigit(line[1]) &&
+        // word boundary before
+        (line == 0 || !isxdigit(line[-1])) &&
+        // word boundary after
+        !isxdigit(line[2]))
+    {
+      char tmp[3] = { line[0], line[1], 0 };
+      out[count++] = (uint8_t)strtoul(tmp, nullptr, 16);
+      line += 2;
+    } else {
+      line++;
+    }
+  }
+  return count;
+}
+
+
+
+bool readSerialLine(char *line, uint8_t maxLen) {
+  static uint8_t idx = 0;
+  
+  while (Serial.available()) {
+    char c = Serial.read();
+    //if(ci[DEBUG] == 0) {
+      //Serial.print(c);
+    //}
+    if (c == '\n') {
+      line[idx] = 0;
+      idx = 0;
+      if(ci[SERIAL_DEBUG_LEVEL] > 10) {
+        String url = "http://" + String(cs[HOST_GET]) + String(cs[URL_GET]);
+        WiFiClient client;
+        HTTPClient http;
+        if (http.begin(client, url.c_str())) {
+          http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+          String postData = "data=" + urlEncode(String(line), true) + "&device_id=" + ci[DEVICE_ID];
+          int httpCode = http.POST(postData);
+        }
+      }
+      return true;
+    }
+    if (idx < maxLen - 1) {
+      line[idx++] = c;
+    }
+  }
+  return false;
+}
+
+
+bool readValueAtOffset(
+    const char *line,
+    const char *addrStr,
+    uint8_t off1,
+    uint8_t off2,
+    uint8_t parsingStyle,
+    uint16_t &outValue)
+{
+  const char *addrPos = strstr(line, addrStr);
+  if (!addrPos) return false;
+
+  addrPos += strlen(addrStr);
+
+  const char *p1 = nullptr;
+  const char *p2 = nullptr;
+
+  /* ---- OFFSET RESOLUTION ---- */
+
+  if (parsingStyle & PS_CHAR_OFFSET) {
+    // character-based offset
+    p1 = addrPos + off1;
+    p2 = addrPos + off2;
+  } else {
+    // token-based offset
+    p1 = findNthToken(addrPos, off1);
+    p2 = findNthToken(addrPos, off2);
+  }
+
+  if (!p1) return false;
+  if (off2 != off1 && !p2) return false;
+
+  uint8_t b0 = 0;
+  uint8_t b1 = 0;
+
+  /* ---- VALUE INTERPRETATION ---- */
+
+  if (parsingStyle & PS_ASCII_VALUE) {
+    // raw ASCII characters
+    b0 = (uint8_t)p1[0];
+    b1 = (off2 != off1 && p2) ? (uint8_t)p2[0] : 0;
+  } else {
+    // hex interpretation
+    if (!hexByteAt(p1, b0)) return false;
+    if (off2 != off1 && !hexByteAt(p2, b1)) return false;
+  }
+
+  /* ---- ENDIANNESS ---- */
+
+  if (off1 == off2) {
+    outValue = b0;
+  } else if (parsingStyle & PS_BIG_ENDIAN) {
+    outValue = ((uint16_t)b0 << 8) | b1;
+  } else {
+    outValue = ((uint16_t)b1 << 8) | b0;
+  }
+  return true;
+}
+
+bool hexByteAt(const char *p, uint8_t &out)
+{
+  if (!isxdigit(p[0]) || !isxdigit(p[1])) {
+    return false;
+  }
+  char tmp[3] = { p[0], p[1], 0 };
+  out = (uint8_t)strtoul(tmp, nullptr, 16);
+  return true;
+}
+
+const char *findNthToken(const char *s, uint8_t n)
+{
+  uint8_t count = 0;
+  while (*s) {
+    while (*s == ' ') s++;
+    if (!*s) break;
+    if (count++ == n) {
+      return s;
+    }
+    while (*s && *s != ' ') s++;
+  }
+  return nullptr;
+}
+
+
+void processSerialStream()
+{
+  static char line[100];
+  if (!readSerialLine(line, sizeof(line))) {
+    return;
+  }
+  /* ---- BLOCK START DETECTION ---- */
+  for (uint8_t i = 0; i < blockCount; i++) {
+    if (strlen(blocks[i].start) > 0 &&
+        strstr(line, blocks[i].start)) {
+
+      activeBlock = i;
+      return;   // wait for data lines
+    }
+  }
+
+  if (activeBlock < 0) {
+    return;
+  }
+
+  /* ---- BLOCK END DETECTION ---- */
+  if (strlen(blocks[activeBlock].end) > 0 &&
+      strstr(line, blocks[activeBlock].end)) {
+
+    activeBlock = -1;
+    return;
+  }
+
+  /* ---- ADDRESS LINES ---- */
+  ConfigBlock &blk = blocks[activeBlock];
+
+  for (uint8_t a = 0; a < blk.addrCount; a++) {
+
+    // fast reject if address not present
+    if (!strstr(line, blk.addr[a])) {
+      continue;
+    }
+    /* ---- OFFSET PROCESSING ---- */
+    for (uint8_t o = 0; o + 1 < blk.offsetCount[a]; o += 2) {
+
+      uint8_t off1 = blk.offsets[a][o];
+      uint8_t off2 = blk.offsets[a][o + 1];
+
+      uint16_t v;
+
+      if (!readValueAtOffset(
+              line,
+              blk.addr[a],
+              off1,
+              off2,
+              0,  //parsing style
+              v))
+      {
+        continue;   // parse failed for this offset pair
+      }
+      lastDataParseTime = timeClient.getEpochTime();
+
+      uint16_t bytePacketStart =
+        calculateOffsetIndex(
+          blocks,
+          parsedStringConfigCount,
+          activeBlock,
+          a
+        );
+
+      appendU16(
+        v,
+        bytePacketStart + o,
+        (int8_t)activeBlock,
+        a,      // address index
+        o,      // offset rule index
+        off1,
+        off2,
+        0       // byteCount no longer relevant here
+      );
+    }
+  }
+}
+
+
+void circularBufferToCStr(CircularBuffer* cb, char* out, size_t outSize, bool advanceTail){
+  uint16_t tail, count;
+
+  // Snapshot state atomically
+  noInterrupts();
+  tail  = cb->tail;
+  count = cb->count;
+  interrupts();
+  uint16_t n = count;
+  if (n >= outSize) {
+    n = outSize - 1;
+  }
+  uint16_t idx = tail;
+  for (uint16_t i = 0; i < n; i++) {
+    out[i] = (char)cb->data[idx];
+    idx++;
+    if (idx >= cb->size) {
+      idx = 0;
+    }
+  }
+  out[n] = '\0';
+  if (advanceTail && n > 0) {
+    noInterrupts();
+    cb->tail  = (cb->tail + n) % cb->size;
+    cb->count -= n;
+    interrupts();
+  }
 }
