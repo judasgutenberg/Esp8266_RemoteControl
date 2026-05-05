@@ -2072,9 +2072,13 @@ void setup(){
     Serial.println("\n");
   }
   
-  if (rtc.lastMillis < 5000 && rtc.rebootCount > 1) {
+  if (rtc.lastMillis < 5000 && rtc.rebootCount > 1 || rtc.useHardcodedConfig > 0) {
     if(ci[DEBUG] > 0) {
-      Serial.println(F("Last uptime was only ") + String(rtc.lastMillis) + F(" milliseconds; entering safe mode\n"));
+      if(rtc.useHardcodedConfig > 0) {
+        Serial.println(F("Using hardcoded config\n"));
+      } else {
+        Serial.println(F("Last uptime was only ") + String(rtc.lastMillis) + F(" milliseconds; entering safe mode\n"));
+      }
     }
     // 🚨 likely boot loop → skip external config
     useHardcodedConfig = true;
@@ -2185,14 +2189,30 @@ void setup(){
       Serial.println(F("LittleFS mount failed!"));
     }
   } 
+  serialSwap(ci[SERIAL_SWAP]);
   if(ci[SERIAL_FOR_COMMANDS_ONLY] == 0) {
-    Serial.swap();
+    //serialSwap(1); //let's let this be something else
     initSerialParser();
   }
   //clearFramLog();
   //displayAllFramRecords();
   //do an initial pet of the watchdog just to set its unix time and make sure it does not bite us
 
+}
+
+//serial.swap() does not take an absolute state like we need it to, so we set or clear the global serialSwapped
+void serialSwap(int8_t value) {
+  if(!serialSwapped) {
+    if(value != 0) {
+      serialSwapped = 1;
+      Serial.swap();
+    }
+  } else {
+     if(value == 0) {
+      serialSwapped = 0;
+      Serial.swap();
+    }
+  }
 }
 
 void flashUpdateFeedback(uint32_t nowTime) {
@@ -2243,14 +2263,32 @@ void flashUpdateFeedback(uint32_t nowTime) {
   }
 }
 
+void logAnySerial() {
+  static char line[100];
+  if (!readSerialLine(line, sizeof(line))) {
+    return;
+  } 
+  String filenameToUse = serialLoggingFileName;
+  if(serialLoggingFileName == "") {
+    filenameToUse = "seriallog.log";
+  }
+  File file = LittleFS.open(filenameToUse, "a");
+  file.println(line);
+  file.close();
+}
+
 //LOOP----------------------------------------------------
 void loop(){
   rtcUpdateHeartbeat();
   yield();
-  if(ci[SERIAL_FOR_COMMANDS_ONLY] == 1) {
-    doSerialCommands();
+  if(serialLogging == 1) {
+   logAnySerial(); 
   } else {
-    processSerialStream();
+    if(ci[SERIAL_FOR_COMMANDS_ONLY] == 1) {
+      doSerialCommands();
+    } else {
+      processSerialStream();
+    }
   }
 
   yield();
