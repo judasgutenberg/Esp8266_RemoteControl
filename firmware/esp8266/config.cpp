@@ -62,9 +62,9 @@ void initConfig(void) {
   ci[SENSOR_PARAM_5] = 0; //0 for 50 degrees, 34 for 100 degrees, 100 for 200, 233 for 400 degrees, 300 for 500 degrees
   ci[SENSOR_PARAM_6] = 0x59; //0x59 is 89 ms, 200 is 200 ms
   
-  
   ci[SERIAL_DEBUG_LEVEL] = 0;
   ci[SERIAL_FOR_COMMANDS_ONLY] = 1;
+  ci[SERIAL_SWAP] = 0;
 }
 
 
