@@ -95,6 +95,12 @@ void cmdDownload(String* param, int argCount, bool deferred);
 void cmdUpload(String* param, int argCount, bool deferred);
 void cmdCat(String* param, int argCount, bool deferred);
 void cmdReadSlaveEeprom(String* param, int argCount, bool deferred);
+
+void cmdSetSerialSwap(String* param, int argCount, bool deferred);
+void cmdGetSerialSwap(String* param, int argCount, bool deferred);
+void cmdSetSerialLogging(String* param, int argCount, bool deferred);
+void cmdGetSerialLogging(String* param, int argCount, bool deferred);
+
 void cmdResetSerial(String* param, int argCount, bool deferred);
 void cmdDumpConfig(String* param, int argCount, bool deferred);
 void cmdDumpSlaveEeprom(String* param, int argCount, bool deferred);
