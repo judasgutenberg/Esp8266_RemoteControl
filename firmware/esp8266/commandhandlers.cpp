@@ -90,6 +90,8 @@ void cmdBeforeBoot(String* param, int argCount, bool deferred) {
   textOut(String(rtc.lastCommandId));
   textOut(F("; last commandType: "));
   textOut(String(rtc.lastCommandType));
+  textOut(F("; useHardcodedConfig: "));
+  textOut(String(rtc.useHardcodedConfig));
   textOut("\n");
 }
 
@@ -107,11 +109,13 @@ void cmdSetPreboot(String* param, int argCount, bool deferred) {
     rtc.lastCommandId = value;
   } else if (loc == 3)  {
     rtc.lastCommandType = value;
+  } else if (loc == 4)  {
+    rtc.useHardcodedConfig = value;
   } else {
     rtc.lastCommandLogId = value;
   }
   rtcWrite(rtc);
-  textOut(F("Setting location ") + String(loc) + F(" to value ") + String(value) + "\n");
+  textOut(F("Preboot set\n"));
 }
 ////////////////////
 
@@ -357,11 +361,54 @@ void cmdReadSlaveEeprom(String* param, int argCount, bool deferred) {
   textOut(String(buffer));
 }
 
+///////////////////////////
+ 
+void cmdSetSerialSwap(String* param, int argCount, bool deferred) {
+ serialSwap(param[0].toInt());
+ textOut(F("Serial swap set to: ") + String(param[0]) + "\n");
+}
+
+void cmdGetSerialSwap(String* param, int argCount, bool deferred) {
+ textOut(F("Serial swap: ") + String(serialSwapped) + "\n");
+}
+
+void cmdSetSerialLogging(String* param, int argCount, bool deferred) {
+  serialLogging = param[0].toInt();
+  textOut(F("Serial logging set to "));
+  if(String(param[1]).length() > 0) {
+  serialLoggingFileName = String(param[1]);
+  }
+  if(serialLogging == 0) {
+    textOut(F("off "));
+  } else {
+    textOut(F("on "));
+  }
+  if(serialLoggingFileName != "") {
+    textOut(F("with filename '") + serialLoggingFileName + "'");
+  }
+  textOut("\n");
+}
+
+void cmdGetSerialLogging(String* param, int argCount, bool deferred) {
+  textOut(F("Serial logging is "));
+  if(serialLogging == 0) {
+    textOut(F("off "));
+  } else {
+    textOut(F("on "));
+  }
+ if(serialLoggingFileName != "") {
+  textOut(F("with filename '") + serialLoggingFileName + "'");
+ }
+ textOut("\n");
+}
+
+/////////////////////
+
 void cmdResetSerial(String* param, int argCount, bool deferred) {
   setSerialRate((byte)ci[BAUD_RATE_LEVEL]); 
   ETS_UART_INTR_DISABLE();
   ETS_UART_INTR_ENABLE();
-  textOut("Serial reset\n");
+  textOut(F("Serial reset\n"));
 }
 
 void cmdDumpConfig(String* param, int argCount, bool deferred) {
@@ -387,12 +434,12 @@ void cmdDumpSlaveEeprom(String* param, int argCount, bool deferred) {
 
 void cmdSendSlaveSerial(String* param, int argCount, bool deferred) {
   sendSlaveSerial(param[0].c_str());
-  textOut("Serial data sent to slave: " + param[0] + "\n");
+  textOut(F("Serial data sent to slave: ") + param[0] + "\n");
 }
 
 void cmdSetSlaveTime(String* param, int argCount, bool deferred) {
   sendLong(ci[SLAVE_I2C], 180, param[0].toInt());
-  textOut("Slave UNIX time set to: " + param[0] + "\n");
+  textOut(F("Slave UNIX time set to: ") + param[0] + "\n");
 }
 
 void cmdGetSlaveTime(String* param, int argCount, bool deferred) {
