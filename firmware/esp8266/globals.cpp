@@ -132,3 +132,6 @@ uint32_t fileUploadPosition = 0;
 ESP8266WebServer server(80); //Server on port 80
 
 RTCBootInfo rtc;
+int8_t serialSwapped = 0;
+int8_t serialLogging = 0;
+String serialLoggingFileName = "";
