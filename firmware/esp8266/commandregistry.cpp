@@ -59,6 +59,11 @@ CommandDef commands[] = {
   {"upload",                cmdUpload, 1,           false,        0b00000001},
   {"cat",                   cmdCat, 1,              false,        0b00000001},
   {"read slave eeprom",     cmdReadSlaveEeprom, 1,  false,        0b00000010},
+
+  {"set serial swap",       cmdSetSerialSwap, 1,    false,        0b00000000},
+  {"get serial swap",       cmdGetSerialSwap, 1,    false,        0b00000000},
+  {"set serial logging",    cmdSetSerialLogging, 2, false,        0b00000000},
+  {"get serial logging",    cmdGetSerialLogging, 0, false,        0b00000000},
   {"reset serial",          cmdResetSerial, 0,      false,        0b00000000},
   {"dump config",           cmdDumpConfig, 2,       false,        0b00000010},
   {"dump slave config eeprom", cmdDumpSlaveEeprom, 0, false,      0b00000010},
