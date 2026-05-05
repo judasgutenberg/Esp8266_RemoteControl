@@ -1,7 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define VERSION 2217
+#define VERSION 2206
 #define RTC_MAGIC 0xDEADCA75
 #include <Arduino.h>
 #include <WiFiUdp.h>
@@ -51,7 +51,6 @@ enum RemoteState {
   RS_DONE
 };
 
-
 struct __attribute__((packed)) RTCBootInfo {
   uint32_t magic;
   uint32_t lastMillis;
@@ -61,10 +60,13 @@ struct __attribute__((packed)) RTCBootInfo {
   int32_t lastCommandId;
   int32_t lastCommandType;
   uint32_t checksum;
+  uint32_t useHardcodedConfig;
 };
 
-
 extern RTCBootInfo rtc;
+extern int8_t serialSwapped;
+extern int8_t serialLogging;
+extern String serialLoggingFileName;
 
 extern const unsigned long CONNECT_RETRY_SPACING_MS;
 extern const unsigned long CONNECT_TIMEOUT_MS;
