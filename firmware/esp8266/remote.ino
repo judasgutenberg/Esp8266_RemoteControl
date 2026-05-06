@@ -365,126 +365,8 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
     }
     out += "*";
   }
-  /*
-  //WHAT A FUCKING MESS:
-  // --- Move big buffers out of stack into static storage ---
-  const int FIELDS = 12;
-  const int FIELD_MAX = 48;   // reduced per-field size; adjust if you expect big fields
-  static char fields[FIELDS][FIELD_MAX];
-  for (int i = 0; i < FIELDS; ++i) {
-    fields[i][0] = '\0';
-  }
-
-  // fill fields (check bounds)
-  if (!isnan(temperatureFromSensor)) {
-    snprintf(fields[0], FIELD_MAX, "%.2f", temperatureFromSensor);
-  }
-  if (!isnan(pressureFromSensor)) {
-    snprintf(fields[1], FIELD_MAX, "%.2f", pressureFromSensor);
-  }
-  if (!isnan(humidityFromSensor)){
-    snprintf(fields[2], FIELD_MAX, "%.2f", humidityFromSensor);
-  }
-  if (!isnan(gasFromSensor)){
-    snprintf(fields[3], FIELD_MAX, "%.2f", gasFromSensor);
-  }
-  //Serial.println("&&&&&&&&&&&&");
-  //Serial.print(ordinalOfOverwrite);
-  //Serial.print(": ");
-  //Serial.println(sensorValueStr);
-  if (ordinalOfOverwrite >= 0 && ordinalOfOverwrite < FIELDS) {
-    String useVal = sensorValueStr;
-    if (useVal.length() == 0) {
-      if (sensorSubtype == 1) {
-        useVal = String(pressureFromSensor);
-      } else if (sensorSubtype == 2) {
-        useVal = String(humidityFromSensor);
-      } else if (sensorSubtype == 3) {
-        useVal = String(gasFromSensor);
-      } else {
-        useVal = String(temperatureFromSensor);
-      }
-    }
-    Serial.println("-----&&&&&&&&&&&&");
-    Serial.print(ordinalOfOverwrite);
-    Serial.print(": ");
-    Serial.println(useVal);
-    strncpy(fields[ordinalOfOverwrite], useVal.c_str(), FIELD_MAX - 1);
-    fields[ordinalOfOverwrite][FIELD_MAX - 1] = '\0';
-  }
-
-  // big transmission buffer (static)
-  static char tx[1600]; // increase if required
-  size_t pos = 0;
-  const size_t bufSize = sizeof(tx);
-  // append first 4 fields with '*' delimiter, safe checks after every write
-  for (int i = 0; i < 4; ++i) {
-    if (i > 0) {
-      if (pos + 1 < bufSize) {
-        tx[pos++] = '*';
-      } else { 
-        tx[bufSize - 1] = '\0'; return String(tx); 
-      }
-    }
-    if (fields[i][0] != '\0') {
-      int n = snprintf(tx + pos, bufSize - pos, "%s", fields[i]);
-      if (n < 0) { 
-        tx[bufSize - 1] = '\0'; 
-        return String(tx); 
-      }
-      pos += (size_t)n;
-      if (pos >= bufSize) { 
-        tx[bufSize - 1] = '\0'; 
-        return String(tx); 
-      }
-    }
-  }
-  //send memory telemetry in reserved fields if configured to
-
-
-
-
-    
-  }
-  if(ci[SEND_MEM_DATA_IN_RESERVED] == 1) {
-    uint32_t freeHeap = ESP.getFreeHeap();
-    uint32_t maxBlock = ESP.getMaxFreeBlockSize();
-    uint32_t fragPct = 100 - (maxBlock * 100 / freeHeap);
-    
-    // worst case size estimate:
-    // 9 stars + 3 numbers (~10 digits each) + 2 separators + null ˜ ~45 chars
-    int n = snprintf(
-      tx + pos,
-      bufSize - pos,
-      "*********%u*%u*%u**",
-      freeHeap,
-      maxBlock,
-      fragPct
-    );
-    
-    if (n < 0) {
-      tx[bufSize - 1] = '\0';
-      return String(tx);
-    }
-    
-    pos += (size_t)n;
-    
-    if (pos >= bufSize) {
-      tx[bufSize - 1] = '\0';
-      return String(tx);
-    }
-  } else {
-    // append reserved stars (13 chars)
-    if (pos + 13 < bufSize) {
-      memcpy(tx + pos, "*************", 13);
-      pos += 13;
-    } else {
-      tx[bufSize - 1] = '\0';
-      return String(tx);
-    }
-  }
-  */
-  // offline FRAM logging (keeps existing behavior)
+ 
+  // offline FRAM logging  
   if (offlineMode) {
     if (millis() - lastOfflineLog > 1000 * ci[OFFLINE_LOG_GRANULARITY]) {
       unsigned long millisVal = millis();
@@ -520,19 +402,7 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
       lastOfflineLog = millis();
     }
   }
-  out += String(sensorId) + "*" + deviceFeatureId +  "*" + sensorName + "*" + String(consolidateAllSensorsToOneRecord);
-  
-  /*
-  // append sensor id, device feature id, name, consolidate flag
-  int n = snprintf(tx + pos, bufSize - pos, "%ld*%d*%s*%d", (long)ci[SENSOR_ID], deviceFeatureId, sensorName.c_str(), consolidateAllSensorsToOneRecord);
-  if (n > 0) {
-    pos += (size_t)n;
-    if (pos >= bufSize) pos = bufSize - 1;
-  }
-
-  tx[(pos < bufSize) ? pos : (bufSize - 1)] = '\0';
-  return String(tx); // single String allocation only
-  */
+  out += String(sensorId) + "*" + deviceFeatureId +  "*" + sensorName + "*" + String(consolidateAllSensorsToOneRecord); 
   return out;
 }
 
