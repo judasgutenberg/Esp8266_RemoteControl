@@ -354,13 +354,13 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
         }
       }
       if(fieldCounter == 0) {
-        out += temperatureFromSensor;
+        out += nullifyOrNumber(temperatureFromSensor);
       } else if (fieldCounter == 1){
-        out += pressureFromSensor;
+        out += nullifyOrNumber(pressureFromSensor);
       } else if (fieldCounter == 2) {
-        out += humidityFromSensor;
+        out += nullifyOrNumber(humidityFromSensor);
       } else if (fieldCounter == 3) {
-        out += gasFromSensor;
+        out += nullifyOrNumber(gasFromSensor);
       }
     }
     out += "*";
@@ -570,7 +570,7 @@ void compileAndSendDeviceData(const String& weatherData,const String& whereWhenD
     }
     pos += snprintf(tx + pos, sizeof(tx) - pos, "|");
     char parsedSerial[parsedStringPacketLen]; 
-    bytesToHex(parsedBuf, parsedStringPacketLen, parsedSerial);
+    bytesToHex(parsedBuf, parsedStringPacketLen, 0x00, parsedSerial);
     pos += snprintf(tx + pos, sizeof(tx) - pos, parsedSerial);
     // future expansion
     pos += snprintf(tx + pos, sizeof(tx) - pos, "||");
