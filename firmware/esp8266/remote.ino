@@ -2143,7 +2143,7 @@ void logAnySerial() {
   static String pendingLog;
   String filenameToUse = serialLoggingFileName; //serialLoggingFileName is a global set by command cmdSetSerialLogging
   if(serialLoggingFileName == "") {
-    filenameToUse = "seriallog.log"; //default serial log file name if one is not set
+    filenameToUse = "serial.log"; //default serial log file name if one is not set
   }
   while (Serial.available()) {
     char serialChar  = Serial.read();
