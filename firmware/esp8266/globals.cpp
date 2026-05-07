@@ -140,3 +140,4 @@ int loopCount = 0;
 int connectionCount = 0;
 uint32_t millisecondsConnecting = 0;
 int millisOneConnection = 0;
+int serialByteCount = 0;

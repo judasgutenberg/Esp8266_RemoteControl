@@ -300,8 +300,12 @@ void cmdGetLastdatalog(String* param, int argCount, bool deferred) {
 void cmdTiming(String* param, int argCount, bool deferred) {
   textOut(F("Loop count: ") + String(loopCount));
   textOut(F(", Connection count: ") + String(connectionCount));
-  textOut(F(", Millis/loop: ") + String(millis()/loopCount));
-  if(connectionCount > 0){
+  textOut(F(", Logged serial bytes: ") + String(serialByteCount));
+  if(loopCount > 0){//don't want to divide by zero
+    textOut(F(", Millis/loop: ") + String(millis()/loopCount));
+    textOut(F(", Serial bytes/loop: ") + String(serialByteCount/loopCount));
+  }
+  if(connectionCount > 0){ //don't want to divide by zero
     textOut(F(", Millis/connection: ") + String(millisecondsConnecting/connectionCount));
   }
   textOut("\n");

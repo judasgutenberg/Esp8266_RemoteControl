@@ -143,6 +143,7 @@ extern int loopCount;
 extern int connectionCount;
 extern uint32_t millisecondsConnecting;
 extern int millisOneConnection;
+extern int serialByteCount;
 
 extern byte parsedSerialData[64];
 extern bool slaveUnpetted;
