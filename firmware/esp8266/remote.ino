@@ -1016,6 +1016,9 @@ void runRemoteTask() {
           permissionErrorCount++;
         }
         if(permissionErrorCount > 10) {
+          if(ci[DEBUG] > 1) {
+            textOut(F("Alterable configuration not working; trying hardcoded defaults"));
+          }
           initMasterDefaults(); //if we come up with the wrong configuration stored in alterable storage, we will have repeated permission errors, so, we need to use the baked-in configuration
         }
         // ============================
