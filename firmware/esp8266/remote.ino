@@ -2148,6 +2148,7 @@ void logAnySerial() {
   while (Serial.available()) {
     char serialChar  = Serial.read();
     pendingLog += serialChar;
+    serialByteCount++; //update a global
   }
   if (pendingLog.length() > 1024|| (pendingLog.length() > 0 && millis() - lastWrite > 2000)) {
     File file = LittleFS.open(filenameToUse, "a");
