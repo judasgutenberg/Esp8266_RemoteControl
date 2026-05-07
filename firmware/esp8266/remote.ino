@@ -736,7 +736,6 @@ void runRemoteTask() {
     return;
   }
   switch(remoteState) {
-
     case RS_IDLE:
       if(ci[DEBUG] > 20) {
         Serial.println(F("RS_IDLE"));
@@ -745,6 +744,7 @@ void runRemoteTask() {
 
     // -------------------- prepare the URL and initial decisions --------------------
     case RS_PREPARE: {
+      millisOneConnection = millis();
       if(ci[DEBUG] > 10) {
         Serial.println(F("RS_PREPARE"));
       }
@@ -1150,6 +1150,10 @@ void runRemoteTask() {
     }
     // -------------------- finish and reset state --------------------
     case RS_DONE: {
+      int loopCount = 0;
+      connectionCount++;
+      millisecondsConnecting += millis() - millisOneConnection;
+      millisOneConnection = 0;
       if(ci[DEBUG] > 10) {
         Serial.println(F("RS_DONE"));
       }
@@ -2059,6 +2063,7 @@ void setup(){
       Serial.println(F("LittleFS mount failed!"));
     }
   } 
+
   serialSwap(ci[SERIAL_SWAP]);
   if(ci[SERIAL_FOR_COMMANDS_ONLY] == 0) {
     //serialSwap(1); //let's let this be something else
@@ -2134,21 +2139,29 @@ void flashUpdateFeedback(uint32_t nowTime) {
 }
 
 void logAnySerial() {
-  static char line[100];
-  if (!readSerialLine(line, sizeof(line))) {
-    return;
-  } 
-  String filenameToUse = serialLoggingFileName;
+  static unsigned long lastWrite = 0;
+  static String pendingLog;
+  String filenameToUse = serialLoggingFileName; //serialLoggingFileName is a global set by command cmdSetSerialLogging
   if(serialLoggingFileName == "") {
-    filenameToUse = "seriallog.log";
+    filenameToUse = "seriallog.log"; //default serial log file name if one is not set
   }
-  File file = LittleFS.open(filenameToUse, "a");
-  file.println(line);
-  file.close();
+  while (Serial.available()) {
+    char serialChar  = Serial.read();
+    pendingLog += serialChar;
+  }
+  if (pendingLog.length() > 1024|| (pendingLog.length() > 0 && millis() - lastWrite > 2000)) {
+    File file = LittleFS.open(filenameToUse, "a");
+    
+    file.print(pendingLog);
+    file.close();
+    pendingLog = "";
+    lastWrite = millis();
+  }
 }
 
 //LOOP----------------------------------------------------
 void loop(){
+  loopCount++;
   rtcUpdateHeartbeat();
   yield();
   if(serialLogging == 1) {
