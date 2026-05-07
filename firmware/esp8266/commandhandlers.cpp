@@ -79,18 +79,18 @@ void cmdUpdateFirmware(String* param, int argCount, bool deferred) {
 void cmdBeforeBoot(String* param, int argCount, bool deferred) {
   textOut(F("Apparent bad reboot count: "));
   textOut(String(rtc.rebootCount));
-  textOut(F("; millis up: "));
+  textOut(F(", millis up: "));
   textOut(String(rtc.lastMillis));
 
-  textOut(F("; version: "));
+  textOut(F(", version: "));
   textOut(String(rtc.lastVersion));
-  textOut(F("; last commandLogId: "));
+  textOut(F(", last commandLogId: "));
   textOut(String(rtc.lastCommandLogId));
-  textOut(F("; last commandId: "));
+  textOut(F(", last commandId: "));
   textOut(String(rtc.lastCommandId));
-  textOut(F("; last commandType: "));
+  textOut(F(", last commandType: "));
   textOut(String(rtc.lastCommandType));
-  textOut(F("; useHardcodedConfig: "));
+  textOut(F(", useHardcodedConfig: "));
   textOut(String(rtc.useHardcodedConfig));
   textOut("\n");
 }
@@ -299,10 +299,10 @@ void cmdGetLastdatalog(String* param, int argCount, bool deferred) {
 
 void cmdTiming(String* param, int argCount, bool deferred) {
   textOut(F("Loop count: ") + String(loopCount));
-  textOut(F("; Connection count: ") + String(connectionCount));
-  textOut(F("; Millis/loop: ") + String(millis()/loopCount));
+  textOut(F(", Connection count: ") + String(connectionCount));
+  textOut(F(", Millis/loop: ") + String(millis()/loopCount));
   if(connectionCount > 0){
-    textOut(F("; Millis/connection: ") + String(millisecondsConnecting/connectionCount));
+    textOut(F(", Millis/connection: ") + String(millisecondsConnecting/connectionCount));
   }
   textOut("\n");
 }
