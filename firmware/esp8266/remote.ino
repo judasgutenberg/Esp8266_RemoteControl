@@ -342,7 +342,7 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
     if(ordinalOfOverwrite == fieldCounter) {
       out +=  sensorValueStr;
     } else {
-      if (ci[SEND_MEM_DATA_IN_RESERVED] == 1) {
+      if (ci[SEND_TELEMETRY_TYPE_IN_RESERVED] == TELEMETRY_TYPE_MEMORY) {
         if (fieldCounter == 12) {
           out += String(freeHeap);
   
@@ -352,6 +352,18 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
         } else if (fieldCounter == 14) {
           out += String(fragPct);
         }
+      } else if (ci[SEND_TELEMETRY_TYPE_IN_RESERVED] == TELEMETRY_TYPE_TIMING) {
+        if (fieldCounter == 12 && loopCount > 0) {
+          out += String(millis()/loopCount);
+  
+        } else if (fieldCounter == 13 && loopCount > 0) {
+          out += String(serialByteCount/loopCount);
+  
+        } else if (fieldCounter == 14  && connectionCount > 0) {
+          out += String(millisecondsConnecting/connectionCount);
+        } else if (fieldCounter == 15) {
+          out += String(serialByteCount);
+        } 
       }
       if(fieldCounter == 0) {
         out += nullifyOrNumber(temperatureFromSensor);
