@@ -316,7 +316,7 @@ void cmdDumpSerialPacket(String* param, int argCount, bool deferred) {
   readDataParsedFromSlaveSerial();
   //parsedSerialData
   //uint8_t parsedBuf[40]  = {0xF1, 0xF2, 0xD1, 0xD2, 0xC1, 0xC2, 0xB1, 0xB2};
-  bytesToHex(parsedSerialData, 20, buffer);
+  bytesToHex(parsedSerialData, 20, 0x00, buffer);
   textOut(F("Parsed serial packet: ") + String(buffer) + "\n");
 }
 

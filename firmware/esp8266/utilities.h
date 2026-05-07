@@ -45,7 +45,7 @@ String msTimeAgo(uint32_t millisFromPast);
 String timeAgo(String sqlDateTime);
 String timeAgo(String sqlDateTime, time_t compareTo);
 String humanReadableTimespan(uint32_t diffInSeconds);
-void bytesToHex(const uint8_t* data, size_t length, char* outBuffer);
+void bytesToHex(const uint8_t* data, size_t length, char spacerChar, char* outBuffer);
 
 bool urlExists(const char* url);
 
