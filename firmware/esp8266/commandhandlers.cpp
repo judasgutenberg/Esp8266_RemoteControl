@@ -297,6 +297,16 @@ void cmdGetLastdatalog(String* param, int argCount, bool deferred) {
   textOut(F("Last data: ") + msTimeAgo(lastDataLogTime) + "\n");
 }
 
+void cmdTiming(String* param, int argCount, bool deferred) {
+  textOut(F("Loop count: ") + String(loopCount));
+  textOut(F("; Connection count: ") + String(connectionCount));
+  textOut(F("; Millis/loop: ") + String(millis()/loopCount));
+  if(connectionCount > 0){
+    textOut(F("; Millis/connection: ") + String(millisecondsConnecting/connectionCount));
+  }
+  textOut("\n");
+}
+
 void cmdMemory(String* param, int argCount, bool deferred) {
   dumpMemoryStats(0);
 }

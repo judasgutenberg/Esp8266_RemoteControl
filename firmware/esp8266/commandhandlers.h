@@ -84,6 +84,7 @@ void cmdGetUptime(String* param, int argCount, bool deferred);
 void cmdGetWifiUptime(String* param, int argCount, bool deferred);
 void cmdGetLastpoll(String* param, int argCount, bool deferred);
 void cmdGetLastdatalog(String* param, int argCount, bool deferred);
+void cmdTiming(String* param, int argCount, bool deferred);
 void cmdMemory(String* param, int argCount, bool deferred);
 void cmdDumpSerialPacket(String* param, int argCount, bool deferred);
 void cmdFormatFileSystem(String* param, int argCount, bool deferred);

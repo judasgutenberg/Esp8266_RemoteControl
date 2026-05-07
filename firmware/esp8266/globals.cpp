@@ -135,3 +135,8 @@ RTCBootInfo rtc;
 int8_t serialSwapped = 0;
 int8_t serialLogging = 0;
 String serialLoggingFileName = "";
+
+int loopCount = 0;
+int connectionCount = 0;
+uint32_t millisecondsConnecting = 0;
+int millisOneConnection = 0;

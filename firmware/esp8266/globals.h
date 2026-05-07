@@ -138,6 +138,12 @@ extern int moxeePhaseChangeCount;
 extern uint32_t lastCommandLogId;
 extern int consecutiveCommandOuts;
 
+
+extern int loopCount;
+extern int connectionCount;
+extern uint32_t millisecondsConnecting;
+extern int millisOneConnection;
+
 extern byte parsedSerialData[64];
 extern bool slaveUnpetted;
 extern uint8_t lastSlavePowerMode;
