@@ -51,7 +51,7 @@ void initConfig(void) {
   ci[LOCAL_WEB_SERVICE_RESPONSIVENESS] = 1;
   ci[BAUD_RATE_LEVEL] = 9;
   ci[CONFIG_PERSIST_METHOD] = 1;  
-  ci[SEND_MEM_DATA_IN_RESERVED] = 0;
+  ci[SEND_TELEMETRY_TYPE_IN_RESERVED] = 1;
   ci[ANOMALY_LOG_LEVEL] = 1;
 
   //these were originally for the BE680 but for other sensors that take a complex configuration, these could be made params for those as well:
