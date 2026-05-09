@@ -99,7 +99,7 @@ uint32_t lastDataParseTime = 0;
 
 #define MAX_BLOCKS 4
 #define MAX_ADDRS  3
-#define MAX_OFFSETS 8
+#define MAX_OFFSETS 16
 
   
 struct ConfigBlock {
@@ -2083,11 +2083,12 @@ void setup(){
     }
   } 
 
-  serialSwap(ci[SERIAL_SWAP]);
+  
   if(ci[SERIAL_FOR_COMMANDS_ONLY] == 0) {
     //serialSwap(1); //let's let this be something else
     initSerialParser();
   }
+  serialSwap(ci[SERIAL_SWAP]);
   //clearFramLog();
   //displayAllFramRecords();
   //do an initial pet of the watchdog just to set its unix time and make sure it does not bite us
@@ -2191,6 +2192,13 @@ void loop(){
       doSerialCommands();
     } else {
       processSerialStream();
+      int millisParseLoopEntered = millis();
+      if(activeBlock > -1) {
+        while(activeBlock > -1  &&  millis() - millisParseLoopEntered < 20000) {//give up on that block after 20 seconds
+          processSerialStream();
+        }
+        activeBlock = -1;  
+      }
     }
   }
 
@@ -2280,8 +2288,12 @@ void loop(){
     if(ci[DEBUG] > 20) {
       Serial.println(F("about to compileAndSendDeviceData"));
     }
-    compileAndSendDeviceData("", "", "", true, 0xFFFF);
-    lastPoll = nowTime;
+    if(deviceName == ""  || ci[SERIAL_FOR_COMMANDS_ONLY] == 1 || didSomeSerialProcessing || (nowTime - lastPoll)/1000 > 20 ) {
+      compileAndSendDeviceData("", "", "", true, 0xFFFF);
+      lastPoll = nowTime;
+      didSomeSerialProcessing = false;
+    }   
+    
   }
   yield();
   
@@ -2485,7 +2497,6 @@ int initSerialParser() {
       return 0;
     }
   }
-  int blockCount = 0;
   while (file.available()) {
     String line = file.readStringUntil('\n');
     parseConfigString(line.c_str(), blocks[blockCount]);
@@ -2551,6 +2562,7 @@ void parseConfigString(const char *cfg, ConfigBlock &out) {
   uint8_t curAddr = 255;
 
   while ((tok = strtok(NULL, ";"))) {
+    trim(tok);
     //Serial.println(tok);
     if (!isInteger(tok)) { //any token in the config that is not explicitly a decimal integer is a string to be searched for
       curAddr = out.addrCount++;
@@ -2572,6 +2584,19 @@ void parseConfigString(const char *cfg, ConfigBlock &out) {
     }
   }
   //dumpConfigBlock(out);
+  //delay(100);
+}
+
+void trim(char *s) {
+  // trim leading whitespace
+  while (isspace((unsigned char)*s)) {
+    memmove(s, s + 1, strlen(s));
+  }
+  // trim trailing whitespace
+  int len = strlen(s);
+  while (len > 0 && isspace((unsigned char)s[len - 1])) {
+    s[--len] = '\0';
+  }
 }
 
 
@@ -2697,16 +2722,6 @@ bool readSerialLine(char *line, uint8_t maxLen) {
     if (c == '\n') {
       line[idx] = 0;
       idx = 0;
-      if(ci[SERIAL_DEBUG_LEVEL] > 10) {
-        String url = "http://" + String(cs[HOST_GET]) + String(cs[URL_GET]);
-        WiFiClient client;
-        HTTPClient http;
-        if (http.begin(client, url.c_str())) {
-          http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-          String postData = "data=" + urlEncode(String(line), true) + "&device_id=" + ci[DEVICE_ID];
-          int httpCode = http.POST(postData);
-        }
-      }
       return true;
     }
     if (idx < maxLen - 1) {
@@ -2715,7 +2730,6 @@ bool readSerialLine(char *line, uint8_t maxLen) {
   }
   return false;
 }
-
 
 bool readValueAtOffset(
     const char *line,
@@ -2799,6 +2813,16 @@ const char *findNthToken(const char *s, uint8_t n)
   return nullptr;
 }
 
+void logParseOperation(String type, String value) {
+  if(ci[SERIAL_DEBUG_LEVEL] > 99  && activeBlock > -1  || ci[SERIAL_DEBUG_LEVEL] > 109) {
+    String filenameToUse = F("parse.log");
+    File file = LittleFS.open(filenameToUse, "a");
+    String lineToLog = type + ": " + value;
+    file.println(lineToLog);
+    file.close();
+  }
+}
+
 
 void processSerialStream()
 {
@@ -2806,24 +2830,29 @@ void processSerialStream()
   if (!readSerialLine(line, sizeof(line))) {
     return;
   }
+  logParseOperation(F("lineToParse"), line);
   /* ---- BLOCK START DETECTION ---- */
+  //logParseOperation(F("event"), F("blockCount: ") + String(blockCount));
   for (uint8_t i = 0; i < blockCount; i++) {
-    if (strlen(blocks[i].start) > 0 &&
-        strstr(line, blocks[i].start)) {
+    if(ci[SERIAL_DEBUG_LEVEL] > 119) {
+      logParseOperation(F("event"), F("tryParse: ") + String(blocks[i].start));
+    }
+    if (strlen(blocks[i].start) > 0 && strstr(line, blocks[i].start)) {
 
       activeBlock = i;
+      logParseOperation(F("event"), F("start: ") + String(blocks[i].start) + F(" found"));
       return;   // wait for data lines
     }
   }
 
   if (activeBlock < 0) {
+    logParseOperation(F("event"), F("nothing active"));
     return;
   }
 
   /* ---- BLOCK END DETECTION ---- */
-  if (strlen(blocks[activeBlock].end) > 0 &&
-      strstr(line, blocks[activeBlock].end)) {
-
+  if (strlen(blocks[activeBlock].end) > 0 && strstr(line, blocks[activeBlock].end)) {
+    logParseOperation(F("event"), F("ending found on active block"));
     activeBlock = -1;
     return;
   }
@@ -2835,6 +2864,7 @@ void processSerialStream()
 
     // fast reject if address not present
     if (!strstr(line, blk.addr[a])) {
+      logParseOperation(F("event"), F("address: ") + String(blk.addr[a]) + F(" not found in line"));
       continue;
     }
     /* ---- OFFSET PROCESSING ---- */
@@ -2853,10 +2883,11 @@ void processSerialStream()
               0,  //parsing style
               v))
       {
+        logParseOperation(F("event"), String(off1) + ", " + String(off2) + ": " + F("nothing found between offsets"));
         continue;   // parse failed for this offset pair
       }
       lastDataParseTime = timeClient.getEpochTime();
-
+      logParseOperation(F("event"), String(off1) + ", " + String(off2) + ": " + F("good things"));
       uint16_t bytePacketStart =
         calculateOffsetIndex(
           blocks,
@@ -2875,6 +2906,7 @@ void processSerialStream()
         off2,
         0       // byteCount no longer relevant here
       );
+      didSomeSerialProcessing = true;
     }
   }
 }
