@@ -97,9 +97,9 @@ uint32_t lastDataParseTime = 0;
 #define PS_CHAR_OFFSET  0x02
 #define PS_ASCII_VALUE  0x01
 
-#define MAX_BLOCKS 4
-#define MAX_ADDRS  3
-#define MAX_OFFSETS 16
+#define MAX_BLOCKS 5
+#define MAX_ADDRS  4
+#define MAX_OFFSETS 8
 
   
 struct ConfigBlock {
@@ -1925,6 +1925,7 @@ void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so 
     offlineMode = true;
     moxeeRebootCount = 0;
   } else if(moxeeRebootCount > ci[NUMBER_OF_HOTSPOT_REBOOTS_OVER_LIMITED_TIMEFRAME_BEFORE_ESP_REBOOT]) { //kind of a watchdog
+    fsRebootLog("moxee count");
     rebootEsp();
   }
 }
@@ -2158,6 +2159,17 @@ void flashUpdateFeedback(uint32_t nowTime) {
   }
 }
 
+
+void fsRebootLog(String type) {
+  String rebootString;
+  String filenameToUse = "reboot.log"; //serialLoggingFileName is a global set by command cmdSetSerialLogging
+  rebootString = String(timeClient.getEpochTime()) + ": " + type;
+  File file = LittleFS.open(filenameToUse, "a");
+  file.print(rebootString);
+  file.close();
+  rebootString = "";
+}
+
 void logAnySerial() {
   static unsigned long lastWrite = 0;
   static String pendingLog;
@@ -2194,7 +2206,7 @@ void loop(){
       processSerialStream();
       int millisParseLoopEntered = millis();
       if(activeBlock > -1) {
-        while(activeBlock > -1  &&  millis() - millisParseLoopEntered < 20000) {//give up on that block after 20 seconds
+        while(activeBlock > -1  &&  millis() - millisParseLoopEntered < 5000) {//give up on that block after 5 seconds
           processSerialStream();
         }
         activeBlock = -1;  
@@ -2288,7 +2300,7 @@ void loop(){
     if(ci[DEBUG] > 20) {
       Serial.println(F("about to compileAndSendDeviceData"));
     }
-    if(deviceName == ""  || ci[SERIAL_FOR_COMMANDS_ONLY] == 1 || didSomeSerialProcessing || (nowTime - lastPoll)/1000 > 20 ) {
+    if(deviceName == ""  || ci[SERIAL_FOR_COMMANDS_ONLY] == 1 || didSomeSerialProcessing || (nowTime - lastPoll)/1000 > 20 ) { //if it lingers more than 20 seconds parsing serial, force a poll
       compileAndSendDeviceData("", "", "", true, 0xFFFF);
       lastPoll = nowTime;
       didSomeSerialProcessing = false;
@@ -2827,87 +2839,95 @@ void logParseOperation(String type, String value) {
 void processSerialStream()
 {
   static char line[100];
-  if (!readSerialLine(line, sizeof(line))) {
-    return;
-  }
-  logParseOperation(F("lineToParse"), line);
-  /* ---- BLOCK START DETECTION ---- */
-  //logParseOperation(F("event"), F("blockCount: ") + String(blockCount));
-  for (uint8_t i = 0; i < blockCount; i++) {
-    if(ci[SERIAL_DEBUG_LEVEL] > 119) {
-      logParseOperation(F("event"), F("tryParse: ") + String(blocks[i].start));
-    }
-    if (strlen(blocks[i].start) > 0 && strstr(line, blocks[i].start)) {
-
-      activeBlock = i;
-      logParseOperation(F("event"), F("start: ") + String(blocks[i].start) + F(" found"));
-      return;   // wait for data lines
-    }
-  }
-
-  if (activeBlock < 0) {
-    logParseOperation(F("event"), F("nothing active"));
-    return;
-  }
-
-  /* ---- BLOCK END DETECTION ---- */
-  if (strlen(blocks[activeBlock].end) > 0 && strstr(line, blocks[activeBlock].end)) {
-    logParseOperation(F("event"), F("ending found on active block"));
-    activeBlock = -1;
-    return;
-  }
-
-  /* ---- ADDRESS LINES ---- */
-  ConfigBlock &blk = blocks[activeBlock];
-
-  for (uint8_t a = 0; a < blk.addrCount; a++) {
-
-    // fast reject if address not present
-    if (!strstr(line, blk.addr[a])) {
-      logParseOperation(F("event"), F("address: ") + String(blk.addr[a]) + F(" not found in line"));
-      continue;
-    }
-    /* ---- OFFSET PROCESSING ---- */
-    for (uint8_t o = 0; o + 1 < blk.offsetCount[a]; o += 2) {
-
-      uint8_t off1 = blk.offsets[a][o];
-      uint8_t off2 = blk.offsets[a][o + 1];
-
-      uint16_t v;
-
-      if (!readValueAtOffset(
-              line,
-              blk.addr[a],
-              off1,
-              off2,
-              0,  //parsing style
-              v))
-      {
-        logParseOperation(F("event"), String(off1) + ", " + String(off2) + ": " + F("nothing found between offsets"));
-        continue;   // parse failed for this offset pair
+  while (readSerialLine(line, sizeof(line))) {
+    bool nextWhileIteration = false;
+    logParseOperation(F("lineToParse"), line);
+    /* ---- BLOCK START DETECTION ---- */
+    //logParseOperation(F("event"), F("blockCount: ") + String(blockCount));
+    for (uint8_t i = 0; i < blockCount; i++) {
+      if(ci[SERIAL_DEBUG_LEVEL] > 119) {
+        logParseOperation(F("event"), F("tryParse: ") + String(blocks[i].start));
       }
-      lastDataParseTime = timeClient.getEpochTime();
-      logParseOperation(F("event"), String(off1) + ", " + String(off2) + ": " + F("good things"));
-      uint16_t bytePacketStart =
-        calculateOffsetIndex(
-          blocks,
-          parsedStringConfigCount,
-          activeBlock,
-          a
-        );
-
-      appendU16(
-        v,
-        bytePacketStart + o,
-        (int8_t)activeBlock,
-        a,      // address index
-        o,      // offset rule index
-        off1,
-        off2,
-        0       // byteCount no longer relevant here
-      );
-      didSomeSerialProcessing = true;
+      if (strlen(blocks[i].start) > 0 && strstr(line, blocks[i].start)) {
+  
+        activeBlock = i;
+        logParseOperation(F("event"), F("start: ") + String(blocks[i].start) + F(" found"));
+        nextWhileIteration = true;
+        break;
+        //return;   // wait for data lines
+      }
     }
+  
+    if (activeBlock < 0) {
+      logParseOperation(F("event"), F("nothing active"));
+      continue;
+      //return;
+    }
+  
+    /* ---- BLOCK END DETECTION ---- */
+    if (strlen(blocks[activeBlock].end) > 0 && strstr(line, blocks[activeBlock].end)) {
+      logParseOperation(F("event"), F("ending found on active block"));
+      activeBlock = -1;
+      continue;
+      //return;
+    }
+  
+    /* ---- ADDRESS LINES ---- */
+    ConfigBlock &blk = blocks[activeBlock];
+  
+    for (uint8_t a = 0; a < blk.addrCount; a++) {
+  
+      // fast reject if address not present
+      if (!strstr(line, blk.addr[a])) {
+        logParseOperation(F("event"), F("address: ") + String(blk.addr[a]) + F(" not found in line"));
+        continue;
+      }
+      /* ---- OFFSET PROCESSING ---- */
+      for (uint8_t o = 0; o + 1 < blk.offsetCount[a]; o += 2) {
+  
+        uint8_t off1 = blk.offsets[a][o];
+        uint8_t off2 = blk.offsets[a][o + 1];
+  
+        uint16_t v;
+  
+        if (!readValueAtOffset(
+                line,
+                blk.addr[a],
+                off1,
+                off2,
+                0,  //parsing style
+                v))
+        {
+          logParseOperation(F("event"), String(off1) + ", " + String(off2) + ": " + F("nothing found between offsets"));
+          continue;   // parse failed for this offset pair
+        }
+        lastDataParseTime = timeClient.getEpochTime();
+        logParseOperation(F("event"), String(off1) + ", " + String(off2) + ": " + F("good things"));
+        uint16_t bytePacketStart =
+          calculateOffsetIndex(
+            blocks,
+            parsedStringConfigCount,
+            activeBlock,
+            a
+          );
+  
+        appendU16(
+          v,
+          bytePacketStart + o,
+          (int8_t)activeBlock,
+          a,      // address index
+          o,      // offset rule index
+          off1,
+          off2,
+          0       // byteCount no longer relevant here
+        );
+        didSomeSerialProcessing = true;
+      }
+    }
+    if (nextWhileIteration) {
+        continue;
+    }
+
   }
 }
 
