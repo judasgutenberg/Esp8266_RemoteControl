@@ -157,5 +157,5 @@ extern uint32_t fileUploadPosition;
 extern String additionalUrlParams;
 
 extern ESP8266WebServer server;
-
+extern bool didSomeSerialProcessing;
 #endif
