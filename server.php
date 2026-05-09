@@ -33,7 +33,7 @@ $formattedDateTime20MinutesAgo =  $pastDate->format('Y-m-d H:i:s');
 $aFewMinutesPastDate->modify('-6 minutes');
 $formattedDateTimeAFewMinutesAgo =  $aFewMinutesPastDate->format('Y-m-d H:i:s');
 //$formattedDateTime =  $date->format('H:i');
-$deviceId = "";
+$deviceId = gvfw("device_id");
 $manufactureId = gvfw("manufacture_id");
 $locationId = "";
 $deviceName = "Your device";
@@ -53,9 +53,54 @@ if(array_key_exists("mode", $_REQUEST)) {
 } else {
 	$mode = "getWeatherData";
 }
- 
+
+$mode = gvfw("mode");
+if($mode == "upload") {
+  $data = file_get_contents("php://input");
+  $filename = gvfw("filename");
+  if($filename != ""){
+    echo "two\n";
+    $rootTemp = "./temp";
+    $cursor = 0;
+    $fileSize = gvfw("total_size");
+    if(!is_dir($rootTemp)){
+      mkdir($rootTemp);
+    }
+    $greaterTempPath = $rootTemp . "/" . $deviceId;
+    if(!is_dir($greaterTempPath)){
+      mkdir($greaterTempPath);
+    }
+    $destinationPath = buildDeviceUploadPath($deviceId); 
+    logPost($data, $deviceId);
+    $newLength = handleUploadChunk($greaterTempPath, $destinationPath, $filename, $data, $cursor, $fileSize);
+    die("!" . intval($newLength));
+  }
+}
+
 if($_POST) {
-	logPost(gvfa("data", $_POST)); //help me debug
+  echo "one\n";
+  //to simplify and speed things up, if we're uploading a file, we don't bother to auth and we can
+  //receive it as a single big-ass post
+  $filename = gvfw("filename");
+  if($filename != ""){
+    echo "two\n";
+    $rootTemp = "./temp";
+    $cursor = 0;
+    $fileSize = gvfw("total_size");
+    if(!is_dir($rootTemp)){
+      mkdir($rootTemp);
+    }
+    $greaterTempPath = $rootTemp . "/" . $deviceId;
+    if(!is_dir($greaterTempPath)){
+      mkdir($greaterTempPath);
+    }
+    $destinationPath = buildDeviceUploadPath($deviceId); 
+    logPost(gvfa("data", $_POST), $deviceId);
+    $newLength = handleUploadChunk($greaterTempPath, $destinationPath, $filename, gvfa("data", $_POST), $cursor, $fileSize);
+    die("!" . intval($newLength));
+  } else {
+    logPost(gvfa("data", $_POST), $deviceId); //help me debug
+	}
 }
 if($_REQUEST) {
 	$periodAgo = 0;
@@ -1248,10 +1293,10 @@ function deriveTenantFromStoragePassword($storagePassword) {
 	}
 }
 
-function logPost($post){
+function logPost($post, $deviceId = ""){
 	//return; //for when you don't actually want to log
 	global $formattedDateTime;
-	$myfile = file_put_contents('solarkdata.txt', $post, FILE_APPEND | LOCK_EX);
+	$myfile = file_put_contents('solarkdata' . $deviceId . '.txt', "\n" . $post, FILE_APPEND | LOCK_EX);
 }
 
 function logSql($sql){
