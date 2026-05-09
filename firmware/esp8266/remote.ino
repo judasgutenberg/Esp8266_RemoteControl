@@ -1018,7 +1018,6 @@ void runRemoteTask() {
         if(permissionErrorCount > 10) {
           if(ci[DEBUG] > 1) {
             textOut(F("Alterable configuration not working; trying hardcoded defaults\n"));
-            permissionErrorCount = 0;
           }
           initMasterDefaults(); //if we come up with the wrong configuration stored in alterable storage, we will have repeated permission errors, so, we need to use the baked-in configuration
         }
@@ -1132,6 +1131,7 @@ void runRemoteTask() {
             break;
           } else {
             fileUploadPosition = atoi(line + 1);
+            //Serial.println(fileUploadPosition);
             File f = LittleFS.open(fileToUpload, "r");
             if (!f) {
               textOut(fileToUpload + F(": file not found\n"));
@@ -1140,13 +1140,16 @@ void runRemoteTask() {
               return;
             }
             uint32_t totalFileSize = f.size();
-            if (totalFileSize >= fileUploadPosition) {
-              textOut(fileToUpload + F(" has finished uploading\n"));
+            //Serial.print(totalFileSize);
+            //Serial.print(" ?> ");
+            //Serial.println(fileUploadPosition);
+            if (totalFileSize <= fileUploadPosition) {
+              textOut(fileToUpload + F(" has finished uploading: "));
+              textOut(String(totalFileSize));
+              textOut(F(" bytes\n"));
               fileToUpload = "";
             } else {
-              char pct[32];
-              snprintf(pct, sizeof(pct), "%u%%\n",
-                       (100 * fileUploadPosition) / totalFileSize);
+              String pct = String((100 * fileUploadPosition) / totalFileSize) + "%\n";
               textOut(pct);
             }
             break;
