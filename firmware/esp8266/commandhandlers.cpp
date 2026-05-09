@@ -359,7 +359,10 @@ void cmdUpload(String* param, int argCount, bool deferred) {
       return;
   }
   f.close();
-  textOut(fileToUpload + F(" uploading to server...\n"));
+  //do it all in one go instead of as a series of polls
+  int result = postFileUpload(fileToUpload.c_str(), String(ci[DEVICE_ID]).c_str());
+  //textOut(String(result));
+  fileToUpload = "";
   fileUploadPosition = 0;
 }
 

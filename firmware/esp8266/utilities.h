@@ -11,6 +11,7 @@
 #include <math.h> // for isnan, NAN
 #include <map>
 
+bool postFileUpload(const char* localPath, const char* deviceId);
 String packetString(String fileToUpload, uint32_t fileUploadPosition);
 void textOut(String data);
 String makeAsteriskString(uint8_t number);

@@ -57,67 +57,86 @@ bool downloadFile(const char* url, const char* localPath) {
     textOut(F("LittleFS mount failed\n"));
     return false;
   }
-  WiFiClient client;
-  HTTPClient http;
   textOut(F("Downloading: "));
   textOut(String(url) + "\n");
+  WiFiClient client;
+  HTTPClient http;
   if (!http.begin(client, url)) {
     textOut(F("HTTP begin failed\n"));
     return false;
   }
-
-  int code = http.GET();
-  if (code != HTTP_CODE_OK) {
+  // Prevent chunked transfer weirdness
+  http.useHTTP10(true);
+  int httpCode = http.GET();
+  if (httpCode != HTTP_CODE_OK) {
     textOut(F("HTTP GET failed\n"));
+    textOut(F("HTTP code: "));
+    textOut(String(httpCode) + "\n");
     http.end();
     return false;
   }
-  WiFiClient* stream = http.getStreamPtr();
+  int expectedSize = http.getSize();
+  textOut(F("Expected size: "));
+  textOut(String(expectedSize) + "\n");
   File file = LittleFS.open(localPath, "w");
   if (!file) {
     textOut(F("File open failed\n"));
     http.end();
     return false;
   }
+  WiFiClient* stream = http.getStreamPtr();
   uint8_t buf[256];
   int total = 0;
-  while (http.connected() && (stream->available() || stream->connected())) {
-    int avail = stream->available();
-    if (!avail) {
-      delay(2);
-      yield();
-      continue;
-    }
-    int toRead = min(avail, (int)sizeof(buf));
-    int c = stream->readBytes(buf, toRead);
-
-    if (c > 0) {
-      size_t w = file.write(buf, c);
-
-      if (w != c) {
-        textOut(F("Write mismatch!\n"));
-        break;
-      }
-      total += w;
-      // ?? critical: force periodic flash commit
-      if (total % 4096 == 0) {
-        file.flush();
-        yield();
+  while (http.connected() || stream->available()) {
+    size_t available = stream->available();
+    if (available) {
+      int len = stream->readBytes(buf, min(available, sizeof(buf)));
+      if (len > 0) {
+        size_t written = file.write(buf, len);
+        if (written != (size_t)len) {
+          textOut(F("Write mismatch!\n"));
+          textOut(F("Expected write: "));
+          textOut(String(len) + "\n");
+          textOut(F("Actual write: "));
+          textOut(String(written) + "\n");
+          break;
+        }
+        total += len;
+        if ((total % 4096) == 0) {
+          file.flush();
+        }
       }
     }
+    yield();
   }
   file.flush();
   file.close();
   http.end();
   textOut(F("Written bytes: "));
-  textOut(String(total) + F("\n"));
+  textOut(String(total) + "\n");
   File verify = LittleFS.open(localPath, "r");
-  size_t size = verify.size();
-  verify.close();
+  size_t size = 0;
+  if (verify) {
+    size = verify.size();
+    verify.close();
+  }
   textOut(F("Verified file size: "));
-  textOut(String(size) + F("\n"));
+  textOut(String(size) + "\n");
+  if (expectedSize >= 0) {
+    textOut(F("Expected vs actual: "));
+    textOut(String(expectedSize));
+    textOut(F(" / "));
+    textOut(String(size) + "\n");
+    if (size != (size_t)expectedSize) {
+      textOut(F("WARNING: size mismatch\n"));
+    }
+  }
   return (size > 0);
 }
+
+
+
+
 
 bool makeDir(const char* path) {
   if (!LittleFS.begin()) {
