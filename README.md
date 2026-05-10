@@ -259,6 +259,7 @@ Some commands run in two phases:
 | `local update firmware <url>` | 1 | firmware update from local file (does not work because of the limitations of <b>download</b>) |
 | `version` | – | Print firmware version |
 | `uptime` | – | Time since last boot |
+| `timing` | – | Statistics about how long some repetitive tasks require|
 | `memory` | – | Memory statistics |
 
 ---
@@ -346,8 +347,8 @@ Some commands run in two phases:
 | `ls` | – | List files |
 | `mv <source>` <destination> |  2| Rename (or move) file |
 | `rm <file>` | 1 | Delete file |
-| `download <file>` | 1 | Retrieve file from the internet, saving to local LittleFS file system preserving file name.  Does not work for files larger than 28 kilobytes for some reason. |
-| `upload <file>` | 1 | Upload file |
+| `download <url>` | 1 | Retrieve file from the internet, saving to local LittleFS file system preserving file name.   |
+| `upload <url>` | 1 | Upload file. Copies a file with the same filename and content on your server in the directory specified in $flash_directory config.php. This is handy for getting .log files from your ESP8266|
 | `format file system` | – | Format FS |
 
 
@@ -373,6 +374,8 @@ note:  there are no directories or subdirectories on microcontrollers in this sy
 | Command | Args | Description |
 |--------|------|------------|
 | `reset serial` | – | Reset UART |
+| `set serial swap` | <0 or 1> | 0 swaps the serial port to GPIO13 (receive) and GPIO15 (transmit), or, with 1 back to GPIO3 (receive) and GPIO1 (transmit) |
+| `get serial swap` | – | Returns 1 for default serial location  GPIO3 (receive) and GPIO1 (transmit)  or 0 if they are at GPIO13 (receive) and GPIO15 (transmit)|
 | `send slave serial <data>` | 1 | Send raw serial |
 | `get slave serial` | – | Read serial buffer |
 | `read slave eeprom <addr>` | 1 | Read EEPROM |
