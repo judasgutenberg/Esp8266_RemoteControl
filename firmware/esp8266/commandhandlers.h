@@ -86,9 +86,13 @@ void cmdGetLastpoll(String* param, int argCount, bool deferred);
 void cmdGetLastdatalog(String* param, int argCount, bool deferred);
 void cmdTiming(String* param, int argCount, bool deferred);
 void cmdMemory(String* param, int argCount, bool deferred);
+void cmdResetInfo(String* param, int argCount, bool deferred);
+void cmdCpuInfo(String* param, int argCount, bool deferred);
+void cmdChipInfo(String* param, int argCount, bool deferred);
+void cmdFlashInfo(String* param, int argCount, bool deferred);
 void cmdDumpSerialPacket(String* param, int argCount, bool deferred);
 void cmdFormatFileSystem(String* param, int argCount, bool deferred);
-
+void cmdWifiInfo(String* param, int argCount, bool deferred);
 void cmdAnomalyLogTest(String* param, int argCount, bool deferred);
 void cmdRenameFile(String* param, int argCount, bool deferred);
 void cmdDel(String* param, int argCount, bool deferred);

@@ -22,7 +22,12 @@ void cmdRebootMasterFromSlave(String* param, int argCount, bool deferred) {
 
 
 void cmdLocalUpdateFirmware(String* param, int argCount, bool deferred) {
-  flashFromLittleFS(param[0].c_str());
+  if(!deferred) {
+    textOut(F("Attempting firmware update using file: ") + String(param[0]) + F("...\n"));
+    //notYetDeferred();
+  } else {
+    flashFromLittleFS(param[0].c_str());
+  }
 }
 
 void cmdUpdateFirmware(String* param, int argCount, bool deferred) {
@@ -313,6 +318,58 @@ void cmdTiming(String* param, int argCount, bool deferred) {
 
 void cmdMemory(String* param, int argCount, bool deferred) {
   dumpMemoryStats(0);
+}
+
+void cmdResetInfo(String* param, int argCount, bool deferred) {
+  textOut(F("Reset reason: ") + String(ESP.getResetReason()));
+  textOut(F(", Reset info: ") + String(ESP.getResetInfo()));
+  //textOut(F(", Reset pointer: ") + ESP.getResetInfoPtr());
+  textOut("\n");
+}
+
+void cmdWifiInfo(String* param, int argCount, bool deferred) {
+  textOut(F("Signal: ") + String(WiFi.RSSI()));
+  textOut(F(", SSID: ") + WiFi.SSID());
+  textOut("\n");
+  textOut(F(" Local IP: ") + WiFi.localIP().toString());
+  textOut(F(", MAC: ") + WiFi.macAddress());
+  textOut("\n");
+  textOut(F(" Gateway IP: ") + WiFi.gatewayIP().toString());
+  textOut(F(", DNS IP: ") + WiFi.dnsIP().toString());
+  textOut(F(", Subnet mask: ") + WiFi.subnetMask().toString());
+  textOut("\n");
+  textOut(F(" WiFi channel: ") + String(WiFi.channel()));
+  textOut(F(", WiFi mode: ") + String(WiFi.getPhyMode()));
+  textOut("\n");
+}
+
+ADC_MODE(ADC_VCC);
+
+void cmdCpuInfo(String* param, int argCount, bool deferred) {
+  textOut(F("Flash chip size: ") + String(ESP.getFlashChipSize()));
+  textOut(F(", Flash chip real size: ") + String(ESP.getFlashChipRealSize()));
+  textOut(F(", Flash chip speed: ") + String(ESP.getFlashChipSpeed()));
+  textOut(F(", Flash chip mode: ") + String(ESP.getFlashChipMode()));
+  textOut("\n");
+  textOut(F(" Chip ID: ") + String(ESP.getChipId()));
+  textOut(F(", Core version: ") + String(ESP.getCoreVersion()));
+  textOut(F(", SDK version: ") + String(ESP.getSdkVersion()));
+  textOut(F(", Boot version: ") + String(ESP.getBootVersion()));
+  textOut(F(", Boot mode: ") + String(ESP.getBootMode()));
+  textOut("\n");
+  textOut(F(" VCC voltage: ") + String(ESP.getVcc()));
+  textOut("\n");
+}
+
+void cmdChipInfo(String* param, int argCount, bool deferred) {
+  textOut(F("Cpu frequency: ") + String(ESP.getCpuFreqMHz()));
+  textOut(F(", Cycle count: ") + String(ESP.getCycleCount()));
+  textOut("\n");
+}
+
+void cmdFlashInfo(String* param, int argCount, bool deferred) {
+  textOut(F("Free sketch space: ") + String(ESP.getFreeSketchSpace()));
+  textOut(F(", Sketch size: ") + String(ESP.getSketchSize()) + "\n");
 }
 
 void cmdDumpSerialPacket(String* param, int argCount, bool deferred) {

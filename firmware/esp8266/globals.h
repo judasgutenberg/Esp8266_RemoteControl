@@ -1,7 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define VERSION 2207
+#define VERSION 2221
 #define RTC_MAGIC 0xDEADCA75
 #include <Arduino.h>
 #include <WiFiUdp.h>
@@ -118,7 +118,7 @@ extern String responseBuffer;
 extern unsigned long lastPet;
 extern int currentWifiIndex;
 extern int permissionErrorCount;
- 
+
 extern  std::map<String, int> pinMap;
 extern std::map<String, int> sensorObjectCursor;
 
@@ -129,7 +129,7 @@ extern long lastCommandId;
 extern char * deferredCommand;
 
 extern bool onePinAtATimeMode;
-extern char requestNonJsonPinInfo; 
+extern char requestNonJsonPinInfo;
 extern int pinCursor;
 extern bool connectionFailureMode;
 

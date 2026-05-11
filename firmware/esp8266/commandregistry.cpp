@@ -46,8 +46,14 @@ CommandDef commands[] = {
   {"get wifi uptime",       cmdGetWifiUptime, 0,    true,         0b00000000},
   {"get lastpoll",          cmdGetLastpoll, 0,      true,         0b00000000},
   {"get lastdatalog",       cmdGetLastdatalog, 0,   true,         0b00000000},
-  {"timing",                cmdTiming, 0,           true,         0b00000000},  
-  {"memory",                cmdMemory, 0,           true,         0b00000000},
+  {"timing",                cmdTiming,    0,        true,         0b00000000},  
+  {"reset info",             cmdResetInfo, 0,        true,         0b00000000},  
+  {"cpu",                   cmdCpuInfo,   0,        true,         0b00000000},
+  {"memory",                cmdMemory,    0,        true,         0b00000000},
+  {"flash chip info",       cmdChipInfo,  0,        true,         0b00000000},
+  {"flash info",            cmdFlashInfo, 0,        true,         0b00000000},
+  {"wifi info",             cmdWifiInfo,  0,        true,         0b00000000},
+  
   {"dump parsed serial packet", cmdDumpSerialPacket, 0, true,     0b00000010},
   {"format file system",    cmdFormatFileSystem, 0, true,         0b00000001},
   ///////////
