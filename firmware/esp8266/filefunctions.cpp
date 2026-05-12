@@ -11,6 +11,147 @@
 //file system routines
 /////////////////////////////////////////////
 
+//file uploads:
+
+// Posts a LittleFS file as base64 in a single HTTP POST.
+//
+// POST variables:
+//   mode=upload
+//   device_id=<deviceId>
+//   data=<base64 encoded file contents>
+//
+// Returns true on success.
+bool postFileUpload(const char* localPath, const char* deviceId) {
+    String host = String(cs[HOST_GET]);
+    String path = String(cs[URL_GET]);
+    if (!LittleFS.begin()) {
+        textOut(F("LittleFS mount failed\n"));
+        return false;
+    }
+    File f = LittleFS.open(localPath, "r");
+    if (!f) {
+        textOut(F("Failed to open file\n"));
+        return false;
+    }
+    uint32_t totalSize = f.size();
+    uint32_t encodedSize = ((totalSize + 2) / 3) * 4;
+    String fullPath = path + "?mode=upload&filename=" + urlEncode(localPath, false) + "&total_size=" + String(totalSize) + "&device_id=" + urlEncode(deviceId, false);
+    textOut(F("Connecting\n"));
+    WiFiClient client;
+    if (!client.connect(host.c_str(), 80)) {
+        textOut(F("Connection failed\n"));
+        f.close();
+        return false;
+    }
+    textOut(F("Starting upload\n"));
+    client.print(String("POST ") + fullPath + " HTTP/1.1\r\n");
+    client.print(String("Host: ") + host + "\r\n");
+    client.print(F("Content-Type: text/plain\r\n"));
+    client.print(String("Content-Length: ") + encodedSize + "\r\n");
+    client.print(F("Connection: close\r\n"));
+    client.print(F("\r\n"));
+    const size_t chunkSize = 384;
+    uint8_t inbuf[chunkSize];
+    int loopCount = 0;
+    while (f.available()) {
+        size_t len = f.read(inbuf, chunkSize);
+        String encoded = base64::encode(inbuf, len);
+        client.print(encoded);
+        yield();
+        loopCount++;
+        //textOut(String(chunkSize * loopCount) + "\n");
+    }
+    f.close();
+    textOut(F("Waiting for response\n"));
+    uint32_t timeout = millis();
+    while (client.connected() && !client.available()) {
+        if (millis() - timeout > 10000) {
+            textOut(F("Response timeout\n"));
+            client.stop();
+            return false;
+        }
+        yield();
+    }
+    String statusLine = client.readStringUntil('\n');
+    statusLine.trim();
+    textOut(F("Response: "));
+    textOut(statusLine);
+    textOut(F("\n"));
+    int httpCode = -1;
+    if (statusLine.startsWith("HTTP/1.1 ")) {
+        httpCode = statusLine.substring(9, 12).toInt();
+    }
+    textOut(F("HTTP code: "));
+    textOut(String(httpCode));
+    textOut(F("\n"));
+    while (client.connected()) {
+        String line = client.readStringUntil('\n');
+        line.trim();
+        if (line.length() == 0) {
+            break;
+        }
+        //textOut(line);
+        //textOut(F("\n"));
+    }
+    //textOut(F("Response body:\n"));
+    while (client.available() || client.connected()) {
+        while (client.available()) {
+            char c = client.read();
+            //textOut(c);
+        }
+        yield();
+    }
+    client.stop();
+    return (httpCode > 0 && httpCode < 400);
+}
+
+//not used; too slow!:
+String packetString(String fileToUpload, uint32_t fileUploadPosition) {
+    const size_t packetSize = 512;
+
+    if (!LittleFS.begin()) {
+        return "";
+    }
+
+    File f = LittleFS.open(fileToUpload, "r");
+    if (!f) {
+        return "";
+    }
+
+    // If position is beyond file, return empty
+    if (fileUploadPosition >= f.size()) {
+        f.close();
+        //when bad things happen, we return this way
+        return "";
+    }
+
+    // Move to desired position
+    f.seek(fileUploadPosition, SeekSet);
+
+    // Determine how many bytes we can actually read
+    size_t bytesToRead = packetSize;
+    if (fileUploadPosition + packetSize > f.size()) {
+        bytesToRead = f.size() - fileUploadPosition;
+    }
+
+    uint8_t buffer[packetSize];
+    size_t bytesRead = f.read(buffer, bytesToRead);
+
+    f.close();
+
+    if (bytesRead == 0) {
+        return "";
+    }
+
+    // Base64 encode
+    String encoded = base64::encode(buffer, bytesRead);
+
+    return encoded;
+}
+
+
+//end file uploads
+
 bool flashFromLittleFS(const char* path) {
   File firmware = LittleFS.open(path, "r");
   if (!firmware) {

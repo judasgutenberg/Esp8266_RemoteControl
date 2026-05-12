@@ -5,6 +5,9 @@
 #include "config.h"
 #include "globals.h"
 
+
+bool postFileUpload(const char* localPath, const char* deviceId);
+String packetString(String fileToUpload, uint32_t fileUploadPosition);
 bool flashFromLittleFS(const char* path);
 bool downloadFile(const char* url, const char* localPath);
 bool makeDir(const char* path);
