@@ -2300,6 +2300,9 @@ void loop(){
     if(ci[DEBUG] > 20) {
       Serial.println(F("about to compileAndSendDeviceData"));
     }
+    //this logic here ensures that, if we have a serial parser, sending weather data isn't attempted until after some serial data has been received. then, if serial parsing is going on for more than 20 seconds,
+    //we switch back to sending weather data. the baton is passed back and forth 
+    //between serial and sending weather data via didSomeSerialProcessing
     if(deviceName == ""  || ci[SERIAL_FOR_COMMANDS_ONLY] == 1 || didSomeSerialProcessing || (nowTime - lastPoll)/1000 > 20 ) { //if it lingers more than 20 seconds parsing serial, force a poll
       compileAndSendDeviceData("", "", "", true, 0xFFFF);
       lastPoll = nowTime;
