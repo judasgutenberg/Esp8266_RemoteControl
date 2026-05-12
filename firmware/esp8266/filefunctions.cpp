@@ -392,9 +392,14 @@ void listFiles() {
     return;
   }
   Dir dir = LittleFS.openDir("/");
+  bool filesWereFound = false;
   while (dir.next()) {
     textOut(F("FILE: ") + String(dir.fileName()) + " (" + String(dir.fileSize()) + F(" bytes)\n"));
+    filesWereFound = true;
     yield();
+  }
+  if(!filesWereFound) {
+    textOut(F("No files were found.\n");
   }
 }
 
