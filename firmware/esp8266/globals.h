@@ -1,7 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define VERSION 2221
+#define VERSION 2222
 #define RTC_MAGIC 0xDEADCA75
 #include <Arduino.h>
 #include <WiFiUdp.h>
