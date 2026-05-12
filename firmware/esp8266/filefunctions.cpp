@@ -399,7 +399,7 @@ void listFiles() {
     yield();
   }
   if(!filesWereFound) {
-    textOut(F("No files were found.\n");
+    textOut(F("No files were found.\n"));
   }
 }
 
