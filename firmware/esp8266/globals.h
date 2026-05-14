@@ -1,10 +1,11 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define VERSION 2253
+#define VERSION 2256
 #define RTC_MAGIC 0xDEADCA75
 
-
+#define MAX_CFG_LEN 220
+#define PARSED_SERIAL_MAX 20   // 16-bit words 
 
 #define PS_BIG_ENDIAN   0x04
 #define PS_CHAR_OFFSET  0x02
@@ -12,7 +13,7 @@
 
 #define MAX_BLOCKS 5
 #define MAX_ADDRS  4
-#define MAX_OFFSETS 8
+#define MAX_OFFSETS 12
 
 
 #include <Arduino.h>
@@ -84,6 +85,7 @@ struct ConfigBlock {
   uint8_t offsetCount[MAX_ADDRS];
 };
 
+extern uint16_t serialParsedData[PARSED_SERIAL_MAX];
 extern ConfigBlock blocks[MAX_BLOCKS];
 
 
