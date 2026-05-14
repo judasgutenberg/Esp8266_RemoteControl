@@ -70,57 +70,17 @@ static uint32_t taskStartTimeMs = 0; // logging timer
 //serial parser setup:
 
 #define MAX_CFG_LEN 220
-#define PARSED_BUF_MAX 40   // bytes (15 values)
+#define PARSED_SERIAL_MAX 20   // 16-bit words 
 
 int parsedStringPacketLen = 0;
-uint8_t parsedBuf[PARSED_BUF_MAX];// = {0xff, 0xff, 0x04, 0x00, 0x0a, 0x00, 0x01, 0x10};
-uint8_t blockCount = 0;
+uint32_t serialParsedData[PARSED_SERIAL_MAX];
+ 
+//uint8_t blockCount = 0; had to move to globals.cpp
 int8_t activeBlock = -1;
-uint8_t parsedStringConfigCount = 0;
-
-struct CircularBuffer {
-  uint8_t* data;
-  uint16_t size;
-  volatile uint16_t head; // modified in ISR / main
-  volatile uint16_t tail;
-  volatile uint16_t count;
-};
-
-
-#define TX_SIZE 1000
-uint8_t txStorage[TX_SIZE];
-CircularBuffer txBuffer = {txStorage, TX_SIZE, 0, 0, 0};
 uint32_t lastDataParseTime = 0;
-
-
-#define PS_BIG_ENDIAN   0x04
-#define PS_CHAR_OFFSET  0x02
-#define PS_ASCII_VALUE  0x01
-
-#define MAX_BLOCKS 5
-#define MAX_ADDRS  4
-#define MAX_OFFSETS 8
-
-  
-struct ConfigBlock {
-  char start[32];
-  char end[32];
-  uint8_t addrCount;
-  char addr[MAX_ADDRS][12];
-  uint8_t offsets[MAX_ADDRS][MAX_OFFSETS];
-  uint8_t offsetCount[MAX_ADDRS];
-};
-
-ConfigBlock blocks[MAX_BLOCKS];
-
-
-
-
 
 //////////////////////////////
 //safe mode implementation:
-
-
 
 uint32_t rtcChecksum(const RTCBootInfo &d) {
   return d.magic ^ d.lastMillis ^ d.rebootCount ^ d.lastCommandLogId ^ d.lastVersion ^ d.lastCommandId ^ d.lastCommandType;
@@ -581,9 +541,13 @@ void compileAndSendDeviceData(const String& weatherData,const String& whereWhenD
         pos += snprintf(tx + pos, sizeof(tx) - pos, "|*%f*%f", measuredVoltage, measuredAmpage);
     }
     pos += snprintf(tx + pos, sizeof(tx) - pos, "|");
-    char parsedSerial[parsedStringPacketLen]; 
-    bytesToHex(parsedBuf, parsedStringPacketLen, 0x00, parsedSerial);
-    pos += snprintf(tx + pos, sizeof(tx) - pos, parsedSerial);
+     
+    //doing it a different way now
+    pos += snprintf(tx + pos, sizeof(tx) - pos, joinValsOnDelimiter(serialParsedData, "*", PARSED_SERIAL_MAX).c_str());
+ 
+    //char parsedSerial[parsedStringPacketLen];
+    //bytesToHex(parsedBuf, parsedStringPacketLen, 0x00, parsedSerial);
+    //pos += snprintf(tx + pos, sizeof(tx) - pos, parsedSerial);
     // future expansion
     pos += snprintf(tx + pos, sizeof(tx) - pos, "||");
     // --- EXTRA INFO ----------------------------------------------------
@@ -2182,7 +2146,7 @@ void logAnySerial() {
     pendingLog += serialChar;
     serialByteCount++; //update a global
   }
-  if (pendingLog.length() > 1024|| (pendingLog.length() > 0 && millis() - lastWrite > 2000)) {
+  if (pendingLog.length() > 1024 || (pendingLog.length() > 0 && millis() - lastWrite > 2000)) {
     File file = LittleFS.open(filenameToUse, "a");
     
     file.print(pendingLog);
@@ -2205,6 +2169,7 @@ void loop(){
     } else {
       processSerialStream();
       int millisParseLoopEntered = millis();
+ 
       if(activeBlock > -1) {
         while(activeBlock > -1  &&  millis() - millisParseLoopEntered < 5000) {//give up on that block after 5 seconds
           processSerialStream();
@@ -2523,35 +2488,36 @@ int initSerialParser() {
  
 //only for debugging:
 void dumpConfigBlock(const ConfigBlock &b) {
-  Serial.println(F("=== ConfigBlock ==="));
-
-  Serial.print(F("start: "));
-  Serial.println(b.start);
-
-  Serial.print(F("end:   "));
-  Serial.println(b.end);
-
-  Serial.print(F("addrCount: "));
-  Serial.println(b.addrCount);
-
+  textOut(F("=== ConfigBlock ===\n"));
+  textOut(F("start: "));
+  textOut(String(b.start));
+  textOut("\n");
+  textOut(F("end:   "));
+  textOut(String(b.end));
+  textOut("\n");
+  textOut(F("addrCount: "));
+  textOut(String(b.addrCount));
+  textOut("\n");
   for (uint8_t i = 0; i < b.addrCount; i++) {
-    Serial.print(F("  addr["));
-    Serial.print(i);
-    Serial.print(F("]: "));
-    Serial.println(b.addr[i]);
+    textOut(F("  addr["));
+    textOut(String(i));
+    textOut(F("]: "));
+    textOut(String(b.addr[i]));
 
-    Serial.print(F("    offsets ("));
-    Serial.print(b.offsetCount[i]);
-    Serial.print(F("): "));
+    textOut(F("    offsets ("));
+    textOut(String(b.offsetCount[i]));
+    textOut(F("): "));
 
     for (uint8_t j = 0; j < b.offsetCount[i]; j++) {
-      Serial.print(b.offsets[i][j]);
-      if (j + 1 < b.offsetCount[i]) Serial.print(F(", "));
+      textOut(String(b.offsets[i][j]));
+      if (j + 1 < b.offsetCount[i]) {
+        textOut(F(", "));
+      }
     }
-    Serial.println();
+    textOut("\n");
   }
 
-  Serial.println(F("==================="));
+  textOut(F("===================\n"));
 }
 
 void parseConfigString(const char *cfg, ConfigBlock &out) {
@@ -2627,14 +2593,15 @@ inline void appendU16(uint16_t v,
 {
   //Serial.print(parsedStringPacketLen + 2);
   //Serial.print(": ");
-  //Serial.print(PARSED_BUF_MAX);
-  if (parsedStringPacketLen + 2 > PARSED_BUF_MAX) return;
+  //Serial.print(PARSED_SERIAL_MAX);
+  if (parsedStringPacketLen > PARSED_SERIAL_MAX) {
+    return;
+  }
 
   uint8_t lo = (uint8_t)(v & 0xFF);
   uint8_t hi = (uint8_t)(v >> 8);
-
-  parsedBuf[bytePacketStart] = lo;
-  parsedBuf[bytePacketStart+1] = hi;
+  serialParsedData[bytePacketStart/2] = v;
+  logParseOperation(F("assembling packet"), F("bytePacketStart: ") + String(bytePacketStart) + String("\nblockIdx: ") + String(blockIdx)  + String(", addrIdx: ") + String(addrIdx) + String(F(", offsetIdx: ")) + String(offsetIdx) + String(F(", value: ")) + String(v) + String(F(", hi: ")) + String(hi), 49);
   /*
   // ---- DEBUG TRACE ----
   Serial.print(F("[PARSE] blk="));
@@ -2672,30 +2639,6 @@ inline void appendU16(uint16_t v,
 }
 
 
-uint16_t calculateOffsetIndex(const ConfigBlock *blocks,
-                         uint8_t blockCount,
-                         uint8_t blk,
-                         uint8_t addr)
-{
-  uint16_t sum = 0;
-
-  // 1. Sum all offsets in all previous blocks
-  for (uint8_t b = 0; b < blk && b < blockCount; b++) {
-    for (uint8_t a = 0; a < blocks[b].addrCount; a++) {
-      sum += blocks[b].offsetCount[a];
-    }
-  }
-
-  // 2. Sum offsets in previous addresses of this block
-  if (blk < blockCount) {
-    for (uint8_t a = 0; a < addr && a < blocks[blk].addrCount; a++) {
-      sum += blocks[blk].offsetCount[a];
-    }
-  }
-
-  return sum;
-}
-
 
 // Fill bytes[] with numeric values from a line, ignoring text tokens
 uint8_t extractHexBytes(const char *line,
@@ -2703,9 +2646,7 @@ uint8_t extractHexBytes(const char *line,
                              uint8_t maxOut)
 {
   uint8_t count = 0;
-
   while (*line && count < maxOut) {
-
     // must start with hex digit
     if (isxdigit(line[0]) &&
         isxdigit(line[1]) &&
@@ -2726,24 +2667,44 @@ uint8_t extractHexBytes(const char *line,
 
 
 
-bool readSerialLine(char *line, uint8_t maxLen) {
-  static uint8_t idx = 0;
-  
-  while (Serial.available()) {
-    char c = Serial.read();
-    //if(ci[DEBUG] == 0) {
-      //Serial.print(c);
-    //}
-    if (c == '\n') {
-      line[idx] = 0;
-      idx = 0;
-      return true;
+bool readSerialLine(char *line, size_t maxLen)
+{
+    static size_t idx = 0;
+    static bool overflow = false;
+    if (!line || maxLen < 2) {
+        return false;
     }
-    if (idx < maxLen - 1) {
-      line[idx++] = c;
+    while (Serial.available()) {
+        char c = Serial.read();
+        // Ignore carriage returns
+        if (c == '\r') {
+            continue;
+        }
+        // End of line
+        if (c == '\n') {
+            // Always terminate safely
+            line[idx] = '\0';
+            bool validLine = !overflow;
+            // Reset parser state
+            idx = 0;
+            overflow = false;
+            return validLine;
+        }
+        // If already overflowed, discard until newline
+        if (overflow) {
+            continue;
+        }
+        // Normal append
+        if (idx < (maxLen - 1)) {
+            line[idx++] = c;
+        } else {
+            // Buffer full
+            overflow = true;
+            // Force safe termination
+            line[maxLen - 1] = '\0';
+        }
     }
-  }
-  return false;
+    return false;
 }
 
 bool readValueAtOffset(
@@ -2754,8 +2715,11 @@ bool readValueAtOffset(
     uint8_t parsingStyle,
     uint16_t &outValue)
 {
+  outValue = 0;
   const char *addrPos = strstr(line, addrStr);
-  if (!addrPos) return false;
+  if (!addrPos) {
+    return false;
+  }
 
   addrPos += strlen(addrStr);
 
@@ -2774,9 +2738,12 @@ bool readValueAtOffset(
     p2 = findNthToken(addrPos, off2);
   }
 
-  if (!p1) return false;
-  if (off2 != off1 && !p2) return false;
-
+  if (!p1) {
+    return false;
+  }
+  if (off2 != off1 && !p2) {
+    return false;
+  }
   uint8_t b0 = 0;
   uint8_t b1 = 0;
 
@@ -2788,7 +2755,9 @@ bool readValueAtOffset(
     b1 = (off2 != off1 && p2) ? (uint8_t)p2[0] : 0;
   } else {
     // hex interpretation
-    if (!hexByteAt(p1, b0)) return false;
+    if (!hexByteAt(p1, b0)) {
+      return false;
+    }
     if (off2 != off1 && !hexByteAt(p2, b1)) return false;
   }
 
@@ -2801,6 +2770,12 @@ bool readValueAtOffset(
   } else {
     outValue = ((uint16_t)b1 << 8) | b0;
   }
+ 
+  if(ci[SERIAL_DEBUG_LEVEL] < 50) {
+    //only for debugging:
+    delay(ci[SERIAL_DEBUG_LEVEL]);
+  }
+  logParseOperation(F("reading value at offset"), F("line: ") + String(line) + String("\nparsingStyle: ") + String(parsingStyle)  + String(", addr: ") + String(addrStr) + String(F(", off1: ")) + String(off1) + String(F(", off2: ")) + String(off2) + String(F(", outVal: ")) + String(outValue), 49);
   return true;
 }
 
@@ -2814,8 +2789,7 @@ bool hexByteAt(const char *p, uint8_t &out)
   return true;
 }
 
-const char *findNthToken(const char *s, uint8_t n)
-{
+const char *findNthToken(const char *s, uint8_t n){
   uint8_t count = 0;
   while (*s) {
     while (*s == ' ') s++;
@@ -2828,8 +2802,8 @@ const char *findNthToken(const char *s, uint8_t n)
   return nullptr;
 }
 
-void logParseOperation(String type, String value) {
-  if(ci[SERIAL_DEBUG_LEVEL] > 99  && activeBlock > -1  || ci[SERIAL_DEBUG_LEVEL] > 109) {
+void logParseOperation(String type, String value, int threshold) {
+  if(ci[SERIAL_DEBUG_LEVEL] > threshold  && activeBlock > -1  || ci[SERIAL_DEBUG_LEVEL] > 109) {
     String filenameToUse = F("parse.log");
     File file = LittleFS.open(filenameToUse, "a");
     String lineToLog = type + ": " + value;
@@ -2841,20 +2815,18 @@ void logParseOperation(String type, String value) {
 
 void processSerialStream()
 {
-  static char line[100];
+  static char line[256];
   while (readSerialLine(line, sizeof(line))) {
     bool nextWhileIteration = false;
-    logParseOperation(F("lineToParse"), line);
+    logParseOperation(F("lineToParse"), line, 99);
     /* ---- BLOCK START DETECTION ---- */
-    //logParseOperation(F("event"), F("blockCount: ") + String(blockCount));
+    //logParseOperation(F("event"), F("blockCount: ") + String(blockCount), 99);
     for (uint8_t i = 0; i < blockCount; i++) {
-      if(ci[SERIAL_DEBUG_LEVEL] > 119) {
-        logParseOperation(F("event"), F("tryParse: ") + String(blocks[i].start));
-      }
+      logParseOperation(F("event"), F("tryParse: ") + String(blocks[i].start), 119);
       if (strlen(blocks[i].start) > 0 && strstr(line, blocks[i].start)) {
   
         activeBlock = i;
-        logParseOperation(F("event"), F("start: ") + String(blocks[i].start) + F(" found"));
+        logParseOperation(F("event"), F("start: ") + String(blocks[i].start) + F(" found"), 99);
         nextWhileIteration = true;
         break;
         //return;   // wait for data lines
@@ -2862,14 +2834,14 @@ void processSerialStream()
     }
   
     if (activeBlock < 0) {
-      logParseOperation(F("event"), F("nothing active"));
+      logParseOperation(F("event"), F("nothing active"), 99);
       continue;
       //return;
     }
   
     /* ---- BLOCK END DETECTION ---- */
     if (strlen(blocks[activeBlock].end) > 0 && strstr(line, blocks[activeBlock].end)) {
-      logParseOperation(F("event"), F("ending found on active block"));
+      logParseOperation(F("event"), F("ending found on active block"), 99);
       activeBlock = -1;
       continue;
       //return;
@@ -2877,47 +2849,28 @@ void processSerialStream()
   
     /* ---- ADDRESS LINES ---- */
     ConfigBlock &blk = blocks[activeBlock];
-  
     for (uint8_t a = 0; a < blk.addrCount; a++) {
-  
       // fast reject if address not present
       if (!strstr(line, blk.addr[a])) {
-        logParseOperation(F("event"), F("address: ") + String(blk.addr[a]) + F(" not found in line"));
+        logParseOperation(F("event"), F("address: ") + String(blk.addr[a]) + F(" not found in line"), 99);
         continue;
       }
       /* ---- OFFSET PROCESSING ---- */
       for (uint8_t o = 0; o + 1 < blk.offsetCount[a]; o += 2) {
-  
         uint8_t off1 = blk.offsets[a][o];
         uint8_t off2 = blk.offsets[a][o + 1];
   
         uint16_t v;
   
-        if (!readValueAtOffset(
-                line,
-                blk.addr[a],
-                off1,
-                off2,
-                0,  //parsing style
-                v))
-        {
-          logParseOperation(F("event"), String(off1) + ", " + String(off2) + ": " + F("nothing found between offsets"));
+        if (!readValueAtOffset(line, blk.addr[a], off1, off2, 0, v)){
+          logParseOperation(F("event"), String(off1) + ", " + String(off2) + ": " + F("nothing found between offsets"), 99);
           continue;   // parse failed for this offset pair
         }
         lastDataParseTime = timeClient.getEpochTime();
-        logParseOperation(F("event"), String(off1) + ", " + String(off2) + ": " + F("good things"));
-        uint16_t bytePacketStart =
-          calculateOffsetIndex(
-            blocks,
-            parsedStringConfigCount,
-            activeBlock,
-            a
-          );
+        logParseOperation(F("event"), String(off1) + ", " + String(off2) + ": " + F("good things"), 99);
+        uint16_t parsedOutIndex = calculateOffsetIndex(blocks, blockCount, activeBlock, a);
   
-        appendU16(
-          v,
-          bytePacketStart + o,
-          (int8_t)activeBlock,
+        appendU16(v, parsedOutIndex + o, (int8_t)activeBlock,
           a,      // address index
           o,      // offset rule index
           off1,
@@ -2930,36 +2883,27 @@ void processSerialStream()
     if (nextWhileIteration) {
         continue;
     }
-
   }
 }
 
 
-void circularBufferToCStr(CircularBuffer* cb, char* out, size_t outSize, bool advanceTail){
-  uint16_t tail, count;
+uint16_t calculateOffsetIndex(const ConfigBlock *blocks, uint8_t blockCount, uint8_t blk, uint8_t addr)
+{
+  uint16_t sum = 0;
 
-  // Snapshot state atomically
-  noInterrupts();
-  tail  = cb->tail;
-  count = cb->count;
-  interrupts();
-  uint16_t n = count;
-  if (n >= outSize) {
-    n = outSize - 1;
-  }
-  uint16_t idx = tail;
-  for (uint16_t i = 0; i < n; i++) {
-    out[i] = (char)cb->data[idx];
-    idx++;
-    if (idx >= cb->size) {
-      idx = 0;
+  // 1. Sum all offsets in all previous blocks
+  for (uint8_t b = 0; b < blk && b < blockCount; b++) {
+    for (uint8_t a = 0; a < blocks[b].addrCount; a++) {
+      sum += blocks[b].offsetCount[a];
     }
   }
-  out[n] = '\0';
-  if (advanceTail && n > 0) {
-    noInterrupts();
-    cb->tail  = (cb->tail + n) % cb->size;
-    cb->count -= n;
-    interrupts();
+
+  // 2. Sum offsets in previous addresses of this block
+  if (blk < blockCount) {
+    for (uint8_t a = 0; a < addr && a < blocks[blk].addrCount; a++) {
+      sum += blocks[blk].offsetCount[a];
+    }
   }
+  return sum;
 }
+ 
