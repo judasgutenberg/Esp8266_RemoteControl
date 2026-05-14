@@ -2771,10 +2771,6 @@ bool readValueAtOffset(
     outValue = ((uint16_t)b1 << 8) | b0;
   }
  
-  if(ci[SERIAL_DEBUG_LEVEL] < 50) {
-    //only for debugging:
-    delay(ci[SERIAL_DEBUG_LEVEL]);
-  }
   logParseOperation(F("reading value at offset"), F("line: ") + String(line) + String("\nparsingStyle: ") + String(parsingStyle)  + String(", addr: ") + String(addrStr) + String(F(", off1: ")) + String(off1) + String(F(", off2: ")) + String(off2) + String(F(", outVal: ")) + String(outValue), 49);
   return true;
 }
@@ -2886,18 +2882,15 @@ void processSerialStream()
   }
 }
 
-
 uint16_t calculateOffsetIndex(const ConfigBlock *blocks, uint8_t blockCount, uint8_t blk, uint8_t addr)
 {
   uint16_t sum = 0;
-
   // 1. Sum all offsets in all previous blocks
   for (uint8_t b = 0; b < blk && b < blockCount; b++) {
     for (uint8_t a = 0; a < blocks[b].addrCount; a++) {
       sum += blocks[b].offsetCount[a];
     }
   }
-
   // 2. Sum offsets in previous addresses of this block
   if (blk < blockCount) {
     for (uint8_t a = 0; a < addr && a < blocks[blk].addrCount; a++) {
