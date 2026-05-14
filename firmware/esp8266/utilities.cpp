@@ -78,6 +78,16 @@ String joinValsOnDelimiter(uint32_t vals[], String delimiter, int numberToDo) {
   return out;
 }
 
+String joinValsOnDelimiter(uint16_t vals[], String delimiter, int numberToDo) {
+  String out = "";
+  for(int i=0; i<numberToDo; i++){
+    out = out + (String)vals[i];
+    if(i < numberToDo-1) {
+      out = out + delimiter;
+    }
+  }
+  return out;
+}
 /*
 String joinMapValsOnDelimiter(SimpleMap<String, int> *pinMap, String delimiter) {
   String out = "";

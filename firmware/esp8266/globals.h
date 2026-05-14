@@ -1,7 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define VERSION 2251
+#define VERSION 2253
 #define RTC_MAGIC 0xDEADCA75
 
 

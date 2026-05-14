@@ -47,7 +47,7 @@ CommandDef commands[] = {
   {"get lastpoll",          cmdGetLastpoll, 0,      true,         0b00000000},
   {"get lastdatalog",       cmdGetLastdatalog, 0,   true,         0b00000000},
   {"timing",                cmdTiming,    0,        true,         0b00000000},  
-  {"reset info",             cmdResetInfo, 0,        true,         0b00000000},  
+  {"reset info",            cmdResetInfo, 0,        true,         0b00000000},  
   {"cpu",                   cmdCpuInfo,   0,        true,         0b00000000},
   {"memory",                cmdMemory,    0,        true,         0b00000000},
   {"flash chip info",       cmdChipInfo,  0,        true,         0b00000000},

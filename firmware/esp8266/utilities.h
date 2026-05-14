@@ -18,6 +18,7 @@ void logHeap(const char* label);
 void dumpMemoryStats(int marker);
 String urlEncode(String str, bool minimizeImpact);
 String joinValsOnDelimiter(uint32_t vals[], String delimiter, int numberToDo);
+String joinValsOnDelimiter(uint16_t vals[], String delimiter, int numberToDo);
 String joinStdMapValsOnDelimiter(const std::map<String, int>& pinMap, const String& delimiter);
 //String joinMapValsOnDelimiter(SimpleMap<String, int> *pinMap, String delimiter);
 bool isInteger(const String &s);
