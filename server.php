@@ -55,11 +55,12 @@ if(array_key_exists("mode", $_REQUEST)) {
 }
 
 $mode = gvfw("mode");
+//this needs some sort of auth at some point to keep baddies from using your file server to spread warez
+//for now though it's a free for all
 if($mode == "upload") {
   $data = file_get_contents("php://input");
   $filename = gvfw("filename");
   if($filename != ""){
-    echo "two\n";
     $rootTemp = "./temp";
     $cursor = 0;
     $fileSize = gvfw("total_size");
@@ -78,29 +79,10 @@ if($mode == "upload") {
 }
 
 if($_POST) {
-  echo "one\n";
+  //echo "one\n";
   //to simplify and speed things up, if we're uploading a file, we don't bother to auth and we can
   //receive it as a single big-ass post
-  $filename = gvfw("filename");
-  if($filename != ""){
-    echo "two\n";
-    $rootTemp = "./temp";
-    $cursor = 0;
-    $fileSize = gvfw("total_size");
-    if(!is_dir($rootTemp)){
-      mkdir($rootTemp);
-    }
-    $greaterTempPath = $rootTemp . "/" . $deviceId;
-    if(!is_dir($greaterTempPath)){
-      mkdir($greaterTempPath);
-    }
-    $destinationPath = buildDeviceUploadPath($deviceId); 
-    logPost(gvfa("data", $_POST), $deviceId);
-    $newLength = handleUploadChunk($greaterTempPath, $destinationPath, $filename, gvfa("data", $_POST), $cursor, $fileSize);
-    die("!" . intval($newLength));
-  } else {
-    logPost(gvfa("data", $_POST), $deviceId); //help me debug
-	}
+  logPost(gvfa("data", $_POST), $deviceId); //help me debug
 }
 if($_REQUEST) {
 	$periodAgo = 0;
@@ -123,22 +105,21 @@ if($_REQUEST) {
 		$locationId =  $deviceId;
 	}
 	if(!$locationId  && $manufactureId) {
-    $sql = "SELECT device_id FROM device WHERE manufacture_id= " . intval($manufactureId);
-       //echo $sql;
-      $result = mysqli_query($conn, $sql);
-      if($result) {
-        $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
-        if(count($rows)>0) {
-          $row = $rows[0];
-          $locationId = $row["device_id"];
-        }
-      }
+    	$sql = "SELECT device_id FROM device WHERE manufacture_id= " . intval($manufactureId);
+		//echo $sql;
+		$result = mysqli_query($conn, $sql);
+		if($result) {
+			$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+			if(count($rows)>0) {
+			$row = $rows[0];
+			$locationId = $row["device_id"];
+			}
+      	}
       //echo "XX" . $locationId . "XX";
 	}
 	if(!$deviceId) {
 		$deviceId = $locationId;
 	}
-	//echo "&&&&&&&&&&&&&&&&&&&&&&&" . $deviceId . "=============\n\n";
 	if($locationId == ""){
     //if($mode == "saveLocallyGatheredSolarData") { //because of the way we ascertain permissions we have to do this. should probably send a real device id instead
       //$locationId = 1; //need to revisit this for multiuser/multitenant
@@ -570,10 +551,14 @@ if($_REQUEST) {
 					$out["points"] = $subRows;
 				}
 			} else if ($mode=="getDeviceData" || $mode == "getInitialDeviceInfo" || $mode=="saveLocallyGatheredSolarData") {
-				$deviceSql = "SELECT d.name, location_name, d.device_type_id, architecture FROM device d LEFT JOIN device_type dt ON d.device_type_id=dt.device_type_id AND  d.tenant_id=dt.tenant_id  WHERE device_id = " . intval($deviceId);
+				$deviceSql = "SELECT d.device_id, d.tenant_id, d.parsed_data_disposition, d.name, location_name, d.device_type_id, architecture FROM device d LEFT JOIN device_type dt ON d.device_type_id=dt.device_type_id AND  d.tenant_id=dt.tenant_id  WHERE device_id = " . intval($deviceId);
 				$getDeviceResult = mysqli_query($conn, $deviceSql);
 				if($getDeviceResult) {
 					$deviceRow = mysqli_fetch_array($getDeviceResult);
+					 
+					if($lines[3] != "") {
+						handleIncomingParsedData($deviceRow, $lines[3], $formattedDateTime); //so generic!  we do it here, because we have device info here 
+					}
 					$deviceName = deDelimitify($deviceRow["name"]);
 					$architecture = deDelimitify($deviceRow["architecture"]);
 					$out["device"] = deDelimitify($deviceName);
@@ -1815,4 +1800,74 @@ function getMostRecentFile($directory, $searchString) {
     //echo $mostRecentWithoutPath;
     //$mostRecentWithoutPath = "esp8266_cabin_remote2.ino.bin";
     return trim($mostRecentWithoutPath);
+}
+
+function replaceOrdinalTags($expression, $data){
+    return preg_replace_callback(
+        '/<(\d+)\/>/',
+        function($matches) use ($data){
+            $index = intval($matches[1]);
+            if (!isset($data[$index])) {
+                return '0';
+            }
+            return intval($data[$index]);
+        },
+        $expression
+    );
+}
+
+function handleIncomingParsedData($deviceInfo, $dataLine, $formattedDateTime){
+	global $conn;
+	$deviceId = $deviceInfo["device_id"];
+	$rawJson = $deviceInfo["parsed_data_disposition"];
+	$data = explode("*", $dataLine);
+	if($rawJson) {
+		$config = json_decode($rawJson, true);
+		var_dump($config);
+		if(!$config){
+			return false;
+		}
+		$table = filterStringForSqlEntities($config['destination'], true);
+		$insertColumns = array("tenant_id", "recorded", "digest", "weather_condition_id");
+		$deviceDigest = getDigestBitmask($deviceInfo); 
+  		$weatherConditionId = getCurrentWeatherConditionId($deviceInfo);
+		$insertValues  = array($deviceInfo["tenant_id"], "'" . $formattedDateTime . "'", $deviceDigest, $weatherConditionId);
+
+		foreach($config['columns'] as $column){
+			$columnName = $column['name'];
+			//echo $columnName . "<P>";
+			$expression = replaceOrdinalTags($column['value'], $data);
+			// Evaluate expression
+			$result = null;
+			try{
+				eval('$result = ' . $expression . ';');
+			}catch(Exception $e){
+				continue;
+			}
+			// Optional type coercion
+			switch($column['type']){
+				case 'int':
+					$result = intval($result);
+					break;
+				case 'float':
+					$result = floatval($result);
+					break;
+				case 'string':
+					$result = "'" . addslashes($result) . "'";
+					break;
+				default:
+					$result = "'" . addslashes($result) . "'";
+			}
+			$insertColumns[] = '`' . $columnName . '`';
+			$insertValues[] = $result;
+		}
+		
+		$sql = 'INSERT INTO `' . $table . '` (' . implode(', ', $insertColumns) . ') VALUES (' . implode(', ', $insertValues) .')';
+		//echo "<P>";
+		//echo $sql;
+		//echo "<P>";
+		$result = mysqli_query($conn, $sql);
+		return true;
+	}
+
 }

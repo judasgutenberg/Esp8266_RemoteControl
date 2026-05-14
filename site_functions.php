@@ -2039,6 +2039,14 @@ function genericSelect($id, $name, $defaultValue, $data, $event = "", $handler= 
 	return $out;
 }
  
+function twosComplement16($value) {
+    $value &= 0xFFFF; // force to 16 bits
+    if ($value & 0x8000) {
+        $value -= 0x10000;
+    }
+    return $value;
+}
+
 function timeDifferenceInMinutes($datetimeOld, $datetimeNew) {
   $dateOld = new DateTime($datetimeOld);
   $dateNew= new DateTime($datetimeNew);
