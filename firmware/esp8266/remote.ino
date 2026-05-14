@@ -69,11 +69,8 @@ static uint32_t taskStartTimeMs = 0; // logging timer
 /////////////////
 //serial parser setup:
 
-#define MAX_CFG_LEN 220
-#define PARSED_SERIAL_MAX 20   // 16-bit words 
-
 int parsedStringPacketLen = 0;
-uint32_t serialParsedData[PARSED_SERIAL_MAX];
+//uint32_t serialParsedData[PARSED_SERIAL_MAX]; //needed to be in global.cpp
  
 //uint8_t blockCount = 0; had to move to globals.cpp
 int8_t activeBlock = -1;
@@ -2858,7 +2855,7 @@ void processSerialStream()
   
         uint16_t v;
   
-        if (!readValueAtOffset(line, blk.addr[a], off1, off2, 0, v)){
+        if (!readValueAtOffset(line, blk.addr[a], off1, off2, ci[SERIAL_PARSE_MODE], v)){
           logParseOperation(F("event"), String(off1) + ", " + String(off2) + ": " + F("nothing found between offsets"), 99);
           continue;   // parse failed for this offset pair
         }
