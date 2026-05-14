@@ -73,9 +73,10 @@
 #define SERIAL_DEBUG_LEVEL 58
 #define SERIAL_FOR_COMMANDS_ONLY 59
 #define SERIAL_SWAP 60
+#define SERIAL_BUFFER 61
 ///////////////////////
 #define CONFIG_STRING_COUNT 16
-#define CONFIG_TOTAL_COUNT 61
+#define CONFIG_TOTAL_COUNT 62
 //////////////////////
 #define CONFIG_SLAVE_STRING_COUNT 5 //for strings used specifically by the slave
 #define CONFIG_SLAVE_TOTAL_COUNT 10  //total config items on slave

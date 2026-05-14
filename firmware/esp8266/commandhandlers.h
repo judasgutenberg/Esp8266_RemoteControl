@@ -105,6 +105,7 @@ void cmdSetSerialSwap(String* param, int argCount, bool deferred);
 void cmdGetSerialSwap(String* param, int argCount, bool deferred);
 void cmdSetSerialLogging(String* param, int argCount, bool deferred);
 void cmdGetSerialLogging(String* param, int argCount, bool deferred);
+void cmdDumpParserConfig(String* param, int argCount, bool deferred);
 
 void cmdResetSerial(String* param, int argCount, bool deferred);
 void cmdDumpConfig(String* param, int argCount, bool deferred);

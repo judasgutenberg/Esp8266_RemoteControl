@@ -512,6 +512,9 @@ uint32_t setSerialRate(byte baudRateLevel) {
       Serial.read();    
     }
   }
+  if(ci[SERIAL_FOR_COMMANDS_ONLY] == 0 && ci[SERIAL_BUFFER] > 0) {
+    Serial.setRxBufferSize(ci[SERIAL_BUFFER]);
+  }
   return newBaud;
 }
 

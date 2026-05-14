@@ -142,3 +142,6 @@ uint32_t millisecondsConnecting = 0;
 int millisOneConnection = 0;
 int serialByteCount = 0;
 bool didSomeSerialProcessing = false;
+
+ConfigBlock blocks[MAX_BLOCKS];
+uint8_t blockCount = 0;

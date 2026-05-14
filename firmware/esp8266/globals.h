@@ -1,8 +1,20 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define VERSION 2222
+#define VERSION 2251
 #define RTC_MAGIC 0xDEADCA75
+
+
+
+#define PS_BIG_ENDIAN   0x04
+#define PS_CHAR_OFFSET  0x02
+#define PS_ASCII_VALUE  0x01
+
+#define MAX_BLOCKS 5
+#define MAX_ADDRS  4
+#define MAX_OFFSETS 8
+
+
 #include <Arduino.h>
 #include <WiFiUdp.h>
 #include <NTPClient.h>
@@ -62,6 +74,18 @@ struct __attribute__((packed)) RTCBootInfo {
   uint32_t checksum;
   uint32_t useHardcodedConfig;
 };
+
+struct ConfigBlock {
+  char start[32];
+  char end[32];
+  uint8_t addrCount;
+  char addr[MAX_ADDRS][12];
+  uint8_t offsets[MAX_ADDRS][MAX_OFFSETS];
+  uint8_t offsetCount[MAX_ADDRS];
+};
+
+extern ConfigBlock blocks[MAX_BLOCKS];
+
 
 extern RTCBootInfo rtc;
 extern int8_t serialSwapped;
@@ -158,4 +182,5 @@ extern String additionalUrlParams;
 
 extern ESP8266WebServer server;
 extern bool didSomeSerialProcessing;
+extern uint8_t blockCount;
 #endif

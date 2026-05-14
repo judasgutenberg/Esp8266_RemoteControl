@@ -345,12 +345,17 @@ void cmdWifiInfo(String* param, int argCount, bool deferred) {
 
 ADC_MODE(ADC_VCC);
 
-void cmdCpuInfo(String* param, int argCount, bool deferred) {
+void cmdChipInfo(String* param, int argCount, bool deferred) {
   textOut(F("Flash chip size: ") + String(ESP.getFlashChipSize()));
   textOut(F(", Flash chip real size: ") + String(ESP.getFlashChipRealSize()));
   textOut(F(", Flash chip speed: ") + String(ESP.getFlashChipSpeed()));
   textOut(F(", Flash chip mode: ") + String(ESP.getFlashChipMode()));
   textOut("\n");
+}
+
+void cmdCpuInfo(String* param, int argCount, bool deferred) {
+  textOut(F("Cpu frequency: ") + String(ESP.getCpuFreqMHz()));
+  textOut(F(", Cycle count: ") + String(ESP.getCycleCount()));
   textOut(F(" Chip ID: ") + String(ESP.getChipId()));
   textOut(F(", Core version: ") + String(ESP.getCoreVersion()));
   textOut(F(", SDK version: ") + String(ESP.getSdkVersion()));
@@ -358,12 +363,6 @@ void cmdCpuInfo(String* param, int argCount, bool deferred) {
   textOut(F(", Boot mode: ") + String(ESP.getBootMode()));
   textOut("\n");
   textOut(F(" VCC voltage: ") + String(ESP.getVcc()));
-  textOut("\n");
-}
-
-void cmdChipInfo(String* param, int argCount, bool deferred) {
-  textOut(F("Cpu frequency: ") + String(ESP.getCpuFreqMHz()));
-  textOut(F(", Cycle count: ") + String(ESP.getCycleCount()));
   textOut("\n");
 }
 
@@ -475,6 +474,14 @@ void cmdGetSerialLogging(String* param, int argCount, bool deferred) {
  }
  textOut("\n");
 }
+
+void cmdDumpParserConfig(String* param, int argCount, bool deferred) {
+  for(int i=0; i<blockCount; i++) {
+    dumpConfigBlock(blocks[i]);
+  }
+}
+  
+
 
 /////////////////////
 
