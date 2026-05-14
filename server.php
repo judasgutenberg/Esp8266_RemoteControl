@@ -1823,7 +1823,7 @@ function handleIncomingParsedData($deviceInfo, $dataLine, $formattedDateTime){
 	$data = explode("*", $dataLine);
 	if($rawJson) {
 		$config = json_decode($rawJson, true);
-		var_dump($config);
+		//var_dump($config);
 		if(!$config){
 			return false;
 		}

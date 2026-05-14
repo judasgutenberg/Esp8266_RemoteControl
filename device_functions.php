@@ -1768,7 +1768,7 @@ function editDevice($error,  $user) {
       'error' => gvfa('ip_address', $error)
 	  ],
     [
-	    'label' => 'data disposition',
+	    'label' => 'parsed data disposition',
       'name' => 'parsed_data_disposition',
       
       'width' => 400,
