@@ -371,13 +371,17 @@ void cmdFlashInfo(String* param, int argCount, bool deferred) {
   textOut(F(", Sketch size: ") + String(ESP.getSketchSize()) + "\n");
 }
 
-void cmdDumpSerialPacket(String* param, int argCount, bool deferred) {
+void cmdDumpSlaveSerialData(String* param, int argCount, bool deferred) {
   char buffer[128]; 
   readDataParsedFromSlaveSerial();
   //parsedSerialData
   //uint8_t parsedBuf[40]  = {0xF1, 0xF2, 0xD1, 0xD2, 0xC1, 0xC2, 0xB1, 0xB2};
   bytesToHex(parsedSerialData, 20, 0x00, buffer);
   textOut(F("Parsed serial packet: ") + String(buffer) + "\n");
+}
+
+void cmdDumpMasterSerialData(String* param, int argCount, bool deferred){
+  textOut(joinValsOnDelimiter(serialParsedData, "*", PARSED_SERIAL_MAX) + "\n");
 }
 
 void cmdFormatFileSystem(String* param, int argCount, bool deferred) {
