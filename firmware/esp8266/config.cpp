@@ -66,6 +66,7 @@ void initConfig(void) {
   ci[SERIAL_FOR_COMMANDS_ONLY] = 1;
   ci[SERIAL_SWAP] = 0;
   ci[SERIAL_BUFFER] = 0;
+  ci[SERIAL_PARSE_MODE] = 0;
 }
 
 
