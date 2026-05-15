@@ -2342,6 +2342,7 @@ void doSerialCommands() {
   yield();
   while (Serial.available()) {
     char c = Serial.read();
+    serialByteCount++;
     if (c == '\r' || c == '\n') {
       if (command.length() > 0) {
         if (ci[DEBUG] > 0) {
@@ -2673,6 +2674,7 @@ bool readSerialLine(char *line, size_t maxLen)
     }
     while (Serial.available()) {
         char c = Serial.read();
+        serialByteCount++; //update a global
         // Ignore carriage returns
         if (c == '\r') {
             continue;
