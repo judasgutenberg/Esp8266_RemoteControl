@@ -2599,6 +2599,7 @@ inline void appendU16(uint16_t v,
   uint8_t lo = (uint8_t)(v & 0xFF);
   uint8_t hi = (uint8_t)(v >> 8);
   serialParsedData[bytePacketStart/2] = v;
+  serialDataParsed++;
   logParseOperation(F("assembling packet"), F("bytePacketStart: ") + String(bytePacketStart) + String("\nblockIdx: ") + String(blockIdx)  + String(", addrIdx: ") + String(addrIdx) + String(F(", offsetIdx: ")) + String(offsetIdx) + String(F(", value: ")) + String(v) + String(F(", hi: ")) + String(hi), 49);
   /*
   // ---- DEBUG TRACE ----
