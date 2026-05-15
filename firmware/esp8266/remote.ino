@@ -540,8 +540,9 @@ void compileAndSendDeviceData(const String& weatherData,const String& whereWhenD
     pos += snprintf(tx + pos, sizeof(tx) - pos, "|");
      
     //doing it a different way now
-    pos += snprintf(tx + pos, sizeof(tx) - pos, joinValsOnDelimiter(serialParsedData, "*", PARSED_SERIAL_MAX).c_str());
- 
+    if(serialDataParsed > 30) { //we don't want to transmit serial parsed data until we actually have some
+      pos += snprintf(tx + pos, sizeof(tx) - pos, joinValsOnDelimiter(serialParsedData, "*", PARSED_SERIAL_MAX).c_str());
+    }
     //char parsedSerial[parsedStringPacketLen];
     //bytesToHex(parsedBuf, parsedStringPacketLen, 0x00, parsedSerial);
     //pos += snprintf(tx + pos, sizeof(tx) - pos, parsedSerial);
@@ -955,7 +956,9 @@ void runRemoteTask() {
         bool validMode = (remoteMode == F("saveData") || remoteMode == F("commandout") || remoteMode == F("savePacket"));
         if (!hasError && validMode && validStart) {
           permissionErrorCount = 0;
-          lastDataLogTime = millis();
+          if(remoteMode == F("saveData")) {//we really want data regularly
+            lastDataLogTime = millis();
+          }
           moxeeRebootCount = 0;
           for (int i = 0; i < 11; i++){
             moxeeRebootTimes[i] = 0;
