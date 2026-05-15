@@ -54,7 +54,8 @@ CommandDef commands[] = {
   {"flash info",            cmdFlashInfo, 0,        true,         0b00000000},
   {"wifi info",             cmdWifiInfo,  0,        true,         0b00000000},
   
-  {"dump parsed serial packet", cmdDumpSerialPacket, 0, true,     0b00000010},
+  {"dump slave parsed data", cmdDumpSlaveSerialData, 0,   true, 0b00000010}, //only for dumping a serial packet assembled on a slave, not for one assembled on a master
+  {"dump parsed data",      cmdDumpMasterSerialData, 0,     true, 0b00000010}, //only for dumping a serial packet assembled on a slave, not for one assembled on a master
   {"format file system",    cmdFormatFileSystem, 0, true,         0b00000001},
   ///////////
   {"anomaly log test",      cmdAnomalyLogTest, 1,   false,        0b00000001},

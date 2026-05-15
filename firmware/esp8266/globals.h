@@ -1,7 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define VERSION 2256
+#define VERSION 2259
 #define RTC_MAGIC 0xDEADCA75
 
 #define MAX_CFG_LEN 220
@@ -185,4 +185,5 @@ extern String additionalUrlParams;
 extern ESP8266WebServer server;
 extern bool didSomeSerialProcessing;
 extern uint8_t blockCount;
+extern uint32_t serialDataParsed;
 #endif

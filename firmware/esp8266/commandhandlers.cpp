@@ -306,6 +306,12 @@ void cmdTiming(String* param, int argCount, bool deferred) {
   textOut(F("Loop count: ") + String(loopCount));
   textOut(F(", Connection count: ") + String(connectionCount));
   textOut(F(", Logged serial bytes: ") + String(serialByteCount));
+  if(ci[SERIAL_FOR_COMMANDS_ONLY] == 0) {
+    textOut(F(", Serial data parsed: ") + String(serialDataParsed));
+    if(serialDataParsed > 0) {
+      textOut(F(", Bytes read/data parsed: ") + String(serialByteCount/serialDataParsed));
+    }
+  }
   if(loopCount > 0){//don't want to divide by zero
     textOut(F(", Millis/loop: ") + String(millis()/loopCount));
     textOut(F(", Serial bytes/loop: ") + String(serialByteCount/loopCount));
