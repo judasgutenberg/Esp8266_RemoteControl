@@ -69,12 +69,11 @@ static uint32_t taskStartTimeMs = 0; // logging timer
 /////////////////
 //serial parser setup:
 
-int parsedStringPacketLen = 0;
 //uint32_t serialParsedData[PARSED_SERIAL_MAX]; //needed to be in global.cpp
  
 //uint8_t blockCount = 0; had to move to globals.cpp
 int8_t activeBlock = -1;
-uint32_t lastDataParseTime = 0;
+uint32_t lastDataParseMillis = 0;
 
 //////////////////////////////
 //safe mode implementation:
@@ -540,10 +539,11 @@ void compileAndSendDeviceData(const String& weatherData,const String& whereWhenD
     pos += snprintf(tx + pos, sizeof(tx) - pos, "|");
      
     //doing it a different way now
-    if(serialDataParsed > 30) { //we don't want to transmit serial parsed data until we actually have some
-      pos += snprintf(tx + pos, sizeof(tx) - pos, joinValsOnDelimiter(serialParsedData, "*", PARSED_SERIAL_MAX).c_str());
+    //we don't want to transmit serial parsed data until we actually have some and don't want to transmit such data more than 30 seconds stale
+    if(serialDataParsed > 30  && (millis() - lastDataParseMillis)/1000 < 30) { 
+      pos += snprintf(tx + pos, sizeof(tx) - pos, joinValsOnDelimiter(serialParsedData, "*", MAX_PARSED_SERIAL_VALUES).c_str());
     }
-    //char parsedSerial[parsedStringPacketLen];
+
     //bytesToHex(parsedBuf, parsedStringPacketLen, 0x00, parsedSerial);
     //pos += snprintf(tx + pos, sizeof(tx) - pos, parsedSerial);
     // future expansion
@@ -2470,7 +2470,7 @@ int freeMemory() {
 
 
 int initSerialParser() {
-  char cfg[MAX_BLOCKS][MAX_CFG_LEN];
+  //char cfg[MAX_BLOCKS][MAX_CFG_LEN];
   File file = LittleFS.open("/serialparser.cfg", "r");
   if (!file) {
     if(ci[DEBUG] > 0) {
@@ -2559,8 +2559,7 @@ void parseConfigString(const char *cfg, ConfigBlock &out) {
       if (out.offsetCount[curAddr] < MAX_OFFSETS) {
         out.offsets[curAddr][out.offsetCount[curAddr]++] = atoi(tok);
         //increment the global containing the parsed packet size. since each 16 bit value in the packet gets a pair of offsets, 
-        //if we increment with every offset we get the correct number of bytes in the packet
-        parsedStringPacketLen++; 
+        //if we increment with every offset we get the correct number of bytes in the packet 
         //Serial.println(parsedStringPacketLen);
       }
     }
@@ -2595,9 +2594,6 @@ inline void appendU16(uint16_t v,
   //Serial.print(parsedStringPacketLen + 2);
   //Serial.print(": ");
   //Serial.print(PARSED_SERIAL_MAX);
-  if (parsedStringPacketLen > PARSED_SERIAL_MAX) {
-    return;
-  }
 
   uint8_t lo = (uint8_t)(v & 0xFF);
   uint8_t hi = (uint8_t)(v >> 8);
@@ -2865,10 +2861,10 @@ void processSerialStream()
           logParseOperation(F("event"), String(off1) + ", " + String(off2) + ": " + F("nothing found between offsets"), 99);
           continue;   // parse failed for this offset pair
         }
-        lastDataParseTime = timeClient.getEpochTime();
+        lastDataParseMillis = millis();
         logParseOperation(F("event"), String(off1) + ", " + String(off2) + ": " + F("good things"), 99);
         uint16_t parsedOutIndex = calculateOffsetIndex(blocks, blockCount, activeBlock, a);
-  
+        logParseOperation(F("got an offset"),  F("Offset: " ) + String(parsedOutIndex) + F(", o: ") + String(o), 49);
         appendU16(v, parsedOutIndex + o, (int8_t)activeBlock,
           a,      // address index
           o,      // offset rule index
