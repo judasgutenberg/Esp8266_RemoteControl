@@ -131,7 +131,7 @@ The firmware includes a parser that allows the ESP8266 to monitor a serial line 
 ...
 ```
 
-Here is the actual configuration for a parser that finds the important values in a SolArk serial stream:
+Here is the actual configuration for a parser that finds the important values in the serial data SolArk inverter communicates to its WiFi dongle with:
 
 ```
 Characteristic #2;0x3ffbb61c;0x3ffbb5fc;4;5;6;7;8;9;10;11;2;3;0x3ffbb60c;0;1;0x3ffbb5dc;6;7;0x3ffbb5cc;12;13;14;15
