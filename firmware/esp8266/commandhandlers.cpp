@@ -306,10 +306,11 @@ void cmdTiming(String* param, int argCount, bool deferred) {
   textOut(F("Loop count: ") + String(loopCount));
   textOut(F(", Connection count: ") + String(connectionCount));
   textOut(F(", Logged serial bytes: ") + String(serialByteCount));
+  textOut("\n");
   if(ci[SERIAL_FOR_COMMANDS_ONLY] == 0) {
     textOut(F(", Serial data parsed: ") + String(serialDataParsed));
     if(serialDataParsed > 0) {
-      textOut(F(", Bytes read/data parsed: ") + String(serialByteCount/serialDataParsed));
+      textOut(F(", Data found/data parsed: ") + String(serialByteCount/serialDataParsed));
     }
   }
   if(loopCount > 0){//don't want to divide by zero
@@ -387,7 +388,7 @@ void cmdDumpSlaveSerialData(String* param, int argCount, bool deferred) {
 }
 
 void cmdDumpMasterSerialData(String* param, int argCount, bool deferred){
-  textOut(joinValsOnDelimiter(serialParsedData, "*", PARSED_SERIAL_MAX) + "\n");
+  textOut(joinValsOnDelimiter(serialParsedData, "*", MAX_PARSED_SERIAL_VALUES) + "\n");
 }
 
 void cmdFormatFileSystem(String* param, int argCount, bool deferred) {

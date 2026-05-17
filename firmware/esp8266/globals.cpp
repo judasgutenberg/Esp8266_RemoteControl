@@ -144,6 +144,6 @@ int serialByteCount = 0;
 bool didSomeSerialProcessing = false;
 
 ConfigBlock blocks[MAX_BLOCKS];
-uint16_t serialParsedData[PARSED_SERIAL_MAX];
+uint16_t serialParsedData[MAX_PARSED_SERIAL_VALUES];
 uint8_t blockCount = 0;
 uint32_t serialDataParsed = 0;
