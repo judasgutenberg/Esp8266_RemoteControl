@@ -193,7 +193,7 @@ All commands are sent to the microcontroller as a structured string:
 | Field | Description |
 |------|------------|
 | ! | Distinguishes command transmission from other server-side responses |
-| `commandId` | Unique ID for tracking/logging |
+| `commandId` | A numeric representation of various pre-made commands |
 | `command` | Command string |
 | `args` | Space-delimited arguments (quotes supported) |
 | `latency` | Timing metric for diagnostics |
@@ -202,7 +202,7 @@ All commands are sent to the microcontroller as a structured string:
 
 | Value | Meaning |
 |------|--------|
-| `> 0` | Classic command ID (where specific commands had IDs (largely supplanted by instant commands) |
+| `> 0` | Classic command ID (where specific commands had IDs (largely supplanted by instant commands)) |
 | `-1` | Instant command via serial (executes immediately if deferred) |
 | `-2` | Instant command from web-based tool |
 
