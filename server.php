@@ -120,11 +120,7 @@ if($_REQUEST) {
 	if(!$deviceId) {
 		$deviceId = $locationId;
 	}
-	if($locationId == ""){
-    //if($mode == "saveLocallyGatheredSolarData") { //because of the way we ascertain permissions we have to do this. should probably send a real device id instead
-      //$locationId = 1; //need to revisit this for multiuser/multitenant
-		//}
-	}
+ 
 	$locationIds = gvfw("location_ids");
 	if(!$locationIds){
 		$locationIds = $locationId;
@@ -199,9 +195,7 @@ if($_REQUEST) {
 		//die($ageOfInverterRecord  . "XX" . $date->getTimestamp() . "YY" . $lastInverterRecorded->getTimestamp());
 		if($ageOfInverterRecord > 600) { //it's been five minutes since we last had an inverter record, so maybe use the API then to get data from the SolArk cloud. it's not great, but it's enough for automation
 			$useCloudInverterData = true;
-
 			getCurrentSolarDataFromCloud($tenant); //only do this one tenth of the time
-
 		}
 
 		if(!$conn) {
@@ -369,132 +363,85 @@ if($_REQUEST) {
 					$out["error"] = $error;
 				}
 			} else if ($mode=="reflash") {
-        $fileName = $data;
-        if($data == "latest") {
-          //if the user sends "latest" as the update to do, that is, no file, then we look up the file based on some criteria.
-          //we want the lastest file with the name of our board type in its file name
-          //can't do these lookups, because we do not have a logged-in user from an ESP8266:
-          //$device = getGeneric("device", $deviceId, $user);
-          //var_dump($user);
-          //var_dump(getGeneric("device_type", $device["device_type_id"], $user));
-          //clearstatcache(true, $path);
-          //$deviceType =  getGeneric("device_type", $device["device_type_id"], $user);
-          //so instead i make the microcontroller aware of what its architecture is and pass it in as a querystring variable
-          $processorName = strtolower($architecture);
-          $fileName =  getMostRecentFile($path =  "./" . $flash_directory, $processorName);
-          clearstatcache(true, $path);
-        }  
-        //$fileName = "esp8266_cabin_remote2.ino.bin";
-        $path =  "./" . $flash_directory  . "/" . $fileName;
-        //echo intval(filesize($path));
-        //die($path);
-        if(is_file($path)) {
-          //header("Content-Type: text/plain");
-          while (ob_get_level()) ob_end_clean();
-          error_reporting(0);
-          //clearstatcache(true, $path);
-          ini_set('display_errors', 0);
-          header("Content-Type: application/octet-stream");
-          header("Content-Length: " . intval(filesize($path)));
-          header("Content-Encoding: identity");
-          header("Cache-Control: no-cache");
-          //flush();
-          readfile($path);  // <- streams exact bytes
-          exit;
-        } else {
-        
-            http_response_code(404);
-            header("Content-Type: text/plain");
-            echo "Firmware not found:\n";
-            echo $path;
-            die();
-        }
+				$fileName = $data;
+				if($data == "latest") {
+					//if the user sends "latest" as the update to do, that is, no file, then we look up the file based on some criteria.
+					//we want the lastest file with the name of our board type in its file name
+					//can't do these lookups, because we do not have a logged-in user from an ESP8266:
+					//$device = getGeneric("device", $deviceId, $user);
+					//var_dump($user);
+					//var_dump(getGeneric("device_type", $device["device_type_id"], $user));
+					//clearstatcache(true, $path);
+					//$deviceType =  getGeneric("device_type", $device["device_type_id"], $user);
+					//so instead i make the microcontroller aware of what its architecture is and pass it in as a querystring variable
+					$processorName = strtolower($architecture);
+					$fileName =  getMostRecentFile($path =  "./" . $flash_directory, $processorName);
+					clearstatcache(true, $path);
+				}  
+				//$fileName = "esp8266_cabin_remote2.ino.bin";
+				$path =  "./" . $flash_directory  . "/" . $fileName;
+				//echo intval(filesize($path));
+				//die($path);
+				if(is_file($path)) {
+					//header("Content-Type: text/plain");
+					while (ob_get_level()) ob_end_clean();
+					error_reporting(0);
+					//clearstatcache(true, $path);
+					ini_set('display_errors', 0);
+					header("Content-Type: application/octet-stream");
+					header("Content-Length: " . intval(filesize($path)));
+					header("Content-Encoding: identity");
+					header("Cache-Control: no-cache");
+					//flush();
+					readfile($path);  // <- streams exact bytes
+					exit;
+				} else {
+
+					http_response_code(404);
+					header("Content-Type: text/plain");
+					echo "Firmware not found:\n";
+					echo $path;
+					die();
+				}
 			
 			} else if ($mode=="debug") {
 			} else if ($mode=="commandout") { //if we sent an instant_command, then the ESP8266 will redirect any output it generates to sendRemoteData, sending the output in the "data" parameter
 				//old way, back when we didn't have a command_log table:
 				//file_put_contents("instant_response_" . gvfw("device_id") . ".txt", $data, FILE_APPEND | LOCK_EX);
-        $commandText = getNumberAfterLastNewline($data, true);
-        $commandTextEscaped = mysqli_real_escape_string($conn, $commandText);
-        $commandLogId = getNumberAfterLastNewline($data, false);
-        $sql = "
-          UPDATE command_log
-          SET
-              result_recorded = '$formattedDateTime',
-              result_text = CONCAT(
-                  IFNULL(result_text, ''),
-                  CASE
-                      WHEN result_text IS NULL OR result_text = '' THEN ''
-                      ELSE '\n'
-                  END,
-                  '$commandTextEscaped'
-              )
-          WHERE
-              tenant_id = " . intval($tenantId) . "
-              AND device_id = " . intval($deviceId) . "
-              AND command_log_id = " . intval($commandLogId);
-        $result = mysqli_query($conn, $sql);
-        //this is where you get just datetime info back
-			} else if ($mode=="saveLocallyGatheredSolarData") { //used by the special inverter monitoring MCU to send fine-grain data promptly
-					if($canAccessData) {
-						///weather/data.php?storagePassword=xxxxxx&locationId=16&mode=saveLocallyGatheredSolarData&data=0*61*3336*3965*425*420*0*0*6359|||***192.168.1.200 
-						$multipleSensorArray = explode("!", $lines[0]);
-						//the first item will be energy data;  all subsequent items will be weather
-						$energyInfoString = array_shift($multipleSensorArray);
-						//var_dump($energyInfoString );
-						/*
-						//solark broke this shit:
-						$arrEnergyData = explode("*", $energyInfoString);
-            $inverterSnapshotTime = $arrEnergyData[0];
-            $gridPower = $arrEnergyData[1];
-            $batteryPercent = $arrEnergyData[2];
-            $batteryPower  = $arrEnergyData[3];
-            $loadPower = $arrEnergyData[4];
-            $solarString1 = $arrEnergyData[5];
-            $solarString2 = $arrEnergyData[6];
-            $batteryVoltage = intval($arrEnergyData[7])/100;
-            $mysteryValue3 =  $arrEnergyData[8];
-            $mysteryValue1 = $arrEnergyData[9];
-            $mysteryValue2 = $arrEnergyData[10];
-            $changer1 = $arrEnergyData[11];
-            $changer2 = $arrEnergyData[12];
-            $changer3 = $arrEnergyData[13];
-            $changer4 = $arrEnergyData[14];
-            $changer5 = $arrEnergyData[15];
-            $changer6 = $arrEnergyData[16];
-            $changer7 = $arrEnergyData[17];
-
-            $energyInfo = saveSolarData($tenant, $gridPower, $batteryPercent,  
-              $batteryPower, $loadPower, $solarString1, $solarString2, 
-              $batteryVoltage, 
-              $mysteryValue3,
-              $mysteryValue1,
-              $mysteryValue2,
-              $changer1,
-              $changer2,
-              $changer3,
-              $changer4,
-              $changer5,
-              $changer6,
-              $changer7
-            );
-            */
-					}	
-				} else {
+				$commandText = getNumberAfterLastNewline($data, true);
+				$commandTextEscaped = mysqli_real_escape_string($conn, $commandText);
+				$commandLogId = getNumberAfterLastNewline($data, false);
+				$sql = "
+					UPDATE command_log
+					SET
+						result_recorded = '$formattedDateTime',
+						result_text = CONCAT(
+							IFNULL(result_text, ''),
+							CASE
+								WHEN result_text IS NULL OR result_text = '' THEN ''
+								ELSE '\n'
+							END,
+							'$commandTextEscaped'
+						)
+					WHERE
+						tenant_id = " . intval($tenantId) . "
+						AND device_id = " . intval($deviceId) . "
+						AND command_log_id = " . intval($commandLogId);
+				$result = mysqli_query($conn, $sql);
+				//this is where you get just datetime info back
+			} else {
 					$weatherInfoString = $lines[0];
 					
 					$arrWeatherData = explode("*", $weatherInfoString);
 					if(count($arrWeatherData)>4) { //if we actually want to populate the sensor column in device we need to get sensorId now, though now devices can have multiple sensors
 						$sensorId = $arrWeatherData[4];
 					}
-					
 				}
 			} else {
 				$lines = [];
 				$arrWeatherData = [0,0,0,0,0,0,0,0,0,0,0,0];
 			}
 
-			
 			if($mode=="kill") {
 				$method  = "kill";
 			} else if (beginsWith($mode, "getDevices")) {
@@ -540,7 +487,7 @@ if($_REQUEST) {
 
 			} else if ($mode=="getMap"){ //an endpoint specifically for maps
 				$sql = "SELECT * from device_log WHERE latitude IS NOT NULL and latitude > 0 AND device_id=" . intval($deviceId) . "  ";
-        $sql .= buildRestOfSegmentedDataSql($formattedDateTime, "device_log_id"); 
+        		$sql .= buildRestOfSegmentedDataSql($formattedDateTime, "device_log_id"); 
 
 				$subResult = mysqli_query($conn, $sql);
 				$out["sql"] = $sql;
@@ -550,7 +497,7 @@ if($_REQUEST) {
 					
 					$out["points"] = $subRows;
 				}
-			} else if ($mode=="getDeviceData" || $mode == "getInitialDeviceInfo" || $mode=="saveLocallyGatheredSolarData") {
+			} else if ($mode=="getDeviceData" || $mode == "getInitialDeviceInfo") {
 				$deviceSql = "SELECT d.device_id, d.tenant_id, d.parsed_data_disposition, d.name, location_name, d.device_type_id, architecture FROM device d LEFT JOIN device_type dt ON d.device_type_id=dt.device_type_id AND  d.tenant_id=dt.tenant_id  WHERE device_id = " . intval($deviceId);
 				$getDeviceResult = mysqli_query($conn, $deviceSql);
 				if($getDeviceResult) {
@@ -838,7 +785,7 @@ if($_REQUEST) {
 					$outString .= "|";
 				}
 				die($outString);
-			} else if($mode == "getDeviceData" || $mode == "saveData" || $mode=="saveLocallyGatheredSolarData") {
+			} else if($mode == "getDeviceData" || $mode == "saveData") {
 				if($saveDeviceInfo) {			
 					if(strpos($ipAddress, " ") > 0){ //was getting crap from some esp8266s here
 						$ipAddress = explode(" ", $ipAddress)[0];
@@ -1816,12 +1763,16 @@ function replaceOrdinalTags($expression, $data){
     );
 }
 
+//if the ESP8266 has been configured to parse serial data, it will send it in *-delimited form 
+//as line[3], and a JSON object in the parsed_data_disposition column of that device will instruct
+//this code what to do with that data. it may require a little further processing and this system
+//will need to know what destination table and columns to send the data to.
 function handleIncomingParsedData($deviceInfo, $dataLine, $formattedDateTime){
 	global $conn;
 	$deviceId = $deviceInfo["device_id"];
 	$rawJson = $deviceInfo["parsed_data_disposition"];
 	$data = explode("*", $dataLine);
-	if($rawJson) {
+	if($rawJson != "") {
 		$config = json_decode($rawJson, true);
 		//var_dump($config);
 		if(!$config){
@@ -1862,10 +1813,12 @@ function handleIncomingParsedData($deviceInfo, $dataLine, $formattedDateTime){
 			$insertValues[] = $result;
 		}
 		
-		$sql = 'INSERT INTO `' . $table . '` (' . implode(', ', $insertColumns) . ') VALUES (' . implode(', ', $insertValues) .')';
-		//echo "<P>";
-		//echo $sql;
-		//echo "<P>";
+		$sql = 'INSERT INTO `' . $table . '` (' . implode(', ', $insertColumns) . ', data_source_id) VALUES (' . implode(', ', $insertValues) .',2)';
+		/*
+		echo "<P>";
+		echo $sql;
+		echo "<P>";
+		*/
 		$result = mysqli_query($conn, $sql);
 		return true;
 	}

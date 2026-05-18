@@ -2220,7 +2220,8 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
   $changer4,
   $changer5,
   $changer6,
-  $changer7
+  $changer7, 
+  $dataSourceId = 1
 ) {
   global $conn, $timezone;
   $date = new DateTime("now", new DateTimeZone($timezone));
@@ -2242,7 +2243,8 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
   changer5,
   changer6,
   changer7,
-  weather_condition_id
+  weather_condition_id,
+  data_source_id
   ) VALUES (";
   $loggingSql .= $tenant["tenant_id"] . ",'" . $formatedDateTime . "'," .
    intval(intval($solarString1) + intval($solarString2)) . "," . 
@@ -2262,7 +2264,8 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
    nullifyOrNumber($changer5) . "," .
    nullifyOrNumber($changer6) . "," .
    nullifyOrNumber($changer7) . "," .
-   $weatherConditionId .
+   $weatherConditionId . "," .
+   $dataSourceId  .
    ")";
    //echo $loggingSql;
   $loggingResult = mysqli_query($conn, $loggingSql);
@@ -2427,7 +2430,8 @@ function getCurrentSolarDataFromCloud($tenant, $alwaysReturnData = false) {
       NULL,
       NULL,
       NULL,
-      NULL
+      NULL,
+      1 //tag the data from this with data_source_id of 1, which means API
     );
     $out = Array("tenant_id"=>$tenant["tenant_id"], "recorded" => $formatedDateTime, "solar_power" => $pvPower, "load_power" => $data["loadOrEpsPower"] ,
     "grid_power" =>  $data["gridOrMeterPower"], "battery_percentage" => $data["soc"], "battery_power" => $batteryPower); 
