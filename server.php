@@ -35,7 +35,7 @@ $formattedDateTimeAFewMinutesAgo =  $aFewMinutesPastDate->format('Y-m-d H:i:s');
 //$formattedDateTime =  $date->format('H:i');
 $deviceId = gvfw("device_id");
 $manufactureId = gvfw("manufacture_id");
-$locationId = "";
+ 
 $deviceName = "Your device";
 $deviceIds = [];
 $sensorId = "NULL";
@@ -45,7 +45,7 @@ $storagePassword = "";
 $multipleSensorArray = [];
 $latestCommandData = null;
 $architecture = gvfw("architecture", "unknown");
-
+$deviceIdsPassedIn = gvfw("device_ids");
 $user = autoLogin(); //if we are using this as a backend for the inverter or weather page, we don't need to pass the storagePassword at all.  this will only work once the user has logged in and selected a single tenant
 
 if(array_key_exists("mode", $_REQUEST)) {
@@ -92,19 +92,15 @@ if($_REQUEST) {
 	$payload = gvfw("payload"); //for debugging
 	//i may end up deciding that locationId and deviceId are the same thing, and for now they are
 	//but maybe some day they will be different things
-	if(array_key_exists("locationId", $_REQUEST)) {
-		$locationId = $_REQUEST["locationId"];
-	}
+ 
 	if (array_key_exists("deviceId", $_REQUEST)) {
 		$deviceId = $_REQUEST["deviceId"];
 	}
 	if (array_key_exists("device_id", $_REQUEST)) {
 		$deviceId = $_REQUEST["device_id"];
 	}
-	if(!$locationId) {
-		$locationId =  $deviceId;
-	}
-	if(!$locationId  && $manufactureId) {
+ 
+	if(!$deviceId  && $manufactureId) {
     	$sql = "SELECT device_id FROM device WHERE manufacture_id= " . intval($manufactureId);
 		//echo $sql;
 		$result = mysqli_query($conn, $sql);
@@ -112,19 +108,14 @@ if($_REQUEST) {
 			$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
 			if(count($rows)>0) {
 			$row = $rows[0];
-			$locationId = $row["device_id"];
+			$deviceId = $row["device_id"];
 			}
       	}
       //echo "XX" . $locationId . "XX";
 	}
-	if(!$deviceId) {
-		$deviceId = $locationId;
-	}
  
-	$locationIds = gvfw("location_ids");
-	if(!$locationIds){
-		$locationIds = $locationId;
-	}
+ 
+ 
 
 	$averageLatency = intval(readMemoryCache("latency-" . $deviceId));
 	$allData = intval(gvfw("all_data"));
@@ -182,7 +173,7 @@ if($_REQUEST) {
 		$deviceIds = deriveDeviceIdsFromStoragePassword($storagePassword);
 	}
 
-	$canAccessData = array_search($locationId, $deviceIds) !== false  || ($user  && in_array($mode, $deviceFreeAcceptableModes)) ;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
+	$canAccessData = array_search($deviceId, $deviceIds) !== false  || ($user  && in_array($mode, $deviceFreeAcceptableModes)) ;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
 	if($canAccessData) {	
 		$tenant = deriveTenantFromStoragePassword($storagePassword);
 		$tenantId = $tenant["tenant_id"];
@@ -201,7 +192,7 @@ if($_REQUEST) {
 		if(!$conn) {
 			$out = ["error"=>"bad database connection"];
 		} else {
-			$latestCommandData = getLatestCommandData($locationId, $tenant["tenant_id"]);
+			$latestCommandData = getLatestCommandData($deviceId, $tenant["tenant_id"]);
 			if(!$loraId) {
 				$loraId = "NULL";
 			} else {
@@ -441,11 +432,11 @@ if($_REQUEST) {
 				$lines = [];
 				$arrWeatherData = [0,0,0,0,0,0,0,0,0,0,0,0];
 			}
-
+      
 			if($mode=="kill") {
 				$method  = "kill";
 			} else if (beginsWith($mode, "getDevices")) {
-				$deviceIdsPassedIn = gvfw("location_ids");
+				
 				$deviceIdsToUse = $deviceIds;
 				if($deviceIdsPassedIn) {
 					$deviceIdsToUse = explode("*", $deviceIdsPassedIn);
@@ -530,8 +521,8 @@ if($_REQUEST) {
 				if($tenant && $tableName != 'device_log') {
 					$sql .= " AND tenant_id=" . $tenantId;
 				}
-				if($locationId && $tableName != 'inverter_log') {
-					$sql .= " AND device_id=" . $locationId;
+				if($deviceId && $tableName != 'inverter_log') {
+					$sql .= " AND device_id=" . $deviceId;
 				}
 				$result = mysqli_query($conn, $sql);
 				$error = mysqli_error($conn);
@@ -572,10 +563,11 @@ if($_REQUEST) {
 				} else {
 					if($specificColumn) {
 						//to revisit:  need to figure out a way to keep users without a device_id from seeing someone else's devices
-						$sql = "SELECT " . filterStringForSqlEntities($specificColumn, true)  . ", device_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE  device_id IN (" . filterCommasAndDigits($locationIds) . ") ";
+						$sql = "SELECT " . filterStringForSqlEntities($specificColumn, true)  . ", device_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE  device_id IN (" .filterCommasAndDigits($deviceIdsPassedIn) . ") ";
+            //die($sql);
 					} else {
-						$weatherColumns = getGraphColumns($user["tenant_id"], $locationId);
-						$sql = "SELECT " . implode(",", $weatherColumns) . ", device_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE device_id=" . $locationId;
+						$weatherColumns = getGraphColumns($user["tenant_id"], $deviceId);
+						$sql = "SELECT " . implode(",", $weatherColumns) . ", device_id, DATE_ADD(recorded, INTERVAL " . $yearsAgo .  " YEAR) AS recorded FROM device_log WHERE device_id=" . $deviceId;
 					}
 					
 					$sql .= " " . buildRestOfSegmentedDataSql($formattedDateTime, "device_log_id"); 
@@ -687,7 +679,7 @@ if($_REQUEST) {
                 reserved1, reserved2, reserved3, reserved4,
                 sensor_id, weather_condition_id, digest, voltage, ampage, latitude, longitude, elevation, velocity, uncertainty, millis, slave_millis, data_hash, payload) 
               VALUES (" . 
-              mysqli_real_escape_string($conn, $locationId) . "," .
+              mysqli_real_escape_string($conn, $deviceId) . "," .
               mysqli_real_escape_string($conn, $deviceFeatureId) . ",'" .  
               mysqli_real_escape_string($conn, $storageDateTime)  . "'," . 
               mysqli_real_escape_string($conn, $temperature) . "," . 
@@ -1390,83 +1382,6 @@ function normalizeCommandText($commandText, $tenantId) {
         return implode(' ', $parts);
     }
     return $commandText;
-}
-
-function getLatestCommandData($deviceId, $tenantId){
-	global $conn;
-	//old way, from before we had command_log:
-	/*
-	$possibleTemporaryCommandFileName = "instant_command_" . $deviceId . ".txt";
-	if(file_exists($possibleTemporaryCommandFileName)){
-    
-		$temporaryComandText = file_get_contents($possibleTemporaryCommandFileName);
-		$commandPart = getNumberAfterLastNewline($temporaryComandText, true);
-		$commandLogId = getNumberAfterLastNewline($temporaryComandText, false);
-		$commandArray = explode("|", $commandPart);
-		$value = null;
-		if(count($commandArray)>1) {
-			$value = $commandArray[1];
-		}
-		unlink($possibleTemporaryCommandFileName);
-		return array("command_id"=> -2 , "command" => str_replace("\n", "", $commandArray[0]), "value" => $value, "command_log_id" => $commandLogId);
-	}
-	*/
-	$sql = "SELECT *
-    FROM command_log
-    WHERE tenant_id = " . intval($tenantId) . " 
-      AND device_id = " . intval($deviceId) . "
-      AND result_recorded IS NULL
-      -- AND recorded >= NOW() - INTERVAL 6000 SECOND
-    ORDER BY command_log_id ASC
-    LIMIT 1;";
-  $result = mysqli_query($conn, $sql);
-  //echo $sql . "\n";
- 
-  //var_dump($result);
-  if($result) {
-    $row = mysqli_fetch_array($result);
-    if($row) {
-      //var_dump($row);
-      return array("command_id"=> -2 , "command" => normalizeCommandText($row["command_text"], $tenantId), "value" => $row["command_data"], "command_log_id" => $row["command_log_id"]);
-    }
-	}
-	$sql = "SELECT * FROM command c JOIN command_type t ON c.command_type_id=t.command_type_id AND c.tenant_id=t.tenant_id WHERE device_id=" . intval($deviceId) . " AND c.tenant_id=" . $tenantId . " AND done=0 ORDER BY command_id ASC LIMIT 0,1";
-	$result = mysqli_query($conn, $sql);
-	if($result) {
-		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
-		if($row){
-			$table = $row["associated_table"];
-			$pk = $row["command_value"];
-			$name = $row["name"];
-			$value = $row["command_value"];
-			$commandId = $row["command_id"];
-			$valueColumn = $row["value_column"];
-			//my framework kinda depends on single-column pks having the name of the table with "_id" tacked on the end. if you're doing something different, you might have to store the name of your pk
-			if($valueColumn && $table) {
-				$sql = "SELECT * FROM " . $table . " WHERE tenant_id=" . $tenantId . " AND " . $table . "_id=" . $pk;
-				//echo $sql;
-				$subResult = mysqli_query($conn, $sql);
-				if($subResult) {
-					$subRow = mysqli_fetch_array($subResult, MYSQLI_ASSOC);
-					if($subRow && array_key_exists($valueColumn, $subRow)){
-						$value = $subRow[$valueColumn];
-						$value = str_replace(" ", ",", $value); //kinda a hack -- should have it better end-to-end
-					}
-					return array("command_id"=> $commandId , "command" => $name, "value" => $value);
-				}
-			} else {
-				return array("command_id"=> $commandId , "command" => $name, "value" => $value);
-			}
-		}
-	}
-}
-
-function markCommandDone($commandId, $tenantId){ 
-	Global $conn, $timezone;
-	$date = new DateTime("now", new DateTimeZone($timezone));//set the $timezone global in config.php
-	$formattedDateTime =  $date->format('Y-m-d H:i:s');
-	$sql = "UPDATE command SET done = 1, performed = '" . $formattedDateTime . "' WHERE done=0 AND command_id=" . intval($commandId) . " AND tenant_id=" . $tenantId;
-	$result = mysqli_query($conn, $sql);
 }
 
 function calculateChecksum($in) {

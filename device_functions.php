@@ -3446,3 +3446,81 @@ function gatherAnyTractiveGpsData($tenant, $debug = false){
     }
   }
 }
+
+//command functions ////////////////////
+function getLatestCommandData($deviceId, $tenantId){
+	global $conn;
+	//old way, from before we had command_log:
+	/*
+	$possibleTemporaryCommandFileName = "instant_command_" . $deviceId . ".txt";
+	if(file_exists($possibleTemporaryCommandFileName)){
+    
+		$temporaryComandText = file_get_contents($possibleTemporaryCommandFileName);
+		$commandPart = getNumberAfterLastNewline($temporaryComandText, true);
+		$commandLogId = getNumberAfterLastNewline($temporaryComandText, false);
+		$commandArray = explode("|", $commandPart);
+		$value = null;
+		if(count($commandArray)>1) {
+			$value = $commandArray[1];
+		}
+		unlink($possibleTemporaryCommandFileName);
+		return array("command_id"=> -2 , "command" => str_replace("\n", "", $commandArray[0]), "value" => $value, "command_log_id" => $commandLogId);
+	}
+	*/
+	$sql = "SELECT *
+    FROM command_log
+    WHERE tenant_id = " . intval($tenantId) . " 
+      AND device_id = " . intval($deviceId) . "
+      AND result_recorded IS NULL
+      -- AND recorded >= NOW() - INTERVAL 6000 SECOND
+    ORDER BY command_log_id ASC
+    LIMIT 1;";
+  $result = mysqli_query($conn, $sql);
+  //echo $sql . "\n";
+ 
+  //var_dump($result);
+  if($result) {
+    $row = mysqli_fetch_array($result);
+    if($row) {
+      //var_dump($row);
+      return array("command_id"=> -2 , "command" => normalizeCommandText($row["command_text"], $tenantId), "value" => $row["command_data"], "command_log_id" => $row["command_log_id"]);
+    }
+	}
+	$sql = "SELECT * FROM command c JOIN command_type t ON c.command_type_id=t.command_type_id AND c.tenant_id=t.tenant_id WHERE device_id=" . intval($deviceId) . " AND c.tenant_id=" . $tenantId . " AND done=0 ORDER BY command_id ASC LIMIT 0,1";
+	$result = mysqli_query($conn, $sql);
+	if($result) {
+		$row = mysqli_fetch_array($result, MYSQLI_ASSOC);
+		if($row){
+			$table = $row["associated_table"];
+			$pk = $row["command_value"];
+			$name = $row["name"];
+			$value = $row["command_value"];
+			$commandId = $row["command_id"];
+			$valueColumn = $row["value_column"];
+			//my framework kinda depends on single-column pks having the name of the table with "_id" tacked on the end. if you're doing something different, you might have to store the name of your pk
+			if($valueColumn && $table) {
+				$sql = "SELECT * FROM " . $table . " WHERE tenant_id=" . $tenantId . " AND " . $table . "_id=" . $pk;
+				//echo $sql;
+				$subResult = mysqli_query($conn, $sql);
+				if($subResult) {
+					$subRow = mysqli_fetch_array($subResult, MYSQLI_ASSOC);
+					if($subRow && array_key_exists($valueColumn, $subRow)){
+						$value = $subRow[$valueColumn];
+						$value = str_replace(" ", ",", $value); //kinda a hack -- should have it better end-to-end
+					}
+					return array("command_id"=> $commandId , "command" => $name, "value" => $value);
+				}
+			} else {
+				return array("command_id"=> $commandId , "command" => $name, "value" => $value);
+			}
+		}
+	}
+}
+
+function markCommandDone($commandId, $tenantId){ 
+	Global $conn, $timezone;
+	$date = new DateTime("now", new DateTimeZone($timezone));//set the $timezone global in config.php
+	$formattedDateTime =  $date->format('Y-m-d H:i:s');
+	$sql = "UPDATE command SET done = 1, performed = '" . $formattedDateTime . "' WHERE done=0 AND command_id=" . intval($commandId) . " AND tenant_id=" . $tenantId;
+	$result = mysqli_query($conn, $sql);
+}

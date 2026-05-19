@@ -445,7 +445,7 @@ function getWeatherData(yearsAgo) {
 	if(plotType == 'multi'){
 		document.getElementById("singleplotdiv").style.opacity ='0.5';
 		document.getElementById("multiplotdiv").style.opacity ='1';
-		endpointUrl += "&specific_column=" + specificColumn + "&device_id=" + deviceIds;
+		endpointUrl += "&specific_column=" + specificColumn + "&device_ids=" + deviceIds;
 		deviceIdDropdown.disabled = true;
 		specificColumnSelect.disabled = false;
 		for(let specificDevice of specificDevices) {
