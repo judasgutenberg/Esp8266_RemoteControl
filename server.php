@@ -45,7 +45,7 @@ $storagePassword = "";
 $multipleSensorArray = [];
 $latestCommandData = null;
 $architecture = gvfw("architecture", "unknown");
-$deviceIdsPassedIn = gvfw("device_ids");
+$deviceIdsPassedIn = gvfw("device_ids"); //could be * or , delimited
 $user = autoLogin(); //if we are using this as a backend for the inverter or weather page, we don't need to pass the storagePassword at all.  this will only work once the user has logged in and selected a single tenant
 
 if(array_key_exists("mode", $_REQUEST)) {
