@@ -1,134 +1,90 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Device Stream</title>
-  <style>
-    body {
-      font-family: monospace;
-      background: #0b0f14;
-      color: #d7e1ea;
-      margin: 0;
-      padding: 0;
-    }
-
-    #header {
-      padding: 10px;
-      background: #111826;
-      border-bottom: 1px solid #223;
-    }
-
-    #log {
-      padding: 10px;
-      height: calc(100vh - 50px);
-      overflow-y: auto;
-      white-space: pre-wrap;
-    }
-
-    .msg {
-      margin-bottom: 6px;
-      padding: 6px;
-      border-left: 3px solid #3aa0ff;
-    }
-
-    .status {
-      color: #7aa2ff;
-    }
-
-    .error {
-      color: #ff6b6b;
-    }
-  </style>
+    <title>ESP8266 WebSocket Frontend</title>
+    <script src='tablesort.js?version=1777640125'></script>
+    <script src='tool.js?version=1777640125'></script>
+    <link rel='stylesheet' href='tool.css?version=1777640125'>
 </head>
+
 <body>
 
-<div id="header">
-  <span>Device Stream:</span>
-  <span id="deviceLabel"></span>
-  <span id="status" class="status">connecting...</span>
-</div>
+<h1>ESP8266 Console</h1>
 
-<div id="log"></div>
+<div id="log" style="width:600px;height:400px;scroll:auto"></div>
+<br><br>
+
+<input id="messageBox" type="text">
+<button onclick="sendMessage()">Send</button>
 
 <script>
-(function () {
-  const params = new URLSearchParams(window.location.search);
-  const deviceId = params.get("device_id");
+const params = new URLSearchParams(window.location.search);
+const deviceId = params.get("device_id");
+let log = document.getElementById("log");
+let ws = null;
+let reconnectTimer = null;
 
-  const log = document.getElementById("log");
-  const statusEl = document.getElementById("status");
-  const deviceLabel = document.getElementById("deviceLabel");
-
-  deviceLabel.textContent = deviceId || "(none)";
-
-  if (!deviceId) {
-    statusEl.textContent = "missing device_id";
-    statusEl.className = "error";
-    return;
-  }
-
-  let ws;
-  let retryDelay = 1000;
-
-  function addLine(text, cls = "msg") {
-    const div = document.createElement("div");
-    div.className = cls;
-    div.textContent = text;
-    log.appendChild(div);
-    log.scrollTop = log.scrollHeight;
-  }
-
-  function connect() {
-    // adjust this to your backend endpoint
-    ws = new WebSocket("ws://<?PHP echo $_SERVER['HTTP_HOST']; ?>:8080");
-
-    statusEl.textContent = "connecting...";
-    statusEl.className = "status";
+function connectWebSocket(){
+    console.log("Connecting...");
+    ws = new WebSocket(
+        "ws://<?PHP echo $_SERVER['HTTP_HOST']; ?>:8080/?type=frontend&device_id=" +
+        encodeURIComponent(deviceId)
+    );
 
     ws.onopen = () => {
-      statusEl.textContent = "connected";
-      retryDelay = 1000;
 
-      // ?? tell backend what device we want
-      ws.send(JSON.stringify({
-        type: "subscribe",
-        device_id: deviceId
-      }));
-
-      addLine("?? Subscribed to device: " + deviceId);
+        console.log("CONNECTED");
+        if(reconnectTimer){
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
+        }
     };
 
     ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-
-        // you can format this however your backend sends it
-        addLine(JSON.stringify(data, null, 2));
-      } catch (e) {
-        addLine(event.data);
-      }
-    };
-
-    ws.onerror = () => {
-      addLine("?? socket error", "error");
+      log.innerHTML += "<PRE>" + event.data + "</PRE>\n";
+      console.log("RX:", event.data);
     };
 
     ws.onclose = () => {
-      statusEl.textContent = "disconnected (reconnecting...)";
-      statusEl.className = "error";
-
-      addLine("?? disconnected");
-
-      setTimeout(() => {
-        retryDelay = Math.min(retryDelay * 1.5, 10000);
-        connect();
-      }, retryDelay);
+      //log.innerHTML += "DISCONNECTED\n";
+      console.log("DISCONNECTED");
+      scheduleReconnect();
     };
-  }
 
-  connect();
-})();
+    ws.onerror = (error) => {
+        console.log("SOCKET ERROR", error);
+        /*
+            Important:
+            some browsers only fire onclose afterward,
+            so don't reconnect here directly
+        */
+    };
+}
+
+function scheduleReconnect(){
+    if(reconnectTimer){
+        return;
+    }
+    reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connectWebSocket();
+    }, 3000);
+}
+
+function sendMessage(){
+  const box = document.getElementById("messageBox");
+    if(!ws || ws.readyState !== WebSocket.OPEN){
+        console.log("Socket not connected");
+        return;
+    }
+    log.innerHTML +=  "<div style='color:#009900'>" + box.value + "</div>\n";
+    ws.send(box.value);
+}
+
+connectWebSocket();
+
 </script>
+ 
 
 </body>
 </html>

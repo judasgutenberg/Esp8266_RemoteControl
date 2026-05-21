@@ -3,207 +3,211 @@ include("config.php");
 include("site_functions.php");
 include("device_functions.php");
 
-$server = stream_socket_server("tcp://0.0.0.0:8080", $errno, $errstr);
-$outData = [];
+
+ 
+set_time_limit(0);
+$host = '0.0.0.0';
+$port = 8080;
+
+$server = stream_socket_server(
+    "tcp://$host:$port",
+    $errno,
+    $errstr
+);
 
 if (!$server) {
-    die("$errstr ($errno)\n");
+    die("Socket error: $errstr ($errno)\n");
 }
+stream_set_blocking($server, false);
+echo "WebSocket server running on port $port\n";
 
-echo "WebSocket server started\n";
+/*
+    CONNECTION STRUCTURE
 
-$clients = [];
+    $connections[(int)$socket] = [
+        'socket' => $socket,
+        'type' => 'device' or 'frontend',
+        'device_id' => 'abc123'
+    ];
+*/
+
+$connections = [];
 
 while (true) {
-  $read = [];
+    $read = [$server];
+    foreach ($connections as $conn) {
+        $read[] = $conn['socket'];
+    }
+    $write = null;
+    $except = null;
+    if (stream_select($read, $write, $except, 1) === false) {
+        continue;
+    }
 
-  // only include valid client sockets
-  foreach ($clients as $client) {
+    /*
+        NEW CONNECTION
+    */
 
-      if (is_resource($client)) {
-          $read[] = $client;
-      }
-  }
+    if (in_array($server, $read, true)) {
+        $client = @stream_socket_accept($server, 0);
+        if ($client) {
+            stream_set_blocking($client, false);
+            $headers = fread($client, 2048);
+            if (!$headers) {
+                fclose($client);
+                continue;
+            }
+            /*
+                EXTRACT QUERY STRING
+            */
+            preg_match('#GET (.+?) HTTP#', $headers, $matches);
+            $path = $matches[1] ?? '/';
+            $parts = parse_url($path);
+            parse_str($parts['query'] ?? '', $query);
+            $deviceId = $query['device_id'] ?? null;
+            $type = $query['type'] ?? null;
+            if (!$deviceId || !$type) {
+                fclose($client);
+                continue;
+            }
+            /*
+                WEBSOCKET HANDSHAKE
+            */
+            preg_match("/Sec-WebSocket-Key: (.*)\r\n/", $headers, $matches);
 
-  // include master server socket
-  if (is_resource($server)) {
-      $read[] = $server;
-  }
+            $key = trim($matches[1]);
 
-  // nothing valid left
-  if (empty($read)) {
-      usleep(100000);
-      continue;
-  }
+            $accept = base64_encode(
+                pack(
+                    'H*',
+                    sha1(
+                        $key .
+                        '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
+                    )
+                )
+            );
+            $upgrade =
+                "HTTP/1.1 101 Switching Protocols\r\n" .
+                "Upgrade: websocket\r\n" .
+                "Connection: Upgrade\r\n" .
+                "Sec-WebSocket-Accept: $accept\r\n\r\n";
 
-  $write = null;
-  $except = null;
+            fwrite($client, $upgrade);
 
-  $result = @stream_select($read, $write, $except, null);
+            $id = (int)$client;
 
-  if ($result === false) {
-      echo "stream_select failed\n";
-      continue;
-  }
+            $connections[$id] = [
+                'socket' => $client,
+                'type' => $type,
+                'device_id' => $deviceId
+            ];
+            echo "CONNECTED: $type : $deviceId\n";
+        }
+        unset($read[array_search($server, $read, true)]);
+    }
 
-  // --------------------------------------------------
-  // NEW CONNECTIONS
-  // --------------------------------------------------
+    /*
+        HANDLE EXISTING CONNECTIONS
+    */
 
-  if (in_array($server, $read, true)) {
+    foreach ($read as $socket) {
+        $id = (int)$socket;
+        $data = @fread($socket, 2048);
+        if (!$data) {
+            if (isset($connections[$id])) {
+                echo "DISCONNECTED: " .
+                    $connections[$id]['type'] .
+                    " : " .
+                    $connections[$id]['device_id'] .
+                    "\n";
+                fclose($connections[$id]['socket']);
+                unset($connections[$id]);
+            }
+            continue;
+        }
+        $decoded = decodeWebSocketFrame($data);
+        if ($decoded === null) {
+            continue;
+        }
+        $sender = $connections[$id];
+        echo "MESSAGE FROM {$sender['type']} {$sender['device_id']}: $decoded\n";
+        /*
+            FORWARD TO MATCHING PEER
+        */
 
-      $client = @stream_socket_accept($server, 0);
-
-      if ($client) {
-
-          $headers = fread($client, 1500);
-
-          preg_match("/Sec-WebSocket-Key: (.*)\r\n/", $headers, $matches);
-
-          if (!empty($matches[1])) {
-
-              $key = trim($matches[1]);
-
-              $accept = base64_encode(
-                  pack(
-                      'H*',
-                      sha1($key . '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')
-                  )
-              );
-
-              $upgrade =
-                  "HTTP/1.1 101 Switching Protocols\r\n" .
-                  "Upgrade: websocket\r\n" .
-                  "Connection: Upgrade\r\n" .
-                  "Sec-WebSocket-Accept: $accept\r\n\r\n";
-
-              fwrite($client, $upgrade);
-
-              stream_set_blocking($client, false);
-
-              $clients[] = $client;
-
-              echo "client connected\n";
-          }
-          else {
-
-              fclose($client);
-
-              echo "invalid websocket handshake\n";
-          }
-      }
-
-      // remove server socket from readable clients
-      $serverKey = array_search($server, $read, true);
-
-      if ($serverKey !== false) {
-          unset($read[$serverKey]);
-      }
-  }
-
-  // --------------------------------------------------
-  // EXISTING CLIENT DATA
-  // --------------------------------------------------
-
-  foreach ($read as $client) {
-
-      if (!is_resource($client)) {
-          continue;
-      }
-
-      $data = @fread($client, 2048);
-
-      if ($data === '' || $data === false) {
-
-          echo "client disconnected\n";
-
-          $key = array_search($client, $clients, true);
-
-          if ($key !== false) {
-              unset($clients[$key]);
-          }
-
-          fclose($client);
-
-          continue;
-      }
-
-      $payload = decodeFrame($data);
-
-      if ($payload !== false && trim($payload) !== '') {
-
-          echo "received: $payload\n";
-          if(substr($payload, 0, 1) == "{") {
-             $data = json_decode($payload, true);
-             if($data) {
-                $specificDeviceId = gvfa("device_id", $data);
-                if($specificDeviceId > 0) {
-                  if(!array_key_exists($specificDeviceId , $outData)) 
-                   $outData[$specificDeviceId] = "";
-                   }
-                }
-             }
-            
-            
-
-          $message = encodeFrame("server received: $payload");
-
-          foreach ($clients as $sendClient) {
-
-              if (is_resource($sendClient)) {
-                  @fwrite($sendClient, $message);
-              }
-          }
-      }
-  }
+        foreach ($connections as $targetId => $target) {
+            if ($targetId === $id) {
+                continue;
+            }
+            if (
+                $target['device_id'] === $sender['device_id']
+            ) {
+                sendWebSocketMessage(
+                    $target['socket'],
+                    $decoded
+                );
+            }
+        }
+    }
 }
 
-function encodeFrame($payload)
+/*
+    DECODE INCOMING FRAME
+*/
+
+function decodeWebSocketFrame($data)
 {
-    $frame = [];
-    $frame[0] = 129;
-    $length = strlen($payload);
-    if ($length <= 125) {
-        $frame[1] = $length;
+    $bytes = unpack('C*', $data);
+    $length = $bytes[2] & 127;
+    if ($length === 126) {
+        $maskStart = 5;
+        $payloadStart = 9;
+    } elseif ($length === 127) {
+        $maskStart = 11;
+        $payloadStart = 15;
+
     } else {
-      $frame[1] = 0;
+        $maskStart = 3;
+        $payloadStart = 7;
     }
-    $header = pack('CC', $frame[0], $frame[1]);
-    return $header . $payload;
+
+    $mask = [
+        $bytes[$maskStart],
+        $bytes[$maskStart + 1],
+        $bytes[$maskStart + 2],
+        $bytes[$maskStart + 3]
+    ];
+
+    $payload = '';
+    $j = 0;
+    for ($i = $payloadStart; $i <= count($bytes); $i++) {
+        $payload .= chr(
+            $bytes[$i] ^ $mask[$j % 4]
+        );
+        $j++;
+    }
+
+    return $payload;
 }
 
+/*
+    ENCODE OUTGOING FRAME
+*/
 
-function decodeFrame($data)
+function sendWebSocketMessage($client, $message)
 {
-    $opcode = ord($data[0]) & 0x0F;
+    $length = strlen($message);
+    $frame = chr(129);
+    if ($length <= 125) {
+        $frame .= chr($length);
 
-    // only process text frames
-    if ($opcode !== 0x1) {
-        return false;
+    } elseif ($length <= 65535) {
+        $frame .= chr(126) . pack("n", $length);
+    } else {
+        $frame .= chr(127) . pack("J", $length);
     }
-
-    $length = ord($data[1]) & 127;
-
-    if ($length == 126) {
-        $masks = substr($data, 4, 4);
-        $payload = substr($data, 8);
-    }
-    elseif ($length == 127) {
-        $masks = substr($data, 10, 4);
-        $payload = substr($data, 14);
-    }
-    else {
-        $masks = substr($data, 2, 4);
-        $payload = substr($data, 6);
-    }
-
-    $text = '';
-
-    for ($i = 0; $i < strlen($payload); $i++) {
-        $text .= $payload[$i] ^ $masks[$i % 4];
-    }
-
-    return $text;
+    $frame .= $message;
+    fwrite($client, $frame);
 }
 
   
