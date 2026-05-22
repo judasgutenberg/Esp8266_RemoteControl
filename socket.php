@@ -8,6 +8,9 @@ include("device_functions.php");
 set_time_limit(0);
 $host = '0.0.0.0';
 $port = 8080;
+$sqlConn = mysqli_connect($servername, $username, $password, $database);
+
+$lastGoodKey = "";
 
 $server = stream_socket_server(
     "tcp://$host:$port",
@@ -18,6 +21,8 @@ $server = stream_socket_server(
 if (!$server) {
     die("Socket error: $errstr ($errno)\n");
 }
+
+
 stream_set_blocking($server, false);
 echo "WebSocket server running on port $port\n";
 
@@ -65,10 +70,28 @@ while (true) {
             $parts = parse_url($path);
             parse_str($parts['query'] ?? '', $query);
             $deviceId = $query['device_id'] ?? null;
+
+            
+           
+            
+            $k2 = $query['k2'] ?? null;
             $type = $query['type'] ?? null;
             if (!$deviceId || !$type) {
                 fclose($client);
                 continue;
+            } else {
+              $deviceSql = "SELECT * from device WHERE device_id = " . intval($deviceId);
+              $getDeviceResult = mysqli_query($sqlConn, $deviceSql);
+              if($getDeviceResult) {
+                $deviceRow = mysqli_fetch_array($getDeviceResult);
+                $lastGoodKey = $deviceRow["last_known_key"];
+              }
+              //echo "GOOD DEVICE " . $deviceId  . " WITH KEY :" . $lastGoodKey . "\n";
+            }
+            //if we have a device, then we want to make sure it is authorized
+            if(($k2 != $lastGoodKey || $k2 == "")) {
+              echo "BAD DEVICE AUTH: " . $k2 . "(" . $type  . "):" . $lastGoodKey . "\n";
+              continue;
             }
             /*
                 WEBSOCKET HANDSHAKE

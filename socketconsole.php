@@ -8,10 +8,20 @@
 </head>
 
 <body>
+<?php
+include("config.php");
+include("site_functions.php");
+include("device_functions.php");
+$conn = mysqli_connect($servername, $username, $password, $database);
 
-<h1>ESP8266 Console</h1>
+$deviceId = gvfw("device_id");
+$deviceRow = getDevice($deviceId);
+//var_dump($deviceRow);
+?>
 
-<div id="log" style="width:600px;height:400px;scroll:auto"></div>
+<div class='issuesheader'><?php echo $deviceRow["name"] ?> Fast Console</div>
+
+<div id="log" style="width:600px;height:400px;max-height:400px;overflow:auto"></div>
 <br><br>
 
 <input id="messageBox" type="text">
@@ -27,8 +37,7 @@ let reconnectTimer = null;
 function connectWebSocket(){
     console.log("Connecting...");
     ws = new WebSocket(
-        "ws://<?PHP echo $_SERVER['HTTP_HOST']; ?>:8080/?type=frontend&device_id=" +
-        encodeURIComponent(deviceId)
+        "wss://<?PHP echo $_SERVER['HTTP_HOST']; ?>/socket?type=frontend&device_id=<?php echo $deviceId?>&k2=<?php echo $deviceRow["last_known_key"]?>"
     );
 
     ws.onopen = () => {
@@ -42,6 +51,7 @@ function connectWebSocket(){
 
     ws.onmessage = (event) => {
       log.innerHTML += "<PRE>" + event.data + "</PRE>\n";
+      log.scrollTop = log.scrollHeight;
       console.log("RX:", event.data);
     };
 

@@ -2002,6 +2002,18 @@ function getGeneric($table, $pk, $user, $lookupColumn = null){
 	}
 }
 
+function getDevice($deviceId){
+  global $conn;
+  $sql = "SELECT * FROM device WHERE device_id=" . intval($deviceId);
+	$result = mysqli_query($conn, $sql);
+	if($result) {
+		$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    if(count($rows) > 0){
+      return $rows[0];
+    }
+	}
+}
+
 function getDevices($tenantId, $allDeviceColumnMaps = true){
   global $conn;
   $sql = "SELECT * FROM device WHERE tenant_id=" . intval($tenantId) . " ORDER BY device_id";

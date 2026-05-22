@@ -42,11 +42,15 @@ $sensorId = "NULL";
 $nonJsonPinData = 0;
 $justGetDeviceInfo = 0;
 $storagePassword = "";
+$deviceOutputMode = 0;
 $multipleSensorArray = [];
 $latestCommandData = null;
 $architecture = gvfw("architecture", "unknown");
 $deviceIdsPassedIn = gvfw("device_ids"); //could be * or , delimited
 $user = autoLogin(); //if we are using this as a backend for the inverter or weather page, we don't need to pass the storagePassword at all.  this will only work once the user has logged in and selected a single tenant
+
+$encryptedKey = gvfw("key");
+$encryptedKey2 = gvfw("k2"); //version 2
 
 if(array_key_exists("mode", $_REQUEST)) {
 	$mode = $_REQUEST["mode"];
@@ -60,6 +64,10 @@ $mode = gvfw("mode");
 if($mode == "upload") {
   $data = file_get_contents("php://input");
   $filename = gvfw("filename");
+  $device = getDevice($deviceId);
+  if($encryptedKey2 != $device["last_known_key"]) {
+    $out = ["error"=>"upload is not authorized"];
+  }
   if($filename != ""){
     $rootTemp = "./temp";
     $cursor = 0;
@@ -139,8 +147,7 @@ if($_REQUEST) {
 		$absoluteTimeAgo = $_REQUEST["absolute_time_ago"];
 	}  
 	$storagePassword  = gvfw("storage_password", gvfw("storagePassword"));
-	$encryptedKey = gvfw("key");
-	$encryptedKey2 = gvfw("k2"); //version 2
+
 	$data = gvfa("data", $_REQUEST);
 	$hashedData =  substr(hash('sha256', $data), 0, 16);
 	//$x = gvfw("x");
@@ -289,7 +296,7 @@ if($_REQUEST) {
 
 					if(count($lines) > 6) {
 						$extraInfo = explode("*", $lines[6]);
-						//extraInfo: lastCommandId*pinCursor*localSource*ipAddressToUse*requestNonJsonPinInfo88*justDeviceJson*changeSourceId
+						//extraInfo: lastCommandId*pinCursor*localSource*ipAddressToUse*requestNonJsonPinInfo*justDeviceJson*changeSourceId*outputMode
 						if(count($extraInfo)>0){
 							$lastCommandId = $extraInfo[0];
 							markCommandDone($lastCommandId, $tenantId);
@@ -300,6 +307,7 @@ if($_REQUEST) {
 						//apparently we do not care about pinCursor:
 						//var_dump($extraInfo);
 						$mustSaveLastKnownDeviceValueAsValue = arrayDefaultFailDown($extraInfo, 2, false);
+						$deviceOutputMode = $mustSaveLastKnownDeviceValueAsValue = arrayDefaultFailDown($extraInfo, 7, 0);
             $ipAddress = arrayDefaultFailDown($extraInfo, 3, "NULL");
             if(count($extraInfo)>4) {
               $saveDeviceInfo = true;
@@ -776,6 +784,11 @@ if($_REQUEST) {
 				if(strpos($outString, "|") === false){
 					$outString .= "|";
 				}
+				//set this at the beginning of a device session so it can be used to auth non-polling actions later
+				if($encryptedKey2 != ""){
+          $updateSql = "UPDATE device SET last_known_key='" . mysqli_real_escape_string($conn, $encryptedKey2)  . "' WHERE device_id=" . $deviceId;
+          mysqli_query($conn, $updateSql);
+				}
 				die($outString);
 			} else if($mode == "getDeviceData" || $mode == "saveData") {
 				if($saveDeviceInfo) {			
@@ -789,6 +802,11 @@ if($_REQUEST) {
 					if($sensorId){
 						$deviceSql .= ", sensor_id=" . intval($sensorId);
 					}
+					/*
+					if($encryptedKey2 != "" && $deviceOutputMode != 3) { //used for authing socket connection, so do not update if in use
+            $deviceSql .= ", last_known_key='" . mysqli_real_escape_string($conn, $encryptedKey2) . "'";
+          }
+					*/
 					$deviceSql .= " WHERE device_id=" . intval($deviceId);
 					$deviceResult = mysqli_query($conn, $deviceSql);
 					//echo $deviceSql;
