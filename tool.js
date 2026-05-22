@@ -1103,8 +1103,8 @@ function genericListActionBackend(
 	  let xmlhttp = new XMLHttpRequest();
 	  const div = document.getElementById('utilityDiv');
 	  let out = "";
-	  out += "<div id='commandline' style='display:none'>Command: <input id='command_text' style='width:200px'/>";
-	  out += "&nbsp;&nbsp;Data: <input id='command_data' style='width:300px'/>";
+	  out += "<div id='commandline' style='display:none'>Command: <input id='command_text' style='width:380px'/>";
+	  out += "&nbsp;&nbsp;Data: <input id='command_data' style='width:200px'/>";
 	  
   
 	  out += "<button type='button' onclick='instantCommand()'>Run</button></div>";
