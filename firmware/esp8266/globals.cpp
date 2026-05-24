@@ -22,7 +22,7 @@ Adafruit_INA219* ina219;
 Adafruit_VL53L0X lox[4];
 Adafruit_FRAM_I2C fram;
 
-
+WebSocketsClient webSocket;
 
 //SEND DATA TO A REMOTE SERVER TO STORE IN A DATABASE----------------------------------------------------
 // ---------- Non-blocking sendRemoteData() state machine -------------
@@ -147,3 +147,9 @@ ConfigBlock blocks[MAX_BLOCKS];
 uint16_t serialParsedData[MAX_PARSED_SERIAL_VALUES];
 uint8_t blockCount = 0;
 uint32_t serialDataParsed = 0;
+
+uint8_t oldOutputMode = 0;
+bool webSocketConnected = false;
+unsigned long lastWebSocketCheck = 0;
+String lastGoodKey = "";
+uint32_t lastTimeOutputModeChanged = 0;

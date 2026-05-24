@@ -51,6 +51,7 @@ void cmdUpdateFirmware(String* param, int argCount, bool deferred);
 void cmdBeforeBoot(String* param, int argCount, bool deferred);
 void cmdQuitSafeMode(String* param, int argCount, bool deferred);
 void cmdSetPreboot(String* param, int argCount, bool deferred);
+void cmdfastCom(String* param, int argCount, bool deferred);
 
 void cmdInitSensors(String* param, int argCount, bool deferred);
 void cmdVersion(String* param, int argCount, bool deferred);
@@ -107,6 +108,7 @@ void cmdGetSerialSwap(String* param, int argCount, bool deferred);
 void cmdSetSerialLogging(String* param, int argCount, bool deferred);
 void cmdGetSerialLogging(String* param, int argCount, bool deferred);
 void cmdDumpParserConfig(String* param, int argCount, bool deferred);
+void cmdInitSerialParser(String* param, int argCount, bool deferred);
 
 void cmdResetSerial(String* param, int argCount, bool deferred);
 void cmdDumpConfig(String* param, int argCount, bool deferred);

@@ -13,12 +13,38 @@
 #include <base64.h>
 
 void textOut(String data){
-  if(outputMode == 2) {
+  if (outputMode == 3) {
+    //something like this, but maybe with meta-data:
+    //String msg = data;;// + "\n" + String(lastCommandLogId);
+    //webSocket.sendTXT(msg);
+    responseBuffer += data;
+  } else if(outputMode == 2) {
     //sendRemoteData(data, "commandout", 0xFFFF); //do this in loop, not now
     responseBuffer += data;
   } else {
     Serial.print(data);
   }
+}
+
+String numericEquivalents(String inVal) {
+  String lcInVal = inVal;
+  lcInVal.toLowerCase();
+  if(lcInVal == "on") {
+    inVal = String(1);
+  }
+  if(lcInVal == "up") {
+    inVal = String(1);
+  }
+  if(lcInVal == "off") {
+    inVal = String(0);
+  }
+  if(lcInVal == "down") {
+    inVal = String(0);
+  }
+  if(lcInVal == "two") {
+    inVal = String(2);
+  }
+  return inVal;
 }
 
 String makeAsteriskString(uint8_t number){

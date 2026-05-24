@@ -16,13 +16,14 @@ CommandDef commands[] = {
   {"get preboot",           cmdBeforeBoot, 0,       true,         0b00000000},
   {"clear safe mode",       cmdQuitSafeMode, 0,     true,         0b00000000},
   {"set preboot",           cmdSetPreboot, 2,       false,        0b00000000},  
+  {"set fast com",          cmdfastCom, 1,          false,        0b00000000}, 
   
   {"init sensors",          cmdInitSensors, 0,      true,         0b00000000},
   {"version",               cmdVersion, 0,          true,         0b00000000},
   {"run slave sketch",      cmdRunSlaveSketch, 0,   true,         0b00000010},
   {"slave bootloader",      cmdRunSlaveBootloader, 0, true,       0b00000010},
   {"pet watchdog",          cmdPetWatchdog, 0,      true,         0b00000010},
-  {"get weather sensors",   cmdGetWeatherSensors, 0, true,        0b00000000},
+  {"dump weather data",     cmdGetWeatherSensors, 0, true,        0b00000000},
   {"one pin at a time",     cmdOnePinAtATime, 0,    false,        0b00000000},
   {"clear latency average", cmdClearLatencyAverage, 0, true,      0b00000000},
   {"ir",                    cmdIr, 1,               false,        0b00010000},
@@ -72,8 +73,8 @@ CommandDef commands[] = {
   {"get serial swap",       cmdGetSerialSwap, 1,    false,        0b00000000},
   {"set serial logging",    cmdSetSerialLogging, 2, false,        0b00000000},
   {"get serial logging",    cmdGetSerialLogging, 0, false,        0b00000000},
-  {"dump serial parsing blocks", cmdDumpParserConfig, 0, false,    0b00000000},
-
+  {"dump serial parser blocks", cmdDumpParserConfig, 0, false,    0b00000000},
+  {"init serial parser",    cmdInitSerialParser, 0, false,        0b00000000},
   
   {"reset serial",          cmdResetSerial, 0,      false,        0b00000000},
   {"dump config",           cmdDumpConfig, 2,       false,        0b00000010},

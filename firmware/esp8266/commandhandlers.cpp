@@ -124,6 +124,18 @@ void cmdSetPreboot(String* param, int argCount, bool deferred) {
 }
 ////////////////////
 
+
+void cmdfastCom(String* param, int argCount, bool deferred) {
+  int value = param[0].toInt();
+  if(value == 1) {
+    startWebSocket();
+    textOut(F("Fast communications on\n")); 
+  } else {
+    stopWebSocket();
+    textOut(F("Fast communications off\n")); 
+  }   
+}
+
 void cmdInitSensors(String* param, int argCount, bool deferred) {
   startWeatherSensors(ci[SENSOR_ID],  ci[SENSOR_SUB_TYPE], ci[SENSOR_I2C], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN]);
   textOut(F("Sensors re-initialized\n"));
@@ -305,8 +317,9 @@ void cmdGetLastdatalog(String* param, int argCount, bool deferred) {
 void cmdTiming(String* param, int argCount, bool deferred) {
   textOut(F("Loop count: ") + String(loopCount));
   textOut(F(", Connection count: ") + String(connectionCount));
-  textOut(F(", Logged serial bytes: ") + String(serialByteCount));
-  textOut("\n");
+  textOut(F("\nLogged serial bytes: ") + String(serialByteCount));
+  textOut(F("\nCurrent output mode last changed: ") + msTimeAgo(lastTimeOutputModeChanged));
+ 
   if(ci[SERIAL_FOR_COMMANDS_ONLY] == 0) {
     textOut(F(", Serial data parsed: ") + String(serialDataParsed));
     if(serialDataParsed > 0) {
@@ -314,7 +327,7 @@ void cmdTiming(String* param, int argCount, bool deferred) {
     }
   }
   if(loopCount > 0){//don't want to divide by zero
-    textOut(F(", Millis/loop: ") + String(millis()/loopCount));
+    textOut(F("\nMillis/loop: ") + String(millis()/loopCount));
     textOut(F(", Serial bytes/loop: ") + String(serialByteCount/loopCount));
   }
   if(connectionCount > 0){ //don't want to divide by zero
@@ -363,7 +376,7 @@ void cmdChipInfo(String* param, int argCount, bool deferred) {
 void cmdCpuInfo(String* param, int argCount, bool deferred) {
   textOut(F("Cpu frequency: ") + String(ESP.getCpuFreqMHz()));
   textOut(F(", Cycle count: ") + String(ESP.getCycleCount()));
-  textOut(F(" Chip ID: ") + String(ESP.getChipId()));
+  textOut(F("\n Chip ID: ") + String(ESP.getChipId()));
   textOut(F(", Core version: ") + String(ESP.getCoreVersion()));
   textOut(F(", SDK version: ") + String(ESP.getSdkVersion()));
   textOut(F(", Boot version: ") + String(ESP.getBootVersion()));
@@ -487,11 +500,22 @@ void cmdGetSerialLogging(String* param, int argCount, bool deferred) {
 }
 
 void cmdDumpParserConfig(String* param, int argCount, bool deferred) {
+  if(blockCount == 0) {
+    textOut(F("Serial parsing not configured; download a 'serialparser.cfg' file\n"));
+  }
   for(int i=0; i<blockCount; i++) {
     dumpConfigBlock(blocks[i]);
   }
 }
-  
+
+void cmdInitSerialParser(String* param, int argCount, bool deferred) {
+  initSerialParser();
+  if(blockCount == 0) {
+    textOut(F("'serialparser.cfg' not found or it contained no valid configuration\n"));
+  } else {
+    textOut(F("Serial parsing initiated with data from 'serialparser.cfg'\n"));
+  }
+}
 
 
 /////////////////////
@@ -674,10 +698,16 @@ void cmdSet(String* param, int argCount, bool deferred) {
     value.trim();
     if(configIndex>=CONFIG_STRING_COUNT) {
       ci[configIndex] = value.toInt();
+      //handle some specific sets in terms of what they do:
+      if(key.toInt() == I2C_SPEED) {
+        Wire.setClock(ci[I2C_SPEED] * 1000);
+      }
     } else {   
       char buffer[50];    
       value.toCharArray(buffer, sizeof(buffer));
       cs[configIndex] = strdup(buffer); 
+      
+
     }
   }
   textOut(F("Configuration set to: ") + value + "\n");

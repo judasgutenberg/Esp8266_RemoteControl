@@ -6,6 +6,11 @@ void rtcWrite(RTCBootInfo &d);
 void sendIr(String rawDataStr);
 void serialSwap(int8_t value);
 
+
+void stopWebSocket();
+void startWebSocket();
+int initSerialParser();
+
 void dumpConfigBlock(const ConfigBlock &b);
 
 String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName, int ordinalOfOverwrite, int consolidateAllSensorsToOneRecord); 

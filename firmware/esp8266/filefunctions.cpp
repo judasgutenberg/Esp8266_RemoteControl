@@ -35,7 +35,7 @@ bool postFileUpload(const char* localPath, const char* deviceId) {
     }
     uint32_t totalSize = f.size();
     uint32_t encodedSize = ((totalSize + 2) / 3) * 4;
-    String fullPath = path + "?mode=upload&filename=" + urlEncode(localPath, false) + "&total_size=" + String(totalSize) + "&device_id=" + urlEncode(deviceId, false);
+    String fullPath = path + "?k2=" + lastGoodKey + "&mode=upload&filename=" + urlEncode(localPath, false) + "&total_size=" + String(totalSize) + "&device_id=" + urlEncode(deviceId, false);
     textOut(F("Connecting\n"));
     WiFiClient client;
     if (!client.connect(host.c_str(), 80)) {

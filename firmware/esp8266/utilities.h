@@ -10,9 +10,11 @@
 #include <cmath> 
 #include <math.h> // for isnan, NAN
 #include <map>
+#include <WebSocketsClient.h>
 
 
 void textOut(String data);
+String numericEquivalents(String inVal);
 String makeAsteriskString(uint8_t number);
 void logHeap(const char* label);
 void dumpMemoryStats(int marker);

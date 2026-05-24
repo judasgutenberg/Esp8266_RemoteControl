@@ -1,7 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define VERSION 2266
+#define VERSION 2276
 #define RTC_MAGIC 0xDEADCA75
 
 #define MAX_CFG_LEN 220
@@ -34,6 +34,7 @@
 #include <Adafruit_VL53L0X.h>
 #include <Adafruit_FRAM_I2C.h>
 #include <map>
+#include <WebSocketsClient.h>
 
 // Sensor objects
 extern Adafruit_ADT7410 adt7410[4];
@@ -48,6 +49,8 @@ extern IRsend irsend; // note: IRsend requires a pin in constructor, can handle 
 extern Adafruit_INA219* ina219;
 extern Adafruit_VL53L0X lox[4];
 extern Adafruit_FRAM_I2C fram;
+
+extern WebSocketsClient webSocket;
 
 //state machine globals
 
@@ -64,7 +67,7 @@ enum RemoteState {
   RS_DONE
 };
 
-struct __attribute__((packed)) RTCBootInfo {
+struct RTCBootInfo {
   uint32_t magic;
   uint32_t lastMillis;
   uint32_t rebootCount;
@@ -74,6 +77,7 @@ struct __attribute__((packed)) RTCBootInfo {
   int32_t lastCommandType;
   uint32_t checksum;
   uint32_t useHardcodedConfig;
+  uint32_t flagValue;
 };
 
 struct ConfigBlock {
@@ -186,4 +190,10 @@ extern ESP8266WebServer server;
 extern bool didSomeSerialProcessing;
 extern uint8_t blockCount;
 extern uint32_t serialDataParsed;
+
+extern uint8_t oldOutputMode;
+extern bool webSocketConnected;
+extern unsigned long lastWebSocketCheck;
+extern String lastGoodKey;
+extern uint32_t lastTimeOutputModeChanged;
 #endif

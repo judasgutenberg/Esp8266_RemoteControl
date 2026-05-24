@@ -75,9 +75,11 @@
 #define SERIAL_SWAP 60
 #define SERIAL_BUFFER 61
 #define SERIAL_PARSE_MODE 62
+
+#define I2C_SPEED 63
 ///////////////////////
 #define CONFIG_STRING_COUNT 16
-#define CONFIG_TOTAL_COUNT 63
+#define CONFIG_TOTAL_COUNT 64
 //////////////////////
 #define CONFIG_SLAVE_STRING_COUNT 5 //for strings used specifically by the slave
 #define CONFIG_SLAVE_TOTAL_COUNT 10  //total config items on slave
