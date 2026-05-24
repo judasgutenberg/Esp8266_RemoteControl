@@ -67,6 +67,7 @@ void initConfig(void) {
   ci[SERIAL_SWAP] = 0;
   ci[SERIAL_BUFFER] = 0;
   ci[SERIAL_PARSE_MODE] = 0;
+  ci[I2C_SPEED] = 400;
 }
 
 
