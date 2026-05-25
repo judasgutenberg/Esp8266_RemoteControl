@@ -495,7 +495,7 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
   //for example, you can set the i2c address of a BME680 or a BMP280 but not a BMP180.  you can specify any GPIO as a data pin for a DHT
   int objectCursor = 0;
  
-  auto it = sensorObjectCursor.find(String(ci[SENSOR_ID]));
+  auto it = sensorObjectCursor.find(String(sensorIdLocal));
   if (it != sensorObjectCursor.end()) {
       objectCursor = it->second;
   }
@@ -1165,6 +1165,8 @@ void runRemoteTask() {
             textOut(String(line));
             textOut("\n");
           }
+          //format of sensor_config string:
+          //pinNumber*powerPin*sensorId*sensorSubType*i2c*deviceFeatureId*sensorName*ordinalOfOverwrite*consolidateAllRecords
           if (cs[SENSOR_CONFIG_STRING] != "") {
             // ?? this still uses String, but outside tight loop frequency
             String tmp = line;
@@ -1363,7 +1365,7 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
     if(sensorDatum.indexOf('*')>-1) {
       //Serial.println("((((((((((((((((((((((((((((((((");
       //Serial.println(sensorDatum);
-      splitString(sensorDatum, '*', specificSensorData, 8);
+      splitString(sensorDatum, '*', specificSensorData, 8); //pinNumber*powerPin*sensorId*sensorSubType*i2c*deviceFeatureId*sensorName*ordinalOfOverwrite*consolidateAllRecords
       pinNumber = specificSensorData[0].toInt();
       powerPin = specificSensorData[1].toInt();
       sensorIdLocal = specificSensorData[2].toInt();
