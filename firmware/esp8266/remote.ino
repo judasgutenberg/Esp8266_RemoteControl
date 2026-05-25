@@ -31,6 +31,7 @@
 #include <Adafruit_ADT7410.h>
 #include "Adafruit_EEPROM_I2C.h"
 #include "Adafruit_FRAM_I2C.h"
+#include <Adafruit_TMAG5273.h>
 
 #include <WebSocketsClient.h>
 
@@ -189,14 +190,16 @@ void startRemoteTask(const String& datastring, const String& mode, uint16_t fRAM
 }
 
 void stopWebSocket(){
-  responseBuffer = "";
   //lastGoodKey = "";
-    
-  outputMode = oldOutputMode;
-  lastTimeOutputModeChanged = millis();
-  //Serial.println("---------------");
-  //Serial.println(outputMode);
-  saveCommandState(0, 0, 0, 0);
+  if(outputMode == 3) {
+    responseBuffer = "";
+    outputMode = oldOutputMode;
+    lastTimeOutputModeChanged = millis();
+
+    //Serial.println("---------------");
+    //Serial.println(outputMode);
+    saveCommandState(0, 0, 0, 0);
+  }
   webSocket.disconnect();
 }
 
@@ -304,6 +307,11 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
   double temperatureFromSensor = NAN;
   double pressureFromSensor = NAN;
   double gasFromSensor = NAN;
+  double xFromSensor = NAN;
+  double yFromSensor = NAN;
+  double zFromSensor = NAN;
+  double angleFromSensor = NAN;
+  double magnitudeFromSensor = NAN;
   String sensorValueStr = "";
   if (deviceFeatureId == 0) {
     objectCursor = 0;
@@ -325,6 +333,18 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
     if (powerPin > -1) {
       digitalWrite(powerPin, LOW);
     }
+  } else if(sensorId == 5273) {
+    xFromSensor = tmag[objectCursor].readMagneticX();
+    yFromSensor = tmag[objectCursor].readMagneticY();
+    zFromSensor = tmag[objectCursor].readMagneticZ();
+    tmag[objectCursor].setAngleCalculation(TMAG5273_ANGLE_XY);
+    temperatureFromSensor = (double)tmag[objectCursor].getTemperature();
+    angleFromSensor = (double)tmag[objectCursor].readAngle();
+    magnitudeFromSensor = (double)tmag[objectCursor].readMagnitudeMT();
+    //Serial.print(angleFromSensor);
+    //Serial.print("; ");
+    //Serial.println(magnitudeFromSensor);
+    sensorValueStr = String(angleFromSensor);
   } else if (sensorId == 53) {
     VL53L0X_RangingMeasurementData_t measure;
     lox[objectCursor].rangingTest(&measure, false);
@@ -419,6 +439,10 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
         out += nullifyOrNumber(humidityFromSensor);
       } else if (fieldCounter == 3) {
         out += nullifyOrNumber(gasFromSensor);
+      } else if (fieldCounter == 4) {
+        out += nullifyOrNumber(angleFromSensor);
+      } else if (fieldCounter == 5) {
+        out += nullifyOrNumber(magnitudeFromSensor);
       }
     }
     out += "*";
@@ -474,6 +498,15 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
   auto it = sensorObjectCursor.find(String(ci[SENSOR_ID]));
   if (it != sensorObjectCursor.end()) {
       objectCursor = it->second;
+  }
+  int attemptCount = 0;
+  if(sensorIdLocal == 5273) {
+    if (!tmag[objectCursor].begin()) {
+      textOut(F("Failed to find TMAG5273 sensor!"));
+      while (attemptCount < 20) {
+        delay(10 * attemptCount/5);
+      }
+    }
   }
   if(sensorIdLocal == 1) { //simple analog input
     //all we need to do is turn on power to whatever the analog device is
@@ -585,11 +618,18 @@ void handleWeatherData() {
   server.send(200, "text/plain", transmissionString); //Send values only to client ajax request
 }
 
-void compileAndSendDeviceData(const String& weatherData,const String& whereWhenData, const String& powerData, bool doPinCursorChanges, uint16_t fRAMOrdinal) {
+void compileAndSendDeviceData(const String& weatherData, const String& whereWhenData, const String& powerData, bool doPinCursorChanges, uint16_t fRAMOrdinal) {
     if(ci[POLLING_SKIP_LEVEL] < 8){
       return;
     }
     // Large fixed buffer (adjust as needed)
+    /*
+    if(weatherData.length() >0) {
+      Serial.println("...............");
+      Serial.println(fRAMOrdinal);
+      Serial.println(weatherData);
+    }
+    */
     static char tx[2048];
     int pos = 0;
     // --- WEATHER DATA -------------------------------------------------
@@ -1064,6 +1104,9 @@ void runRemoteTask() {
             lastGoodKey = encryptedStoragePassword;//set the global
           }
         } else if (!hasError && validMode && validStart) {
+          if(remoteFRAMordinal != 0xFFFF) {
+            changeDelimiterOnRecord(remoteFRAMordinal, 0xFE); //chatgpt in one of its suggested refactors totally forgot to do this; the robots will never replace us
+          }
           permissionErrorCount = 0;
           if(remoteMode == F("saveData")) {//we really want data regularly
             lastDataLogTime = millis();
@@ -1123,7 +1166,7 @@ void runRemoteTask() {
             textOut("\n");
           }
           if (cs[SENSOR_CONFIG_STRING] != "") {
-            // ⚠️ this still uses String, but outside tight loop frequency
+            // ?? this still uses String, but outside tight loop frequency
             String tmp = line;
             if (ci[DEBUG] > 41) {
               textOut(F("About to do a replaceFirstOccurrenceAtChar\n"));
@@ -1775,7 +1818,7 @@ void runCommand(const char * commandText, bool deferred){
     //this can occasionally switch us to fast commmand mode simply by sending a command
     if(outputMode != abs(commandId)) {
       oldOutputMode = outputMode;
-      lastTimeOutputModeChanged;
+      lastTimeOutputModeChanged = millis();
       /*
       Serial.print("Changing outputmode from ");
       Serial.print(outputMode);
@@ -1818,7 +1861,7 @@ void handleCommand(String input, bool deferred) {
     yield();
     if (parseCommand(input, commands[i].name, results, resultCount, commands[i].maxArgs)) {
       uint8_t cfg = commands[i].configuration;
-      // 🚫 Capability checks
+      // ?? Capability checks
       if ((cfg & CFG_REQ_RTC) && !(ci[RTC_ADDRESS] > 0)) {
         textOut(F("Error: RTC capability required\n"));
         return;
@@ -1836,13 +1879,13 @@ void handleCommand(String input, bool deferred) {
         return;
       }
       /*
-      // ⏳ Deferred requirement check (if you want it enforced)
+      // ? Deferred requirement check (if you want it enforced)
       if ((cfg & CFG_REQ_DEFER) && !deferred) {
         textOut(F("Error: Command must be deferred\n"));
         return;
       }
       */
-      // ✅ All checks passed, execute
+      // ? All checks passed, execute
       commands[i].handler(results, resultCount, deferred);
       return;
     }
@@ -1924,7 +1967,7 @@ bool commandRequiresDeferment(String input) {
       return (commands[i].configuration & CFG_REQ_DEFER) != 0;
     }
   }
-  // Command not found → no deferment requirement (you could argue either way)
+  // Command not found ? no deferment requirement (you could argue either way)
   return false;
 }
 
@@ -2072,7 +2115,9 @@ void setup(){
   bool useHardcodedConfig = false;
   rtcInitOnBoot();
   Wire.begin();
-  Wire.setClock(ci[I2C_SPEED] * 1000);
+  if(ci[I2C_SPEED] > 0) {
+    Wire.setClock(ci[I2C_SPEED] * 1000);
+  }
   yield();
   //Serial.begin(115200);    
   //setSerialRate((byte)ci[BAUD_RATE_LEVEL]); 
@@ -2100,7 +2145,7 @@ void setup(){
         textOut(F("Last uptime was only ") + String(rtc.lastMillis) + F(" milliseconds; entering safe mode\n"));
       }
     }
-    // 🚨 likely boot loop → skip external config
+    // ?? likely boot loop ? skip external config
     useHardcodedConfig = true;
   }
   if(ci[FRAM_ADDRESS] > 0) {
@@ -2447,7 +2492,18 @@ void loop(){
     //we switch back to sending weather data. the baton is passed back and forth 
     //between serial and sending weather data via didSomeSerialProcessing
     if(deviceName == ""  || ci[SERIAL_FOR_COMMANDS_ONLY] == 1 || didSomeSerialProcessing || (nowTime - lastPoll)/1000 > 20 ) { //if it lingers more than 20 seconds parsing serial, force a poll
-      compileAndSendDeviceData("", "", "", true, 0xFFFF);
+      bool sentARecord = false;
+      if(ci[FRAM_ADDRESS] > 0){
+        //dumpMemoryStats(101);
+        if(haveReconnected) {
+          sendAStoredRecordToBackend();
+          haveReconnected = false;
+          sentARecord = true;
+        }
+      }  
+      if(!sentARecord) {
+        compileAndSendDeviceData("", "", "", true, 0xFFFF);
+      }
       /*
       Serial.print(oldOutputMode);
       Serial.print(" ");
@@ -2493,15 +2549,7 @@ void loop(){
   }
   yield();
   
-  if(haveReconnected) {
-    //try to send stored records to the backend
-    if(ci[FRAM_ADDRESS] > 0){
-      //dumpMemoryStats(101);
-      sendAStoredRecordToBackend();
-    } else {
-      haveReconnected = false;
-    }
-  }
+ 
   yield();
   if(ci[DEBUG] > 20) {
     textOut(F("about to flashUpdateFeedback\n"));
