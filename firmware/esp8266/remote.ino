@@ -2451,7 +2451,7 @@ void loop(){
           runCommand(deferredCommand, true);
           //normally i would think we should also delete deferredCommand, but in this case it always produces a restart
         }
-        lastCommandLogId = 0;//if we had a lastCommandLogId, zero it out. might need to revisit
+        //lastCommandLogId = 0;//if we had a lastCommandLogId, zero it out. might need to revisit --we revisited and decided not to
       }
     } else {
       String stringToSend = responseBuffer + "\n" + lastCommandLogId;
