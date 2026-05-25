@@ -15,12 +15,13 @@ if($user){
 }
 
 $conn = mysqli_connect($servername, $username, $password, $database);
-
+$cryptoKey = "";
 $deviceId = gvfw("device_id");
 if($deviceId) {
   $deviceRow = getDevice($deviceId);
+  $cryptoKey =  $deviceRow["last_known_key"];
 }
-$cryptoKey =  $deviceRow["last_known_key"];
+
 
 ?>
 
@@ -47,8 +48,9 @@ $cryptoKey =  $deviceRow["last_known_key"];
 
 
   $out .= topmostNav();
-  $out .= "<div class='logo'>" .$deviceRow["name"] . "</div>";
-  		
+  if($deviceId) {
+    $out .= "<div class='logo'>" .$deviceRow["name"] . "</div>";
+  }
   if($user) {
 	$out .= "<div class='outercontent'>";
     if($poser) {

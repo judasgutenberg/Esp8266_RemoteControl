@@ -8,7 +8,7 @@ include("device_functions.php");
 set_time_limit(0);
 $host = '0.0.0.0';
 $port = 8080;
-$sqlConn = mysqli_connect($servername, $username, $password, $database);
+$conn = mysqli_connect($servername, $username, $password, $database);
 
 $lastGoodKey = "";
 
@@ -40,8 +40,8 @@ $connections = [];
 
 while (true) {
     $read = [$server];
-    foreach ($connections as $conn) {
-        $read[] = $conn['socket'];
+    foreach ($connections as $socketConn) {
+        $read[] = $socketConn['socket'];
     }
     $write = null;
     $except = null;
@@ -80,17 +80,16 @@ while (true) {
                 fclose($client);
                 continue;
             } else {
-              $deviceSql = "SELECT * from device WHERE device_id = " . intval($deviceId);
-              $getDeviceResult = mysqli_query($sqlConn, $deviceSql);
-              if($getDeviceResult) {
-                $deviceRow = mysqli_fetch_array($getDeviceResult);
-                $lastGoodKey = $deviceRow["last_known_key"];
-              }
+              $deviceRow = getDevice($deviceId);
+              //echo $deviceId . "\n";
+              $lastGoodKey = $deviceRow["last_known_key"];
+              
               //echo "GOOD DEVICE " . $deviceId  . " WITH KEY :" . $lastGoodKey . "\n";
             }
             //if we have a device, then we want to make sure it is authorized
             if(($k2 != $lastGoodKey || $k2 == "")) {
               echo "BAD DEVICE AUTH: " . $k2 . "(" . $type  . "):" . $lastGoodKey . "\n";
+              fclose($client);
               continue;
             }
             /*
