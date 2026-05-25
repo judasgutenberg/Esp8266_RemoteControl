@@ -178,6 +178,7 @@ void writeRecordCountToFRAM(uint16_t recordCount) {
 void sendAStoredRecordToBackend() {
   //first get the last FRAM record sent:
   //Serial.print("Last FRAM record sent: ");
+  //writeRecordCountToFRAM(currentRecordCount);
   uint16_t positionInFram = readLastFramRecordSentIndex();
   uint32_t timestamp = 0;
   uint8_t delimiter;
@@ -192,8 +193,9 @@ void sendAStoredRecordToBackend() {
   readRecordFromFRAM(positionInFram, record, delimiter);
   if(delimiter == 0xFF) { //we only send records to the backend if this is the delimiter.  after we send it, we update the delimiter to 0xFE
     if(ci[DEBUG] > 1) {
-      //Serial.print("Sending FRAM Record at ");
-      //Serial.println(positionInFram);
+      textOut("Sending FRAM Record at ");
+      textOut(String(positionInFram));
+      textOut("\n");
     }
     fRAMRecordsSkipped = 0;
     //we need to assemble a suitable string from the FRAM record
@@ -358,6 +360,7 @@ uint16_t getRecordSizeFromFRAM(uint16_t recordStartAddress) {
 
 void clearFramLog(){
   currentRecordCount = 0;
+  writeLastFRAMRecordSentIndex(currentRecordCount);
   writeRecordCountToFRAM(currentRecordCount);
   textOut("Current record cursor reset\n");
 }

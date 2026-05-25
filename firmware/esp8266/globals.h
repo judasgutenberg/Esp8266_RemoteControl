@@ -1,7 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define VERSION 2276
+#define VERSION 2278
 #define RTC_MAGIC 0xDEADCA75
 
 #define MAX_CFG_LEN 220
@@ -35,6 +35,7 @@
 #include <Adafruit_FRAM_I2C.h>
 #include <map>
 #include <WebSocketsClient.h>
+#include <Adafruit_TMAG5273.h>
 
 // Sensor objects
 extern Adafruit_ADT7410 adt7410[4];
@@ -49,6 +50,7 @@ extern IRsend irsend; // note: IRsend requires a pin in constructor, can handle 
 extern Adafruit_INA219* ina219;
 extern Adafruit_VL53L0X lox[4];
 extern Adafruit_FRAM_I2C fram;
+extern Adafruit_TMAG5273 tmag[1];
 
 extern WebSocketsClient webSocket;
 

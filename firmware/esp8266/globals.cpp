@@ -21,6 +21,7 @@ IRsend irsend(ci[IR_PIN]);
 Adafruit_INA219* ina219;
 Adafruit_VL53L0X lox[4];
 Adafruit_FRAM_I2C fram;
+Adafruit_TMAG5273 tmag[1];
 
 WebSocketsClient webSocket;
 
