@@ -1894,6 +1894,10 @@ void handleCommand(String input, bool deferred) {
 }
 
 void notYetDeferred(const char * commandText, int commandId, int commandType){
+  //Serial.println("^^^^^^^^^^^^^^");
+  //Serial.print(lastCommandLogId);
+  //Serial.print(" $ ");
+  //Serial.println(commandId);
   if(lastCommandLogId > 0 || commandId <0) {
     saveCommandState(lastCommandLogId, VERSION, commandId, commandType);
   }
@@ -1907,8 +1911,8 @@ void notYetDeferred(const char * commandText, int commandId, int commandType){
   }
   deferredCommand = new char[len + 1];  // +1 for null terminator
   strcpy(deferredCommand, commandText);
-  if(commandId == -1  || commandId == -3) {
-    //our command is via serial or websocket immediate, so handle deferred commands immediately
+  if(commandId == -1) {
+    //our command is via serial, so handle deferred commands immediately
     runCommand(deferredCommand, true);
   }
   return;
@@ -2441,6 +2445,12 @@ void loop(){
       if(webSocket.isConnected()) {
         webSocket.sendTXT(responseBuffer);
         responseBuffer = "";
+        //have to handle websocket deferred command here
+        if (deferredCommand && deferredCommand[0] != '\0') {
+          yield();
+          runCommand(deferredCommand, true);
+          //normally i would think we should also delete deferredCommand, but in this case it always produces a restart
+        }
         lastCommandLogId = 0;//if we had a lastCommandLogId, zero it out. might need to revisit
       }
     } else {
