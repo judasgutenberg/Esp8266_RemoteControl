@@ -207,7 +207,9 @@ void stopWebSocket(){
 
 void startWebSocket(int origin){
   //origin only for debugging
-  //Serial.println("Origin: " + String(origin));
+  if(ci[DEBUG] > 2) {
+    Serial.println(F("Origin: ") + String(origin));
+  }
   //if we have a pending lastCommandLogId we need to stay out of here
   if(lastCommandLogId > 0) {
     return;
@@ -250,7 +252,9 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length){
         case WStype_CONNECTED:
             webSocketConnected = true;
             //textOut("WebSocket connected\n");
-            Serial.println("WebSocket connected");
+            if(ci[DEBUG] > 1) {
+              Serial.println(F("WebSocket connected"));
+            }
             //webSocket.sendTXT("ESP8266 connected");
             break;
 
@@ -265,7 +269,9 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length){
 
         case WStype_DISCONNECTED:
              webSocketConnected = false;
-            Serial.println("WebSocket disconnected");
+            if(ci[DEBUG] > 1) {
+              Serial.println(F("WebSocket disconnected"));
+            }
             startWebSocket(2);
             //textOut("WebSocket disconnected\n");
             break;
