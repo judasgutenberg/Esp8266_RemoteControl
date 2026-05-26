@@ -16,7 +16,7 @@ CommandDef commands[] = {
   {"get preboot",           cmdBeforeBoot, 0,       true,         0b00000000},
   {"clear safe mode",       cmdQuitSafeMode, 0,     true,         0b00000000},
   {"set preboot",           cmdSetPreboot, 2,       false,        0b00000000},  
-  {"set fast com",          cmdfastCom, 1,          false,        0b00000000}, 
+  {"set fast com",          cmdfastCom, 1,          false,        0b10000000}, 
   
   {"init sensors",          cmdInitSensors, 0,      true,         0b00000000},
   {"version",               cmdVersion, 0,          true,         0b00000000},

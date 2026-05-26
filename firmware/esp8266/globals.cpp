@@ -80,6 +80,7 @@ uint32_t lastRtcSyncTime = 0;
 uint32_t wifiOnTime = 0;
 uint8_t outputMode = 0;
 String responseBuffer = "";
+String fastResponseBuffer = "";
 unsigned long lastPet = 0;
 int currentWifiIndex = 0;
 int permissionErrorCount = 0;

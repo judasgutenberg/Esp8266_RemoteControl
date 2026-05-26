@@ -127,13 +127,20 @@ void cmdSetPreboot(String* param, int argCount, bool deferred) {
 
 void cmdfastCom(String* param, int argCount, bool deferred) {
   int value = param[0].toInt();
-  if(value == 1) {
-    startWebSocket();
-    textOut(F("Fast communications on\n")); 
+  String blurb = F("Fast communications changing to ");
+  if(!deferred) {
+    if(value == 1) {
+      textOut(blurb + "on\n"); 
+    } else {
+      textOut(blurb + "off\n"); 
+    }   
   } else {
-    stopWebSocket();
-    textOut(F("Fast communications off\n")); 
-  }   
+    if(value == 1) {
+      startWebSocket();
+    } else {
+      stopWebSocket();
+    }   
+  }
 }
 
 void cmdInitSensors(String* param, int argCount, bool deferred) {

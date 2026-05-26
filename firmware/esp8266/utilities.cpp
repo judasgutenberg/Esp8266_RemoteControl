@@ -13,11 +13,14 @@
 #include <base64.h>
 
 void textOut(String data){
+  //Serial.println("@@@@@@@@@@");
+  //Serial.println(data);
+  //Serial.println(outputMode);
   if (outputMode == 3) {
     //something like this, but maybe with meta-data:
     //String msg = data;;// + "\n" + String(lastCommandLogId);
     //webSocket.sendTXT(msg);
-    responseBuffer += data;
+    fastResponseBuffer += data;
   } else if(outputMode == 2) {
     //sendRemoteData(data, "commandout", 0xFFFF); //do this in loop, not now
     responseBuffer += data;

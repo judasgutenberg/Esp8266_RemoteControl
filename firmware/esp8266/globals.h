@@ -1,7 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define VERSION 2278
+#define VERSION 2281
 #define RTC_MAGIC 0xDEADCA75
 
 #define MAX_CFG_LEN 220
@@ -147,6 +147,7 @@ extern uint32_t lastRtcSyncTime;
 extern uint32_t wifiOnTime;
 extern uint8_t outputMode;
 extern String responseBuffer;
+extern String fastResponseBuffer;
 extern unsigned long lastPet;
 extern int currentWifiIndex;
 extern int permissionErrorCount;
