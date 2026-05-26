@@ -192,7 +192,9 @@ void startRemoteTask(const String& datastring, const String& mode, uint16_t fRAM
 void stopWebSocket(){
   //lastGoodKey = "";
   if(outputMode == 3) {
-    responseBuffer = "";
+    responseBuffer = fastResponseBuffer; //anything heading to the output now has to take the responseBuffer route
+    fastResponseBuffer = "";
+    //Serial.println("OUTPUTMODE CHANGEO1: " + String(outputMode) + " TO " + String(oldOutputMode));
     outputMode = oldOutputMode;
     lastTimeOutputModeChanged = millis();
 
@@ -204,9 +206,14 @@ void stopWebSocket(){
 }
 
 void startWebSocket(){
+  //if we have a pending lastCommandLogId we need to stay out of here
+  if(lastCommandLogId > 0) {
+    return;
+  }
   if(outputMode != 3) {
     oldOutputMode = outputMode;
     lastTimeOutputModeChanged = millis();
+    //Serial.println("OUTPUTMODE CHANGEO2: " + String(outputMode) + " TO " + String(3));
   }
   outputMode = 3;
   saveCommandState(0, VERSION, -3, 0);
@@ -222,6 +229,9 @@ void startWebSocket(){
 }
 
 void webSocketEvent(WStype_t type, uint8_t * payload, size_t length){
+    if(outputMode != 3) {
+      return;
+    }
     switch(type)
     {
         case WStype_CONNECTED:
@@ -1088,7 +1098,8 @@ void runRemoteTask() {
           continue;
         }
         char first = line[0];
-        
+        //Serial.println("(((((((((((((((((((");
+        //Serial.println(line);
         //backend confirmation logic (heap-safe version)
         // check: line does NOT contain "\"error\":"
         bool hasError = (strstr(line, "\"error\":") != NULL);
@@ -1120,6 +1131,15 @@ void runRemoteTask() {
           }
           if (remoteMode == F("commandout") || outputMode == 2) {
             lastCommandLogId = 0;
+            
+            if(outputMode == 2){
+              //Serial.println("OUTPUTMODE CHANGEO3: " + String(2) + " TO " + String(oldOutputMode));
+              outputMode = oldOutputMode;
+              if(oldOutputMode != 2) { 
+                lastTimeOutputModeChanged = millis();
+              }
+              responseBuffer = "";
+            }
           }
           // run deferred command safely
           if (deferredCommand && deferredCommand[0] != '\0') {
@@ -1140,13 +1160,7 @@ void runRemoteTask() {
        
           }
           */
-          if(outputMode != 3) {
-            oldOutputMode = outputMode;
-            lastTimeOutputModeChanged = millis();
-            outputMode = 0;
-             
-            responseBuffer = "";
-          }
+ 
         } else if(hasError) {
           permissionErrorCount++;
         }
@@ -1262,12 +1276,17 @@ void runRemoteTask() {
             cmdBuf[0] = '!';
             strncpy(cmdBuf + 1, parts[1] ? parts[1] : "", sizeof(cmdBuf) - 2);
             cmdBuf[sizeof(cmdBuf) - 1] = '\0';
+            //Serial.println("1:---------------------");
+            //Serial.println(cmdBuf);
             runCommand(cmdBuf, false);
           }
           receivedDataJson = true;
           break;
         } else if (first == '!') {
           if (strchr(line, '|')) {
+            //instant commands coming from the backend will have a commandId set to -2.  the absolute value of that, 2, ends up being the outputMode
+            //Serial.println("2:---------------------");
+            //Serial.println(line);
             runCommand(line, false);
             break;
           } else {
@@ -1827,6 +1846,7 @@ void runCommand(const char * commandText, bool deferred){
       Serial.print(" to ");
       Serial.println(abs(commandId));
       */
+      //Serial.println("OUTPUTMODE CHANGEO5: " + String(outputMode) + " TO " + String(abs(commandId)));
       outputMode = abs(commandId);
     }
     /*
@@ -1839,6 +1859,7 @@ void runCommand(const char * commandText, bool deferred){
   int resultCount;
   command.trim();
   if(commandId) {
+    //Serial.println("------------");
     //Serial.println(command);
     handleCommand(command, deferred);
     if(!deferred && (commandRequiresDeferment(command))) {
@@ -2442,11 +2463,11 @@ void loop(){
     //WiFi.disconnect(true);
   }
   cleanup();
-  if(lastCommandLogId > 0 || responseBuffer != "") {
+  if(lastCommandLogId > 0 || responseBuffer != "" || fastResponseBuffer != "") {
     if(outputMode == 3) { //the websocket output mode
       if(webSocket.isConnected()) {
-        webSocket.sendTXT(responseBuffer);
-        responseBuffer = "";
+        webSocket.sendTXT(fastResponseBuffer);
+        fastResponseBuffer = "";
         //have to handle websocket deferred command here
         if (deferredCommand && deferredCommand[0] != '\0') {
           yield();
@@ -2459,8 +2480,10 @@ void loop(){
       String stringToSend = responseBuffer + "\n" + lastCommandLogId;
       if(consecutiveCommandOuts > 10) { //too many commandout; something bad happened with current command
         stringToSend = F("Command auto-aborted\n") +  String(lastCommandLogId);
-        startRemoteTask(stringToSend, "commandout", 0xFFFF);
+        //Serial.println("....................");
+        //Serial.println(stringToSend);
       }
+      startRemoteTask(stringToSend, "commandout", 0xFFFF);
     }
  
     
@@ -2591,7 +2614,7 @@ void doSerialCommands() {
     serialByteCount++;
     if (c == '\r' || c == '\n') {
       if (command.length() > 0) {
-        if (ci[DEBUG] > 0) {
+        if (ci[DEBUG] > 1) {
           Serial.print(F("Serial command: "));
           Serial.println(command);
         }
