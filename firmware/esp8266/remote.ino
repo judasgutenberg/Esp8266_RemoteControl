@@ -205,27 +205,40 @@ void stopWebSocket(){
   webSocket.disconnect();
 }
 
-void startWebSocket(){
+void startWebSocket(int origin){
+  //origin only for debugging
+  //Serial.println("Origin: " + String(origin));
   //if we have a pending lastCommandLogId we need to stay out of here
   if(lastCommandLogId > 0) {
     return;
   }
+
   if(outputMode != 3) {
     oldOutputMode = outputMode;
+    //oldOutputMode = 0;
     lastTimeOutputModeChanged = millis();
     //Serial.println("OUTPUTMODE CHANGEO2: " + String(outputMode) + " TO " + String(3));
   }
   outputMode = 3;
+  if(webSocket.isConnected()) {
+    return;
+  }
   saveCommandState(0, VERSION, -3, 0);
   wiFiConnect();
  
-  String socketUrl = "/?k2=" + lastGoodKey + "&type=device&device_id=" + String(ci[DEVICE_ID]);
+  char socketUrl[128];
+  snprintf(
+    socketUrl,
+    sizeof(socketUrl),
+    "/?k2=%s&type=device&device_id=%d",
+    lastGoodKey.c_str(),
+    ci[DEVICE_ID]
+  );
+
   if(ci[DEBUG] > 1) {
     Serial.println(socketUrl);
   }
   webSocket.begin(cs[HOST_GET], 8080, socketUrl);
-  webSocket.onEvent(webSocketEvent);
-  webSocket.setReconnectInterval(3000);
 }
 
 void webSocketEvent(WStype_t type, uint8_t * payload, size_t length){
@@ -237,8 +250,8 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length){
         case WStype_CONNECTED:
             webSocketConnected = true;
             //textOut("WebSocket connected\n");
-            //Serial.println("WebSocket connected");
-            webSocket.sendTXT("ESP8266 connected");
+            Serial.println("WebSocket connected");
+            //webSocket.sendTXT("ESP8266 connected");
             break;
 
         case WStype_TEXT:
@@ -252,7 +265,8 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length){
 
         case WStype_DISCONNECTED:
              webSocketConnected = false;
-            //Serial.println("WebSocket disconnected");
+            Serial.println("WebSocket disconnected");
+            startWebSocket(2);
             //textOut("WebSocket disconnected\n");
             break;
     }
@@ -1145,6 +1159,7 @@ void runRemoteTask() {
           if (deferredCommand && deferredCommand[0] != '\0') {
             yield();
             runCommand(deferredCommand, true);
+            
           }
           /*
           if(oldOutputMode != outputMode) {
@@ -2252,6 +2267,11 @@ void setup(){
   server.onNotFound(handleFileRequest);
   server.begin(); 
   textOut("HTTP server started\n");
+
+  //startup websocket stuff
+  webSocket.onEvent(webSocketEvent);
+  webSocket.setReconnectInterval(3000);
+  
   
   //initialize NTP client
   timeClient.begin();
@@ -2317,8 +2337,12 @@ void flashUpdateFeedback(uint32_t nowTime) {
   int32_t oldCommandId = loadCommandStateVersion(2);
   int32_t commandType = loadCommandStateVersion(3);
   String versionMessage;
+  String earlyPreamble = F("After reboot: ");
   versionMessage.reserve(80);  // preallocate once
-  versionMessage = String(F("After reboot: version: ")) + VERSION  + "\n";
+  if(millis() < 10000) {
+    versionMessage += earlyPreamble;
+  }
+  versionMessage += String(F("Version: ")) + VERSION  + "\n";
 
   if(oldVersion > 0  && commandType > 0) {
     versionMessage = String(F("Update of firmware was successful; version ") + String(oldVersion) + F(" changed to version ")) + VERSION + "\n";
@@ -2357,7 +2381,7 @@ void flashUpdateFeedback(uint32_t nowTime) {
     saveCommandState(0, 0, 0, 0);
   }
   if(oldCommandId == -3 && deviceName != "" && outputMode != 3){
-    startWebSocket();
+    startWebSocket(1);
   }
 }
 
@@ -2477,13 +2501,18 @@ void loop(){
         //lastCommandLogId = 0;//if we had a lastCommandLogId, zero it out. might need to revisit --we revisited and decided not to
       }
     } else {
-      String stringToSend = responseBuffer + "\n" + lastCommandLogId;
-      if(consecutiveCommandOuts > 10) { //too many commandout; something bad happened with current command
-        stringToSend = F("Command auto-aborted\n") +  String(lastCommandLogId);
-        //Serial.println("....................");
-        //Serial.println(stringToSend);
+      if(lastCommandLogId > 0) {
+        String stringToSend = responseBuffer + "\n" + lastCommandLogId;
+        if(consecutiveCommandOuts > 10) { //too many commandout; something bad happened with current command
+          stringToSend = F("Command auto-aborted\n") +  String(lastCommandLogId);
+          //Serial.println("....................");
+          //Serial.println(stringToSend);
+          consecutiveCommandOuts = 0;
+        }
+        startRemoteTask(stringToSend, "commandout", 0xFFFF);
+      } else {
+        responseBuffer = "";
       }
-      startRemoteTask(stringToSend, "commandout", 0xFFFF);
     }
  
     
@@ -2539,11 +2568,25 @@ void loop(){
       if(!sentARecord) {
         compileAndSendDeviceData("", "", "", true, 0xFFFF);
       }
+
+
+      //zeta
       /*
+      Serial.print("lastcommandLogid: ");
+      Serial.print(lastCommandLogId);
+      Serial.print("; old outputmode: ");
       Serial.print(oldOutputMode);
-      Serial.print(" ");
-      Serial.println(outputMode);
+      Serial.print("; current outputmode: ");
+      Serial.print(outputMode);
+      Serial.print("; how stale: ");
+      Serial.println(millis()-lastTimeOutputModeChanged );
       */
+      //the following code helps unstick us from outputMode 2 in some cases
+      if(lastCommandLogId == 0 && outputMode == 2) {
+        //Serial.println("OUTPUTMODE CHANGEO6: " + String(outputMode) + " TO " + String(oldOutputMode));
+        outputMode = oldOutputMode;
+        lastTimeOutputModeChanged = millis();
+      }
       lastPoll = nowTime;
       didSomeSerialProcessing = false;
     }   
