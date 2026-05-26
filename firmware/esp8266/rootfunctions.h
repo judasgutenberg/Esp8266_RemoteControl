@@ -8,7 +8,7 @@ void serialSwap(int8_t value);
 
 
 void stopWebSocket();
-void startWebSocket();
+void startWebSocket(int origin);
 int initSerialParser();
 
 void dumpConfigBlock(const ConfigBlock &b);

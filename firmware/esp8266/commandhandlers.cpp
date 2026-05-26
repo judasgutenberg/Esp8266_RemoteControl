@@ -136,9 +136,15 @@ void cmdfastCom(String* param, int argCount, bool deferred) {
     }   
   } else {
     if(value == 1) {
-      startWebSocket();
+      startWebSocket(3);
+      //prevents nasty loops:
+      oldOutputMode = 0;
+      outputMode = 3;
     } else {
       stopWebSocket();
+      //prevents nasty loops:
+      oldOutputMode = 0;
+      outputMode = 0;
     }   
   }
 }
