@@ -2031,8 +2031,12 @@ function genericSelect($id, $name, $defaultValue, $data, $event = "", $handler= 
 		if($defaultValue == $value) {
 			$selected = " selected='true'";
 		}
-		$out.= "<option " . $selected . " value=\"" . $value . "\">";
-		$out.= $text;
+		if(!is_array($value)) {
+      $out.= "<option " . $selected . " value=\"" . $value . "\">";
+		}
+		if(!is_array($text)) {
+      $out.= $text;
+		}
 		$out.= "</option>";
 	}
 	$out.= "</select>";

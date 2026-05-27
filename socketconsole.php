@@ -1,5 +1,8 @@
 <?php 
 include("other_page_login.php");
+$date = new DateTime("now", new DateTimeZone($timezone));//set the $timezone global in config.php
+$formattedDateTime =  $date->format('Y-m-d H:i:s');
+
 
 if($user){
 	$devices = getDevices($user["tenant_id"], false);
@@ -17,6 +20,7 @@ if($user){
 $conn = mysqli_connect($servername, $username, $password, $database);
 $cryptoKey = "";
 $deviceId = gvfw("device_id");
+$startupCommand = gvfw("command");
 if($deviceId) {
   $deviceRow = getDevice($deviceId);
   $cryptoKey =  $deviceRow["last_known_key"];
@@ -72,9 +76,23 @@ if($deviceId) {
 	echo $out; 
  
 if(!$deviceId) {
-  echo "<div class='error'>There was no device selected.</div>";
-} else {
+  echo "<br/><br/><div class='error'>There was no device selected.</div>";
+}  
+echo "<br/>Device:";
+$thisDataSql = "SELECT name as text, device_id as value FROM device WHERE tenant_id=" . intval($user["tenant_id"]) . "  ORDER BY name ASC;";
+$result = mysqli_query($conn, $thisDataSql);
+$selectData = mysqli_fetch_all($result, MYSQLI_ASSOC);
+//var_dump($selectData);
+$handler = "let deviceId=document.getElementById('device_id');location.href='socketconsole.php?command=" . urlencode($startupCommand ). "&device_id=' + deviceId[deviceId.selectedIndex].value";
+echo genericSelect("device_id", "device_id", $deviceId, $selectData, "onchange", $handler);
+if($deviceId) {
 
+
+  if($startupCommand && $user) {
+    $sql = "INSERT INTO command_log(recorded, device_id, tenant_id, command_text) VALUES ('" . $formattedDateTime . "'," . intval($deviceId). "," . intval($user["tenant_id"]) . ",'" . mysqli_real_escape_string($conn, $startupCommand) . "')"; 
+    $result = mysqli_query($conn, $sql);
+    //echo $sql;
+  }
 ?>
 <div>
 <form>
@@ -85,7 +103,7 @@ if(!$deviceId) {
 </div>
  
 
-<div id="log" style="width:100%;height:600px;max-height:600px;overflow:auto"></div>
+<div id="log" style="width:100%;height:85vh;max-height:85vh;overflow:auto"></div>
 <br><br>
 <?php
 }
