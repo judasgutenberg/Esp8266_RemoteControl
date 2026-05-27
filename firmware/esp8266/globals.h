@@ -1,7 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define VERSION 2281
+#define VERSION 2285
 #define RTC_MAGIC 0xDEADCA75
 
 #define MAX_CFG_LEN 220

@@ -149,6 +149,20 @@ void cmdfastCom(String* param, int argCount, bool deferred) {
   }
 }
 
+void cmdResetFastCom(String* param, int argCount, bool deferred) {
+  if(outputMode != 3) {
+    oldOutputMode = outputMode;
+    outputMode = 3;
+    lastTimeOutputModeChanged = millis();
+    //Serial.println("OUTPUTMODE CHANGEO7: " + String(outputMode) + " TO " + String(3));
+  }
+  webSocket.disconnect();
+  startWebSocket(4);
+  textOut(F("Fast communications reset"));
+}
+
+
+//////////////////////
 void cmdInitSensors(String* param, int argCount, bool deferred) {
   startWeatherSensors(ci[SENSOR_ID],  ci[SENSOR_SUB_TYPE], ci[SENSOR_I2C], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN]);
   textOut(F("Sensors re-initialized\n"));

@@ -52,6 +52,7 @@ void cmdBeforeBoot(String* param, int argCount, bool deferred);
 void cmdQuitSafeMode(String* param, int argCount, bool deferred);
 void cmdSetPreboot(String* param, int argCount, bool deferred);
 void cmdfastCom(String* param, int argCount, bool deferred);
+void cmdResetFastCom(String* param, int argCount, bool deferred);
 
 void cmdInitSensors(String* param, int argCount, bool deferred);
 void cmdVersion(String* param, int argCount, bool deferred);
