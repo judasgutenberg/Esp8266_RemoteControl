@@ -766,7 +766,7 @@ void compileAndSendDeviceData(const String& weatherData, const String& whereWhen
     );
     // pinMap
     {
-        String s = joinStdMapValsOnDelimiter(pinMap, "*");
+        String s = joinPinMapValsOnDelimiter("*");
         pos += snprintf(tx + pos, sizeof(tx) - pos, "|%s", s.c_str());
     }
     // moxee reboot info
