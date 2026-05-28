@@ -132,7 +132,10 @@ String joinMapValsOnDelimiter(SimpleMap<String, int> *pinMap, String delimiter) 
 }
 */
 
-String joinStdMapValsOnDelimiter(const std::map<String, int>& pinMap, const String& delimiter) {
+String joinPinMapValsOnDelimiter(String delimiter) {
+  /*
+   * //this was doing the ordering wrong:
+  
   String out = "";
   int count = 0;
   int total = pinMap.size();
@@ -143,6 +146,16 @@ String joinStdMapValsOnDelimiter(const std::map<String, int>& pinMap, const Stri
       out += delimiter;
     }
     count++;
+  }
+   */
+  String out = "";
+  int count = 0;
+  for(int i=0; i<pinMap.size(); i++) {
+    out += String(pinMap[pinList[i]]);
+    if(count < pinMap.size()-1) {
+        out += delimiter;
+        count++;
+    }
   }
 
   return out;
