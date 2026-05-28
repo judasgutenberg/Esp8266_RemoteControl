@@ -190,7 +190,7 @@ void cmdPetWatchdog(String* param, int argCount, bool deferred) {
 
 
 void cmdGetWeatherSensors(String* param, int argCount, bool deferred) {
-  String transmissionString = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, -1, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
+  String transmissionString = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, nullptr, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
   textOut(transmissionString + "\n");
 }
 
@@ -277,6 +277,20 @@ void cmdGetWatchdogInfo(String* param, int argCount, bool deferred) {
 
 void cmdGetWatchdogData(String* param, int argCount, bool deferred) {
   textOut(slaveWatchdogData() + "\n");
+}
+
+void cmdDumpPinState(String* param, int argCount, bool deferred) {
+  textOut(F("Pins on device: "));
+  textOut(String(deviceName));
+  textOut("\n");
+  for(int i=0; i<pinTotal; i++) {
+    textOut(String(pinMap[pinList[i]]));
+    textOut(": ");
+    textOut(pinDescription(String(pinList[i])));
+    textOut(": ");
+    textOut(String(pinName[i]));
+    textOut("\n");
+  }
 }
 
 void cmdListFiles(String* param, int argCount, bool deferred) {

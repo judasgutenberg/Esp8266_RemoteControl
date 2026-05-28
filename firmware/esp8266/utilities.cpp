@@ -256,7 +256,19 @@ String extractFilename(String url) {
     return url.substring(lastSlash + 1);
 }
 
-void splitString(const String& input, char delimiter, String* outputArray, int arraySize) {
+String pinDescription(String pinString) {
+  int dotPosition = pinString.indexOf('.');
+  // If we found a dot, treat it as I2CAddress.Pin
+  if (dotPosition != -1) {
+    String i2cAddress = pinString.substring(0, dotPosition);
+    String pinNumber = pinString.substring(dotPosition + 1);
+    return F("I2C address: ") + i2cAddress + F(", pin ") + pinNumber;
+  }
+  // Otherwise just describe it as a normal pin
+  return F("pin ") + pinString;
+}
+
+int splitString(const String& input, char delimiter, String* outputArray, int arraySize) {
   int lastIndex = 0;
   int count = 0;
   for (int i = 0; i < input.length(); i++) {
@@ -271,6 +283,7 @@ void splitString(const String& input, char delimiter, String* outputArray, int a
   }
   // Extract the last substring after the last delimiter
   outputArray[count++] = input.substring(lastIndex);
+  return count;
 }
 
 String replaceFirstOccurrenceAtChar(String str1, String str2, char atChar) { //thanks ChatGPT!

@@ -40,6 +40,8 @@ CommandDef commands[] = {
   {"get watchdog info",     cmdGetWatchdogInfo, 0,  true,         0b00000010},
   {"get watchdog data",     cmdGetWatchdogData, 0,  true,         0b00000010},
 
+  {"dump pin state",        cmdDumpPinState,    0,  true,         0b00000000},
+
   {"save master config",    cmdSaveMasterConfig, 2, false,        0b00000000},
   {"save slave config",     cmdSaveSlaveConfig, 0,  true,         0b00000010},
   {"init master defaults",  cmdInitMasterDefaults, 0, true,       0b00000000}, 

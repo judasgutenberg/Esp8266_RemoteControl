@@ -13,7 +13,7 @@ int initSerialParser();
 
 void dumpConfigBlock(const ConfigBlock &b);
 
-String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName, int ordinalOfOverwrite, int consolidateAllSensorsToOneRecord); 
+String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName,  int* ordinalOfOverwrite, int consolidateAllSensorsToOneRecord);
 
 void rtcMarkStable();
 
