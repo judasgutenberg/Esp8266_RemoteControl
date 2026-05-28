@@ -328,7 +328,7 @@ void lookupLocalPowerData(){//sets the globals with the current reading from the
   measuredAmpage = current_mA;
 }
 
-String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName, int ordinalOfOverwrite, int consolidateAllSensorsToOneRecord) {
+String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int powerPin, int i2c, int deviceFeatureId, char objectCursor, String sensorName,  int* ordinalOfOverwrite, int consolidateAllSensorsToOneRecord) {
   if(ci[POLLING_SKIP_LEVEL] < 10) {
     return "";
   }
@@ -342,7 +342,10 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
   double zFromSensor = NAN;
   double angleFromSensor = NAN;
   double magnitudeFromSensor = NAN;
-  String sensorValueStr = "";
+  String sensorValueStr[4];
+  for(int i=0; i<4; i++) {
+    sensorValueStr[i] = 0;
+  }
   if (deviceFeatureId == 0) {
     objectCursor = 0;
   }
@@ -353,9 +356,9 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
     }
     delay(10);
     if (i2c) {
-      sensorValueStr = String(getPinValueOnSlave((char)i2c, (char)dataPin));
+      sensorValueStr[0] = String(getPinValueOnSlave((char)i2c, (char)dataPin));
     } else {
-      sensorValueStr = String(analogRead(dataPin));
+      sensorValueStr[0] = String(analogRead(dataPin));
     }
     //Serial.println("+++++++++++++++++++++");
     //Serial.println(sensorValueStr);
@@ -374,14 +377,16 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
     //Serial.print(angleFromSensor);
     //Serial.print("; ");
     //Serial.println(magnitudeFromSensor);
-    sensorValueStr = String(angleFromSensor);
+    //temperature already handled
+    sensorValueStr[1] = String(angleFromSensor);
+    sensorValueStr[2] = String(magnitudeFromSensor);
   } else if (sensorId == 53) {
     VL53L0X_RangingMeasurementData_t measure;
     lox[objectCursor].rangingTest(&measure, false);
     if (measure.RangeStatus != 4) {
-      sensorValueStr = String(measure.RangeMilliMeter);
+      sensorValueStr[0] = String(measure.RangeMilliMeter);
     } else {
-      sensorValueStr = "-1";
+      sensorValueStr[0] = "-1";
     }
   } else if (sensorId == 680) {
     int32_t humidityRaw = 0, temperatureRaw = 0, pressureRaw = 0, gasRaw = 0;
@@ -428,16 +433,37 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
   } else {
     // no sensor
   }
- 
+  if (!isnan(temperatureFromSensor)) { 
+    sensorValueStr[0] = temperatureFromSensor;
+  }
+  if (!isnan(pressureFromSensor)) { 
+    sensorValueStr[1] = pressureFromSensor;
+  }
+  if (!isnan(humidityFromSensor)) { 
+    sensorValueStr[2] = humidityFromSensor;
+  }
+  if (!isnan(gasFromSensor)) { 
+    sensorValueStr[3] = gasFromSensor;
+  }
   uint32_t freeHeap = ESP.getFreeHeap();
   uint32_t maxBlock = ESP.getMaxFreeBlockSize();
   uint32_t fragPct = 100 - (maxBlock * 100 / freeHeap);
 
   String out="";
   for(int fieldCounter = 0; fieldCounter<16; fieldCounter++) {
-    if(ordinalOfOverwrite == fieldCounter) {
-      out +=  sensorValueStr;
-    } else {
+    bool wasSpecifiedInSensorString = false;
+    if (ordinalOfOverwrite != nullptr) {
+      for(int i=0; i<4; i++) {
+        if(ordinalOfOverwrite[i] == fieldCounter) {
+          if(ordinalOfOverwrite[i] > -1) {
+            out +=  sensorValueStr[i];
+            wasSpecifiedInSensorString = true;
+            continue;
+          }
+        } 
+      }
+    }
+    if(!wasSpecifiedInSensorString) {
       if (ci[SEND_TELEMETRY_TYPE_IN_RESERVED] == TELEMETRY_TYPE_MEMORY) {
         if (fieldCounter == 12) {
           out += String(freeHeap);
@@ -644,7 +670,7 @@ void startWeatherSensors(int sensorIdLocal, int sensorSubTypeLocal, int i2c, int
 }
 
 void handleWeatherData() {
-  String transmissionString = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, -1, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
+  String transmissionString = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, nullptr, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
   server.send(200, "text/plain", transmissionString); //Send values only to client ajax request
 }
 
@@ -666,7 +692,7 @@ void compileAndSendDeviceData(const String& weatherData, const String& whereWhen
     if (weatherData.length() > 0) {
         pos += snprintf(tx + pos, sizeof(tx) - pos, "%s", weatherData.c_str());
     } else if (ci[SENSOR_ID] > -1) {
-        String s = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, -1, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
+        String s = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, nullptr, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
         //add solar data here if known
         
         
@@ -1201,7 +1227,7 @@ void runRemoteTask() {
             textOut("\n");
           }
           //format of sensor_config string:
-          //pinNumber*powerPin*sensorId*sensorSubType*i2c*deviceFeatureId*sensorName*ordinalOfOverwrite*consolidateAllRecords
+          //pinNumber*powerPin*sensorId*sensorSubType*i2c*deviceFeatureId*sensorName*ordinalOfOverwrite0*ordinalOfOverwrite1*ordinalOfOverwrite2*ordinalOfOverwrite3*consolidateAllRecords
           if (cs[SENSOR_CONFIG_STRING] != "") {
             // ?? this still uses String, but outside tight loop frequency
             String tmp = line;
@@ -1219,7 +1245,7 @@ void runRemoteTask() {
                 if (ci[DEBUG] > 1) {
                   textOut("ALLOCATION FAILURE\n");
                 } 
-            } else {
+            } else {  
                 buf = newBuf;
                 line = buf;
                 len = newLen + 1;  // capacity INCLUDING null
@@ -1377,7 +1403,7 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
   }
   String additionalSensorArray[12];
   String deviceInfoValues[2];
-  String specificSensorData[8];
+  String specificSensorData[12];
   int i2c;
   int pinNumber;
   int powerPin;
@@ -1389,7 +1415,7 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
   String deviceInfo;
   int objectCursor = 0;
   int oldSensorId = -1;
-  int ordinalOfOverwrite = 0;
+  int ordinalOfOverwrite[4];
   String sensorName;
   splitString(sensorData, '|', additionalSensorArray, 12);
   deviceInfo = additionalSensorArray[0].substring(1);
@@ -1405,7 +1431,7 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
     if(sensorDatum.indexOf('*')>-1) {
       //Serial.println("((((((((((((((((((((((((((((((((");
       //Serial.println(sensorDatum);
-      splitString(sensorDatum, '*', specificSensorData, 8); //pinNumber*powerPin*sensorId*sensorSubType*i2c*deviceFeatureId*sensorName*ordinalOfOverwrite*consolidateAllRecords
+      int partCount = splitString(sensorDatum, '*', specificSensorData, 12); //pinNumber*powerPin*sensorId*sensorSubType*i2c*deviceFeatureId*sensorName*ordinalOfOverwrite0*ordinalOfOverwrite1*ordinalOfOverwrite2*ordinalOfOverwrite3*consolidateAllRecords
       pinNumber = specificSensorData[0].toInt();
       powerPin = specificSensorData[1].toInt();
       sensorIdLocal = specificSensorData[2].toInt();
@@ -1413,8 +1439,18 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
       i2c = specificSensorData[4].toInt();
       deviceFeatureId = specificSensorData[5].toInt();
       sensorName = specificSensorData[6];
-      ordinalOfOverwrite = specificSensorData[7].toInt();
-      consolidateAllSensorsToOneRecord = specificSensorData[8].toInt();
+      ordinalOfOverwrite[0] = specificSensorData[7].toInt();
+      if(partCount > 8) {
+        ordinalOfOverwrite[1] = specificSensorData[8].toInt();
+        ordinalOfOverwrite[2] = specificSensorData[9].toInt();
+        ordinalOfOverwrite[3] = specificSensorData[10].toInt();
+        consolidateAllSensorsToOneRecord = specificSensorData[11].toInt();
+      } else {
+        consolidateAllSensorsToOneRecord = specificSensorData[8].toInt();
+        for(int i=1; i<4; i++) {
+          ordinalOfOverwrite[i] = -1;
+        }
+      }
       if(oldSensorId != sensorIdLocal) { //they're sorted by ci[SENSOR_ID], so the objectCursor needs to be set to zero if we're seeing the first of its type
         objectCursor = 0;
       }
@@ -2388,7 +2424,7 @@ void flashUpdateFeedback(uint32_t nowTime) {
   }
   if(oldCommandId == -3 && deviceName != "" && outputMode != 3){
     startWebSocket(1);
-  }
+  } 
 }
 
 
