@@ -2079,8 +2079,12 @@ function eliminateExtraLinefeeds($input) {
   return $input;
 }
 
-function valueExistsElsewhere($table, $value, $columnName, $pkName, $pk, $tenantId) {
+function valueExistsElsewhere($table, $value, $columnName, $pkName, $pk, $tenantId, $acceptNull = true) {
     Global $conn;
+    if($acceptNull && $value == "") {
+      //echo "*****";
+      return;
+    }
     $table = filterStringForSqlEntities($table, true);
     $columnName = filterStringForSqlEntities($columnName, true);
     $escapedValue = mysqli_real_escape_string($conn, $value);
@@ -2091,6 +2095,7 @@ function valueExistsElsewhere($table, $value, $columnName, $pkName, $pk, $tenant
       $rows =  mysqli_fetch_all($result, MYSQLI_ASSOC);
       if($rows) {
         $record = $rows[0];
+        //var_dump($record);
         return $record;
       }
     }
@@ -2175,7 +2180,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
         $sanitized = '0';
       //} else if ((beginsWith($type, "select")) && $value === "") {
         //$sanitized = 'NULL';
-      } else if ((beginsWith($type, "number")  ||  $type == "int") && $value === "") {
+      } else if ((beginsWith($type, "number")  ||  $type == "int" ) && $value === "") {
         $sanitized = 'NULL';
       } else if (beginsWith($type, "string") && $value === "") {
         //echo $type . "=" . $column . "<BR>";
@@ -2248,7 +2253,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
             $sanitized = "NULL";
           } else if(($type == "bool"  || $type == "checkbox") && !$value){
             $sanitized = '0';
-          } else if ((beginsWith($type, "number") || beginsWith($type, "int")) &&  $value === "") {
+          } else if ((beginsWith($type, "number") || beginsWith($type, "int") || $type == "select" ) &&  $value === "") {
             $sanitized = 'NULL';
           } else {
             //echo $column .  "*" . $value . "<BR>";

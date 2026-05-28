@@ -215,7 +215,10 @@ function codeTemplates($user) {
 
 function devices($user) {
   $table = "device";
-  $sql = "SELECT *, (SELECT millis from device_log dl WHERE d.device_id = dl.device_id  ORDER BY device_log_id DESC LIMIT 0,1) as millis    FROM " . $table . " d  WHERE tenant_id=<tenant_id/>";
+  $sql = "SELECT *   FROM " . $table . " d  WHERE tenant_id=<tenant_id/>";
+  
+  //the uptime calculation here was a little too slow
+  //$sql = "SELECT *, (SELECT millis from device_log dl WHERE d.device_id = dl.device_id  ORDER BY device_log_id DESC LIMIT 0,1) as millis    FROM " . $table . " d  WHERE tenant_id=<tenant_id/>";
   //echo $sql;
   $result = replaceTokensAndQuery($sql, $user);
   $out = "";
@@ -242,12 +245,13 @@ function devices($user) {
       'name' => 'millis',
  
     ],
-    */
+ 
     [
       'label' => 'uptime',
       'name' => 'millis',
       'function' => 'timeAgoMillis("<millis/>", "")'
     ],
+       */
     [
       'label' => 'ip address',
       'name' => 'ip_address' 
@@ -838,7 +842,7 @@ function editDeviceFeature($error,  $user) {
     $pk = "NULL";
   }
  
-  if($record = valueExistsElsewhere($table, gvfa("digest_bit_position", $source), "digest_bit_position", $table . "_id", $pk, $tenantId)) {
+  if($record = valueExistsElsewhere($table, gvfa("digest_bit_position", $source), "digest_bit_position", $table . "_id", $pk, $tenantId, true)) {
     $error["digest_bit_position"] = gvfa("digest_bit_position", $source) . " is used in " .  $record["name"] . ".";
   }
   
@@ -2881,12 +2885,22 @@ function utilities($user, $viewMode = "list") {
     [
       'label' => 'Instant Command',
       'url' => '?table=utilities&action=instantcommand',
-      'description' => "Run a command on a remote microcontroller.",
+      'description' => "Run a command on a remote microcontroller. This is slow and has high-latency, but it is extremely powerful.",
       'key' => 'instantcommand',
       'role' => "super",
       'front_end_js'=>"instantCommandFrontend()",
       'action' => "instantCommand(<tenant_id/>, <user_id/>, <device_id/>)",
       'run_override' => "instantCommand()",
+
+      
+    ]   ,
+    [
+      'label' => 'Fast Command Console',
+      'url' => 'socketconsole.php?command=set+fast+com+on',
+      'description' => "Run an interactive shell on a remote microcontroller. Similar to a serial console in the Arduino IDE, but it operates across the internet.",
+      'key' => 'socketconsole',
+      'role' => "super"
+ 
 
       
     ]
