@@ -307,7 +307,7 @@ if($_REQUEST) {
 						//apparently we do not care about pinCursor:
 						//var_dump($extraInfo);
 						$mustSaveLastKnownDeviceValueAsValue = arrayDefaultFailDown($extraInfo, 2, false);
-						$deviceOutputMode = $mustSaveLastKnownDeviceValueAsValue = arrayDefaultFailDown($extraInfo, 7, 0);
+						$deviceOutputMode = arrayDefaultFailDown($extraInfo, 7, 0);
             $ipAddress = arrayDefaultFailDown($extraInfo, 3, "NULL");
             if(count($extraInfo)>4) {
               $saveDeviceInfo = true;
@@ -1020,6 +1020,15 @@ if($_REQUEST) {
 						if($mustSaveLastKnownDeviceValueAsValue || $automatedChangeMade){ //actually update the pin values here too!
 							//echo $sqlToUpdateDeviceFeature . "<BR>";
 							if(count($pinValuesKnownToDevice) > $pinCursor && is_numeric($pinValuesKnownToDevice[$pinCursor])) {
+                if(gvfa("debug", $_REQUEST) == 'updatefeature'){
+                  echo "--------------<br>\n";
+                  echo "mustSaveLastKnownDeviceValueAsValue: " . $mustSaveLastKnownDeviceValueAsValue . "<br>\n";
+                  echo "automatedChangeMade: " . $automatedChangeMade . "<br>\n";
+                  echo "countOfPinsKnownToDevice: " . count($pinValuesKnownToDevice) . "<br>\n";
+                  echo "pinCursor: " . $pinCursor . "<br>\n";
+                  echo "is value numeric: " . is_numeric($pinValuesKnownToDevice[$pinCursor]) . "<br>\n";
+                  echo "--------------<br>\n";
+                }
 								$sqlToUpdateDeviceFeature = str_replace("<additional/>", $sqlIfDataGoingUpstream, $sqlToUpdateDeviceFeature);
 							}
 							if(!$automatedChangeMade && ($pinCursor == count($rows)-1 || $specificPin > -1)) {

@@ -35,7 +35,7 @@ function connectWebSocket(){
     ws.onclose = () => {
       //log.innerHTML += "DISCONNECTED\n";
       console.log("DISCONNECTED");
-      getDeviceInfo(connectWebSocket, deviceId);
+      //getDeviceInfo(connectWebSocket, deviceId);
       scheduleReconnect();
     };
 
