@@ -230,7 +230,7 @@ void shiftArrayUp(uint32_t array[], uint32_t newValue, int arraySize) {
     array[arraySize - 1] = newValue;
 }
 
-int splitStringToCharArrays(char *input, char delim, char outArray[][50], int maxParts) {
+int splitStringToCharArrays(char *input, char delim, char outArray[][60], int maxParts) {
     if (!input || maxParts <= 0) return 0;
 
     int partCount = 0;

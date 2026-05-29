@@ -31,7 +31,7 @@ String nullifyOrInt(int inVal);
 void shiftArrayUp(uint32_t array[], uint32_t newValue, int arraySize);
 String extractFilename(String url);
 String pinDescription(String pinString);
-int splitStringToCharArrays(char *input, char delim, char outArray[][50], int maxParts);
+int splitStringToCharArrays(char *input, char delim, char outArray[][60], int maxParts);
 int splitString(const String& input, char delimiter, String* outputArray, int arraySize);
 String replaceFirstOccurrenceAtChar(String str1, String str2, char atChar);
 String replaceNthElement(const String& input, int n, const String& replacement, char delimiter);
