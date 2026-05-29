@@ -344,7 +344,7 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
   double magnitudeFromSensor = NAN;
   String sensorValueStr[4];
   for(int i=0; i<4; i++) {
-    sensorValueStr[i] = 0;
+    sensorValueStr[i] = "NAN";
   }
   if (deviceFeatureId == 0) {
     objectCursor = 0;
@@ -1513,9 +1513,9 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
     int serverSaved = 0;
 
     char friendlyPinName[50];
-    char nonJsonPinArray[12][50];
+    char nonJsonPinArray[12][60];
     char nonJsonDatum[64];
-    char nonJsonPinDatum[5][50];
+    char nonJsonPinDatum[5][60];
 
     char pinIdCopy[50];
     char i2c = 0;
@@ -1577,6 +1577,7 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
         if(ci[DEBUG] == 7) {
           textOut("-");
         }
+        //copies nonJsonPinDatum[1] to pinIdCopy:
         strncpy(pinIdCopy, nonJsonPinDatum[1], sizeof(pinIdCopy) - 1);
         if(ci[DEBUG] == 7) {
           textOut("=");
@@ -1598,6 +1599,16 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
           textOut("$");
         }
         value = atoi(nonJsonPinDatum[2]);
+        /*
+        textOut(String(nonJsonDatum));
+        textOut("; ");
+        textOut(String(nonJsonPinDatum[2]));
+        textOut("?=");
+        textOut(String(pinNumber));
+        textOut(":");
+        textOut(String(value));
+        textOut("\n");
+        */
         canBeAnalog = atoi(nonJsonPinDatum[3]);
         serverSaved = atoi(nonJsonPinDatum[4]);
         if(ci[DEBUG] == 7) {
@@ -1657,6 +1668,16 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
           textOut(")");
         }
         //where we actually change GPIO states on both master and any slaves, but only if there has been an actual change
+        /*
+        textOut(String(i2c));
+        textOut(".");
+        textOut(String(pinNumber));
+        textOut(": ");
+        textOut(String(existingValue));
+        textOut("?=");
+        textOut(String(value));
+        textOut("\n");
+        */
         if (existingValue != value || resendSlavePinInfo) {
             if (i2c > 0) {
                 if(ci[DEBUG] == 7) {
@@ -1664,6 +1685,9 @@ void setLocalHardwareToServerStateFromNonJson(char *nonJsonLine) {
                 }
                 setPinValueOnSlave(i2c, (char)pinNumber, (char)value);
             } else {
+                //textOut("----------------------------------\n");
+                //textOut(String(pinNumber));
+                //textOut("\n");
                 pinMode(pinNumber, OUTPUT);
                 if(ci[DEBUG] == 7) {
                   textOut(F("before setting local hardware\n"));
