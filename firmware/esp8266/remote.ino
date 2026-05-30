@@ -259,7 +259,11 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length){
             break;
 
         case WStype_TEXT:
-            doFastCommands(String((char*)payload));
+            if((millis() - lastTimeCommandRan) > 500) {
+              doFastCommands(String((char*)payload));
+              lastTimeCommandRan = millis();
+            } 
+            
             //textOut("Received : ");
             //textOut(String((char*)payload));
             //Serial.println(String((char*)payload));
@@ -769,9 +773,9 @@ void compileAndSendDeviceData(const String& weatherData, const String& whereWhen
         String s = joinPinMapValsOnDelimiter("*");
         pos += snprintf(tx + pos, sizeof(tx) - pos, "|%s", s.c_str());
     }
-    // moxee reboot info
+    // hotspot reboot info
     {
-        String s = joinValsOnDelimiter(moxeeRebootTimes, "*", 10);
+        String s = joinValsOnDelimiter(hotspotRebootTimes, "*", 10);
         pos += snprintf(tx + pos, sizeof(tx) - pos, "|%s", s.c_str());
     }
     // --- SEND OUT ------------------------------------------------------
@@ -840,17 +844,17 @@ void wiFiConnect() {
         }
         // timeout handling
         uint32_t wifiTimeoutToUse = ci[WIFI_TIMEOUT];
-        if (knownMoxeePhase == 0) {
-          wifiTimeoutToUse = ci[GRANULARITY_WHEN_IN_MOXEE_PHASE_0];
+        if (knownHotspotPhase == 0) {
+          wifiTimeoutToUse = ci[GRANULARITY_WHEN_IN_HOTSPOT_PHASE_0];
         } else {
-          wifiTimeoutToUse = ci[GRANULARITY_WHEN_IN_MOXEE_PHASE_1];
+          wifiTimeoutToUse = ci[GRANULARITY_WHEN_IN_HOTSPOT_PHASE_1];
         }
         if (wiFiSeconds > wifiTimeoutToUse) {
           if(ci[DEBUG] > 1) {
             Serial.println("");
             Serial.println(F("WiFi taking too long"));
           }
-          if(ci[MOXEE_POWER_SWITCH] > 0) {
+          if(ci[HOTSPOT_POWER_SWITCH] > 0) {
             if(ci[DEBUG] > 1) {
               Serial.println(F("rebooting Moxee"));
             }
@@ -1170,7 +1174,7 @@ void runRemoteTask() {
           }
           moxeeRebootCount = 0;
           for (int i = 0; i < 11; i++){
-            moxeeRebootTimes[i] = 0;
+            hotspotRebootTimes[i] = 0;
           }
           if (lastCommandLogId == 0 && responseBuffer == "" && outputMode == 0) {
             canSleep = true;
@@ -2171,32 +2175,32 @@ void rebootEsp() {
 }
 
 void rebootMoxee() {  //moxee hotspot is so stupid that it has no watchdog.  so here i have a little algorithm to reboot it.
-  if(ci[MOXEE_POWER_SWITCH] > -1) {
-    digitalWrite(ci[MOXEE_POWER_SWITCH], LOW);
+  if(ci[HOTSPOT_POWER_SWITCH] > -1) {
+    digitalWrite(ci[HOTSPOT_POWER_SWITCH], LOW);
     delay(7000);
-    digitalWrite(ci[MOXEE_POWER_SWITCH], HIGH);
+    digitalWrite(ci[HOTSPOT_POWER_SWITCH], HIGH);
   }
   delay(5000);
-  if(knownMoxeePhase == 0) {
-    knownMoxeePhase = 1;
-  } else if (knownMoxeePhase == 1) {
-    knownMoxeePhase = 0;
+  if(knownHotspotPhase == 0) {
+    knownHotspotPhase = 1;
+  } else if (knownHotspotPhase == 1) {
+    knownHotspotPhase = 0;
   }
   moxeePhaseChangeCount++;
 
   if(moxeePhaseChangeCount > 12) { 
     //if it's been more than twelve phase changes since the last connection, 
     //then we really don't know what phase we are in, so back to uncertain
-    knownMoxeePhase = -1;
+    knownHotspotPhase = -1;
   }
   //only do one reboot!  it usually takes two, but this thing can be made to cycle so fast that this same function can handle both reboots, which is important if the reboot happens to 
   //be out of phase with the cellular hotspot
-  shiftArrayUp(moxeeRebootTimes,  timeClient.getEpochTime(), 10);
+  shiftArrayUp(hotspotRebootTimes,  timeClient.getEpochTime(), 10);
   moxeeRebootCount++;
   if(moxeeRebootCount > 9) { //don't bother with offlineode if we cat log data  // && ci[FRAM_ADDRESS] > 0
     offlineMode = true;
     moxeeRebootCount = 0;
-  } else if(moxeeRebootCount > ci[NUMBER_OF_HOTSPOT_REBOOTS_OVER_LIMITED_TIMEFRAME_BEFORE_ESP_REBOOT]) { //kind of a watchdog
+  } else if(moxeeRebootCount > ci[NUMBER_OF_HOTSPOT_REBOOTS_BEFORE_ESP_REBOOT]) { //kind of a watchdog
     fsRebootLog("moxee count");
     rebootEsp();
   }
@@ -2310,9 +2314,9 @@ void setup(){
     pinMode((int)pinsToStartLow[i], OUTPUT);
     digitalWrite(pinsToStartLow[i], LOW);
   }
-  if(ci[MOXEE_POWER_SWITCH] > -1) {
-    pinMode(ci[MOXEE_POWER_SWITCH], OUTPUT);
-    digitalWrite(ci[MOXEE_POWER_SWITCH], HIGH);
+  if(ci[HOTSPOT_POWER_SWITCH] > -1) {
+    pinMode(ci[HOTSPOT_POWER_SWITCH], OUTPUT);
+    digitalWrite(ci[HOTSPOT_POWER_SWITCH], HIGH);
   }
   
   //Serial.setRxBufferSize(256);  
@@ -2515,8 +2519,8 @@ void loop(){
   
   yield();
   //Serial.println("");
-  //Serial.print("KNOWN MOXEE PHASE: ");
-  //Serial.println(knownMoxeePhase);
+  //Serial.print("KNOWN HOTSPOT PHASE: ");
+  //Serial.println(knownHotspotPhase);
   //Serial.print("Last command log id: ");
   //Serial.println(lastCommandLogId);
   unsigned long nowTime = millis() + timeOffset;
@@ -2555,9 +2559,10 @@ void loop(){
   cleanup();
   if(lastCommandLogId > 0 || responseBuffer != "" || fastResponseBuffer != "") {
     if(outputMode == 3) { //the websocket output mode
-      if(webSocket.isConnected()) {
-        webSocket.sendTXT(fastResponseBuffer);
+      if(webSocket.isConnected() && fastResponseBuffer != "") {
+        String outgoing = fastResponseBuffer;
         fastResponseBuffer = "";
+        webSocket.sendTXT(outgoing);
         //have to handle websocket deferred command here
         if (deferredCommand && deferredCommand[0] != '\0') {
           yield();
@@ -2587,16 +2592,16 @@ void loop(){
   yield();
   int granularityToUse = ci[POLLING_GRANULARITY];
   if(connectionFailureMode) {
-    if(knownMoxeePhase == 0) {
-      granularityToUse = ci[GRANULARITY_WHEN_IN_MOXEE_PHASE_0];// used to be granularity_when_in_connection_failure_mode;
+    if(knownHotspotPhase == 0) {
+      granularityToUse = ci[GRANULARITY_WHEN_IN_HOTSPOT_PHASE_0];// used to be granularity_when_in_connection_failure_mode;
     } else { //if unknown or operational, let's go slowly!
-      granularityToUse = ci[GRANULARITY_WHEN_IN_MOXEE_PHASE_1];
+      granularityToUse = ci[GRANULARITY_WHEN_IN_HOTSPOT_PHASE_1];
     }
   }
-  //if we've been up for a week or there have been lots of moxee reboots in a short period of time, reboot esp8266
-  if(nowTime > 1000 * 86400 * 7 || nowTime < ci[HOTSPOT_LIMITED_TIME_FRAME] * 1000  && moxeeRebootCount >= ci[NUMBER_OF_HOTSPOT_REBOOTS_OVER_LIMITED_TIMEFRAME_BEFORE_ESP_REBOOT]) {
+  //if we've been up for a week or there have been lots of hotspot reboots in a short period of time, reboot esp8266
+  if(nowTime > 1000 * 86400 * 7 || nowTime < ci[HOTSPOT_LIMITED_TIME_FRAME] * 1000  && moxeeRebootCount >= ci[NUMBER_OF_HOTSPOT_REBOOTS_BEFORE_ESP_REBOOT]) {
     //let's not do this anymore
-    //Serial.print("MOXEE REBOOT COUNT: ");
+    //Serial.print("HOTSPOT REBOOT COUNT: ");
     //Serial.print(moxeeRebootCount);
     //Serial.println();
     //rebootEsp();
