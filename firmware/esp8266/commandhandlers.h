@@ -78,7 +78,7 @@ void cmdGetDate(String* param, int argCount, bool deferred);
 void cmdGetWatchdogInfo(String* param, int argCount, bool deferred);
 void cmdGetWatchdogData(String* param, int argCount, bool deferred);
 
-
+void cmdDumpGpioState(String* param, int argCount, bool deferred);
 void cmdDumpPinState(String* param, int argCount, bool deferred);
 
 void cmdListFiles(String* param, int argCount, bool deferred);

@@ -1,7 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define VERSION 2286
+#define VERSION 2291
 #define RTC_MAGIC 0xDEADCA75
 
 #define MAX_CFG_LEN 220
@@ -155,7 +155,7 @@ extern int permissionErrorCount;
 extern  std::map<String, int> pinMap;
 extern std::map<String, int> sensorObjectCursor;
 
-extern uint32_t moxeeRebootTimes[];
+extern uint32_t hotspotRebootTimes[];
 extern int moxeeRebootCount;
 extern int timeOffset;
 extern long lastCommandId;
@@ -166,7 +166,7 @@ extern char requestNonJsonPinInfo;
 extern int pinCursor;
 extern bool connectionFailureMode;
 
-extern int knownMoxeePhase;
+extern int knownHotspotPhase;
 extern int moxeePhaseChangeCount;
 extern uint32_t lastCommandLogId;
 extern int consecutiveCommandOuts;
@@ -199,4 +199,5 @@ extern bool webSocketConnected;
 extern unsigned long lastWebSocketCheck;
 extern String lastGoodKey;
 extern uint32_t lastTimeOutputModeChanged;
+extern uint32_t lastTimeCommandRan;
 #endif

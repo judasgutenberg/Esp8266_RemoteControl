@@ -39,7 +39,8 @@ CommandDef commands[] = {
   {"get date",              cmdGetDate, 0,          true,         0b00001000},
   {"get watchdog info",     cmdGetWatchdogInfo, 0,  true,         0b00000010},
   {"get watchdog data",     cmdGetWatchdogData, 0,  true,         0b00000010},
-
+  
+  {"dump gpio state",       cmdDumpGpioState,    0,  true,         0b00000000},
   {"dump pin state",        cmdDumpPinState,    0,  true,         0b00000000},
 
   {"save master config",    cmdSaveMasterConfig, 2, false,        0b00000000},

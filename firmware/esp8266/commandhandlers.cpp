@@ -279,6 +279,40 @@ void cmdGetWatchdogData(String* param, int argCount, bool deferred) {
   textOut(slaveWatchdogData() + "\n");
 }
 
+//only works for EPS8266:
+void cmdDumpGpioState(String* param, int argCount, bool deferred) {
+  textOut(F("GPIO STATE DUMP\n"));
+  textOut(F("GPIO | DIR | VAL\n"));
+  uint32_t outReg = GPO;
+  uint32_t enableReg = GPE;
+  for(int gpio = 0; gpio <= 16; gpio++) {
+    // skip nonexistent GPIOs
+    if(gpio == 6 || gpio == 7 || gpio == 8 || gpio == 11) {
+      continue;
+    }
+    bool isOutput;
+    bool value;
+    if(gpio == 16) {
+      // GPIO16 is weird and separate
+      isOutput = (GP16E & 1);
+      value = (GP16O & 1);
+    } else {
+      isOutput = (enableReg & (1 << gpio));
+      value = (outReg & (1 << gpio));
+    }
+    char sprintBuffer[60];
+    sprintf(sprintBuffer, 
+      "%4d | %s | %s\n",
+      gpio,
+      isOutput ? "OUT" : " IN",
+      value ? "HIGH" : " LOW"
+    );
+    textOut(sprintBuffer);
+  }
+
+  textOut("\n");
+}
+
 void cmdDumpPinState(String* param, int argCount, bool deferred) {
   textOut(F("Pins on device: "));
   textOut(String(deviceName));

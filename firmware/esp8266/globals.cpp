@@ -105,7 +105,7 @@ SimpleMap<String, int> *sensorObjectCursor = new SimpleMap<String, int>([](Strin
 });
 */
 
-uint32_t moxeeRebootTimes[] = {0,0,0,0,0,0,0,0,0,0,0};
+uint32_t hotspotRebootTimes[] = {0,0,0,0,0,0,0,0,0,0,0};
 int moxeeRebootCount = 0;
 int timeOffset = 0;
 long lastCommandId = 0;
@@ -116,7 +116,7 @@ char requestNonJsonPinInfo = 1; //use to get much more compressed data double-de
 int pinCursor = -1;
 bool connectionFailureMode = true;  //when we're in connectionFailureMode, we check connection much more than ci[POLLING_GRANULARITY]. otherwise, we check it every ci[POLLING_GRANULARITY]
 
-int knownMoxeePhase = -1;  //-1 is unknown. 0 is stupid "show battery level", 1 is operational
+int knownHotspotPhase = -1;  //-1 is unknown. 0 is stupid "show battery level", 1 is operational
 int moxeePhaseChangeCount = 0;
 uint32_t lastCommandLogId = 0;
 int consecutiveCommandOuts = 0;
@@ -155,3 +155,4 @@ bool webSocketConnected = false;
 unsigned long lastWebSocketCheck = 0;
 String lastGoodKey = "";
 uint32_t lastTimeOutputModeChanged = 0;
+uint32_t lastTimeCommandRan = 0;
