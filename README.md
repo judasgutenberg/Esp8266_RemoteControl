@@ -176,7 +176,7 @@ Since manual changes to the status of device_features are usually at odds with a
 
 ## Commands
 
-This system includes a lightweight command system for configuration and control that works either via a serial connection locally or via a web-based tool across the internet.
+This system includes a lightweight command system for configuration and control that works either via a serial connection locally, via a web-based tool across the internet, or via a low-latency interactive mode (switched to via the <bold>set fast com on command</bold>) that is as responsive as a serial connection but works across the internet using web sockets.
 
 ---
 
