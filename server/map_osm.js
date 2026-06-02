@@ -45,7 +45,7 @@ function clearMap() {
     const rainViewer = L.tileLayer(
       'https://tilecache.rainviewer.com/v2/radar/{z}/{x}/{y}/256/2/1_1.png',
       {
-        attribution: 'Weather radar © RainViewer',
+        attribution: 'Weather radar Â© RainViewer',
         opacity: 0.6
       }
     );
@@ -53,9 +53,9 @@ function clearMap() {
    const nasaGibs = L.tileLayer(
     'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/{time}/{tilematrixset}{z}/{y}/{x}.jpg',
     {
-      attribution: 'Imagery © NASA EOSDIS GIBS',
+      attribution: 'Imagery Â© NASA EOSDIS GIBS',
       tilematrixset: 'GoogleMapsCompatible_Level9',
-      time: new Date().toISOString().split('T')[0], // today’s date in YYYY-MM-DD
+      time: new Date().toISOString().split('T')[0], // todayâ€™s date in YYYY-MM-DD
       maxZoom: 9
     }
   );
