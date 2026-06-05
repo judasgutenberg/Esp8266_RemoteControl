@@ -272,7 +272,7 @@ Some commands run in two phases:
 | `reboot` | – | Deferred reboot |
 | `watchdog reboot` | – | Slave triggers master reboot |
 | `update firmware <url>` | 1 | OTA firmware update |
-| `local update firmware <url>` | 1 | firmware update from local file (does not work because of the limitations of <b>download</b>) |
+| `local update firmware <url>` | 1 | firmware update from local file (more reliable than update firmware) |
 | `version` | – | Print firmware version |
 | `uptime` | – | Time since last boot |
 | `timing` | – | Statistics about how long some repetitive tasks require|
