@@ -2283,8 +2283,15 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
    $weatherConditionId . "," .
    $dataSourceId  .
    ")";
-   //echo $loggingSql;
+   if(gvfw("solarkapitest")>9){
+    echo "<P>" .$loggingSql;
+   }
   $loggingResult = mysqli_query($conn, $loggingSql);
+  $error = mysqli_error($conn);
+  
+  if($error && gvfw("solarkapitest")>9){
+    echo $error;
+  } 
 
 }
 
