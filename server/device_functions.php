@@ -2292,7 +2292,77 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
   if($error && gvfw("solarkapitest")>9){
     echo $error;
   } 
+}
 
+
+
+function getAmeriGasFuelLevelsApi() {
+  //code migrated from the original Python found here:
+  //https://github.com/skircr115/ha-amerigas
+  
+  $credential = getCredential($tenant, "amerigas");
+  if(!$credential) {
+    return;
+  }
+  $email = $credential["username"];
+  $password = $credential["password"];
+  $cookieFile = tempnam(sys_get_temp_dir(), 'amerigas_');
+
+  $headers = [
+      'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Accept: application/json, text/javascript, */*; q=0.01',
+      'Content-Type: application/x-www-form-urlencoded; charset=UTF-8',
+      'X-Requested-With: XMLHttpRequest'
+  ];
+  $postData = http_build_query([
+      'loginViewModel[EmailAddress]' => base64_encode($email),
+      'loginViewModel[Password]' => base64_encode($password),
+      'loginViewModel[SAPErrorMessage]' => ''
+  ]);
+  $ch = curl_init();
+  curl_setopt_array($ch, [
+      CURLOPT_URL            => 'https://www.myamerigas.com/Login/Login',
+      CURLOPT_POST           => true,
+      CURLOPT_POSTFIELDS     => $postData,
+      CURLOPT_RETURNTRANSFER => true,
+      CURLOPT_COOKIEJAR      => $cookieFile,
+      CURLOPT_COOKIEFILE     => $cookieFile,
+      CURLOPT_HTTPHEADER     => $headers,
+      CURLOPT_FOLLOWLOCATION => true,
+  ]);
+  $loginResponse = curl_exec($ch);
+  if ($loginResponse === false) {
+    return curl_error($ch);
+ 
+  }
+  $loginJson = json_decode($loginResponse, true);
+  if (!$loginJson || empty($loginJson['success'])) {
+    return "Login failed:\n".$loginResponse;
+  }
+  curl_setopt_array($ch, [
+      CURLOPT_POST => false,
+      CURLOPT_HTTPGET => true,
+      CURLOPT_URL => 'https://www.myamerigas.com/Dashboard/Dashboard'
+  ]);
+  $dashboardHtml = curl_exec($ch);
+  curl_close($ch);
+  if (!preg_match(
+      '/accountSummaryViewModel\s*=\s*({.*?});/s',
+      $dashboardHtml,
+      $matches
+  )) {
+      return "Could not locate accountSummaryViewModel";
+  }
+  $accountData = json_decode($matches[1], true);
+  if (!$accountData) {
+      die("Failed to decode account data");
+  }
+  if(gvfw("amerigasapitest")) {
+    echo "Tank Level: ".$accountData['ForecastTankLevel']."%\n<br/>";
+    echo "Tank Size: ".$accountData['TankSize']." gallons\n<br/>";
+    echo "Days Remaining: ".$accountData['RunOutDays']."\n<br/>";
+  }
+  return $accountData;
 }
 
 
