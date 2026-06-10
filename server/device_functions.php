@@ -2296,10 +2296,12 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
 
 
 
-function getAmeriGasFuelLevelsApi() {
+function getAmeriGasFuelLevelsApi($tenant) {
   //code migrated from the original Python found here:
   //https://github.com/skircr115/ha-amerigas
-  
+  global $timezone;
+  $date = new DateTime("now", new DateTimeZone($timezone));//obviously, you would use your timezone, not necessarily mine
+  $formatedDateTime =  $date->format('Y-m-d H:i:s');
   $credential = getCredential($tenant, "amerigas");
   if(!$credential) {
     return;
@@ -2362,6 +2364,10 @@ function getAmeriGasFuelLevelsApi() {
     echo "Tank Size: ".$accountData['TankSize']." gallons\n<br/>";
     echo "Days Remaining: ".$accountData['RunOutDays']."\n<br/>";
   }
+  $deviceId = $credential["pseudo_device_id"];
+  //since this data is not produced at a high rate, we just collect it on one of our devices, in this case the one specified as a pseudo_device_id with our amerigas credential.
+  $sql = "UPDATE device_log SET energy_percentage=" . $accountData['ForecastTankLevel'] . " WHERE device_id=" . $deviceId . " AND device_log_id=(SELECT MAX(device_log_id) FROM device_log WHERE device_id=" . $deviceId . ")";
+  replaceTokensAndQuery($sql, $tenant);
   return $accountData;
 }
 
@@ -3263,6 +3269,7 @@ function getNumberAfterLastNewline($input, $returnFirstPart = false) {
 function doVariousThingsRegularly($tenant) {
   //this should be commented out if you don't have my particular setup!:
   gatherAnyTractiveGpsData($tenant);
+  getAmeriGasFuelLevelsApi($tenant);
 }
 
 function getCredential($tenant, $type) {
