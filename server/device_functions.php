@@ -2294,9 +2294,7 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
   } 
 }
 
-
-
-function getAmeriGasFuelLevelsApi($tenant) {
+function getAmeriGasFuelLevelsFromCloud($tenant) {
   //code migrated from the original Python found here:
   //https://github.com/skircr115/ha-amerigas
   global $timezone;
@@ -2366,9 +2364,34 @@ function getAmeriGasFuelLevelsApi($tenant) {
   }
   $deviceId = $credential["pseudo_device_id"];
   //since this data is not produced at a high rate, we just collect it on one of our devices, in this case the one specified as a pseudo_device_id with our amerigas credential.
-  $sql = "UPDATE device_log SET energy_percentage=" . $accountData['ForecastTankLevel'] . " WHERE device_id=" . $deviceId . " AND device_log_id=(SELECT MAX(device_log_id) FROM device_log WHERE device_id=" . $deviceId . ")";
-  replaceTokensAndQuery($sql, $tenant);
+  //my first thought was to use SQL such as this:
+  //$sql = "UPDATE device_log SET energy_percentage=" . $accountData['ForecastTankLevel'] . " WHERE device_id=" . $deviceId . " AND device_log_id=(SELECT MAX(device_log_id) FROM device_log WHERE device_id=" . $deviceId . ")";
+  //but then i opted to save the data sparsely only on the device_log record for that device closest in time, but after, the timestamp of the AmeriGas propane level record
+  updateEnergyPercentage($deviceId, $accountData['TMReadDate'], $accountData['ForecastTankLevel']);
   return $accountData;
+}
+
+function updateEnergyPercentage($deviceId, $readDate, $energyPercentage) {
+    // Convert ISO timestamp to MySQL format
+    $mysqlDate = date('Y-m-d H:i:s', strtotime($readDate));
+    $sql = "
+        UPDATE device_log
+        SET energy_percentage = " . $energyPercentage . "
+        WHERE device_id = " . intval($deviceId)  . " 
+          AND energy_percentage IS NULL
+          AND recorded = (
+              SELECT recorded
+              FROM (
+                  SELECT recorded
+                  FROM device_log
+                  WHERE device_id = " . intval($deviceId)  . " 
+                    AND recorded > '" . $mysqlDate . "'
+                  ORDER BY recorded ASC
+                  LIMIT 1
+              ) x
+          )
+    ";
+    replaceTokensAndQuery($sql, array());
 }
 
 
@@ -3267,9 +3290,9 @@ function getNumberAfterLastNewline($input, $returnFirstPart = false) {
 }
 
 function doVariousThingsRegularly($tenant) {
-  //this should be commented out if you don't have my particular setup!:
+  //these should be commented out if you don't have my particular setup!:
   gatherAnyTractiveGpsData($tenant);
-  getAmeriGasFuelLevelsApi($tenant);
+  getAmeriGasFuelLevelsFromCloud($tenant);
 }
 
 function getCredential($tenant, $type) {
