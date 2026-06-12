@@ -284,6 +284,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length){
 
 void doFastCommands(String payload) {
   static String command;
+  lastTimeSentFastModeCommand = millis();
   yield();
   String fullCommand = "!-3|" + payload;
   runCommand(fullCommand.c_str(), false);
@@ -394,7 +395,11 @@ String weatherDataString(int sensorId, int sensorSubtype, int dataPin, int power
     }
   } else if (sensorId == 680) {
     int32_t humidityRaw = 0, temperatureRaw = 0, pressureRaw = 0, gasRaw = 0;
-    BME680[objectCursor].performReading();
+    if (!BME680[objectCursor].performReading()) {
+      if(ci[DEBUG] > 1) {
+        textOut("BME680 read failed\n");
+      }
+    }
  
     humidityFromSensor = (double)BME680[objectCursor].humidity;
     temperatureFromSensor = (double)BME680[objectCursor].temperature;
@@ -1472,6 +1477,63 @@ String handleDeviceNameAndAdditionalSensors(char * sensorData, bool intialize){
     }
   }
  return out;
+}
+
+String weatherDataStringFromConfigString(char * sensorData, int sensorOrdinal) {
+  String additionalSensorArray[12];
+  String specificSensorData[12];
+  int i2c;
+  int pinNumber;
+  int powerPin;
+  int sensorIdLocal;
+  int sensorSubTypeLocal;
+  int deviceFeatureId;
+  int consolidateAllSensorsToOneRecord = 0;
+  int ordinalOfOverwrite[4];
+  int objectCursor = 0;
+  String sensorName;
+  splitString(sensorData, '|', additionalSensorArray, 12);
+  String sensorDatum = additionalSensorArray[sensorOrdinal];
+  if(sensorDatum.indexOf('*')>-1) {
+    //Serial.println("((((((((((((((((((((((((((((((((");
+    //Serial.println(sensorDatum);
+    int partCount = splitString(sensorDatum, '*', specificSensorData, 12); //pinNumber*powerPin*sensorId*sensorSubType*i2c*deviceFeatureId*sensorName*ordinalOfOverwrite0*ordinalOfOverwrite1*ordinalOfOverwrite2*ordinalOfOverwrite3*consolidateAllRecords
+    pinNumber = specificSensorData[0].toInt();
+    powerPin = specificSensorData[1].toInt();
+    sensorIdLocal = specificSensorData[2].toInt();
+    sensorSubTypeLocal = specificSensorData[3].toInt();
+    i2c = specificSensorData[4].toInt();
+    deviceFeatureId = specificSensorData[5].toInt();
+    sensorName = specificSensorData[6];
+    ordinalOfOverwrite[0] = specificSensorData[7].toInt();
+    if(partCount > 8) {
+      ordinalOfOverwrite[1] = specificSensorData[8].toInt();
+      ordinalOfOverwrite[2] = specificSensorData[9].toInt();
+      ordinalOfOverwrite[3] = specificSensorData[10].toInt();
+      consolidateAllSensorsToOneRecord = specificSensorData[11].toInt();
+    } else {
+      consolidateAllSensorsToOneRecord = specificSensorData[8].toInt();
+      for(int i=1; i<4; i++) {
+        ordinalOfOverwrite[i] = -1;
+      }
+   }
+    /*
+    textOut("\n");
+    textOut(String(objectCursor));
+    textOut("\n");
+    textOut(String(i2c));
+    textOut("\n");
+    textOut(String(sensorIdLocal));
+    textOut("\n");
+    textOut(String(ordinalOfOverwrite[1]));
+    textOut("\n");
+    textOut(sensorName);
+    textOut("\n");
+    */
+    return weatherDataString(sensorIdLocal, sensorSubTypeLocal, pinNumber, powerPin, i2c, deviceFeatureId, objectCursor, sensorName, ordinalOfOverwrite, consolidateAllSensorsToOneRecord);
+  } else {
+    return "";
+  }
 }
 
 bool hardwareControlStringInvalid(const char *str) {
@@ -2657,6 +2719,10 @@ void loop(){
         //Serial.println("OUTPUTMODE CHANGEO6: " + String(outputMode) + " TO " + String(oldOutputMode));
         outputMode = oldOutputMode;
         lastTimeOutputModeChanged = millis();
+      }
+      if((millis() - lastTimeSentFastModeCommand)/1000 > 3600) {
+        //if it's been more than an hour since we sent an instant command, revert to slow mode
+        stopWebSocket();
       }
       lastPoll = nowTime;
       didSomeSerialProcessing = false;
