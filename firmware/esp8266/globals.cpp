@@ -155,4 +155,5 @@ bool webSocketConnected = false;
 unsigned long lastWebSocketCheck = 0;
 String lastGoodKey = "";
 uint32_t lastTimeOutputModeChanged = 0;
+uint32_t lastTimeSentFastModeCommand = 0;
 uint32_t lastTimeCommandRan = 0;

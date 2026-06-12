@@ -1,7 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define VERSION 2291
+#define VERSION 2292
 #define RTC_MAGIC 0xDEADCA75
 
 #define MAX_CFG_LEN 220
@@ -199,5 +199,6 @@ extern bool webSocketConnected;
 extern unsigned long lastWebSocketCheck;
 extern String lastGoodKey;
 extern uint32_t lastTimeOutputModeChanged;
+extern uint32_t lastTimeSentFastModeCommand;
 extern uint32_t lastTimeCommandRan;
 #endif
