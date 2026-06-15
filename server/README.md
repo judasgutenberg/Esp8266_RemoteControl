@@ -6,4 +6,4 @@ The server does not have to run the Linux operating system unless you are planni
 
 Wherever you end up placing your server backend, the firmware will need to be flashed with this information (found in config.cpp file, though this can be overridden numerous ways with configuration places in a LittleFS file system, in a FRAM or EEPROM, or in the EEPROM on an I2C slave).
 
-Note: none of these files require compilation or other framework-mandated hassles.  If you're anything like me, you often abandon potential code solutions that seem useful the moment they start requiring Node.js or Composer.  Why should a simple app require a gigabyte of Javascript libraries. It's madness!
+Note: none of these files require compilation or other framework-mandated hassles.  If you're anything like me, you often abandon potential code solutions that seem useful the moment they start requiring Node.js or Composer.  Why should a simple app require a gigabyte of Javascript libraries? It's madness!
