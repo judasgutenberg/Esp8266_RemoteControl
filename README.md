@@ -6,7 +6,7 @@ For monitoring multiple weather sensors (placed, say, in various places inside a
 ![alt text](documentation/weathergraph.png?raw=true)
 
 There is also a page to show data from your solar inverter if you happen to be using the one I know about (SolArk), which can be logged either from the cloud via an API or from a special <a href=https://github.com/judasgutenberg/SolArk_Copilot targtet=solark>SolArk Copilot</a> attached directly to the inverter:
-![alt text](invertergraph.png?raw=true)
+![alt text](documentation/invertergraph.png?raw=true)
 
 But the main feature in this system is that it allows you to remotely control devices across the internet and also supports automation based on the values of sensors known to the central database.  It does this using a server reachable via the internet running PHP/MySQL.  There is no server-side or Javascript compilation and relatively few dependencies:  PHP, MySQL, APCu, the Chart.js 3.7 graphing library, and a variety of Arduino sensor libraries, so this is not much trouble to get working on just about any server where you have a reasonable amount of control. (There is also some Python code to support a Meshtastic integration.)
 
@@ -37,7 +37,7 @@ One final thing I'd like to mention regarding my philosophy concerns apps, the p
 ## Database Design
 I have tried to conform to a consistent naming convention in the database. I use snake_case and solitary primary keys end with "_id."  Compound primary keys are only used on a handful of tables, and the makeshift framework I am using to present web-based administrative tools generally does not expect compound primary keys (and so cannot edit tables with them).  That said, there are a few tables where tenant_id is part of a compound primary key.  This includes the table <b>sensor</b>, and I have made the framework capable of editing records belonging to such tables.   The framework also provides tools to add records to tables having compound primary keys that provide mapping functions (such as device_sensor).
 
-![alt text](esp8266-remote-schematic.jpg?raw=true)
+![alt text](documentation/esp8266-remote-schematic.jpg?raw=true)
 ## Hardware Setup
 This system expects an ESP8266-based device programmed in the Ardunio environment to be able to control the systems that need to be turned on or off.  I've had success connecting a NodeMCU to a ULN2003 and having that switch 12 volt power to 12 volt relays capable of switching enormous loads.   See the schematic for how I connected seven relays using both a NodeMCU and an Arduino Mini running at 3.3 volts that I had flashed with <a href=https://github.com/judasgutenberg/Generic_Arduino_I2C_Slave target=arduino>my Arduino Slave firmware</a>.  To see other examples of the ULN2003 used, see (for example) [https://microcontrollerslab.com/relay-driver-circuit-using-uln2003/](https://www.engineersgarage.com/driving-relays-with-stm32-microcontroller/).  Most of the sensors I currently support are connected via I2C, although I also support DHT sensors, which require even fewer pins to connect.  If you attach a slave Arduino running my "slave with commands" capability (https://github.com/judasgutenberg/Arduino_I2C_Slave_With_Commands), the slave can serve as a hardware watchdog to reboot the master if it isn't "petted" frequently enough.  In that case, you will need to specify this in config.cpp.
 
@@ -82,7 +82,7 @@ From there, here's an overview of how to set up control for a particular system 
 
 Here is the user interface, which allows you to turn items on and off in the list by checking the "power on" column. (You do it all from the device_feature list view.)
 
-![alt text](esp8266-remote.jpg?raw=true)
+![alt text](documentation/esp8266-remote.jpg?raw=true)
 
 ## Users and Tenants
 To login, every user must have credentials in the user table.  Users belong to a tenant, while devices also belong to the tenant.  Users typically can access all the devices belonging to their tenant but cannot access devices belonging to tenants they do not belong to.   Most other tables relate to tenants so that every tenant has its own unique configuration. When new tenants are first created, they are given a set of related entities (such as weather_conditions, reports, and device_type_features) from a "template" tenant with a tenant_id of 0.  The exact values in this template can vary depending on who is curating it. Typically one tenant is a model tenant and is used as the basis for the template tenant.  There is a utility for copying certain records from any particular tenant to the template tenant. When this is done, the tenant being copied from is said to be the "model" tenant.  At any time any template can have their setup records overwritten with records from the template tenant using another utility, though this is typically only done when a tenant is first created.
@@ -110,7 +110,7 @@ The model of remote control this system uses is server-as-truth. Every time a de
 
 This system tracks whether or not data makes it to the device that it is sent to via the last_known_device_value and last_known_device_modified columns.  This is important when a remote control action needs to be verified as having happened. Otherwise you end up looking for a change of temperature or power consumption at your off-grid cabin for such confirmation, and that can take a fair amount of time and be inconclusive.  I use a string hash table as a very simple database to store this information on the microcontroller, which might be overkill. But the ESP8266 has enough storage and memory to be a little wasteful of resources. Every change of state for a device_feature is logged by the server in the device_feature_log table on the internet-reachable server.
 
-![alt text](reallifecircuit.jpg?raw=true)
+![alt text](documentation/reallifecircuit.jpg?raw=true)
 
 In addition to supporting the changing of pin states using a server, this system also implements a local API with two ESP8266-served endpoints (first you have to know its local address, which is being saved in the device table as ip_address). These endpoints are /readLocalData and /writeLocalData. The former gives a JSON object with info about the pins and their current state.  The other accepts three querystring params:  ip_address, id, and on.  ip_address helps with logging what initiated a change. id is usually the pin number, unless it's a pin on a slave Arduino, in which case it is [I2C address of slave].[pin number].  On is just a 1 for on and 0 for off.  Using that second API, you can turn on circuits directly and then the ESP8266 will update the server with the new value information.  This is useful if you are building a local remote control panel, which was my next development effort.
 
@@ -148,13 +148,13 @@ In the weather data display there is also a button that will cause data from pre
 
 As parameters are changed on the pages showing weather and inverter graphical data, the url is changed accordingly, providing urls that can be saved for a return to a future version of the very same display.
 
-![alt text](weathergraph.jpg?raw=true)
+![alt text](documentation/weathergraph.jpg?raw=true)
 
 ## Maps
 
 There is also a Maps tab to display devices with device_log data containing varying GPS coordinates that can be plotted on a map. Any device with a can_move column set to 1 can be viewed in Maps.  The plotted map points are broken up according to the same start date and timespan picker used by the graphing tabs and you can mouse-over the points for detailed information collected from the device at that moment.  The most recent map location will feature the thumbnail of the device (or an entity such as your dog associated with the device) on the map.
 
-![alt text](esp8266_map.jpg?raw=true)
+![alt text](documentation/esp8266_map.jpg?raw=true)
 
 ## Automation and Conditions
 There is also an inverter-related endpoint in server.php to return live inverter information to the local remote (for now, this only works with SolArk inverters, as that is the kind I have, though they are notoriously hard to get data from).  This inverter data is also available to a conditions-processing system that automatically turns device_features on or off depending on inverter sensor values.  Such conditions are entered in the table management_rule in the conditions column.   Conditions include tokens that take the form <tablename[location_id].columnName>.  An example token would be <inverter_log[].battery_percentage>.  A condition made with that token would be something like
@@ -163,12 +163,12 @@ There is also an inverter-related endpoint in server.php to return live inverter
 
 which would set the connected device_feature's value to the value of management_rule.result if the condition is met and allow_automatic_management in the device_feature record is true.  Multiple management_rules can be added to device_features in the device_feature editor, which looks like this:
 
-![alt text](devicefeature.jpg?raw=true)
+![alt text](documentation/devicefeature.jpg?raw=true)
 
 Management_rules can be edited in the management_rule editor, which looks like this:
 
 
-![alt text](managementrule.jpg?raw=true)
+![alt text](documentation/managementrule.jpg?raw=true)
 
 At the bottom is a tool you can use to automatically construct a value token (which will resemble a self-closing XML tag) to place in conditions.  Treat these as variables in an expression to be evaluated as true or false.  You can use multiple tokens, parentheses, arithmatic operators, and scalar numbers in such expressions.
 Since manual changes to the status of device_features are usually at odds with automation, whenever a manual change to a device_feature is made, automation is automatically suspended for restore_automation_after hours, starting at the instant of the manual change.
@@ -613,7 +613,7 @@ Obviously there is a enormous power in such a system, since, depending on MySQL 
 
 I asked ChatGPT to compare my reporting system with Crystal Reports (which I am unfortunately having to work with at a new job) and it came out with this handy comparison:
 
-![alt text](reports.png?raw=true)
+![alt text](documentation/reports.png?raw=true)
 
 ## Security
 
