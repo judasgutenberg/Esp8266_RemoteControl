@@ -2763,6 +2763,58 @@ function getWeatherDataByCoordinates($latitude, $longitude, $apiKey) {
 
 
 
+//https://open-meteo.com/en/docs
+//https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current=temperature_2m,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m
+function getWeatherForecastByCoordinates($latitude, $longitude) {
+    $stringDataWeNeed = "shortwave_radiation, direct_radiation, diffuse_radiation, cloud_cover, temperature, precipitation_probability";
+    $fields = explode(",", $stringDataWeNeed);
+    foreach($fields as &$field){
+      $field = trim($field);
+    }
+    $baseUrl = "https://api.open-meteo.com/v1/forecast";
+    $query = http_build_query([
+        'latitude' => $latitude,
+        'longitude' => $longitude,
+        'hourly' => implode(',', $fields),
+        'forecast_days' => 1,
+        'timezone' => 'auto'
+    ]);
+    $url = "$baseUrl?$query";
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $response = curl_exec($ch);
+    if ($response === false) {
+        $error = curl_error($ch);
+        curl_close($ch);
+        throw new Exception("cURL Error: $error");
+    }
+    curl_close($ch);
+    $weatherData = json_decode($response, true);
+    //var_dump($weatherData);
+    //die();
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new Exception("JSON Decode Error: " . json_last_error_msg());
+    }
+    $hourly = $weatherData['hourly'];
+    $forecast = [];
+    //rework the data into a series of associative arrays for easier handling:
+    foreach ($hourly['time'] as $i => $time) {
+        $fieldItem = [
+            'time' => $time,
+    
+        ];
+        foreach($fields as $field){
+          if(array_key_exists($field, $hourly)){
+            $fieldItem[$field] = $hourly[$field][$i] ?? null;
+          }
+        }
+        $forecast[] = $fieldItem;
+    }
+    return $forecast;
+}
+
+
 function getWeatherForecast($latitude, $longitude, $apiKey) {
   $baseUrl = "https://api.openweathermap.org/data/2.5/onecall";
   $query = http_build_query([
