@@ -148,7 +148,7 @@ In the weather data display there is also a button that will cause data from pre
 
 As parameters are changed on the pages showing weather and inverter graphical data, the url is changed accordingly, providing urls that can be saved for a return to a future version of the very same display.
 
-![alt text](documentation/weathergraph.jpg?raw=true)
+![alt text](documentation/weathergraph.png?raw=true)
 
 ## Maps
 
