@@ -21,6 +21,9 @@ void textOut(String data){
     //String msg = data;;// + "\n" + String(lastCommandLogId);
     //webSocket.sendTXT(msg);
     fastResponseBuffer += data;
+    if(fastResponseBuffer.length() > 12000) { //if the data isn't being handled for some reason, stop the socket connection
+      stopWebSocket();
+    }
   } else if(outputMode == 2) {
     //sendRemoteData(data, "commandout", 0xFFFF); //do this in loop, not now
     responseBuffer += data;

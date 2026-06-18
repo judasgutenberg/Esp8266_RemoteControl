@@ -2,6 +2,7 @@
 #ifndef UTILITIES_H
 #define UTILITIES_H
 #include "globals.h"
+#include "rootfunctions.h"
 #include <stdint.h>
 #include <Wire.h>
 #include "config.h"     // <-- gives access to ci[] and cs[]

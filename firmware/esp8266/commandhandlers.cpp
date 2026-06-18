@@ -190,7 +190,14 @@ void cmdPetWatchdog(String* param, int argCount, bool deferred) {
 
 
 void cmdGetWeatherSensors(String* param, int argCount, bool deferred) {
-  String transmissionString = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, nullptr, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
+  int weatherLineOrdinal = (boolean)param[0].toInt();
+  String transmissionString;
+  if(weatherLineOrdinal == 0) {
+    transmissionString = weatherDataString(ci[SENSOR_ID], ci[SENSOR_SUB_TYPE], ci[SENSOR_DATA_PIN], ci[SENSOR_POWER_PIN], ci[SENSOR_I2C], NULL, 0, deviceName, nullptr, ci[CONSOLIDATE_ALL_SENSORS_TO_ONE_RECORD]);
+  } else {
+    //textOut(String(additionalSensorInfo));
+    transmissionString = weatherDataStringFromConfigString((char *)additionalSensorInfo.c_str(), weatherLineOrdinal);
+  }
   textOut(transmissionString + "\n");
 }
 
