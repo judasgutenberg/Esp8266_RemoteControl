@@ -49,7 +49,7 @@ Some of the files (the files in firmware/esp8266) are designed to be compiled in
 <li>Adafruit DHT, a temperature/humidity sensor: (https://www.arduino.cc/reference/en/libraries/dht-sensor-library/)
 <li>Adafruit AHT, a temperature/humidity sensor: (https://github.com/adafruit/Adafruit_AHTX0)
 <li>Adafruit BMP085, a temperature/air-pressure sensor: (https://github.com/adafruit/Adafruit-BMP085-Library)
-<li>BME680, a temperature/air-pressure/humidity sensor: (https://github.com/Zanduino/BME680/blob/master/src/Zanshin_BME680.h)
+<li>BME680, a temperature/air-pressure/humidity/gas sensor: (https://github.com/adafruit/Adafruit_BME680)
 <li>BMP180, a temperature/air-pressure sensor: (https://github.com/LowPowerLab/SFE_BMP180)
 <li>LM75, a temperature sensor: (https://github.com/jeremycole/Temperature_LM75_Derived)
 <li>Adafruit BMP280, a temperature/air-pressure sensor: (https://github.com/adafruit/Adafruit_BMP280_Library/blob/master/Adafruit_BMP280.h)
