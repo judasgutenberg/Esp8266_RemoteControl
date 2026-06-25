@@ -157,7 +157,7 @@ There is also a Maps tab to display devices with device_log data containing vary
 ![alt text](documentation/esp8266_map.jpg?raw=true)
 
 ## Automation and Conditions
-There is also an inverter-related endpoint in server.php to return live inverter information to the local remote (for now, this only works with SolArk inverters, as that is the kind I have, though they are notoriously hard to get data from).  This inverter data is also available to a conditions-processing system that automatically turns device_features on or off depending on inverter sensor values.  Such conditions are entered in the table management_rule in the conditions column.   Conditions include tokens that take the form <tablename[location_id].columnName>.  An example token would be <inverter_log[].battery_percentage>.  A condition made with that token would be something like
+There is also an inverter-related endpoint in server.php to return live inverter information to the local remote (for now, this only works with SolArk inverters, as that is the kind I have, though they are notoriously hard to get data from).  This inverter data is also available to a conditions-processing system that automatically turns device_features on or off depending on inverter sensor values.  Such conditions are entered in the table management_rule in the conditions column.   Conditions include tokens that take the form <tablename[device_id].columnName>.  An example token would be <inverter_log[].battery_percentage>.  A condition made with that token would be something like
 
 <inverter_log[].battery_percentage> > 80
 
@@ -165,6 +165,7 @@ which would set the connected device_feature's value to the value of management_
 
 ![alt text](documentation/devicefeature.jpg?raw=true)
 
+If you are gathering weather forecasts, you can make rules related to the predicted weather as stored in the device_weather_forecast_hour table.
 Management_rules can be edited in the management_rule editor, which looks like this:
 
 
