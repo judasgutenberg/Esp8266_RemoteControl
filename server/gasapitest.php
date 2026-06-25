@@ -29,11 +29,8 @@ if(!$user) {
 	echo bodyWrap($content, $user, "", null);
 	die();
 }
-$deviceId = gvfw("device_id", 1);
-$daysToGet = gvfw("days", 1);
-$device = getDevice($deviceId);
+
+
  
-//var_dump(getWeatherForecastByCoordinates($device["latitude"], $device["longitude"], $daysToGet));
-//saveWeatherForecastsForDay($user);
-//var_dump(getHourlySolarProduction("2026-06-24", $user));
-updateForecastSolarRecordsWithPowerValues($user, 5);
+ 
+var_dump( getAmeriGasFuelLevelsFromCloud($user));

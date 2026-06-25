@@ -1,7 +1,7 @@
 <?php 
 
 function allDeviceFeatures($tenantId) {
-    Global $conn;
+    global $conn;
     $sql = "SELECT df.name as name, pin_number, allow_automatic_management, 
               df.enabled, df.device_type_feature_id, df.device_feature_id, df.created, 
               last_known_device_value, 
@@ -20,7 +20,7 @@ function allDeviceFeatures($tenantId) {
 }
 
 function allWeatherConditions($tenantId) {
-  Global $conn;
+  global $conn;
   $sql = "SELECT *
           FROM weather_condition
           WHERE tenant_id=" . intval($tenantId);
@@ -511,7 +511,7 @@ function copyValuesFromSourceToDest($dest, $source) {
 }
 
 function users(){
-  Global $conn;
+  global $conn;
   $table = "user";
   $out = "<div class='listheader'>Users</div>";
   $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a new user</div>\n";
@@ -556,7 +556,7 @@ function users(){
 }
 
 function editUser($error){
-  Global $conn;
+  global $conn;
   $table = "user";
   $pk = gvfw($table . "_id");
   
@@ -650,7 +650,7 @@ function editUser($error){
 }
 
 function tenants($user){
-  Global $conn;
+  global $conn;
   $table = "tenant";
   $out = "<div class='listheader'>Users</div>";
   $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a new user</div>\n";
@@ -701,7 +701,7 @@ function tenants($user){
 }
 
 function editTenant($error, $user){
-  Global $conn;
+  global $conn;
   $table = "tenant";
   $pk = gvfw($table . "_id");
   $source = null;
@@ -1764,6 +1764,18 @@ function editDevice($error,  $user) {
       'error' => gvfa('longitude', $error)
 	  ],
     [
+	    'label' => 'weather forecast type',
+      'name' => 'weather_forecast_type',
+      'type' => "number",
+      'width' => 200,
+	    'value' => gvfa("weather_forecast_type", $source), 
+      'error' => gvfa('weather_forecast_type', $error)
+	  ],
+
+
+
+    
+    [
 	    'label' => 'ip address',
       'name' => 'ip_address',
       
@@ -2575,7 +2587,7 @@ function getCurrentSolarDataFromCloud($tenant, $alwaysReturnData = false) {
 }
 
 function getMostRecentInverterRecord($tenant){
-  Global $conn;
+  global $conn;
   $sql = "SELECT w.name as weather, solar_power, load_power, grid_power, battery_percentage,  battery_power, battery_voltage, recorded, inverter_log_id FROM inverter_log i JOIN weather_condition w ON i.weather_condition_id=w.weather_condition_id AND w.tenant_id=i.tenant_id WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE tenant_id=<tenant_id/>) LIMIT 0,1";
   $result = replaceTokensAndQuery($sql, $tenant);
 	if($result) {
@@ -2729,54 +2741,45 @@ function getWeatherDataByCoordinates($latitude, $longitude, $apiKey) {
       'units' => 'metric' // Use 'imperial' for Fahrenheit
   ]);
   $url = "$baseUrl?$query";
-
   // Initialize a cURL session
   $ch = curl_init();
-
   // Set the URL and options
   curl_setopt($ch, CURLOPT_URL, $url);
   curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
   // Execute the cURL session
   $response = curl_exec($ch);
-
   // Check for errors
   if ($response === false) {
       $error = curl_error($ch);
       curl_close($ch);
       throw new Exception("cURL Error: $error");
   }
-
   // Close the cURL session
   curl_close($ch);
-
   // Decode the JSON response
   $weatherData = json_decode($response, true);
-
   // Check for JSON decode errors
   if (json_last_error() !== JSON_ERROR_NONE) {
       throw new Exception("JSON Decode Error: " . json_last_error_msg());
   }
-
   return $weatherData;
 }
 
-
-
 //https://open-meteo.com/en/docs
 //https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current=temperature_2m,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m
-function getWeatherForecastByCoordinates($latitude, $longitude) {
-    $stringDataWeNeed = "shortwave_radiation, direct_radiation, diffuse_radiation, cloud_cover, temperature, precipitation_probability";
+function getWeatherForecastByCoordinates($latitude, $longitude, $days=1) {
+    $stringDataWeNeed = "shortwave_radiation, direct_radiation, diffuse_radiation, cloud_cover, temperature, precipitation_probability, precipitation";
     $fields = explode(",", $stringDataWeNeed);
     foreach($fields as &$field){
       $field = trim($field);
     }
+    unset($field);
     $baseUrl = "https://api.open-meteo.com/v1/forecast";
     $query = http_build_query([
         'latitude' => $latitude,
         'longitude' => $longitude,
         'hourly' => implode(',', $fields),
-        'forecast_days' => 1,
+        'forecast_days' => $days,
         'timezone' => 'auto'
     ]);
     $url = "$baseUrl?$query";
@@ -2799,14 +2802,18 @@ function getWeatherForecastByCoordinates($latitude, $longitude) {
     $hourly = $weatherData['hourly'];
     $forecast = [];
     //rework the data into a series of associative arrays for easier handling:
+    //var_dump($fields);
     foreach ($hourly['time'] as $i => $time) {
         $fieldItem = [
             'time' => $time,
-    
         ];
         foreach($fields as $field){
+          //echo $field . "\n";
           if(array_key_exists($field, $hourly)){
+            //echo $field . "=" . $hourly[$field][$i] . " \n";
             $fieldItem[$field] = $hourly[$field][$i] ?? null;
+          } else {
+            //echo "\n----------------" . $field;
           }
         }
         $forecast[] = $fieldItem;
@@ -2814,7 +2821,96 @@ function getWeatherForecastByCoordinates($latitude, $longitude) {
     return $forecast;
 }
 
+function saveWeatherForecastsForDay($tenant){
+  global $conn, $timezone;
+  $tenantId = $tenant["tenant_id"];
+  $date = new DateTime("now", new DateTimeZone($timezone));//set the $timezone global in config.php
+  $formattedDateTime =  $date->format('Y-m-d') . " 00:00:00";
+  $sql = "SELECT device_id, latitude, longitude, (SELECT count(*) FROM  device_weather_forecast_hour WHERE forecast_hour > '" . $formattedDateTime . "' AND tenant_id=" . intval($tenantId) . ") AS forecast_records FROM device WHERE weather_forecast_type > 0 AND tenant_id=" . intval($tenantId);
+  $result = $conn->query($sql);
+  $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+  foreach ($rows as $row) {
+      $latitude = $row["latitude"];
+      $longitude = $row["longitude"];
+      $deviceId = $row["device_id"];
+      $forecastRecords = $row["forecast_records"];
+      if($latitude && $longitude  && $forecastRecords == 0) {
+        $forecasts = getWeatherForecastByCoordinates($latitude, $longitude, 1);
+        foreach($forecasts as $forecast){
+          $sql = "INSERT INTO device_weather_forecast_hour(recorded, device_id, tenant_id, forecast_hour, forecast_solar_radiation, forecast_cloud_cover, forecast_precipitation_probability ) VALUES(
+                '" . $formattedDateTime . "', " . $deviceId . "," . $tenantId . ",'" . $forecast["time"] . "',"  . $forecast["shortwave_radiation"] . "," .
+                $forecast["cloud_cover"] . "," . $forecast["precipitation_probability"]  . ")";
+          //echo $sql . "\n\n";
+          $result = $conn->query($sql);
+        }
+      }
+  }
+}
 
+function getHourlySolarProduction($day, $tenant){
+  global $conn;
+  $tenantId = $tenant["tenant_id"];
+  $start = date('Y-m-d 00:00:00', strtotime($day));
+  $end   = date('Y-m-d 00:00:00', strtotime($day . ' +1 day'));
+
+  $sql = "
+      SELECT recorded, solar_power
+      FROM inverter_log
+      WHERE recorded >= '" . $start . "'
+        AND recorded <= '" . $end . "'
+        AND tenant_id = " . $tenantId . " 
+      ORDER BY recorded 
+  ";
+  $result = $conn->query($sql);
+  $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+  $out = [];
+  if (count($rows) < 2) {
+      return $out;
+  }
+  for ($i = 0; $i < count($rows) - 1; $i++) {
+      $t1 = strtotime($rows[$i]['recorded']);
+      $t2 = strtotime($rows[$i + 1]['recorded']);
+      $p1 = (float)$rows[$i]['solar_power'];
+      $p2 = (float)$rows[$i + 1]['solar_power'];
+      $currentStart = $t1;
+      //a practical use of calculus:
+      while ($currentStart < $t2) {
+          $hourEnd = strtotime(date('Y-m-d H:00:00', $currentStart) . ' +1 hour');
+          $segmentEnd = min($hourEnd, $t2);
+          $fraction =  ($segmentEnd - $currentStart) /  ($t2 - $t1);
+          // Linear interpolation for power at segment end.  
+          $segmentP1 = $p1 +  (($currentStart - $t1) / ($t2 - $t1)) * ($p2 - $p1);
+          $segmentP2 = $p1 +  (($segmentEnd - $t1) / ($t2 - $t1)) * ($p2 - $p1);
+          $wh =  (($segmentP1 + $segmentP2) / 2) * (($segmentEnd - $currentStart) / 3600);
+          $hourKey = date('Y-m-d H:00:00', $currentStart);
+          if (!isset($out[$hourKey])) {
+              $out[$hourKey] = 0;
+          }
+          $out[$hourKey] += $wh;
+          $currentStart = $segmentEnd;
+      }
+  }
+    return $out;
+}
+
+function updateForecastSolarRecordsWithPowerValues($tenant, $daysAgo = 5){
+  global $conn, $timezone;
+  $tenantId = $tenant["tenant_id"];
+  $date = new DateTime("now", new DateTimeZone($timezone));//set the $timezone global in config.php
+  $formattedDateTime =  $date->format('Y-m-d H:i:s');
+  while($daysAgo > -1){
+      $date = date('Y-m-d 00:00:00', strtotime($formattedDateTime . ' -' . $daysAgo . ' day'));
+      $productionData = getHourlySolarProduction($date, $tenant);
+      foreach($productionData as $hour=>$watthours){
+        $sql = "UPDATE device_weather_forecast_hour SET actual_watthours_collected = " . $watthours . " WHERE actual_watthours_collected IS NULL AND tenant_id = " . $tenantId . " AND forecast_hour='" . $hour . "'";
+        //echo $sql . "\n";
+        $result = $conn->query($sql);
+      }
+      $daysAgo--;
+  }
+}
+
+//we do not use this because it costs $$$ and we po
 function getWeatherForecast($latitude, $longitude, $apiKey) {
   $baseUrl = "https://api.openweathermap.org/data/2.5/onecall";
   $query = http_build_query([
@@ -3354,6 +3450,8 @@ function doVariousThingsRegularly($tenant) {
   //these should be commented out if you don't have my particular setup!:
   gatherAnyTractiveGpsData($tenant);
   getAmeriGasFuelLevelsFromCloud($tenant);
+  saveWeatherForecastsForDay($tenant);
+  updateForecastSolarRecordsWithPowerValues($tenant, 2);
 }
 
 function getCredential($tenant, $type) {
