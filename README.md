@@ -596,7 +596,7 @@ This report presents a dropdown for how many days into the past to show a graph 
 }
 </code>
 
-The SQL for that report looks like this:
+The SQL for that report looks something like this:
 
 <code>	
 SELECT (reserved4 /40) -10 as reserved4, temperature, humidity, recorded
