@@ -86,6 +86,9 @@
       return;
     }
     const value = inputElement.value;
+    if(value == "") {
+      return;  //we accept nulls!
+    }
     const params = new URLSearchParams();
     params.append("table", table);
     params.append("value", value);
@@ -982,12 +985,16 @@ function genericListActionBackend(
 	managementToolTableName = document.getElementById("tableNameForManagementRule")[document.getElementById("tableNameForManagementRule").selectedIndex].value;
 	let xmlhttp = new XMLHttpRequest();
 	let mrColumn =  document.getElementById("mr_column");
+	let mrAggregator =  document.getElementById("mr_aggregator");
+	let mrTimespan =  document.getElementById("mr_timespan");
 	xmlhttp.onreadystatechange = function() {
 	  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
 		//alert(xmlhttp.responseText);
 		let columns = JSON.parse(xmlhttp.responseText);
 		managementToolTableHasLocationIdColumn = columns.includes("device_id");
 		mrColumn.innerHTML = "<span>Column:</span><span> " + genericSelect("columnNameForManagementRule", "columnNameForManagementRule", "", columns, "onchange", "managementRuleColumnChange()"  )  + "</span>";
+		mrAggregator.innerHTML = "<span>Aggregator function:</span><span> " + genericSelect("aggregatorForManagementRule", "aggregatorForManagementRule", "", ["AVG","MAX","MIN","SUM"], "onchange", "managementRuleColumnChange()"  )  + "</span>";
+		mrTimespan.innerHTML = "<span>Timespan:</span><span> " + genericSelect("timespanForManagementRule", "timespanForManagementRule", "", ["latest","today","yesterday"], "onchange", "managementRuleColumnChange()"  )  + "</span>";
 	  }
 	}
   

@@ -2719,12 +2719,14 @@ function currentSensorData($tenant){
 
 function managementRuleTools() {
   $out = "";
-  $tables = array("inverter_log", "device_log");
+  $tables = array("inverter_log", "device_log", "device_weather_forecast_hour");
   //genericSelect($id, $name, $defaultValue, $data, $event = "", $handler= "")
   $out.="\n<br/><div class='unfoldingtool'>\n";
   $out.="<div class='unfoldingtoolline'><span>Create a lookup token in conditions:</span>";
   $out.= "<div class='unfoldingtoolline' ><span>" . genericSelect("tableNameForManagementRule", "tableNameForManagementRule", "", $tables,"onchange", "managementRuleTableChange()") . "</span></div>";
   $out .= "\n<div class='unfoldingtoolline' id='mr_column'></div>";
+  $out .= "\n<div class='unfoldingtoolline' id='mr_aggregator'></div>";
+  $out .= "\n<div class='unfoldingtoolline' id='mr_timespan'></div>";
   $out .= "\n<div class='unfoldingtoolline' id='mr_location'></div>";
   $out .= "\n<div class='unfoldingtoolline' id='mr_tag'></div>";
   $out .= "\n<div class='unfoldingtoolline' id='mr_button' style='display:none'><button onclick='managementConditionsAddTag()'>Insert Token</button></div>";
