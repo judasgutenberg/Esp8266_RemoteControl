@@ -161,7 +161,18 @@ There is also an inverter-related endpoint in server.php to return live inverter
 
 <inverter_log[].battery_percentage> > 80
 
-which would set the connected device_feature's value to the value of management_rule.result if the condition is met and allow_automatic_management in the device_feature record is true.  Multiple management_rules can be added to device_features in the device_feature editor, which looks like this:
+which would set the connected device_feature's value to the value of management_rule.result if the condition is met and allow_automatic_management in the device_feature record is true.  You can also use aggregate functions in a token if you include colons.  The term before the first colon is the aggregator function from MySQL, such as sum, max, or avg.  Then you have to end the token with another colon and a timespan such as today or yesterday.  You can include PHP statements in the conditionals to refer to concepts such as time.  For example,   this management rule:
+
+<code>
+(<inverter_log[].solar_power> > 2000 && <inverter_log[].battery_percentage> > 90) 
+
+|| <sum:device_weather_forecast_hour[16].forecast_solar_radiation:today> > 7000  && date('G') < 10
+</code>
+
+evaluates to true if the latest record in the solar_power column of   the inverter_log is greate than 2000  and the battery_percentage in that record is greater than 90 OR if the sum of forecast_solar_radiation values for today in the device_weather_forecast_hour table for device_16 is greater than 7000 and the hour (date("G') -- if you know, you know, PHP fans) is less than 10.
+
+
+Multiple management_rules can be added to device_features in the device_feature editor, which looks like this:
 
 ![alt text](documentation/devicefeature.jpg?raw=true)
 
