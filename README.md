@@ -167,13 +167,13 @@ which would set the connected device_feature's value to the value of management_
 
 	
 (&lt;inverter_log[].solar_power&gt; > 2000 && &lt;inverter_log[].battery_percentage&gt; &gt; 90) 
-|| &lt;sum:device_weather_forecast_hour[16].forecast_solar_radiation:today&gt; &gt; 7000  && date('G') &lt; 10
+|| &lt;sum:device_weather_forecast_hour[16].forecast_solar_radiation:today&gt; &gt; 7000  && hour()  &lt; 10
 
 </code>
 
-evaluates to true if the latest record in the solar_power column of   the inverter_log is greate than 2000  and the battery_percentage in that record is greater than 90 OR if the sum of forecast_solar_radiation values for today in the device_weather_forecast_hour table for device_16 is greater than 7000 and the hour (date("G') -- if you know, you know, PHP fans) is less than 10.
+evaluates to true if the latest record in the solar_power column of   the inverter_log is greate than 2000  and the battery_percentage in that record is greater than 90 OR if the sum of forecast_solar_radiation values for today in the device_weather_forecast_hour table for device_16 is greater than 7000 and the hour in our timezone is less than 10.
 
-If you are gathering weather forecasts, you can make rules related to the predicted weather as stored in the device_weather_forecast_hour table.
+As you can see, if you are gathering weather forecasts via the OpenMeteo API, you can make rules related to the predicted weather as stored in the device_weather_forecast_hour table.
 Management_rules can be edited in the management_rule editor, which looks like this:
 
 
