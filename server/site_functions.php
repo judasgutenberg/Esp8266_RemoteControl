@@ -1816,6 +1816,13 @@ function formatBytes($bytes, $precision = 2) {
   return $size . ' ' . $units[$unitIndex];
 }
 
+function hour() {
+  global $timezone;  
+  $date = new DateTime("now", new DateTimeZone($timezone));//set the $timezone global in config.php
+  $hour =  $date->format('G');
+  return $hour;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////
 //if a user gets an email with an encryptedTenantId, they can create a user belonging to that tenant
 function createUser($encryptedTenantId = NULL){
