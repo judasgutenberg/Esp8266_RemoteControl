@@ -2765,7 +2765,7 @@ function getWeatherDataByCoordinates($latitude, $longitude, $apiKey) {
   return $weatherData;
 }
 
-//https://open-meteo.com/en/docs
+//https://open-meteo.com/en/docs //openmeteo
 //https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current=temperature_2m,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m
 function getWeatherForecastByCoordinates($latitude, $longitude, $days=1) {
     $stringDataWeNeed = "shortwave_radiation, direct_radiation, diffuse_radiation, cloud_cover, temperature, precipitation_probability, precipitation";
@@ -2852,7 +2852,6 @@ function getHourlySolarProduction($day, $tenant){
   $tenantId = $tenant["tenant_id"];
   $start = date('Y-m-d 00:00:00', strtotime($day));
   $end   = date('Y-m-d 00:00:00', strtotime($day . ' +1 day'));
-
   $sql = "
       SELECT recorded, solar_power
       FROM inverter_log
@@ -2893,7 +2892,8 @@ function getHourlySolarProduction($day, $tenant){
     return $out;
 }
 
-function updateForecastSolarRecordsWithPowerValues($tenant, $daysAgo = 5){
+//this is important so that we can look at old forecasts and see what the actual energy values collected turned out to be
+function updateForecastSolarRecordsWithPowerValues($tenant, $daysAgo = 2){
   global $conn, $timezone;
   $tenantId = $tenant["tenant_id"];
   $date = new DateTime("now", new DateTimeZone($timezone));//set the $timezone global in config.php
@@ -2920,35 +2920,20 @@ function getWeatherForecast($latitude, $longitude, $apiKey) {
       'units' => 'metric' // Use 'imperial' for Fahrenheit
   ]);
   $url = "$baseUrl?$query";
-
-  // Initialize a cURL session
   $ch = curl_init();
-
-  // Set the URL and options
   curl_setopt($ch, CURLOPT_URL, $url);
   curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-  // Execute the cURL session
   $response = curl_exec($ch);
-
-  // Check for errors
   if ($response === false) {
       $error = curl_error($ch);
       curl_close($ch);
       throw new Exception("cURL Error: $error");
   }
-
-  // Close the cURL session
   curl_close($ch);
-
-  // Decode the JSON response
   $weatherData = json_decode($response, true);
-
-  // Check for JSON decode errors
   if (json_last_error() !== JSON_ERROR_NONE) {
       throw new Exception("JSON Decode Error: " . json_last_error_msg());
   }
-
   return $weatherData;
 }
 
@@ -2960,6 +2945,7 @@ function tenantListSql($user){
   }
   return $tenantListSql;
 }
+
 function tablesThatRequireUser(){
   return ["device_feature"];
 }
@@ -2975,7 +2961,7 @@ function templateableTables() {
 
 //all the tables of this system
 function schemaTables() {
-  return ["code_template", "command", "command_type",  "command_log", "device", "sensor", "configuration_option", "device_column_map", "device_feature", "device_feature_log", "device_feature_management_rule", "device_log", "device_type", "device_type_feature", "feature_type", "inverter_log", "ir_pulse_sequence", "ir_target_type", "management_rule", "weather_condition", "reboot_log", "report report_log", "tenant", "tenant_user", "user", "wifi_hotspot"];
+  return ["code_template", "command", "command_type",  "command_log", "device", "sensor", "configuration_option", "device_column_map", "device_feature", "device_feature_log", "device_feature_management_rule", "device_log", "device_type", "device_type_feature", "feature_type", "inverter_log", "ir_pulse_sequence", "ir_target_type", "management_rule", "weather_condition", "device_weather_forecast_hour", "reboot_log", "report report_log", "tenant", "tenant_user", "user", "wifi_hotspot"];
  
 }
 
