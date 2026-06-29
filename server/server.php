@@ -80,7 +80,7 @@ if($mode == "upload") {
       mkdir($greaterTempPath);
     }
     $destinationPath = buildDeviceUploadPath($deviceId); 
-    logPost($data, $deviceId);
+    //logPost($data, $deviceId);
     $newLength = handleUploadChunk($greaterTempPath, $destinationPath, $filename, $data, $cursor, $fileSize);
     die("!" . intval($newLength));
   }
@@ -924,24 +924,49 @@ if($_REQUEST) {
 												$lookedUpValue = $managementCache[$tokenContent];
 												//echo "cache: " . $tokenContent . "=" .  $lookedUpValue . "\n";
 											} else {
+												//let's handle some complexity with the commmands here:
+												$timespan = "latest";
+												$aggregateCommand = "";
+												if (strpos($tokenContent, ":") !== false){
+													$colonParts = explode(":", $tokenContent);
+													$aggregateCommand = $colonParts[0];
+													if(count($colonParts) > 2) {
+														$timespan = $colonParts[2];
+													}
+													$tokenContent = $colonParts[1];
+												}  
+
 												$dotParts = explode(".", $tokenContent);
 												$managementColumn = "";
-												$managementLocationId = "";
+												$managementDeviceId = "";
 												if(count($dotParts) > 1){
 													$managementColumn = filterStringForSqlEntities($dotParts[1]);
 												}
 												$bracketParts = explode("[", $dotParts[0]);
 												$managementTableName = filterStringForSqlEntities($bracketParts[0]);
 												if(count($bracketParts) > 1){
-													$managementLocationId =  str_replace("]", "", $bracketParts[1]);
+													$managementDeviceId =  str_replace("]", "", $bracketParts[1]);
 												}
 												$extraManagementWhereClause = "";
-												if($managementLocationId != ""){
-													$extraManagementWhereClause = " AND device_id=" . intval($managementLocationId);
+												if($managementDeviceId != ""){
+													$extraManagementWhereClause = " AND device_id=" . intval($managementDeviceId);
 												}
-												$managmentValueLookupSql = "SELECT " . $managementColumn . " As value FROM " . $managementTableName . " WHERE recorded >= '" . $formattedDateTime20MinutesAgo . "' AND " . $managementTableName . "_id = (SELECT MAX(" . $managementTableName. "_id) FROM " . $managementTableName . " WHERE 1=1 " . $extraManagementWhereClause . ") " . $extraManagementWhereClause;
+												$timespanClause = " 1 = 1";
+												if($timespan == "latest"){
+													$timespanClause =  " recorded >= '" . $formattedDateTime20MinutesAgo . "' AND  " . $managementTableName . "_id = (SELECT MAX(" . $managementTableName. "_id)  FROM " . $managementTableName . " WHERE 1=1 " . $extraManagementWhereClause . ") ";
+												} else if ($timespan == "today"){
+													$timespanClause =  " recorded >= CURDATE() ";
+												}  else if ($timespan == "yesterday"){
+													$timespanClause =  " recorded >=   DATE_ADD(CURDATE(), INTERVAL -1 DAY) AND recorded <  CURDATE()";  
+												}
+												$managementSelectClause =  $managementColumn;
+												if($aggregateCommand != "") {
+													$managementSelectClause =  filterStringForSqlEntities($aggregateCommand) . "(" . $managementColumn . ")" ;
+												}
+												$managmentValueLookupSql = "SELECT " . $managementSelectClause . " AS value FROM " . $managementTableName . " WHERE " . $timespanClause . " " . $extraManagementWhereClause;
+												logSql($managmentValueLookupSql, "management.sql");
 												$managementValueResult = mysqli_query($conn, $managmentValueLookupSql);
-
+												
 												if($managementValueResult) {
 													$valueArray = mysqli_fetch_array($managementValueResult);
 													if($valueArray) {
@@ -1250,11 +1275,11 @@ function logPost($post, $deviceId = ""){
 	$myfile = file_put_contents('solarkdata' . $deviceId . '.txt', "\n" . $post, FILE_APPEND | LOCK_EX);
 }
 
-function logSql($sql){
+function logSql($sql, $fileName = "sql.txt"){
 	//return;
 	//return; //for when you don't actually want to log
 	global $formattedDateTime;
-	$myfile = file_put_contents('sql.txt', "\n\n" . $formattedDateTime . ": " . $sql, FILE_APPEND | LOCK_EX);
+	$myfile = file_put_contents($fileName, "\n\n" . $formattedDateTime . ": " . $sql, FILE_APPEND | LOCK_EX);
 }
 
 function mergeWeatherDatum($consolidateAllSensorsToOneRecord, $existingValue, $sourceArray, $keyName, $deviceId = null, $tenantId = null) {
