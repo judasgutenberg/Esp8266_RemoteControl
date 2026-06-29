@@ -1007,6 +1007,8 @@ function genericListActionBackend(
     managementToolColumnName = document.getElementById("columnNameForManagementRule")[document.getElementById("columnNameForManagementRule").selectedIndex].value;
     let xmlhttp = new XMLHttpRequest();
     let mrLocation =  document.getElementById("mr_location");
+	let mrAggregator =  document.getElementById("aggregatorForManagementRule")[document.getElementById("aggregatorForManagementRule").selectedIndex].value;
+	let mrTimespan =  document.getElementById("timespanForManagementRule")[document.getElementById("timespanForManagementRule").selectedIndex].value;
     if(!managementToolTableHasLocationIdColumn){
       tag = "<"  + managementToolTableName + "[]." + managementToolColumnName + "/>";
       managementRuleDisplayTag(tag);
@@ -1021,7 +1023,8 @@ function genericListActionBackend(
           text: row.name
         };
         });
-        let lastTagScript =  "makeManagementRuleTagFromLocation(document.getElementById('locationForManagementRule')[document.getElementById('locationForManagementRule').selectedIndex].value)";
+
+        let lastTagScript =  "makeManagementRuleTagFromLocation(document.getElementById('locationForManagementRule')[document.getElementById('locationForManagementRule').selectedIndex].value"  + ",'" + mrAggregator + "','" + mrTimespan + "')";
         mrLocation.innerHTML = "<span>Location:</span><span>" + genericSelect("locationForManagementRule", "locationForManagementRule", "",  locations, "onchange", lastTagScript ) + "</span>";
     
       }
@@ -1048,9 +1051,17 @@ function genericListActionBackend(
 	mrButton.style.display = 'block';
   }
   
-  function makeManagementRuleTagFromLocation(location) {
+  function makeManagementRuleTagFromLocation(location, mrAggregator, mrTimespan) {
 	let mrTag =  document.getElementById("mr_tag");
-	let tag = "<"  + managementToolTableName + "[" + location + "]." + managementToolColumnName + "/>";
+	let aggregatorPart = "";
+	if(mrAggregator != "") {
+		aggregatorPart = mrAggregator + ":";
+	}
+	let timespanPart = "";
+	if(mrTimespan != "") {
+		timespanPart =  ":" + mrTimespan;
+	}
+	let tag = "<"  + aggregatorPart + managementToolTableName + "[" + location + "]." + managementToolColumnName + timespanPart + "/>";
 	mrTag.innerHTML = tag.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 	let mrButton =  document.getElementById("mr_button");
 	mrButton.style.display = 'block';
