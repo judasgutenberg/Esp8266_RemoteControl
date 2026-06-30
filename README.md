@@ -161,7 +161,7 @@ There is also an inverter-related endpoint in server.php to return live inverter
 
 <inverter_log[].battery_percentage> > 80
 
-which would set the connected device_feature's value to the value of management_rule.result if the condition is met and allow_automatic_management in the device_feature record is true.  You can also use aggregate functions in a token if you include colons.  The term before the first colon is the aggregator function from MySQL, such as sum, max, or avg.  Then you have to end the token with another colon and a timespan such as today or yesterday.  You can include PHP statements in the conditionals to refer to concepts such as time.  For example,   this management rule:
+which would set the connected device_feature's value to the value of management_rule.result if the condition is met and allow_automatic_management in the device_feature record is true.  You can also use aggregate functions in a token if you include colons.  The term before the first colon is the aggregator function from MySQL, such as avg, count, max, min, std, sum, or variance.  Then you have to end the token with another colon and a timespan such as today or yesterday.  You can include PHP statements in the conditionals to refer to concepts such as time using PHP or any of the PHP functions used by the system that you have permission to run.  For example,   this management rule:
 
 <code>
 
