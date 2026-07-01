@@ -9,3 +9,6 @@ Added websocket connection capability for an interactive sending of commands to 
 
 ### 28 February 2026
 Added support in ESP8266 Firmware to reflash I2C slaves equipped with the proper bootloaders over I2C.
+
+### 01 December 2025
+Added a bunch of hardening against malevolent actors.
