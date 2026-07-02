@@ -938,9 +938,16 @@ if($_REQUEST) {
 
 												$dotParts = explode(".", $tokenContent);
 												$managementColumn = "";
+												$datetimeColumn = "recorded"; //recorded is our default timespan column, but we can change it in our token if we end our management column with a / and some other column we would prefer instead of recorded
 												$managementDeviceId = "";
 												if(count($dotParts) > 1){
-													$managementColumn = filterStringForSqlEntities($dotParts[1]);
+													$managementColumnsString = $dotParts[1];
+													$managementColumns = explode("/", $managementColumnsString);
+
+													$managementColumn = filterStringForSqlEntities($managementColumns[0]);
+													if(count($managementColumns) > 1){
+														$datetimeColumn = filterStringForSqlEntities($managementColumns[1]);
+													}
 												}
 												$bracketParts = explode("[", $dotParts[0]);
 												$managementTableName = filterStringForSqlEntities($bracketParts[0]);
@@ -953,17 +960,60 @@ if($_REQUEST) {
 												}
 												$timespanClause = " 1 = 1";
 												if($timespan == "latest"){
-													$timespanClause =  " recorded >= '" . $formattedDateTime20MinutesAgo . "' AND  " . $managementTableName . "_id = (SELECT MAX(" . $managementTableName. "_id)  FROM " . $managementTableName . " WHERE 1=1 " . $extraManagementWhereClause . ") ";
+													$timespanClause =  " " .  $datetimeColumn . " >= '" . $formattedDateTime20MinutesAgo . "' AND  " . $managementTableName . "_id = (SELECT MAX(" . $managementTableName. "_id)  FROM " . $managementTableName . " WHERE 1=1 " . $extraManagementWhereClause . ") ";
 												} else if ($timespan == "today"){
-													$timespanClause =  " recorded >= CURDATE() ";
+													$timespanClause =  " " .  $datetimeColumn . " >= CURDATE() ";
+												} else if ($timespan == "this_hour"){
+													$timespanClause =  " " .  $datetimeColumn . " >=   DATE_ADD(NOW(), INTERVAL -1 HOUR)";  
+												} else if ($timespan == "this_week"){
+													$timespanClause =  " " .  $datetimeColumn . " >=   DATE_ADD(CURDATE(), INTERVAL -7 DAY)";  
+												} else if ($timespan == "this_month"){
+													$timespanClause =  " " .  $datetimeColumn . " >=   DATE_ADD(CURDATE(), INTERVAL -1 MONTH)";  
 												}  else if ($timespan == "yesterday"){
-													$timespanClause =  " recorded >=   DATE_ADD(CURDATE(), INTERVAL -1 DAY) AND recorded <  CURDATE()";  
+													$timespanClause =  " " .  $datetimeColumn . " >=   DATE_ADD(CURDATE(), INTERVAL -1 DAY) AND " .  $datetimeColumn . " <  CURDATE()";  
 												}
-												$managementSelectClause =  $managementColumn;
+												$managementSelectClause = $managementColumn;
 												if($aggregateCommand != "") {
-													$managementSelectClause =  filterStringForSqlEntities($aggregateCommand) . "(" . $managementColumn . ")" ;
+													if(strtoupper($aggregateCommand) == "INTEGRAL") {
+														$managementSelectClause = "
+															(
+																SELECT SUM(
+																	(
+																		t1." . $managementColumn . " +
+																		(
+																			SELECT t2." . $managementColumn . "
+																			FROM " . $managementTableName . " t2
+																			WHERE t2." . $datetimeColumn . " > t1." . $datetimeColumn . "
+																			" . $extraManagementWhereClause . "
+																			ORDER BY t2." . $datetimeColumn . "
+																			LIMIT 1
+																		)
+																	) / 2
+																	*
+																	TIMESTAMPDIFF(
+																		SECOND,
+																		t1." . $datetimeColumn . ",
+																		(
+																			SELECT t2." . $datetimeColumn . "
+																			FROM " . $managementTableName . " t2
+																			WHERE t2." . $datetimeColumn . " > t1." . $datetimeColumn . "
+																			" . $extraManagementWhereClause . "
+																			ORDER BY t2." . $datetimeColumn . "
+																			LIMIT 1
+																		)
+																	) / 3600
+																)
+																FROM " . $managementTableName . " t1
+																WHERE " . $timespanClause . "
+																" . $extraManagementWhereClause . "
+															)";
+													} else {
+														$managementSelectClause =
+															filterStringForSqlEntities($aggregateCommand)
+															. "(" . $managementColumn . ")";
+													}
 												}
-												$managmentValueLookupSql = "SELECT " . $managementSelectClause . " AS value FROM " . $managementTableName . " WHERE " . $timespanClause . " " . $extraManagementWhereClause;
+												$managmentValueLookupSql = "SELECT " . $managementSelectClause . " AS value FROM " . $managementTableName . " WHERE " . $timespanClause . " " . $extraManagementWhereClause . " LIMIT 0,1";
 												logSql($managmentValueLookupSql, "management.sql");
 												$managementValueResult = mysqli_query($conn, $managmentValueLookupSql);
 												
