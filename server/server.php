@@ -974,6 +974,7 @@ if($_REQUEST) {
 												}
 												$managementSelectClause = $managementColumn;
 												if($aggregateCommand != "") {
+													//let's do some calculus, right?
 													if(strtoupper($aggregateCommand) == "INTEGRAL") {
 														$managementSelectClause = "
 															(
