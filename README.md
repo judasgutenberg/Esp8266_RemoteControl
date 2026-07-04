@@ -171,7 +171,7 @@ which would set the connected device_feature's value to the value of management_
 
 </code>
 
-evaluates to true if the latest record in the solar_power column of   the inverter_log is greate than 2000  and the battery_percentage in that record is greater than 90 OR if the definite integral of forecast_solar_radiation values for today (using forecast_hour as the x component) in the device_weather_forecast_hour table for device_16 is greater than 7000 and the hour in our timezone is less than 10.
+evaluates to true if the latest record in the solar_power column of   the inverter_log is greater than 2000  and the battery_percentage in that record is greater than 90 OR if the definite integral of forecast_solar_radiation values for today (using forecast_hour as the x component) in the device_weather_forecast_hour table for device_16 is greater than 7000 and the hour in our timezone is less than 10.
 
 As you can see, if you are gathering weather forecasts via the OpenMeteo API, you can make rules related to the predicted weather as stored in the device_weather_forecast_hour table.
 Management_rules can be edited in the management_rule editor, which looks like this:
@@ -179,8 +179,8 @@ Management_rules can be edited in the management_rule editor, which looks like t
 
 ![alt text](documentation/managementrule.jpg?raw=true)
 
-At the bottom is a tool you can use to automatically construct a value token (which will resemble a self-closing XML tag) to place in conditions.  Treat these as variables in an expression to be evaluated as true or false.  You can use multiple tokens, parentheses, arithmatic operators, and scalar numbers in such expressions.
-Since manual changes to the status of device_features are usually at odds with automation, whenever a manual change to a device_feature is made, automation is automatically suspended for restore_automation_after hours, starting at the instant of the manual change.
+At the bottom is a tool you can use to automatically construct a value token (which will resemble a self-closing XML tag) to place in conditions.  Treat these as variables in an expression to be evaluated as true or false.  You can use multiple tokens, parentheses, arithmetic operators, and scalar numbers in such expressions.
+Since manual changes to the status of device_features are usually at odds with automation, whenever a manual change to a device_feature is made, automation is automatically suspended for restore_automation_after hours (independently settable for each device_feature), starting at the instant of the manual change.
 
 ## Commands
 
