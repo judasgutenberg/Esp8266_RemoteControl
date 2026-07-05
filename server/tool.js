@@ -987,7 +987,7 @@ function genericListActionBackend(
 	let mrColumn =  document.getElementById("mr_column");
 	let mrAggregator =  document.getElementById("mr_aggregator");
 	let mrTimespan =  document.getElementById("mr_timespan");
-	let mrTimespan =  document.getElementById("mr_timeColumn");
+	let mrTimeColumn =  document.getElementById("mr_timeColumn");
 	xmlhttp.onreadystatechange = function() {
 	  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
 		//alert(xmlhttp.responseText);
@@ -995,8 +995,9 @@ function genericListActionBackend(
 		managementToolTableHasLocationIdColumn = columns.includes("device_id");
 		mrColumn.innerHTML = "<span>Column:</span><span> " + genericSelect("columnNameForManagementRule", "columnNameForManagementRule", "", columns, "onchange", "managementRuleColumnChange()"  )  + "</span>";
 		mrAggregator.innerHTML = "<span>Aggregator function:</span><span> " + genericSelect("aggregatorForManagementRule", "aggregatorForManagementRule", "", ["AVG","INTEGRAL","MAX","MIN","SUM"], "onchange", "managementRuleColumnChange()"  )  + "</span>";
-		mrTimespan.innerHTML = "<span>Timespan:</span><span> " + genericSelect("timesColumnForManagementRule", "timesColumnForManagementRule", "", ["recorded", columns, "onchange", "managementRuleColumnChange()"  )  + "</span>";
-	  
+		mrTimespan.innerHTML = "<span>Timespan:</span><span> " + genericSelect("timespanForManagementRule", "timespanForManagementRule", "", ["latest","today","yesterday"], "onchange", "managementRuleColumnChange()"  )  + "</span>";
+		mrTimeColumn.innerHTML = "<span>Time column:</span><span> " + genericSelect("timeColumnForManagementRule", "timeColumnForManagementRule", "", columns, "onchange", "managementRuleColumnChange()"  )  + "</span>";
+	
 	  
 	  }
 	}
