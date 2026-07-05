@@ -987,14 +987,17 @@ function genericListActionBackend(
 	let mrColumn =  document.getElementById("mr_column");
 	let mrAggregator =  document.getElementById("mr_aggregator");
 	let mrTimespan =  document.getElementById("mr_timespan");
+	let mrTimespan =  document.getElementById("mr_timeColumn");
 	xmlhttp.onreadystatechange = function() {
 	  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
 		//alert(xmlhttp.responseText);
 		let columns = JSON.parse(xmlhttp.responseText);
 		managementToolTableHasLocationIdColumn = columns.includes("device_id");
 		mrColumn.innerHTML = "<span>Column:</span><span> " + genericSelect("columnNameForManagementRule", "columnNameForManagementRule", "", columns, "onchange", "managementRuleColumnChange()"  )  + "</span>";
-		mrAggregator.innerHTML = "<span>Aggregator function:</span><span> " + genericSelect("aggregatorForManagementRule", "aggregatorForManagementRule", "", ["AVG","MAX","MIN","SUM"], "onchange", "managementRuleColumnChange()"  )  + "</span>";
-		mrTimespan.innerHTML = "<span>Timespan:</span><span> " + genericSelect("timespanForManagementRule", "timespanForManagementRule", "", ["latest","today","yesterday"], "onchange", "managementRuleColumnChange()"  )  + "</span>";
+		mrAggregator.innerHTML = "<span>Aggregator function:</span><span> " + genericSelect("aggregatorForManagementRule", "aggregatorForManagementRule", "", ["AVG","INTEGRAL","MAX","MIN","SUM"], "onchange", "managementRuleColumnChange()"  )  + "</span>";
+		mrTimespan.innerHTML = "<span>Timespan:</span><span> " + genericSelect("timesColumnForManagementRule", "timesColumnForManagementRule", "", ["recorded", columns, "onchange", "managementRuleColumnChange()"  )  + "</span>";
+	  
+	  
 	  }
 	}
   
@@ -1007,8 +1010,11 @@ function genericListActionBackend(
     managementToolColumnName = document.getElementById("columnNameForManagementRule")[document.getElementById("columnNameForManagementRule").selectedIndex].value;
     let xmlhttp = new XMLHttpRequest();
     let mrLocation =  document.getElementById("mr_location");
-	let mrAggregator =  document.getElementById("aggregatorForManagementRule")[document.getElementById("aggregatorForManagementRule").selectedIndex].value;
-	let mrTimespan =  document.getElementById("timespanForManagementRule")[document.getElementById("timespanForManagementRule").selectedIndex].value;
+    let mrAggregator =  document.getElementById("aggregatorForManagementRule")[document.getElementById("aggregatorForManagementRule").selectedIndex].value;
+    let mrTimespan =  document.getElementById("timespanForManagementRule")[document.getElementById("timespanForManagementRule").selectedIndex].value;
+   	let mrTimeColumn =  document.getElementById("timeColumnForManagementRule")[document.getElementById("timeColumnForManagementRule").selectedIndex].value;
+    
+    
     if(!managementToolTableHasLocationIdColumn){
       tag = "<"  + managementToolTableName + "[]." + managementToolColumnName + "/>";
       managementRuleDisplayTag(tag);
@@ -1024,7 +1030,7 @@ function genericListActionBackend(
         };
         });
 
-        let lastTagScript =  "makeManagementRuleTagFromLocation(document.getElementById('locationForManagementRule')[document.getElementById('locationForManagementRule').selectedIndex].value"  + ",'" + mrAggregator + "','" + mrTimespan + "')";
+        let lastTagScript =  "makeManagementRuleTagFromLocation(document.getElementById('locationForManagementRule')[document.getElementById('locationForManagementRule').selectedIndex].value"  + ",'" + mrAggregator + "','" + mrTimespan + "','" + mrTimeColumn + "')";
         mrLocation.innerHTML = "<span>Location:</span><span>" + genericSelect("locationForManagementRule", "locationForManagementRule", "",  locations, "onchange", lastTagScript ) + "</span>";
     
       }
@@ -1051,17 +1057,21 @@ function genericListActionBackend(
 	mrButton.style.display = 'block';
   }
   
-  function makeManagementRuleTagFromLocation(location, mrAggregator, mrTimespan) {
+  function makeManagementRuleTagFromLocation(location, mrAggregator, mrTimespan, mrTimeColumn) {
 	let mrTag =  document.getElementById("mr_tag");
 	let aggregatorPart = "";
 	if(mrAggregator != "") {
 		aggregatorPart = mrAggregator + ":";
 	}
 	let timespanPart = "";
+	let timeColumnPart = "";
 	if(mrTimespan != "") {
 		timespanPart =  ":" + mrTimespan;
 	}
-	let tag = "<"  + aggregatorPart + managementToolTableName + "[" + location + "]." + managementToolColumnName + timespanPart + "/>";
+	if(mrTimeColumn != "") {
+    timeColumnPart = "/" + mrTimeColumn;
+	}
+	let tag = "<"  + aggregatorPart + managementToolTableName + "[" + location + "]." + managementToolColumnName + timeColumnPart + timespanPart +  "/>";
 	mrTag.innerHTML = tag.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 	let mrButton =  document.getElementById("mr_button");
 	mrButton.style.display = 'block';

@@ -2728,7 +2728,9 @@ function managementRuleTools() {
   $out .= "\n<div class='unfoldingtoolline' id='mr_aggregator'></div>";
   $out .= "\n<div class='unfoldingtoolline' id='mr_timespan'></div>";
   $out .= "\n<div class='unfoldingtoolline' id='mr_location'></div>";
+  $out .= "\n<div class='unfoldingtoolline' id='mr_timeColumn'></div>"
   $out .= "\n<div class='unfoldingtoolline' id='mr_tag'></div>";
+  ;
   $out .= "\n<div class='unfoldingtoolline' id='mr_button' style='display:none'><button onclick='managementConditionsAddTag()'>Insert Token</button></div>";
   $out .= "\n</div>\n";
   return $out;
