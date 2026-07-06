@@ -1011,6 +1011,10 @@ function genericListActionBackend(
     managementToolColumnName = document.getElementById("columnNameForManagementRule")[document.getElementById("columnNameForManagementRule").selectedIndex].value;
     let xmlhttp = new XMLHttpRequest();
     let mrLocation =  document.getElementById("mr_location");
+    let mrLocationValue = 0;
+    if(document.getElementById("locationForManagementRule")){
+      mrLocationValue = document.getElementById("locationForManagementRule")[document.getElementById("locationForManagementRule").selectedIndex].value;
+    }
     let mrAggregator =  document.getElementById("aggregatorForManagementRule")[document.getElementById("aggregatorForManagementRule").selectedIndex].value;
     let mrTimespan =  document.getElementById("timespanForManagementRule")[document.getElementById("timespanForManagementRule").selectedIndex].value;
    	let mrTimeColumn =  document.getElementById("timeColumnForManagementRule")[document.getElementById("timeColumnForManagementRule").selectedIndex].value;
@@ -1032,7 +1036,7 @@ function genericListActionBackend(
         });
 
         let lastTagScript =  "makeManagementRuleTagFromLocation(document.getElementById('locationForManagementRule')[document.getElementById('locationForManagementRule').selectedIndex].value"  + ",'" + mrAggregator + "','" + mrTimespan + "','" + mrTimeColumn + "')";
-        mrLocation.innerHTML = "<span>Location:</span><span>" + genericSelect("locationForManagementRule", "locationForManagementRule", "",  locations, "onchange", lastTagScript ) + "</span>";
+        mrLocation.innerHTML = "<span>Location:</span><span>" + genericSelect("locationForManagementRule", "locationForManagementRule", mrLocationValue,  locations, "onchange", lastTagScript ) + "</span>";
     
       }
       }
