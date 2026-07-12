@@ -138,6 +138,9 @@ Characteristic #7;I (318800102);0x3ffbb5bc;6;7
 Characteristic #9;I (28318992);0x3ffbb64c;0;1
 ```
 
+[<a href="./documentation/SerialParser.md">Read technical details about the parser</a>.]
+
+
 ## Meshtastic Integration
 I needed to be able to track my dog Charlotte at my Adirondack cabin, an environment with poor cell coverage.  So I set up a Meshtastic mesh and needed to get it to send data to my backend.  To do this, I created a Meshtastic bridge using a Raspberry Pi Zero W and a cheap Heltec Meshtastic node.  To duplicate my setup, you will need a Raspberry Pi with network capability running Meshtastic.  Then you can run meshtastic_bridge.py on it with your settings in config.json (you can use the same settings you have in config.cpp).  You will need to go through the trouble of setting the same cryptkey on all your nodes or your GPS-transmitting node will broadcast highly inaccurate GPS positions. (Before I knew this, I was getting unchanging positions roughly a mile and half away from where I actually was, and ChatGPT had no idea why but thought maybe I was swapping latitude and longitude. Yeah, that's a fail ChatGPT!)  When you do this, your mobile nodes in a Meshtastic mesh are just devices, identified by manufacture_id.  (Set manufacture_id to whatever the node's 64-bit unique address is when creating a device in the device editor.) This allows the device_id to be looked up and for logged data to be connected to it.  Meshtastic devices capable of sending text messages (most with displays can, though the ones with one-button GUIs only send canned messages) will have any messages received by meshtastic_bridge inserted into the message table, whose contents can be viewed from the message tab.  And any messages inserted into the message table using the web admin tool that have not been broadcasted on the LoRa mesh will be broadcasted in a timely fashion (within a minute).
 
