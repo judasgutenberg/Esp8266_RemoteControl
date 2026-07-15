@@ -138,7 +138,7 @@ Characteristic #7;I (318800102);0x3ffbb5bc;6;7
 Characteristic #9;I (28318992);0x3ffbb64c;0;1
 ```
 
-[<a href="./documentation/SerialParser.md">Read technical details about the parser</a>.]
+[<a href="./documentation/serial_parser.md">Read technical details about the parser</a>.]
 
 
 ## Meshtastic Integration
