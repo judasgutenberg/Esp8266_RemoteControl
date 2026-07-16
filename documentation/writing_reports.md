@@ -7,7 +7,7 @@
 # Introduction
 
 The reporting system is designed so that new reports can be created
-without writing PHP code. A report consists primarily of three pieces:
+without writing code requiring upload. A report consists primarily of three pieces:
 
 1.  A SQL query
 2.  A JSON form definition
