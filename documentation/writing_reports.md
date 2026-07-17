@@ -123,11 +123,11 @@ creates the SQL token
 
 ## Range
 
-    "range":"1...30"
+    "range":"1...30": numbers 1 to 30 in increments of 1
 
 or
 
-    "range":"0...100...5"
+    "range":"0...100...5": numbers 0 to 100 in increments of 5
 
 # Line Graph Output
 
