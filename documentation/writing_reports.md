@@ -109,17 +109,17 @@ creates the SQL token
 
 ## Supported Types
 
--   text
--   number
--   select
--   checkbox
--   bool
--   hidden
--   read_only
--   file
--   password
--   json
--   many-to-many
+-   text: any sort of string data
+-   number: a numeric value
+-   select: if a values parameter is included and it is a valid SQL expression, a dropdown pre-populated with results from the query is provided.
+-   checkbox: a checkbox in the UI or true/false values
+-   bool: a set of radio buttons in the UI for true/false values
+-   hidden: no UI item support is supplied in the form, but a default value can be sent from the form
+-   read_only: a visible element is provided in the form that cannot be changed
+-   file:  a file can be uploaded to the file system with a reference to it placed in the database
+-   password: an obfuscated form item
+-   json:  a JSON object
+-   many-to-many: a form item that allows several items from another table to be linked to our form item
 
 ## Range
 
