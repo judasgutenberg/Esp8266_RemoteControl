@@ -627,9 +627,9 @@ Obviously there is a enormous power in such a system, since, depending on MySQL 
 
 I asked ChatGPT to compare my reporting system with Crystal Reports (which I am unfortunately having to work with at a new job) and it came out with this handy comparison:
 
-[<a href="./documentation/writing_reports.md">Read the Report Writing Guide</a>.]
-
 ![alt text](documentation/reports.png?raw=true)
+
+[<a href="./documentation/writing_reports.md">Read the Report Writing Guide</a>.]
 
 ## Security
 
