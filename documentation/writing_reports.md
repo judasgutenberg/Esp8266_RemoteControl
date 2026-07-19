@@ -182,8 +182,11 @@ Time: {{recorded}}
 {{/each}}
 </ul>
 ```
-
 Each SQL column becomes available to the template by name.
+
+# Report Log
+Every report that is run is logged in the report_log table, complete with the values of any parameters used. Additional information about the time taken to run the report and the number of records returned is also collected.  The user interface provides a way to easily re-run the same query from the report_log, defaulting the form to the parameters used but also allowing them to be changed.  One report, "RunSQL," takes as its single parameter an arbitrary SQL expression, which could of course be any query you want to one, including queries to create or modify tables. Obviously not just any user should be permitted to run that report!
+
 
 # Best Practices
 
