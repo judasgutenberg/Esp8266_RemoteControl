@@ -101,9 +101,15 @@ creates the SQL token
 
 # Working the Report Tools
 
+Navigate to /report on your server:
+
 ![alt text](report_list.jpg?raw=true)
 
+Click edit to edit a report:
+
 ![alt text](report_editor.jpg?raw=true)
+
+Or run the report, which presents a form if it accepts parameters:
 
 ![alt text](report_runner.jpg?raw=true)
 
