@@ -101,11 +101,11 @@ creates the SQL token
 
 # Working the Report Tools
 
-![alt text](report_list.png?raw=true)
+![alt text](report_list.jpg?raw=true)
 
-![alt text](report_editor.png?raw=true)
+![alt text](report_editor.jpg?raw=true)
 
-![alt text](report_runner.png?raw=true)
+![alt text](report_runner.jpg?raw=true)
 
 # Form Properties
 
