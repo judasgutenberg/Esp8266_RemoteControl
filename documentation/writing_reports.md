@@ -99,7 +99,7 @@ creates the SQL token
 
     <device_id/>
 
-# Working the Report Tools
+# Working With the Report Tools
 
 Navigate to /report on your server:
 
