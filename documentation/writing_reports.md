@@ -99,6 +99,14 @@ creates the SQL token
 
     <device_id/>
 
+# Working the Report Tools
+
+![alt text](report_list.png?raw=true)
+
+![alt text](report_editor.png?raw=true)
+
+![alt text](report_runner.png?raw=true)
+
 # Form Properties
 
   Property   Description
