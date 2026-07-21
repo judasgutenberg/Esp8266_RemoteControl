@@ -113,6 +113,10 @@ Or run the report, which presents a form if it accepts parameters:
 
 ![alt text](report_runner.jpg?raw=true)
 
+Then examine your results in whatever format you requested:
+
+![alt text](report_results.jpg?raw=true)
+
 # Form Properties
 
   Property   Description
