@@ -125,7 +125,7 @@ Then examine your results in whatever format you requested:
   `label`    Display label
   `type`     Input control type
   `value`    Default value
-  `values`   Static array or SQL query
+  `values`   Static array or SQL query, resulting in a dropdown where, in the select, `value` is the value and `text` is the human-readable label
   `range`    Numeric range generator
 
 ## Supported Types
