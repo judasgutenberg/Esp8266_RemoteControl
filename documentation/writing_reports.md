@@ -7,9 +7,10 @@
 # Introduction
 
 The reporting system is designed so that new reports can be created
-entirely within a web-based tool, though one where you have fine-detailed control. 
+entirely within a web-based tool, though one where you have detailed control and vast capabilities. 
 The idea here was to make it so you can concentrate on the specific data you want to retrieve (which is always most easily specified in actual SQL) 
 without worrying too much about presentation details, though if you want to worry about that, you can.
+
 A report consists primarily of three pieces:
 
 1.  A SQL query
