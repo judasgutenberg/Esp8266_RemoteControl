@@ -33,6 +33,24 @@ interactive reports, graphs, maps, tables, and custom HTML output.
           ┌──────────────┼──────────────┐
           ▼              ▼              ▼
       Line Graph      HTML Report     Table
+      
+# Working With the Report Tools
+
+Navigate to /report on your server:
+
+![alt text](report_list.jpg?raw=true)
+
+Click edit to edit a report:
+
+![alt text](report_editor.jpg?raw=true)
+
+Or run the report, which presents a form if it accepts parameters:
+
+![alt text](report_runner.jpg?raw=true)
+
+Then examine your results in whatever format you requested:
+
+![alt text](report_results.jpg?raw=true)
 
 # Anatomy of a Report
 
@@ -100,23 +118,7 @@ creates the SQL token
 
     <device_id/>
 
-# Working With the Report Tools
 
-Navigate to /report on your server:
-
-![alt text](report_list.jpg?raw=true)
-
-Click edit to edit a report:
-
-![alt text](report_editor.jpg?raw=true)
-
-Or run the report, which presents a form if it accepts parameters:
-
-![alt text](report_runner.jpg?raw=true)
-
-Then examine your results in whatever format you requested:
-
-![alt text](report_results.jpg?raw=true)
 
 # Form Properties
 
@@ -133,13 +135,14 @@ Then examine your results in whatever format you requested:
 
 -   text: any sort of string data
 -   number: a numeric value
+-   int: specifically an integer number
 -   select: if a values parameter is included and it is a valid SQL expression, a dropdown pre-populated with results from the query is provided.
 -   checkbox: a checkbox in the UI or true/false values
 -   bool: a set of radio buttons in the UI for true/false values
 -   hidden: no UI item support is supplied in the form, but a default value can be sent from the form
 -   read_only: a visible element is provided in the form that cannot be changed
 -   file:  a file can be uploaded to the file system with a reference to it placed in the database
--   password: an obfuscated form item
+-   password: an form item obfuscated in the frontend and possibly one-way encrypted when saved
 -   json:  a JSON object
 -   many-to-many: a form item that allows several items from another table to be linked to our form item
 
@@ -205,6 +208,7 @@ Each SQL column becomes available to the template by name.
 
 # Report Log
 Every report that is run is logged in the report_log table, complete with the values of any parameters used. Additional information about the time taken to run the report and the number of records returned is also collected.  The user interface provides a way to easily re-run the same query from the report_log, defaulting the form to the parameters used but also allowing them to be changed.  One report, "RunSQL," takes as its single parameter an arbitrary SQL expression, which could of course be any query you want to run, including queries to create, modify, or drop tables.  Once built, that report was mostly how I built the rest of the database schema. Obviously not just any user should be permitted to run that report!
+
 
 
 # Best Practices
