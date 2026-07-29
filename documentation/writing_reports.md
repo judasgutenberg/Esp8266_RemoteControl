@@ -145,7 +145,7 @@ creates the SQL token
 -   file:  a file can be uploaded to the file system with a reference to it placed in the database
 -   password: an form item obfuscated in the frontend and possibly one-way encrypted when saved
 -   json:  a JSON object
--   many-to-many: a form item that allows several items from another table to be linked to our form item
+-   many-to-many: a form item that allows several items from another table to be linked to our form item simultaneously
 
 ## Range
 
