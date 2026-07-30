@@ -81,12 +81,12 @@ from the parameter form before execution.  Tags don't have to have a trailing fo
     {
       "name":"device_id",
       "type":"select",
-      "values":"SELECT device_id,name AS text FROM device ORDER BY name"
+      "values":"SELECT device_id, name AS text FROM device ORDER BY name"
     },
     {
       "name":"days",
       "type":"select",
-      "range":"1...30",
+      "range":"1...30...5",
       "value":7
     }
   ]
