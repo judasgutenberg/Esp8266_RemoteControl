@@ -126,7 +126,7 @@ creates the SQL token
   Property   Description
   ---------- ------------------------------
   `name`     Parameter name and SQL token
-  `label`    Display label
+  `label`    Display label for humans
   `type`     Input control type
   `value`    Default value
   `values`   Static array or SQL query, resulting in a dropdown where, in the select, `value` is the value and `text` is the human-readable label
