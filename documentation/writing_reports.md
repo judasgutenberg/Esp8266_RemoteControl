@@ -71,7 +71,7 @@ ORDER BY recorded;
 ```
 
 Replacement tokens such as `<device_id/>` and `<days/>` are filled in
-from the parameter form before execution.  Tags don't have to have a trailing forward-slash, but if you need proper XML for some parsing need, you should include them.
+from the parameter form before execution.  Tags don't have to have a trailing forward-slash, but if you need proper XML for some parsing need, you probably should include them.
 
 ## Form Definition
 
