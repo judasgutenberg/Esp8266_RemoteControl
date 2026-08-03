@@ -135,7 +135,7 @@ creates the SQL token
 ## Supported Types
 
 -   text: any sort of string data
--   number: a numeric value
+-   number: a numeric value that might include a fraction
 -   int: specifically an integer number
 -   select: if a values parameter is included and it is a valid SQL expression, a dropdown pre-populated with results from the query is provided.
 -   checkbox: a checkbox in the UI or true/false values
