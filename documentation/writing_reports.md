@@ -14,8 +14,8 @@ system was to make it extermely easy to specify parameters and re-run old report
 
 A report consists primarily of three pieces:
 
-1.  A SQL query
-2.  A JSON form definition
+1.  A SQL query (containing possible tokens referring to values from a parametric frm)
+2.  A JSON form definition for easily changing parameters in the SQL
 3.  An output definition
 
 The reporting engine combines these pieces at runtime to generate
