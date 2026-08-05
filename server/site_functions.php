@@ -239,7 +239,6 @@ function autoLogin() {
    $tenantId = siteDecrypt($_COOKIE[$tenantCookieName]);
  
    if(strpos($email, "@") > 0){
-      //die("yeee!!");
       return getUser($email, $tenantId);
       
    } else {
@@ -2657,6 +2656,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
   $unfoundName = "unnamed";
   $data = "";
   $out = "";
+  $postProcessing = "";
   $errors = [];
   $ran = false;
   $date = new DateTime("now", new DateTimeZone('America/New_York'));//obviously, you would use your timezone, not necessarily mine
@@ -2759,7 +2759,8 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
       $ran = true;
       $out = "<div class='listtitle'>Running Report  '" . $reportData["name"] . "' " . $editButton . " " . $reRunButton  . " " . "</div>";
       //gotta merge form values in here:
-      $sql =  tokenReplace($sql, $_POST);
+      $sql = tokenReplace($sql, $_POST);
+      $sql = tokenReplace($sql, $user);
       if(strtolower($outputFormat) == "sql") {
         $out .= "<pre id='sql'>".  $sql . "</pre>";
         $out .= "\n<script>
