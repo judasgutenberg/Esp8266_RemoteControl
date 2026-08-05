@@ -230,7 +230,7 @@ Every report that is run is logged in the report_log table, complete with the va
 SELECT d.name, voltage FROM device d JOIN device_log dl ON d.device_id=dl.device_id WHERE
   d.tenant_id=<tenant_id/> AND device_log_id=(SELECT MAX(device_log_id) FROM device_log d2 WHERE d2.device_id=d.device_id)
   ```
--  Place nothing in the JSON field
+-  Place nothing in the JSON field; this report takes no parameters
 -  Save.  Now you can run it.
 
 
