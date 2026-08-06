@@ -40,4 +40,8 @@ void petWatchDog(uint8_t command, uint32_t unixTime);
 void slaveWatchdogInfo();
 String slaveWatchdogData();
 
+long getPinValueOnSlave(char i2cAddress, char pinNumber);
+void setPinValueOnSlave(char i2cAddress, char pinNumber, char pinValue);
+
+
 #endif

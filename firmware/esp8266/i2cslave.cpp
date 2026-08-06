@@ -863,3 +863,42 @@ void i2cWite16(uint8_t slaveAddr, uint8_t reg, uint16_t value) {
     Wire.write(value & 0xFF);       // low byte
     Wire.endTransmission();
 }
+
+///////////////////
+long getPinValueOnSlave(char i2cAddress, char pinNumber) { //might want a user-friendlier API here
+  //reading an analog or digital value from the slave:
+  Wire.beginTransmission(i2cAddress);
+  Wire.write(pinNumber); //addresses greater than 64 are the same as AX (AnalogX) where X is 64-value
+  Wire.endTransmission();
+  delay(10); 
+  Wire.requestFrom(i2cAddress, 4); //we only ever get back four-byte long ints
+  long totalValue = 0;
+  int byteCursor = 1;
+  while (Wire.available()) {
+    byte receivedValue = Wire.read(); // Read the received value from slave
+    totalValue = totalValue + receivedValue * pow(256, 4-byteCursor);
+    //Serial.println(receivedValue); // Print the received value
+    byteCursor++;
+  }
+  return totalValue;
+}
+
+void setPinValueOnSlave(char i2cAddress, char pinNumber, char pinValue) {
+  //if you have a slave Arduino set up with this code:
+  //https://github.com/judasgutenberg/Generic_Arduino_I2C_Slave
+  //and a device_type_feature specifies an i2c address
+  //then this code will send the data to that slave Arduino
+  /*
+  Serial.print((int)i2cAddress);
+  Serial.print(" ");
+  Serial.print((int)pinNumber);
+  Serial.print(" ");
+  Serial.print((int)pinValue);
+  Serial.println("");
+  */
+  Wire.beginTransmission(i2cAddress);
+  Wire.write(pinNumber);
+  Wire.write(pinValue);
+  Wire.endTransmission();
+  yield();
+}

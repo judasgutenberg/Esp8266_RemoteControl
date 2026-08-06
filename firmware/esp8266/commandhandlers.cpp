@@ -161,6 +161,44 @@ void cmdResetFastCom(String* param, int argCount, bool deferred) {
   textOut(F("Fast communications reset"));
 }
 
+//////////////////////
+void cmdSetGPIO(String* param, int argCount, bool deferred){
+  int pinNumber = param[0].toInt();
+  int value = param[0].toInt();
+  auto it = pinMap.find(String(pinNumber));
+  if(it == pinMap.end()) {
+    pinMode(pinNumber, OUTPUT);
+    digitalWrite(pinNumber, value);
+    textOut(F("GPIO pin #") + String(pinNumber) + F(" set to: ") +  String(value));
+  } else {
+    textOut(F("Cannot set GPIO pin #") + String(pinNumber) + F(" because it is controlled by a device feature\n"));
+  }
+  
+}
+
+void cmdSetSlaveGPIO(String* param, int argCount, bool deferred){
+  int pinNumber = param[0].toInt();
+  int value = param[0].toInt();
+  auto it = pinMap.find(String(pinNumber));
+  if(it == pinMap.end()) {
+    setPinValueOnSlave(ci[SLAVE_I2C], (char)pinNumber, (char)value);
+    textOut(F("GPIO pin #") + String(pinNumber) + F(" on the current I2C Device set to: ") + String(value));
+  } else {
+    textOut(F("Cannot set GPIO pin #") +  String(pinNumber)  + F(" on the current I2C Device because it is controlled by a device feature\n"));
+  } 
+}
+
+void cmdGetSlaveGPIO(String* param, int argCount, bool deferred){
+  int pinNumber = param[0].toInt();
+  int value = getPinValueOnSlave(ci[SLAVE_I2C], (char)pinNumber);
+  textOut(String(value) + "\n");
+}
+
+void cmdGetGPIO(String* param, int argCount, bool deferred){
+  int pinNumber = param[0].toInt();
+  int value = digitalRead(pinNumber);
+  textOut(String(value) + "\n");
+}
 
 //////////////////////
 void cmdInitSensors(String* param, int argCount, bool deferred) {
