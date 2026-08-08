@@ -1174,24 +1174,9 @@ requirements. The LittleFS requirement is represented in the command registry,
 but the shown dispatcher does not perform an equivalent `CFG_REQ_FS`
 capability check.
 
-## A few implementation discrepancies worth knowing
+## An implementation discrepancy worth knowing
 
-This reference documents the current code rather than silently correcting it.
-A few registry/handler details appear worth reviewing:
-
-1. **`set gpio` value bug:** `cmdSetGPIO()` reads both the pin number and value
-   from `param[0]`; the second argument (`param[1]`) is currently ignored.
-
-2. **`get serial swap`:** the registry says the command accepts one argument,
-   while the handler uses none.
-
-3. **`dump parsed data`:** the registry marks this command as requiring a
-   slave, but the handler operates on the master's `serialParsedData`.
-
-4. **`save master config` and `dump config`:** their first arguments are
+1. **`save master config` and `dump config`:** their first arguments are
    captured as `toWord` / `fromWord` but are not currently used to select the
    operation.
-
-These may be intentional remnants of the command protocol, but they are
-documented here because they affect how the current implementation actually
-behaves.
+ 
