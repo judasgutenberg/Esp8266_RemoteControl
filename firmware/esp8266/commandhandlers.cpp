@@ -164,7 +164,7 @@ void cmdResetFastCom(String* param, int argCount, bool deferred) {
 //////////////////////
 void cmdSetGPIO(String* param, int argCount, bool deferred){
   int pinNumber = param[0].toInt();
-  int value = param[0].toInt();
+  int value = param[1].toInt();
   auto it = pinMap.find(String(pinNumber));
   if(it == pinMap.end()) {
     pinMode(pinNumber, OUTPUT);
@@ -178,7 +178,7 @@ void cmdSetGPIO(String* param, int argCount, bool deferred){
 
 void cmdSetSlaveGPIO(String* param, int argCount, bool deferred){
   int pinNumber = param[0].toInt();
-  int value = param[0].toInt();
+  int value = param[1].toInt();
   auto it = pinMap.find(String(pinNumber));
   if(it == pinMap.end()) {
     setPinValueOnSlave(ci[SLAVE_I2C], (char)pinNumber, (char)value);

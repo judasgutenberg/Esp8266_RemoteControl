@@ -65,7 +65,7 @@ CommandDef commands[] = {
   {"wifi info",             cmdWifiInfo,  0,        true,         0b00000000},
   
   {"dump slave parsed data", cmdDumpSlaveSerialData, 0,   true, 0b00000010}, //only for dumping a serial packet assembled on a slave, not for one assembled on a master
-  {"dump parsed data",      cmdDumpMasterSerialData, 0,     true, 0b00000010}, //only for dumping a serial packet assembled on a slave, not for one assembled on a master
+  {"dump parsed data",      cmdDumpMasterSerialData, 0,     true, 0b00000000}, //only for dumping a serial packet assembled on a slave, not for one assembled on a master
   {"format file system",    cmdFormatFileSystem, 0, true,         0b00000001},
   ///////////
   {"anomaly log test",      cmdAnomalyLogTest, 1,   false,        0b00000001},
@@ -79,7 +79,7 @@ CommandDef commands[] = {
   {"read slave eeprom",     cmdReadSlaveEeprom, 1,  false,        0b00000010},
 
   {"set serial swap",       cmdSetSerialSwap, 1,    false,        0b00000000},
-  {"get serial swap",       cmdGetSerialSwap, 1,    false,        0b00000000},
+  {"get serial swap",       cmdGetSerialSwap, 0,    false,        0b00000000},
   {"set serial logging",    cmdSetSerialLogging, 2, false,        0b00000000},
   {"get serial logging",    cmdGetSerialLogging, 0, false,        0b00000000},
   {"dump serial parser blocks", cmdDumpParserConfig, 0, false,    0b00000000},
