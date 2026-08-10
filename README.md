@@ -193,7 +193,7 @@ Since manual changes to the status of device_features are usually at odds with a
 ## Commands
 This system includes a comprehensive interactive command system.  
 Details here:
-[<a href="./documentation/writing_reports.md">Command Guide</a>.]
+[<a href="./documentation/commands.md">Command Guide</a>.]
 
 ## Reports
 The great thing about storing the data from your IoT devices in your own database is that you then have lots of ways to examine this data. If you're handy with SQL, then you can find data in any form you want it matching any criteria you can come up with.  With this in mind, I built an elaborate reporting system that allows me to save parameterized SQL queries and run them with forms to make entering the parameters easy.  Not only that, but every report you run is remembered in the report_log table, allowing you to re-run the report with the same parameters (or tweak the parameters as needed).  Reports are reached via the Reports tab, where the ones you've created (or that are created with your tenancy)  are listed. From there you can run or edit them. The core of every report is a SQL statement (or semicolon-separated sequence of SQL statements) that is run to produce one or more tables of data, graphs, or, in some cases, locations on a map.  They are defined as a form (represented in JSON and using the form description system used throughout the admin website), possibly an output configuration, an output template, and SQL. Simple reports can just be SQL, though if you need to send parameters to a report, you will need to define a form. And if you need your data presented a certain way, you will need an output_template. Perhaps forms definitions are best shown by example.
