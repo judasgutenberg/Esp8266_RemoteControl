@@ -932,7 +932,7 @@ file is not already being uploaded.
 
 ## `cat`
 
-Displays a file.
+Outputs a file to the current user interface.
 
 ```text
 cat <filename>
