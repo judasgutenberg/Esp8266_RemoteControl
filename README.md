@@ -191,7 +191,7 @@ At the bottom is a tool you can use to automatically construct a value token (wh
 Since manual changes to the status of device_features are usually at odds with automation, whenever a manual change to a device_feature is made, automation is automatically suspended for restore_automation_after hours (independently settable for each device_feature), starting at the instant of the manual change.
 
 ## Commands
-This system includes a comprehensive interactive command system for setting and checking configuration items, querying states, and triggering certain behaviors.
+This system includes a comprehensive interactive command system for setting and checking configuration items, querying states, and triggering numerous behaviors.
 Read the details here:
 [<a href="./documentation/commands.md">Command Guide</a>.]
 
