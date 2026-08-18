@@ -1,8 +1,8 @@
 # Interactive Commands
 
 
-This document describes the command interface registered by the ESP8266 Remote
-Control system, based on `commandregistry.cpp` and `commandhandlers.cpp`.
+This document describes the command interface of the ESP8266 Remote
+Control system, which can be interactively used via a serial connection or across the internet.
 
 ## Command syntax
 
