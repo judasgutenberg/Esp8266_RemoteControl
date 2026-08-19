@@ -2,7 +2,7 @@
 
 
 This document describes the command interface of the ESP8266 Remote
-Control system, which can be interactively used via a serial connection or across the internet.
+Control system, which is used to interact with a remote microcontroller via a serial connection or across the internet.
 
 ## Command syntax
 
