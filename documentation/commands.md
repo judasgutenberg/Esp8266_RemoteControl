@@ -547,7 +547,7 @@ get date
 
 ## `pet watchdog`
 
-Pets the slave watchdog using the current Unix time.
+Pets the slave watchdog using the current Unix time, keeping the watchdog from biting for the time being.
 
 ```text
 pet watchdog
