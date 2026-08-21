@@ -577,7 +577,7 @@ Requires a slave.
 
 ## `run slave sketch`
 
-Runs the sketch on the slave.
+Runs whatever the sketch is currently on the slave.
 
 ```text
 run slave sketch
