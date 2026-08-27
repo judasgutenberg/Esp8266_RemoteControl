@@ -10,7 +10,7 @@ Commands are matched by their registered command name, followed by zero or more
 space-delimited arguments.
 
 Arguments containing spaces can be enclosed in double quotes. The command parser
-removes the quotes before passing the arguments to the command handler.  Configuration commands can refer to configuration items by name or by number if sent from via http but if sent via socket or serial, they have to refer to the items by number.  
+removes the quotes before passing the arguments to the command handler.  Configuration commands can refer to configuration items by name or by number if sent from via http but if sent via socket or serial, they have to refer to the configuration items by number.  
 
 For example:
 
