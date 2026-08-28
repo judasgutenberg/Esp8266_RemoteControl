@@ -1134,7 +1134,7 @@ It reads the parsed slave serial packet and prints 20 bytes as hexadecimal.
 
 ## `clear latency average`
 
-Clears the accumulated latency count and latency sum.
+Clears the accumulated latency count and latency sum.  A running latency average is used by the system to decide how much to offset a time component used to determine whether or not a poll is valid or not.
 
 ```text
 clear latency average
