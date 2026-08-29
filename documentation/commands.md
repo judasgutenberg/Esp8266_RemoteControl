@@ -677,7 +677,7 @@ Requires a slave.
 
 ## `run slave`
 
-Runs an arbitrary numbered command on the slave.
+Runs an arbitrary numbered command on the slave.  See https://github.com/judasgutenberg/Arduino_I2C_Slave_With_Commands/blob/main/slave.ino for what numbers indicate what commands.
 
 ```text
 run slave <command-number> [value]
