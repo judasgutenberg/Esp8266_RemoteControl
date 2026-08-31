@@ -15,6 +15,7 @@ removes the quotes before passing the arguments to the command handler.  Configu
 For example:
 
 ```text
+run slave 160
 set 42 123
 set serial logging 1 "serial.log"
 ir "A1 B2 C3"
