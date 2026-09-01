@@ -117,7 +117,7 @@ No arguments.
 
 ## `clear safe mode`
 
-Marks the system as stable and disables startup safe mode.
+Marks the system as stable and disables startup safe mode, which a device can enter if some configuration isse causes it to crash repeatedly as it attempts to start up.
 
 ```text
 clear safe mode
