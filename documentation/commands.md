@@ -35,7 +35,7 @@ The capability byte is encoded as:
 bit 7: requires deferment
 bit 6: unused
 bit 5: unused
-bit 4: requires IR
+bit 4: requires infrared
 bit 3: requires RTC
 bit 2: requires FRAM
 bit 1: requires slave
