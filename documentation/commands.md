@@ -196,7 +196,7 @@ The firmware argument is interpreted similarly to the master firmware update:
 
 The command verifies that the resulting URL exists, obtains the slave's
 current version, enters the slave bootloader, performs the update, then waits
-for the slave to report its new version.
+for the slave to report its new version after it boots up.
 
 Requires a slave.
 
