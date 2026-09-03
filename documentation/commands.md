@@ -236,7 +236,7 @@ existing WebSocket, and starts a new WebSocket with mode `4`.
 
 ## `set serial swap`
 
-Sets the serial swap state.
+Sets the serial swap state.  1 is swapped and 0 is unswapped. Read the details about how that works here: https://forum.arduino.cc/t/nodemcu-serial-communication-serial-swap-explained/643454
 
 ```text
 set serial swap <value>
