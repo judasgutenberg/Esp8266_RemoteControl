@@ -246,7 +246,7 @@ Calls `serialSwap()` with the integer value.
 
 ## `get serial swap`
 
-Reports the current serial swap state.
+Reports the current serial swap state.  1 is swapped and 0 is unswapped.
 
 ```text
 get serial swap
