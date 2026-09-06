@@ -267,7 +267,7 @@ set serial logging <value> [filename]
 
 `0` disables logging; a nonzero value enables it.
 
-If a filename is supplied, it becomes the serial logging filename.
+If a filename is supplied, it becomes the serial logging filename.  Otherwise a default filename is used.
 
 Examples:
 
