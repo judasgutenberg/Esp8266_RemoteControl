@@ -32,7 +32,7 @@ The registry records, for each command:
 The capability byte is encoded as:
 
 ```text
-bit 7: requires deferment
+bit 7: requires deferment.  Deferment means update the command status in the database marking it complete just before doing the action. This is for actions that require a controller reboot.
 bit 6: unused
 bit 5: unused
 bit 4: requires infrared
