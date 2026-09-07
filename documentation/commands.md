@@ -105,7 +105,7 @@ Displays information retained in the RTC preboot structure, including:
 - milliseconds from the previous boot
 - previous firmware version
 - last command log ID
-- last command ID
+- last command ID (an archaic reference to an earlier system of command transmission)
 - last command type
 - `useHardcodedConfig`
 
