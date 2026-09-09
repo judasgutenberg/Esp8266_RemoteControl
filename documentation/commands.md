@@ -87,7 +87,7 @@ Requires a configured slave.
 
 ## `watchdog reboot`
 
-Causes the slave/watchdog mechanism to request a reboot of the master.
+Causes the slave/watchdog mechanism to request a reboot of the master, which it does by making a GPIO pin connected to its reset line go low.
 
 ```text
 watchdog reboot
