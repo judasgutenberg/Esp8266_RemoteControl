@@ -51,7 +51,7 @@ handler is called.
 
 ## `reboot now`
 
-Immediately reboots the ESP8266 without bothering to update the status of the command in the database.  This can make the device reboot in a loop, since it keeps asking for the latest command, which is always this one. So you must also manually cancel it in the database.
+Immediately reboots the ESP8266 without bothering to update the status of the command in the database.  If triggered by the database-based instant command system, this will make the device reboot in a loop, since the device, upon startup, keeps asking for the latest command, which is always this one. So you must also manually cancel it in the database to make the rebooting stop.
 
 ```text
 reboot now
