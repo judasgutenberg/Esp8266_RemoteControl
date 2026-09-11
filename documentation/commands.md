@@ -63,7 +63,7 @@ This is distinct from `reboot`, which is marked as requiring deferment.
 
 ## `reboot`
 
-Requests a deferred ESP8266 reboot.
+Requests a deferred ESP8266 reboot.  If this was initiated from the database as an instant command, that command is first marked completed and then the reset happens.
 
 ```text
 reboot
