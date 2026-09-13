@@ -75,7 +75,7 @@ The deferred handler calls `rebootEsp()`.
 
 ## `reboot slave`
 
-Reboots the I2C slave device.
+Reboots the I2C slave device.  It does through using a command sent via I2C, not via hardware.
 
 ```text
 reboot slave
