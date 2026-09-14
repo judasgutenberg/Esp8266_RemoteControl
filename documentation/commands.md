@@ -104,7 +104,7 @@ Displays information retained in the RTC preboot structure, including:
 - reboot count
 - milliseconds from the previous boot
 - previous firmware version
-- last command log ID
+- last command log ID 
 - last command ID (an archaic reference to an earlier system of command transmission)
 - last command type
 - `useHardcodedConfig`
@@ -127,7 +127,7 @@ No arguments.
 
 ## `set preboot`
 
-Sets one item in the RTC preboot structure.
+Sets one item in the RTC preboot structure.  Mostly just used for debugging.
 
 ```text
 set preboot <location> <value>
