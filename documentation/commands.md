@@ -558,7 +558,7 @@ Requires a slave.
 
 ## `get watchdog info`
 
-Returns slave watchdog information.
+Returns slave watchdog data in a human-readable form.
 
 ```text
 get watchdog info
