@@ -307,11 +307,11 @@ Reads an ESP8266 GPIO pin.
 get gpio <pin>
 ```
 
-Returns the value from `digitalRead()`.
+Returns the value from `digitalRead()`.  Only works for physical pins not specified as device_features in the database.
 
 ## `set gpio`
 
-Sets an ESP8266 GPIO pin.
+Sets an ESP8266 GPIO pin.  Only works for physical pins not specified as device_features in the database.
 
 ```text
 set gpio <pin> <value>
