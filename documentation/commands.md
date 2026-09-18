@@ -246,7 +246,7 @@ Calls `serialSwap()` with the integer value.
 
 ## `get serial swap`
 
-Reports the current serial swap state.  1 is swapped and 0 is unswapped.
+Reports the current serial swap state.  1 is swapped and 0 is unswapped. Read the details about how that works here: https://forum.arduino.cc/t/nodemcu-serial-communication-serial-swap-explained/643454
 
 ```text
 get serial swap
