@@ -772,7 +772,7 @@ Requires a slave.
 
 ## `init master defaults`
 
-Initializes master configuration defaults.
+Initializes master configuration defaults from code (config.c).
 
 ```text
 init master defaults
