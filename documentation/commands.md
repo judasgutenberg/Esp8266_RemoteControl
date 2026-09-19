@@ -772,7 +772,7 @@ Requires a slave.
 
 ## `init master defaults`
 
-Initializes master configuration defaults from code (config.c).
+Initializes master configuration defaults from code (config.cpp).
 
 ```text
 init master defaults
@@ -780,7 +780,7 @@ init master defaults
 
 ## `init slave defaults`
 
-Initializes slave configuration defaults.
+Initializes slave configuration defaults  from code (config.cpp).
 
 ```text
 init slave defaults
