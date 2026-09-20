@@ -1254,7 +1254,7 @@ if($_REQUEST) {
 		
 		//new way to do it:
 		if($latestCommandData) {
-			$nonJsonOutString .= "!" . $latestCommandData["command_id"] . "|" . removeDelimiters($latestCommandData["command"]) . "|" . removeDelimiters($latestCommandData["value"]) . "|" . $latency . "!" .  $latestCommandData["command_log_id"];
+			$nonJsonOutString .= "!" . $latestCommandData["command_id"] . "|" . removeDelimiters($latestCommandData["command"], "_", "|!") . "|" . removeDelimiters($latestCommandData["value"], "_", "|!") . "|" . $latency . "!" .  $latestCommandData["command_log_id"];
 		} else {
 			$nonJsonOutString .= "!|||" . $latency;
 		}
