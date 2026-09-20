@@ -390,7 +390,7 @@ No arguments.
 
 ## `dump weather data`
 
-Returns weather sensor data.
+Returns weather sensor data in *-delimited form
 
 ```text
 dump weather data <ordinal>
