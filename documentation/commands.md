@@ -628,7 +628,7 @@ Requires a slave.
 
 ## `set slave time`
 
-Sets the slave's Unix time.
+Sets the slave's Unix time (seconds since midnight UTC on 1 January 1970).
 
 ```text
 set slave time <unix-time>
