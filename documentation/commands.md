@@ -892,7 +892,7 @@ ls
 ```
 
 The file system is intentionally flat. The source contains a commented-out
-`mkdir` command and notes that directories were not implemented.
+`mkdir` command and notes that directories were not implemented. 
 
 ## `rm`
 
@@ -918,7 +918,7 @@ Downloads a file.
 download <url>
 ```
 
-The downloaded file is saved using the filename extracted from the URL.
+The downloaded file is saved using the filename extracted from the URL.  The overhead for https is excessive, so this only works for http.
 
 ## `upload`
 
