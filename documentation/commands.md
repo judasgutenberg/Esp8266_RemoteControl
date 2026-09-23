@@ -287,7 +287,7 @@ get serial logging
 
 ## `reset serial`
 
-Resets the serial interface using the configured baud-rate level.
+Resets the serial interface using the configured baud-rate level, clearing the queue.
 
 ```text
 reset serial
