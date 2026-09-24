@@ -806,7 +806,7 @@ The optional source can be:
 
 If neither applies, local flash is used.
 
-Requires a slave when accessing slave EEPROM.
+Requires a slave when accessing slave EEPROM and a FRAM when using FRAM.
 
 ## `dump slave config eeprom`
 
