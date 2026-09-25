@@ -991,7 +991,7 @@ Requires a slave.
 
 ## `uptime`
 
-Reports how long ago the device last booted.
+Reports how long ago the device last booted and related info.
 
 ```text
 uptime
