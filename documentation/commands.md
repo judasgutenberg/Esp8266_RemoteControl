@@ -1173,7 +1173,7 @@ The command registry currently contains **99 commands**.
 The current dispatcher explicitly checks RTC, FRAM, slave, and IR capability
 requirements. The LittleFS requirement is represented in the command registry,
 but the shown dispatcher does not perform an equivalent `CFG_REQ_FS`
-capability check.
+capability check because it is assumed that every device will have a working file system.
 
 ## An implementation discrepancy worth knowing
 
