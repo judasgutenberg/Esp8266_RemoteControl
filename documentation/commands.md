@@ -164,7 +164,7 @@ The argument may be:
 3. A backend firmware identifier/path, which is converted into a secured
    backend download URL.
 
-The update is performed as a deferred operation.
+The update is performed as a deferred operation since it requires a reboot.
 
 HTTPS URLs are not handled by this code path.
 
