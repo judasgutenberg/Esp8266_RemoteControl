@@ -1155,7 +1155,7 @@ text so that it can be executed later.
 
 A command can therefore have both an immediate phase and a deferred phase.
 Several handlers deliberately produce a short message during the immediate
-phase and perform the actual operation when called with `deferred == true`.
+phase and perform the actual operation when called a second time with `deferred == true`.
 
 The command registry currently contains **99 commands**.
 
