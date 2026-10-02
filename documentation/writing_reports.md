@@ -137,7 +137,7 @@ creates the SQL token
 -   text: any sort of string data
 -   number: a numeric value that might include a fraction
 -   int: specifically an integer number
--   select: if a values parameter is included and it is a valid SQL expression, a dropdown pre-populated with results from the query is provided.
+-   select: if a values parameter is included and it is a valid SQL expression, a dropdown pre-populated with results from the query is generated.
 -   checkbox: a checkbox in the UI or true/false values
 -   bool: a set of radio buttons in the UI for true/false values
 -   hidden: no UI item support is supplied in the form, but a default value can be sent from the form
