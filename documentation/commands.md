@@ -321,7 +321,7 @@ If the pin is not controlled by a device feature, it is configured as an
 output and written with the supplied value.
 
 If the pin is present in `pinMap`, the operation is refused because that pin
-is controlled by a device feature.
+is controlled by a device feature (that is, via a model of devices in the server database).
 
 > **Implementation note:** the current handler assigns both `pinNumber` and
 > `value` from `param[0]`. Thus the registered second argument is currently
