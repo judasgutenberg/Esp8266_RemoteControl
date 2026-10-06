@@ -99,7 +99,7 @@ Requires a configured slave. The deferred handler sends slave command 134.
 
 ## `get preboot`
 
-Displays information retained in the RTC preboot structure, including:
+Displays information persisted in the RTC preboot structure (which, importantly, does not survive reflash, making it useless for what I was attempting to do), including:
 
 - reboot count
 - milliseconds from the previous boot
