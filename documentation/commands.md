@@ -330,7 +330,7 @@ is controlled by a device feature (that is, via a model of devices in the server
 
 ## `get slave gpio`
 
-Reads a GPIO on the current I2C slave.
+Reads a GPIO on the currently-configured I2C slave.
 
 ```text
 get slave gpio <pin>
