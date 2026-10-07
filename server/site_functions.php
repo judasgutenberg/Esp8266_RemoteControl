@@ -1634,6 +1634,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
       $label = gvfa("label", $headerItem);
       $accentColor = gvfa("accent_color", $headerItem, "#66eeee");
       $function = gvfa("function", $headerItem);
+      $raw = gvfa("raw", $headerItem);
       if (array_key_exists("type", $headerItem)){
         $type = $headerItem["type"];
       } else {
@@ -1652,12 +1653,15 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
         $function =  tokenReplace($function, $row, $tableName) . ";"; 
         //echo $function . "<P>";
         try{
+          $oldErrorReporting = error_reporting(0);
           eval('$value = ' . $function . ";");
+          error_reporting($oldErrorReporting);
         }
-        catch(Exception  $err){
+        catch(Throwable  $err){
           //echo $err;
-
+          $value = substr($value, 0, 40);
         }
+ 
         //echo $value . "<P>";
       }
 
@@ -1693,9 +1697,9 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
         }
       } else {
         if($template != "") {
-          $out .=  "<a href=\"" . tokenReplace($template, $row, $tableName) . "\">" . htmlspecialchars($value) . "</a>";
+          $out .=  "<a href=\"" . tokenReplace($template, $row, $tableName) . "\">" . specialEscape($value, $raw) . "</a>";
         } else {
-          $out .=  htmlspecialchars($value);
+          $out .=  specialEscape($value, $raw);
         }
         
       }
@@ -1717,6 +1721,14 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
   }
   return $out;
 }
+
+function specialEscape($str, $doNotActuallyDoIt){
+  if($doNotActuallyDoIt){
+    return $str;
+  }
+  return htmlspecialchars($str);
+}
+
 
 function replaceTokensAndQuery($sql, $data) {
   global $conn;
@@ -2476,15 +2488,54 @@ function canUserDoThing($user, $thingRole){
 
 function previousReportRuns($user, $reportId) {
   Global $conn;
-  $sql = "SELECT report_log_id, run, records_returned, runtime, SUBSTRING(`sql`, 1, 40) as `sql`  FROM report_log WHERE report_id=" . intval($reportId) . " AND tenant_id=" . intval($user["tenant_id"]) . " AND user_id=" . intval($user["user_id"]) . " ORDER BY run DESC";
+  $sql = "SELECT report_id, run, records_returned, runtime, `sql` FROM report_log WHERE report_id=" . intval($reportId) . " AND tenant_id=" . intval($user["tenant_id"]) . " AND user_id=" . intval($user["user_id"]) . " ORDER BY run DESC";
   $result = mysqli_query($conn, $sql);
   $out = "";
   if($result) {
     $reportRuns = mysqli_fetch_all($result, MYSQLI_ASSOC);
     $toolsTemplate = "<a href='?action=rerun&table=report&report_log_id=<report_log_id/>'>Re-Run</a> ";
-    $out = genericTable($reportRuns, null, $toolsTemplate, null);
+    $headerData = array(
+      [
+        'label' => 'report id',
+        'name' => 'report_id',
+        'changeable' => false,
+        'type' => 'hidden'
+      ],
+      [
+        'label' => 'run',
+        'name' => 'run',
+        'changeable' => false,
+        'type' => 'datetime'
+      ],
+      [
+        'label' => 'records returned',
+        'name' => 'records_returned',
+        'changeable' => false,
+        'type' => 'int'
+      ],
+      [
+        'label' => 'runtime',
+        'name' => 'runtime',
+        'changeable' => false,
+        'type' => 'int'
+      ],
+      [
+        'label' => 'sql',
+        'name' => 'sql',
+        'changeable' => false,
+        'raw'=> true,
+        'function' => 'colorizeByHash("<sql/>", 40)',
+        'type' => 'string'
+      ]
+    );
+    
+    $out = genericTable($reportRuns, $headerData, $toolsTemplate, null);
   }
   return $out;
+}
+
+function colorizeByHash($value, $limit) {
+  return '<div style="color:hsl(' . (hexdec(substr(md5($value), 0, 6)) % 360) . ', 65%, 65%)">' . htmlspecialchars(substr($value, 0, $limit)) . '</div>';
 }
 
 function setOrderByClause($sql, $newOrderBy) {
@@ -2827,7 +2878,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
                           eval('$value = ' . $function . ";");
                           $val = $value;
                         }
-                        catch(Exception  $err){
+                        catch(Throwable  $err){
                                   //echo $err;
 
                         }
