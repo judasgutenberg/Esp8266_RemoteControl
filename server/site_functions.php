@@ -2488,7 +2488,7 @@ function canUserDoThing($user, $thingRole){
 
 function previousReportRuns($user, $reportId) {
   Global $conn;
-  $sql = "SELECT report_id, run, records_returned, runtime, `sql` FROM report_log WHERE report_id=" . intval($reportId) . " AND tenant_id=" . intval($user["tenant_id"]) . " AND user_id=" . intval($user["user_id"]) . " ORDER BY run DESC";
+  $sql = "SELECT report_log_id, report_id, run, records_returned, runtime, `sql` FROM report_log WHERE report_id=" . intval($reportId) . " AND tenant_id=" . intval($user["tenant_id"]) . " AND user_id=" . intval($user["user_id"]) . " ORDER BY run DESC";
   $result = mysqli_query($conn, $sql);
   $out = "";
   if($result) {
@@ -2496,8 +2496,8 @@ function previousReportRuns($user, $reportId) {
     $toolsTemplate = "<a href='?action=rerun&table=report&report_log_id=<report_log_id/>'>Re-Run</a> ";
     $headerData = array(
       [
-        'label' => 'report id',
-        'name' => 'report_id',
+        'label' => 'report log id',
+        'name' => 'report_log_id',
         'changeable' => false,
         'type' => 'hidden'
       ],
