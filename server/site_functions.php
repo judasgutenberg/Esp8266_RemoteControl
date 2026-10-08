@@ -2524,7 +2524,7 @@ function previousReportRuns($user, $reportId) {
         'name' => 'sql',
         'changeable' => false,
         'raw'=> true,
-        'function' => 'colorizeByHash("<sql/>", 40)',
+        'function' => 'colorizeByHash("<sql/>", 40, "background-color", 50, 70)',
         'type' => 'string'
       ]
     );
@@ -2534,8 +2534,8 @@ function previousReportRuns($user, $reportId) {
   return $out;
 }
 
-function colorizeByHash($value, $limit) {
-  return '<div style="color:hsl(' . (hexdec(substr(md5($value), 0, 6)) % 360) . ', 65%, 65%)">' . htmlspecialchars(substr($value, 0, $limit)) . '</div>';
+function colorizeByHash($value, $limit, $property = "color", $saturation = 65, $lightness = 65) {
+  return '<div style="' . $property. ':hsl(' . (hexdec(substr(md5($value), 0, 6)) % 360) . ', ' . $saturation . '%, ' . $lightness . '%)">' . htmlspecialchars(substr($value, 0, $limit)) . '</div>';
 }
 
 function setOrderByClause($sql, $newOrderBy) {
