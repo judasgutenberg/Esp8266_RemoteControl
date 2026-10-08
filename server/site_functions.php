@@ -2526,6 +2526,13 @@ function previousReportRuns($user, $reportId) {
         'raw'=> true,
         'function' => 'colorizeByHash(0, "<sql/>", 40, "background-color", 50, 70)',
         'type' => 'string'
+      ],
+      [
+        'label' => 'likely device',
+        'name' => 'sql',
+        'changeable' => false,
+        'function' => 'getDevice(getSqlParameter("<sql/>", "device_id"))["name"]',
+        'type' => 'string'
       ]
     );
     
@@ -2534,6 +2541,27 @@ function previousReportRuns($user, $reportId) {
   return $out;
 }
 
+
+//look through SQL and try to find the value of a parameter specified in it.  for example, if the SQL looks like "SELECT * FROM device_log WHERE device_id = 1 AND energy_percentage is not null ORDER BY device_log_id desc LIMIT 0, 300" and the parameter is "device_id" then it will return 1
+//i use it to quickly summarize what device is being specified by the SQL in a report
+function getSqlParameter($sql, $parameter) {
+    $pattern = '/\b' . preg_quote($parameter, '/') .
+               '\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s,)\r\n]+))/i';
+    if (preg_match($pattern, $sql, $matches)) {
+        if ($matches[1] !== '') {
+            return $matches[1];
+        }
+        if ($matches[2] !== '') {
+            return $matches[2];
+        }
+        return $matches[3];
+    }
+
+    return null;
+}
+
+//based on the hash of $text, wrap it in a div with a color determined by that hash to colorize it
+//i use it to quickly distinguish blocks of SQL that may be very similar
 function colorizeByHash($mode, $text, $limit, $property = "color", $colorPartOne = 65, $colorPartTwo = 65) {
   $out = '<div style="' . $property;
   if($mode == 0) {
