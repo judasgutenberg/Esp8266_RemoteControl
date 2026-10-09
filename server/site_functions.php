@@ -2488,7 +2488,7 @@ function canUserDoThing($user, $thingRole){
 
 function previousReportRuns($user, $reportId) {
   Global $conn;
-  $sql = "SELECT report_log_id, report_id, run, records_returned, runtime, `sql` FROM report_log WHERE report_id=" . intval($reportId) . " AND tenant_id=" . intval($user["tenant_id"]) . " AND user_id=" . intval($user["user_id"]) . " ORDER BY run DESC";
+  $sql = "SELECT report_log_id, report_id, run, records_returned, runtime, `sql`, tenant_id FROM report_log WHERE report_id=" . intval($reportId) . " AND tenant_id=" . intval($user["tenant_id"]) . " AND user_id=" . intval($user["user_id"]) . " ORDER BY run DESC";
   $result = mysqli_query($conn, $sql);
   $out = "";
   if($result) {
@@ -2527,16 +2527,75 @@ function previousReportRuns($user, $reportId) {
         'function' => 'colorizeByHash(0, "<sql/>", 40, "background-color", 50, 70)',
         'type' => 'string'
       ],
+      /*
+      //replaced by specified entities
       [
         'label' => 'likely device',
         'name' => 'sql',
         'changeable' => false,
         'function' => 'getDevice(getSqlParameter("<sql/>", "device_id"))["name"]',
         'type' => 'string'
+      ],
+      */
+      //did not work because genericTable does not know tenant_id, but then it did when i added it to the SQL query
+      //but supplanted by specified entities
+      /*
+      [
+        'label' => 'likely device feature',
+        'name' => 'sql',
+        'changeable' => false,
+        'function' => 'getDeviceFeature(getSqlParameter("<sql/>", "device_feature_id"), <tenant_id/>)["name"]',
+        'type' => 'string'
+      ],
+      */
+      [
+        'label' => 'specified entities',
+        'name' => 'sql',
+        'changeable' => false,
+        'raw'=> true,
+        'function' => 'likelySpecificEntities("<sql/>", $row)',
+        'type' => 'string'
       ]
+        
     );
     
     $out = genericTable($reportRuns, $headerData, $toolsTemplate, null);
+  }
+  return $out;
+}
+
+//looks at SQL and pulls out the human-readable names of entities mentioned in it if they are properly defined in $config
+function likelySpecificEntities($sql, $valuesRecord){
+  global $conn;
+  //var_dump($valuesRecord);
+  $out = "";
+  //config is defined as table_name,primary_key,human_readable_column,extra_lookup_parameter;...
+  $config = "device,device_id,name,;device_feature,device_feature_id,name,tenant_id";
+  $configItems = explode(";", $config);
+  foreach($configItems as $configItem) {
+    $configDetails = explode(",", $configItem);
+    $table = $configDetails[0];
+    $pk = $configDetails[1];
+    $humanReadable = $configDetails[2];
+    $additionalParameter = $configDetails[3];
+    $pkValInSql = getSqlParameter($sql, $pk);
+    $lookupSql = "SELECT " . $humanReadable . " FROM " . $table . " WHERE " . $pk . "='" . $pkValInSql . "'";
+    if($additionalParameter) {
+      $lookupSql  .= " AND " . $additionalParameter . "='<" . $additionalParameter . "/>'";
+    }
+    $lookupSql =  tokenReplace($lookupSql, $valuesRecord, $table);
+    //for debugging:
+    //$out .= "|" . $lookupSql;
+    if($pkValInSql) {
+      $result = mysqli_query($conn, $lookupSql);
+      if($result) {
+        $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        if($rows && count($rows) > 0) {
+          $lookedUpValue = $rows[0][$humanReadable];
+          $out .= "<div>" . $table . ": " . $lookedUpValue . "</div>";
+        }
+      }
+    }
   }
   return $out;
 }
@@ -2556,7 +2615,6 @@ function getSqlParameter($sql, $parameter) {
         }
         return $matches[3];
     }
-
     return null;
 }
 
