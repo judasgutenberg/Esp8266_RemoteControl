@@ -2568,14 +2568,14 @@ function specifiedEntities($sql, $valuesRecord){
   $configItems = explode(";", $config);
   foreach($configItems as $configItem) {
     $configDetails = explode(",", $configItem);
-    $table = $configDetails[0];
-    $pk = $configDetails[1];
-    $humanReadable = $configDetails[2];
+    $table = trim($configDetails[0]);
+    $pk = trim($configDetails[1]);
+    $humanReadable = trim($configDetails[2]);
     $pkValInSql = getSqlParameter($sql, $pk);
     $lookupSql = "SELECT " . $humanReadable . " FROM " . $table . " WHERE " . $pk . "='" . $pkValInSql . "'";
     for($additionalCount = 3; $additionalCount < count($configDetails); $additionalCount++) {
       if(count($configDetails) > $additionalCount ){
-        $additionalParameter = $configDetails[$additionalCount];
+        $additionalParameter = trim($configDetails[$additionalCount]);
         if($additionalParameter) {
           $lookupSql  .= " AND " . $additionalParameter . "='<" . $additionalParameter . "/>'";
         }
@@ -2600,7 +2600,7 @@ function specifiedEntities($sql, $valuesRecord){
 
 
 //look through SQL and try to find the value of a parameter specified in it.  for example, if the SQL looks like "SELECT * FROM device_log WHERE device_id = 1 AND energy_percentage is not null ORDER BY device_log_id desc LIMIT 0, 300" and the parameter is "device_id" then it will return 1
-//i use it to quickly summarize what device is being specified by the SQL in a report
+//i use it to quickly summarize what device/device_feature is being specified by the SQL in a report
 function getSqlParameter($sql, $parameter) {
     $pattern = '/\b' . preg_quote($parameter, '/') .
                '\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s,)\r\n]+))/i';
