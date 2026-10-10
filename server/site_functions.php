@@ -1722,12 +1722,6 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
   return $out;
 }
 
-function specialEscape($str, $doNotActuallyDoIt){
-  if($doNotActuallyDoIt){
-    return $str;
-  }
-  return htmlspecialchars($str);
-}
 
 
 function replaceTokensAndQuery($sql, $data) {
@@ -2508,7 +2502,7 @@ function previousReportRuns($user, $reportId) {
         'type' => 'datetime'
       ],
       [
-        'label' => 'records returned',
+        'label' => 'count',
         'name' => 'records_returned',
         'changeable' => false,
         'type' => 'int'
@@ -2569,19 +2563,23 @@ function likelySpecificEntities($sql, $valuesRecord){
   global $conn;
   //var_dump($valuesRecord);
   $out = "";
-  //config is defined as table_name,primary_key,human_readable_column,extra_lookup_parameter;...
-  $config = "device,device_id,name,;device_feature,device_feature_id,name,tenant_id";
+  //config is defined as table_name,primary_key,human_readable_column,extra_lookup_parameter,other_lookup_parameter,...;...
+  $config = "device,device_id,name;device_feature,device_feature_id,name,tenant_id";
   $configItems = explode(";", $config);
   foreach($configItems as $configItem) {
     $configDetails = explode(",", $configItem);
     $table = $configDetails[0];
     $pk = $configDetails[1];
     $humanReadable = $configDetails[2];
-    $additionalParameter = $configDetails[3];
     $pkValInSql = getSqlParameter($sql, $pk);
     $lookupSql = "SELECT " . $humanReadable . " FROM " . $table . " WHERE " . $pk . "='" . $pkValInSql . "'";
-    if($additionalParameter) {
-      $lookupSql  .= " AND " . $additionalParameter . "='<" . $additionalParameter . "/>'";
+    for($additionalCount = 3; $additionalCount < count($configDetails); $additionalCount++) {
+      if(count($configDetails) > $additionalCount ){
+        $additionalParameter = $configDetails[$additionalCount];
+        if($additionalParameter) {
+          $lookupSql  .= " AND " . $additionalParameter . "='<" . $additionalParameter . "/>'";
+        }
+      }
     }
     $lookupSql =  tokenReplace($lookupSql, $valuesRecord, $table);
     //for debugging:
@@ -3452,6 +3450,14 @@ function readMemoryCache($key, $persistTimeInMinutes = 10) {
   } else {
     return null;
   }
+}
+
+
+function specialEscape($str, $doNotActuallyDoIt){
+  if($doNotActuallyDoIt){
+    return $str;
+  }
+  return htmlspecialchars($str);
 }
 
 function writeMemoryCache($key, $value) {
