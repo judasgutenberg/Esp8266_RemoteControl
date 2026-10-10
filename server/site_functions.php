@@ -2547,7 +2547,7 @@ function previousReportRuns($user, $reportId) {
         'name' => 'sql',
         'changeable' => false,
         'raw'=> true,
-        'function' => 'likelySpecificEntities("<sql/>", $row)',
+        'function' => 'specifiedEntities("<sql/>", $row)',
         'type' => 'string'
       ]
         
@@ -2559,7 +2559,7 @@ function previousReportRuns($user, $reportId) {
 }
 
 //looks at SQL and pulls out the human-readable names of entities mentioned in it if they are properly defined in $config
-function likelySpecificEntities($sql, $valuesRecord){
+function specifiedEntities($sql, $valuesRecord){
   global $conn;
   //var_dump($valuesRecord);
   $out = "";
