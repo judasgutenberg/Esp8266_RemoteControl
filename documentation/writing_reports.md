@@ -49,6 +49,8 @@ Or run the report, which presents a form if it accepts parameters:
 
 ![alt text](report_runner.jpg?raw=true)
 
+Prior to running a report, you will see a list of past runs of that report with some data about them (how long they took and how many records were returned).  You will also see a truncated SQL statement that might be difficult to distinguish from its neighbors in the list.  To help with that, each SQL statement is colorized based on its hash so that identical reports in the list can generally be inferred by color.  You are also presented a list of specified entities, which are parsed out of the SQL based on a configuration to show (in human-readable form) what devices or device_features were specified in it.  The configuration for what specified entities you would prefer to see is easily changed in the specifiedEntities function.
+
 Then examine your results in whatever format you requested:
 
 ![alt text](report_results.jpg?raw=true)
