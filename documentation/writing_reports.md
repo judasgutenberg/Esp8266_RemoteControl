@@ -210,7 +210,7 @@ Time: {{recorded}}
 Each SQL column becomes available to the template by name.
 
 # Report Log
-Every report that is run is logged in the report_log table, complete with the values of any parameters used. Additional information about the time taken to run the report and the number of records returned is also collected.  The user interface provides a way to easily re-run the same query from the report_log, defaulting the form to the parameters used but also allowing them to be changed.  One report, "RunSQL," takes as its single parameter an arbitrary SQL expression, which could of course be any query you want to run, including queries to create, modify, or drop tables.  Once built, that report was mostly how I built the rest of the database schema. Obviously not just any user should be permitted to run that report!
+Every report that is run is logged in the report_log table, complete with the values of any parameters used. Additional information about the time taken to run the report and the number of records returned is also collected, and a list of specified entities such as devices is also shown.  Past reports are colorized based on the hashes of their SQL so that minor differences between adjacent reports will be clear.  The user interface provides a way to easily re-run the same query from the report_log, defaulting the form to the parameters used but also allowing them to be changed.  One report, "RunSQL," takes as its single parameter an arbitrary SQL expression, which could of course be any query you want to run, including queries to create, modify, or drop tables.  Once built, that report was mostly how I built the rest of the database schema. Obviously not just any user should be permitted to run that report!
 
 
 
