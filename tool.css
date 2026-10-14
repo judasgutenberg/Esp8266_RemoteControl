@@ -275,7 +275,7 @@ body
 
 .tooltip {
     position: relative;
-    cursor: help;
+    cursor: pointer;
 }
 
 .tooltip .popup {
