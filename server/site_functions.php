@@ -2567,12 +2567,12 @@ function previousReportRuns($user, $reportId) {
         'name' => 'sql',
         'changeable' => false,
         'raw'=> true,
-        'function' => 'specifiedEntities("<sql/>", $row)',
+        'function' => 'specifiedEntities("<sql/>", $row, "' . json_decode($user["preferences"], true)["specific_entities"] . '")', //specific_entities can be changed in the tenant editor
         'type' => 'string'
       ]
         
     );
-    
+
     $out = genericTable($reportRuns, $headerData, $toolsTemplate, null);
   }
   return $out;
