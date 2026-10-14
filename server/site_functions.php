@@ -403,7 +403,18 @@ function generateFormElements($parentKey, $data) {
           $formElements .= generateFormElements($key, $value);
       } else {
           // Create an input field for non-array values
-          $formElements .= '<div class="genericformelementinput"><input style="width:200px"  type="text" name="' . $parentKey . "|" . $key . '" id="' . $key . '" value="' . htmlspecialchars($value) . '"></div>';
+          $calculatedWidth = strlen($value) * 8;
+          if($calculatedWidth < 150){
+            $calculatedWidth = 150;
+          }
+          $formElements .= '<div class="genericformelementinput">';
+          if($calculatedWidth > 900){
+            $formElements .= '<textarea style="height:100px;width:' . $calculatedWidth. 'px"  type="text" name="' . $parentKey . "|" . $key . '" id="' . $key . '">' . htmlspecialchars($value)  .'</textarea>';
+
+          } else {
+            $formElements .= '<input style="width:' . $calculatedWidth. 'px"  type="text" name="' . $parentKey . "|" . $key . '" id="' . $key . '" value="' . htmlspecialchars($value) . '">';
+          }
+          $formElements .= "</div>";
       }
       //$formElements .= '</div>';
   }
@@ -2567,7 +2578,7 @@ function previousReportRuns($user, $reportId) {
         'name' => 'sql',
         'changeable' => false,
         'raw'=> true,
-        'function' => 'specifiedEntities("<sql/>", $row, "' . json_decode($user["preferences"], true)["specific_entities"] . '")', //specific_entities can be changed in the tenant editor
+        'function' => 'specifiedEntities("<sql/>", $row, "' . getConfigItem($user, "specific_entities") . '")', //specific_entities can be changed in the tenant editor
         'type' => 'string'
       ]
         
@@ -2576,6 +2587,14 @@ function previousReportRuns($user, $reportId) {
     $out = genericTable($reportRuns, $headerData, $toolsTemplate, null);
   }
   return $out;
+}
+
+function getConfigItem($data, $key, $jsonColumn = "preferences"){
+    $jsonData = gvfa($jsonColumn, $data);
+    if($jsonData){
+      $dataArray = json_decode($jsonData, true);
+      return gvfa($key, $dataArray);
+    }
 }
 
 //looks at SQL and pulls out the human-readable names of entities mentioned in it if they are properly defined in $config
