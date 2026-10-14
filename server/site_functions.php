@@ -2518,7 +2518,8 @@ function previousReportRuns($user, $reportId) {
         'name' => 'sql',
         'changeable' => false,
         'raw'=> true,
-        'function' => 'colorizeByHash(0, "<sql/>", 40, "background-color", 50, 70)',
+        //'function' => 'colorizeByHash(0, "<sql/>", 40, "background-color", 50, 70)',
+        'function' => 'colorizeAndTooltipify("<sql/>")',
         'type' => 'string'
       ],
       /*
@@ -2632,6 +2633,14 @@ function colorizeByHash($mode, $text, $limit, $property = "color", $colorPartOne
   $out .= '>' . htmlspecialchars(substr($text, 0, $limit)) . '</div>'; //where colorPartOne and colorPartTwo are ignored and our hash directly determines color
   return $out;
 }
+
+
+function colorizeAndTooltipify($sql) {
+	$out = "";
+	$out = "<span title=\"" . $sql . "\">" . colorizeByHash(0, $sql, 40, "background-color", 50, 70) . "</span>";
+	return $out;
+}
+  
 
 function setOrderByClause($sql, $newOrderBy) {
     if(!$newOrderBy) {

@@ -1046,9 +1046,8 @@ function genericListActionBackend(
       xmlhttp.send();
     
     }
-  
   }
-  
+
   function unescapeHtml(html) {
 	let textArea = document.createElement('textarea');
 	textArea.innerHTML = html;

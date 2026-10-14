@@ -271,6 +271,31 @@ body
 	display: none;
 }
 
+
+
+.tooltip {
+    position: relative;
+    cursor: help;
+}
+
+.tooltip .popup {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: 100%;
+    background: #ffffdd;
+    border: 1px solid #999;
+    padding: 8px;
+    width: 300px;
+    z-index: 1000;
+    white-space: normal;
+}
+
+.tooltip:hover .popup {
+    display: block;
+}
+
+
 .utilitylist{
 	line-height: 24px;
 	font-size: 13px;
