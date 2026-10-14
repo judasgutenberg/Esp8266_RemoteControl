@@ -1,0 +1,2870 @@
+	let cachedEarliestRecord = null;
+	
+	function managementRuleTool(item) {
+		let xmlhttp = new XMLHttpRequest();
+		xmlhttp.onreadystatechange = function() {
+			console.log(xmlhttp.responseText);
+			let data = JSON.parse(xmlhttp.responseText);
+			showDataInPanelTool(data);
+			//console.log(data);
+		}
+
+		let url = "?table=management_rule&action=json&management_rule_id=" + item.value;
+		xmlhttp.open("GET", url, true);
+		xmlhttp.send();
+	}
+	
+  function genericManyToManyTool(table, pkSpecString, columnConfigString) {
+    //console.log(pkSpecString);
+    let pkSpec = JSON.parse(pkSpecString);
+    let columnConfig = JSON.parse(columnConfigString);
+    const params = new URLSearchParams(pkSpec).toString();
+		let xmlhttp = new XMLHttpRequest();
+		xmlhttp.onreadystatechange = function() {
+      if(xmlhttp.responseText) {
+        let data = JSON.parse(xmlhttp.responseText);
+        if(data) {
+          editDataInPanelTool(data, table, pkSpec, columnConfig);
+        }
+			}
+			//console.log(data);
+		}
+
+		let url = "?table=" + table + "&action=json&" + params;
+		xmlhttp.open("GET", url, true);
+		xmlhttp.send();
+	}
+  
+  function tenantTool(item) {
+	  let xmlhttp = new XMLHttpRequest();
+	  xmlhttp.onreadystatechange = function() {
+		  console.log(xmlhttp.responseText);
+		  let data = JSON.parse(xmlhttp.responseText);
+		  showDataInPanelTool(data);
+		  //console.log(data);
+	  }
+	  console.log(item.value);
+	  let url = "?table=tenant&action=json&tenant_id=" + item.value;
+	  xmlhttp.open("GET", url, true);
+	  xmlhttp.send();
+  }
+  
+  function userTool(item) {
+	  let xmlhttp = new XMLHttpRequest();
+	  xmlhttp.onreadystatechange = function() {
+		  console.log(xmlhttp.responseText);
+		  let data = JSON.parse(xmlhttp.responseText);
+		  showDataInPanelTool(data);
+		  //console.log(data);
+	  }
+	  console.log(item.value);
+	  let url = "?table=user&action=json&user_id=" + item.value;
+	  xmlhttp.open("GET", url, true);
+	  xmlhttp.send();
+  }
+  
+  function formSubmitTasks() {
+    if(onSubmitManyToManyItems){
+      for(const item of onSubmitManyToManyItems){
+      if(document.getElementById("dest_" + item)){
+        for(const option of document.getElementById("dest_" + item).options) {
+        //values.push(option.value);
+        option.selected = true;
+        console.log(option);
+        }
+      }
+      }
+    }
+  }
+  
+  function valueExistsElsewhere(table, formElementName, pkName, pkValue, nameColumnName) {
+    // Generalize the selector to handle input, select, and textarea
+    const inputElement = document.querySelector(`input[name="${formElementName}"], select[name="${formElementName}"], textarea[name="${formElementName}"]`);
+    
+    if (!inputElement) {
+      console.warn(`Form element with name "${formElementName}" not found.`);
+      return;
+    }
+    const value = inputElement.value;
+    if(value == "") {
+      return;  //we accept nulls!
+    }
+    const params = new URLSearchParams();
+    params.append("table", table);
+    params.append("value", value);
+    params.append("column_name", formElementName);
+    params.append("name_column_name", nameColumnName);
+    params.append("pk_name", pkName);
+    params.append("pk_value", pkValue);
+    params.append("action", "valueexistselsewhere");
+    
+    const xmlhttp = new XMLHttpRequest();
+    xmlhttp.onreadystatechange = function() {
+      if (xmlhttp.readyState === XMLHttpRequest.DONE) {
+      if (xmlhttp.status === 200) {
+        const data = JSON.parse(xmlhttp.responseText.trim());
+        console.log(data);
+    
+        // Look for error div above the input
+        let currentElement = inputElement.previousElementSibling;
+        let errorDiv = null;
+        while (currentElement) {
+        if (currentElement.classList && currentElement.classList.contains('genericformerror')) {
+          errorDiv = currentElement;
+          break;
+        }
+        currentElement = currentElement.previousElementSibling;
+        }
+        let error = null;
+        if(data) {
+          if(!nameColumnName){
+            nameColumnName  = "name";
+          }
+        error = formElementName + " of " + data[formElementName] + " is used in " + data[nameColumnName] + ".";
+        }
+        if (errorDiv) {
+        if(error) {
+          errorDiv.textContent = error;
+        } else {
+          console.log("bleep");
+          errorDiv.textContent = "";
+        }
+        } else {
+        console.log('Error div with class "genericformerror" not found.');
+        }
+      }
+      }
+    };
+    
+    xmlhttp.open("POST", "tool.php", true);
+    xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+    xmlhttp.send(params);
+  }
+  
+  
+  function checkSqlSyntax(formElementName) {
+	  const inputElement = document.querySelector(`textarea[name="${formElementName}"]`);
+	  let xmlhttp = new XMLHttpRequest();
+	  if (inputElement) {
+		  xmlhttp.onreadystatechange = function() {
+			  if (xmlhttp.readyState === XMLHttpRequest.DONE) {
+				  if (xmlhttp.status === 200) {
+					  let data = JSON.parse(xmlhttp.responseText.trim());
+					  let currentElement = inputElement.previousElementSibling;
+					  let errorDiv = null;
+					  
+					  while (currentElement) {
+						  if (currentElement.classList && currentElement.classList.contains('genericformerror')) {
+							  errorDiv = currentElement;
+							  break;
+						  }
+						  currentElement = currentElement.previousElementSibling;
+					  }
+					  if (errorDiv) {
+						  if(data["errors"].length > 0) {
+							  errorDiv.textContent = data["errors"][0];
+						  } else {
+							  errorDiv.textContent = "";
+						  }
+					  } else {
+						  console.log('Error div with class "genericformerror" not found.');
+					  }
+				  }
+			  }
+  
+		  }
+		  let sql = inputElement.value;
+		  let skipTest = false;
+		  if(stripXMLTags(sql).trim() == "") {
+			  skipTest = true;
+		  }
+		  if(skipTest){
+			  sql = "SELECT 1"; //sql that always passes!
+		  } else {
+			  sql = replaceXMLTagsWithOne(sql); //so tokenized sql won't fail check
+		  }
+		  
+		  const params = new URLSearchParams();
+		  params.append("sql", sql.trim());
+		  params.append("action", "checksqlsyntax");
+		  let url = "tool.php"; 
+		  xmlhttp.open("POST", url, true);
+		  xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+		  xmlhttp.send(params);
+	  }
+  }
+  
+  function gvfa(name, source, fail){ //get value from associative
+	if(source && source[name]) {
+	  if(source[name] != null) {
+		return source[name];
+	  }
+	}
+	return fail;
+  }
+  
+  
+  function replaceXMLTagsWithOne(input) {
+	  return input.replace(/<[^>]*>/g, '1');
+	}
+  
+  function checkJsonSyntax(formElementName) {
+	  const inputElement = document.querySelector(`textarea[name="${formElementName}"]`);
+	  var xmlhttp = new XMLHttpRequest();
+	  if (inputElement) {
+		  xmlhttp.onreadystatechange = function() {
+			  if (xmlhttp.readyState === XMLHttpRequest.DONE) {
+				  if (xmlhttp.status === 200) {
+					  let data = JSON.parse(xmlhttp.responseText.trim());
+   
+					  let currentElement = inputElement.previousElementSibling;
+					  let errorDiv = null;
+					  
+					  while (currentElement) {
+						  if (currentElement.classList && currentElement.classList.contains('genericformerror')) {
+							  errorDiv = currentElement;
+							  break;
+						  }
+						  currentElement = currentElement.previousElementSibling;
+					  }
+   
+					  if (errorDiv) {
+						  if(data["errors"]!="") {
+							  errorDiv.textContent = data["errors"];
+						  } else {
+							  errorDiv.textContent = "";
+						  }
+					  } else {
+						  console.log('Error div with class "genericformerror" not found.');
+					  }
+				  }
+			  }
+		  }
+  
+		  const params = new URLSearchParams();
+		  params.append("json", inputElement.value);
+		  params.append("action", "checkjsonsyntax");
+		  let url = "tool.php"; 
+		  //console.log(url);
+		  xmlhttp.open("POST", url, true);
+		  xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+		  xmlhttp.send(params);
+	  }
+  }
+  
+  function escapeHTML(unsafeText) {
+	  let div = document.createElement('div');
+	  div.innerText = unsafeText;
+	  return div.innerHTML;
+  }
+  
+  function showDataInPanelTool(data){
+    let html = "<div class='list'>";
+    let panelId = "";
+    for (let key in data) {
+      if(key.substring(0,1) != "_") {
+        console.log(key);
+        html += "<div class='listrow'><span><b>" + key + "</b></span><span>" + escapeHTML(data[key]) + "</span></div>";
+        if(document.getElementById("panel_" + key)) {
+          panelId = "panel_" + key;
+        }
+      }
+    }
+    html += "</div>";
+    if(panelId){
+      document.getElementById(panelId).innerHTML = html;
+    }
+  }
+  
+  function editDataInPanelTool(data, table, pkSpec, columnConfig){
+    let html = "<div class='list'>";
+    let panelId = "";
+    let hash = data["_hashed_entities"];
+    const sortedPk = Object.keys(pkSpec)
+      .sort()                         // alphabetical
+      .reduce((acc, key) => {
+        acc[key] = pkSpec[key];
+        return acc;
+      }, {});
+    //let pkName = Object.keys(pkSpec)[0]; //doesn't work for compound pks!
+    //let pkValue = Object.values(pkSpec)[0]; //doesn't work for compound pks!
+    const pkName   = Object.keys(sortedPk).join("-");
+    const pkValue = Object.values(sortedPk).join("-");
+    for (let key in data) {
+      if(key.substring(0,1) != "_") {
+ 
+        let columnRecord = findObjectByName(columnConfig, key);
+        //console.log(columnRecord);
+        if(columnRecord ) {
+ 
+          let label = columnRecord["name"];
+          if(columnRecord["label"]) {
+            label = columnRecord["label"];
+          }
+    
+          //console.log(label);
+          html += "<div class='listrow'><span><b>" + label + "</b></span><span><input onchange='genericListActionBackend(\"" + key + "\",  this.value ,\"" + table +"\",\"" + pkName + "\",\"" + pkValue + "\",\""  + hash + "\",\"\")'  name='" + key + "' value='" + escapeHTML(data[key]) + "'/></span></div>";
+        }
+        if(document.getElementById("panel_" + key)) {
+          panelId = "panel_" + key;
+        }
+      }
+    }
+    html += "</div>";
+    if(panelId){
+      document.getElementById(panelId).innerHTML = html;
+    }
+  }
+  
+  function tokenReplace(template, data, strDelimiterBegin = "<", strDelimiterEnd = "/>") {
+	  for (const key in data) {
+		  const value = data[key];
+  
+		  if (!Array.isArray(value)) {
+		  // Replace single values
+		  template = template.replace(
+			  new RegExp(`${strDelimiterBegin}${key}${strDelimiterEnd}`, "g"),
+			  value
+		  );
+		  } else {
+		  // Handle list values
+		  if (value.length > 0 && typeof value[0] !== "object") {
+			  const values = value.join(",");
+			  template = template.replace(
+			  new RegExp(`${strDelimiterBegin}${key}${strDelimiterEnd}`, "g"),
+			  values
+			  );
+		  }
+		  }
+	  }
+	  return template;
+  }
+  
+ //update the genericTable data
+function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotDoAgain) {
+  const decodedHeaderData = JSON.parse(headerData);
+  const xmlhttp = new XMLHttpRequest();
+
+  xmlhttp.onreadystatechange = function() {
+    if (xmlhttp.readyState === 4 && xmlhttp.status === 200) {
+      const data = JSON.parse(xmlhttp.responseText);
+      const table = tableId ? document.getElementById(tableId) : document;
+      const tableRows = table.getElementsByClassName("listrow");
+
+      const rowCount = tableRows.length;
+      const dataCount = data.length;
+
+      // Add missing rows if new data has more records
+      if (dataCount > rowCount  && rowCount > 0) {
+        const templateRow = tableRows[rowCount - 1]; // use the last row as template
+        for (let i = rowCount; i < dataCount; i++) {
+          const newRow = templateRow.cloneNode(true);
+          table.appendChild(newRow);
+        }
+        //if we have no rows, we will some day need a way to manufacture one
+      }
+
+      // Remove extra rows if data has fewer records
+      if (dataCount < rowCount) {
+        for (let i = rowCount - 1; i >= dataCount; i--) {
+          tableRows[i].remove();
+        }
+      }
+
+      // Update all rows
+      const updatedRows = table.getElementsByClassName("listrow");
+      for (let rowIndex = 0; rowIndex < dataCount; rowIndex++) {
+        const htmlRow = updatedRows[rowIndex];
+        const dataRecord = data[rowIndex];
+        const spans = htmlRow.getElementsByTagName("span");
+        const pk = dataRecord[pkName];
+        const hashedEntities = dataRecord["_hashed_entities"];
+        for (let cellIndex = 0; cellIndex < decodedHeaderData.length; cellIndex++) {
+          const column = decodedHeaderData[cellIndex];
+          const key = column["name"];
+          
+          //console.log(dataRecord["_components"]);
+          
+          let newColumnData = dataRecord[key];
+
+          if ("function" in column) {
+            const stringToEval = tokenReplace(column["function"], dataRecord);
+            const originalValue = newColumnData;
+            newColumnData = eval(stringToEval);
+            spans[cellIndex].setAttribute("value", originalValue);
+          }
+
+          // Update span content or input value
+          const span = spans[cellIndex];
+          const input = span.querySelector("input, select, textarea");
+          if (input) {
+            // Skip updating if a .noupdate input is focused
+            if (input.classList.contains("noupdate") && document.activeElement === input) {
+              continue; // skip this input entirely
+            }
+
+            if (input.type === "checkbox") {
+              const newChecked = newColumnData === true || newColumnData === 1 || newColumnData === "1" || newColumnData === "true";
+              if (input.checked !== newChecked) input.checked = newChecked;
+            } else if (input.tagName === "SELECT") {
+              if (input.value !== newColumnData) input.value = newColumnData;
+            } else if (input.tagName === "TEXTAREA" || input.type === "text" || input.type === "number" || input.type === "hidden") {
+              if (input.value !== newColumnData) input.value = newColumnData;
+            } else {
+              input.value = newColumnData;
+            }
+            if(hashedEntities && pk) { //if we have a compound pk or a multi-table query, this could fail. but we'd probably also have no inputs
+              updateGenericListHandler(input, pk, hashedEntities); //update the instant update form, particularly if we have a pk that didn't exist before
+              
+            }
+          } else {
+            if (span.textContent !== newColumnData) {
+              span.textContent = newColumnData;
+            }
+          }
+          if(input) {
+            if (input.type === "checkbox") {
+              // Normalize: treat truthy/1/"1"/"true" as checked
+              const newChecked = newColumnData === true || newColumnData === 1 || newColumnData === "1" || newColumnData === "true";
+              if (input.checked !== newChecked) {
+                input.checked = newChecked;
+               }
+            } else if (input.tagName === "SELECT") {
+              if (input.value !== newColumnData) {
+                input.value = newColumnData;
+              }
+            } else if (input.tagName === "TEXTAREA" || input.type === "text" || input.type === "number" || input.type === "hidden") {
+              if (input.value !== newColumnData) {
+                input.value = newColumnData;
+              }
+            } else {
+              // catch-all for other input types
+              input.value = newColumnData;
+            }
+          }
+
+          
+        }
+        if(decodedHeaderData.length < spans.length) {
+          let span = spans[decodedHeaderData.length];
+          let links = span.querySelectorAll("a");
+          if(links) {
+            const match = Array.from(links).find(a => a.textContent.trim() === "Delete");
+            updateDeleteEntityHandler(match, pk, hashedEntities);
+          }
+        }
+      }
+    }
+  };
+
+
+
+	const params = new URLSearchParams();
+	params.append("direction", ascending);
+	params.append("sortColumn", currentSortColumn);
+	params.append("action", "runencryptedsql");
+	params.append("headerData",  headerData.replace(/'/g, "\\'"));
+	params.append("value",  encryptedSql);
+  params.append("pk",  pkName);
+  params.append("table",  tableName);
+	let url = "tool.php"; 
+	//console.log(url);
+	xmlhttp.open("POST", url, true);
+	xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+	xmlhttp.send(params);
+	if(!doNotDoAgain){
+		setTimeout(function() { 
+		autoUpdate(encryptedSql, headerData, tableId, tableName, pkName);
+		}, 7000);
+	}
+  
+}
+
+function updateGenericListHandler(inputElement, newPk, newHash) {
+    // Extract current handler text
+    let handlerText = inputElement.getAttribute("onchange");
+
+    if (!handlerText) return;
+
+    // Extract argument list inside parentheses
+    const match = handlerText.match(/genericListActionBackend\s*\((.*)\)/);
+    if (!match) return;
+
+    // Now split arguments safely
+    // This supports strings containing commas if quoted
+    let args = match[1].match(/(".*?"|'.*?'|[^,]+)(?=\s*,|\s*$)/g);
+
+    if (!args || args.length < 6) return;
+
+    // Update arguments
+    args[4] = `"${newPk}"`;    // primary key
+    args[5] = `"${newHash}"`;  // hash
+
+    // Rebuild
+    const newCall = `genericListActionBackend(${args.join(", ")})`;
+
+    inputElement.setAttribute("onchange", newCall);
+}
+
+function updateDeleteEntityHandler(deleteHref, newPk, newHash) {
+    // Extract the handler text (deleteEntity is usually onclick)
+    let handlerText = deleteHref.getAttribute("onclick");
+
+    if (!handlerText) return;
+
+    // Match deleteEntity(...) and capture argument list
+    const match = handlerText.match(/deleteEntity\s*\((.*)\)/);
+    if (!match) return;
+
+    // Split arguments safely, keeping quoted strings intact
+    let args = match[1].match(/(".*?"|'.*?'|[^,]+)(?=\s*,|\s*$)/g);
+
+    // Expecting: table, pkName, pkValue, hashedEntities
+    if (!args || args.length < 4) return;
+
+    // Replace the primary key value and the hash
+    args[2] = `"${newPk}"`;
+    args[3] = `"${newHash}"`;
+
+    // Rebuild the function call
+    const newCall = `deleteEntity(${args.join(", ")})`;
+
+    // Write it back
+    deleteHref.setAttribute("onclick", newCall);
+}
+
+ 
+
+function copyManyToMany(sourceId, destinationId){ 
+  let rootId = destinationId;
+ 
+  if(rootId.slice(0, 7) == "source_") {
+    rootId = sourceId;
+  }
+ 
+  let existingIdsInput = document.getElementById("_" + rootId + "_old_many_to_many");
+  let source = document.getElementById(sourceId);
+  let dest = document.getElementById(destinationId);
+
+  if(existingIdsInput.value == "") {
+    for(let i = dest.options.length - 1; i >= 0; i--) {
+      let option = dest.options[i];
+      existingIdsInput.value += option.value + ",";
+    }
+    existingIdsInput.value = existingIdsInput.value.slice(0, -1);
+  }
+  for(let i = source.options.length - 1; i >= 0; i--) {
+    let option = source.options[i];
+    if(option.selected) {
+      dest.appendChild(option.cloneNode(true)); // Clone the option before appending
+      source.remove(i);
+    }
+    document.getElementById("havechangedmanytomany").value = 1;
+  }
+  return false;
+}
+
+function copy(id){
+  var href = document.getElementById("href" + id.toString());
+  var contentDiv = document.getElementById("clip" + id.toString());
+  var clipContent = "";
+  if(href) {
+    clipContent = href.innerHTML;
+  } else if(contentDiv) {
+    clipContent = contentDiv.innerHTML;
+  }
+  if(clipContent) {
+    copyHack(clipContent);
+    var backgroundColor = document.body.style.backgroundColor;
+    document.body.style.backgroundColor = '#ccffcc';
+    setTimeout(function () {document.body.style.backgroundColor = backgroundColor}, 200);
+  }
+}
+  
+  function copyHack(value){ //such a hack!!
+	  var copyTextarea = document.createElement("textarea");
+	  copyTextarea.style.position = "fixed";
+	  copyTextarea.style.opacity = "0";
+	  copyTextarea.textContent = value;
+   
+	  document.body.appendChild(copyTextarea);
+	  copyTextarea.select();
+	  document.execCommand("copy");
+	  document.body.removeChild(copyTextarea);
+  }
+  
+  function cleanText(inputText) {
+	const tempDiv = document.createElement('div');
+	tempDiv.innerHTML = inputText;
+	const cleanedText = tempDiv.innerText.trim();
+	return cleanedText;
+  }
+  
+  function getFormValues(formId) {
+    var form = document.getElementById(formId);
+    var formData = {};
+    
+    if (form) {
+      var elements = form.elements;
+    
+      for (var i = 0; i < elements.length; i++) {
+        var element = elements[i];
+        var elementType = element.type;
+        var elementName = element.name;
+    
+        if (elementName) {
+          switch (elementType) {
+            case 'select-one':
+              formData[elementName] = element.options[element.selectedIndex].value;
+              break;
+            case 'select-multiple':
+              formData[elementName] = getSelectedOptions(element);
+              break;
+            case 'checkbox':
+            case 'radio':
+              formData[elementName] = element.checked ? element.value : null;
+              break;
+            default:
+              formData[elementName] = element.value;
+          }
+        }
+      }
+    }
+    
+    return formData;
+  }
+  
+  function getSelectedOptions(selectElement) {
+    var selectedOptions = [];
+    for (var i = 0; i < selectElement.options.length; i++) {
+      if (selectElement.options[i].selected) {
+        selectedOptions.push(selectElement.options[i].value);
+      }
+    }
+    return selectedOptions;
+  }
+  
+  function startWaiting(message){
+	  let showWaiting = true;
+	  const forms = document.forms;
+	  // Loop through each form
+	  for (let form of forms) {
+		  // Get the "output_format" select element within the form
+		  const outputFormatSelect = form.elements['output_format'];
+		  // Check if the select element exists and its value is "csv"
+		  if (outputFormatSelect && (outputFormatSelect.value.toLowerCase() === 'csv' || outputFormatSelect.value.toLowerCase() === 'output template')) {
+			  showWaiting = false; // Found a match, return true
+		  }
+	  }
+	  if(showWaiting) {
+		  var waitingBody = document.getElementById("waitingouter");
+		  waitingBody.style.display = 'block';
+		  var waitingMessage = document.getElementById("waitingmessage");
+		  waitingMessage.innerHTML = message;
+	  }
+  }
+  
+  function stopWaiting(){
+	var waitingBody = document.getElementById("waitingouter");
+	waitingBody.style.display = 'none';
+	
+  }
+  
+  
+  //<a onclick="deleteEntity(&quot;device&quot;,&quot;device_id&quot;,&quot;11&quot;,&quot;c50da501b429d8052954c8c87e699f4391833dca8016c7b971d66958cef182d6&quot;,&quot;&quot;)">Delete</a>
+  function deleteEntity(table, pkName, pkValue, hashedEntities) {
+    if(confirm("Are you sure you want to delete this " + table + "?")) {
+      const payload = {
+        action: "delete",
+        table: table,
+        primary_key_name: pkName,
+        primary_key_value: pkValue,
+        //pre_entity: table + "+" + pkName + "+" + pkValue,
+        hashed_entities: hashedEntities
+      };
+      
+      const xhr = new XMLHttpRequest();
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            // If your PHP returns JSON:
+            // const data = JSON.parse(xhr.responseText);
+            console.log("Server replied:", xhr.responseText);
+            window.location.reload();
+          } else {
+            console.error("Request failed:", xhr.status, xhr.statusText);
+          }
+        }
+      };
+      xhr.open("POST", "tool.php", true);
+      // Tell the server we�re sending JSON
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.send(JSON.stringify(payload));
+    }
+  }
+  
+  function deleteListRows(idOfParent, classToKill) { //thanks chatgpt!
+    var parentDiv = document.getElementById(idOfParent); 
+    var listRows = parentDiv.getElementsByClassName(classToKill);
+    while (listRows.length > 0) {
+      parentDiv.removeChild(listRows[0]);
+    }
+  }
+  
+  function findObjectByName(array, nameValue) {
+	  return array.find(obj => obj.name === nameValue);
+  }
+  
+  function findObjectByColumn(array, column, columnValue) {
+	  if(!array){
+		  return;
+	  }
+	  return array.find(obj => obj[column] === columnValue);
+  }
+  
+  function stripXMLTags(input) {
+	  return input.replace(/<[^>]*>/g, '');
+  }
+	
+  
+  if(document.getElementById('file')) {
+	document.getElementById('file').onchange = function() {
+	  startWaiting();
+	};
+  }
+  
+  window.addEventListener('resize', function() {
+	//window.location.reload(); //meh let's not
+  });
+  
+function genericListActionBackend(
+  name,
+  value,
+  tableName,
+  primaryKeyName,
+  primaryKeyValue,
+  hashedEntities,
+  extraForInsert
+) {
+  if(primaryKeyValue == "null" || primaryKeyValue == null) {
+    primaryKeyValue = "";
+  }
+  // -------------------------------
+  // 1.  Build the JSON payload
+  // -------------------------------
+  const payload = {
+    action: "genericFormSave",
+    table: tableName,
+    primary_key_name: primaryKeyName,
+    primary_key_value: primaryKeyValue,
+    name,
+    value,
+    extra_for_insert: extraForInsert,
+    hashed_entities: hashedEntities
+  };
+
+  // -------------------------------
+  // 2.  Send it with XMLHttpRequest
+  // -------------------------------
+  const xhr = new XMLHttpRequest();
+
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState === 4) {
+      if (xhr.status === 200) {
+        // If your PHP returns JSON:
+        // const data = JSON.parse(xhr.responseText);
+        console.log("Server replied:", xhr.responseText);
+      } else {
+        console.error("Request failed:", xhr.status, xhr.statusText);
+      }
+    }
+  };
+
+  xhr.open("POST", "tool.php", true);
+
+  // Tell the server we�re sending JSON
+  xhr.setRequestHeader("Content-Type", "application/json");
+
+  // ?? Cookies:
+  // Same-origin: they�re sent automatically � nothing to do.
+  // Cross-origin: uncomment the next line and make sure your
+  //               server�s CORS headers allow credentials.
+  // xhr.withCredentials = true;
+
+  xhr.send(JSON.stringify(payload));
+}
+  
+  function genericSelect(id, name, defaultValue, data, event = "", handler = "") {
+    let out = "";
+    out += `<select name="${name}" id="${id}" ${event}="${handler}">\n`;
+    out += "<option></option>";
+    console.log(data);
+    data.forEach(datum => {
+      let value = datum.value !== undefined ? datum.value : datum;
+      let text = datum.text !== undefined ? datum.text : datum;
+      let selected = defaultValue == value ? " selected='true'" : "";
+    
+      out += `<option${selected} value="${value}">`;
+      out += text;
+      out += "</option>";
+    });
+    
+    out += "</select>";
+    return out;
+  }
+  
+  function getValuesFromCommandTypeTable(sourceCommandTypeIdName, destColumnInputName) {
+	  let sourceSelect = document.querySelector(`select[name="${sourceCommandTypeIdName}"]`);
+	  let commandTypeId = sourceSelect ? sourceSelect.value : null;
+	  if (!commandTypeId) {
+		  console.error("Source commandTypeId not found or no value selected.");
+		  return;
+	  }
+	  let destInput = document.querySelector(`input[name="${destColumnInputName}"], select[name="${destColumnInputName}"]`);
+	  if (!destInput) {
+		  console.error("Destination element not found.");
+		  return;
+	  }
+	  let xmlhttp = new XMLHttpRequest();
+	  xmlhttp.onreadystatechange = function () {
+		  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+			  let columns = JSON.parse(xmlhttp.responseText);
+			  // Remember the currently selected option
+			  let currentlySelectedValue = destInput.value;
+			  if(!columns) {
+				  //we need to convert that select into an input
+				  if (destInput.tagName.toLowerCase() === "select") {
+					  // Create a new input element
+					  let newInput = document.createElement("input");
+				  
+					  // Copy attributes from the original select to the new input
+					  newInput.name = destInput.name;
+					  newInput.id = destInput.id; // Optional, if the original has an ID
+					  newInput.className = destInput.className; // Copy classes
+				  
+					  // Optionally, copy any custom attributes if needed
+					  Array.from(destInput.attributes).forEach(attr => {
+						  if (!['name', 'id', 'class'].includes(attr.name)) {
+							  newInput.setAttribute(attr.name, attr.value);
+						  }
+					  });
+				  
+					  // Replace the select element with the new input
+					  destInput.parentNode.replaceChild(newInput, destInput);
+				  
+					  // Update destInput to reference the new input element
+					  destInput = newInput;
+				  }
+			  } else {
+				  if (destInput.tagName.toLowerCase() === 'input') {
+					  // Create a new select element
+					  let newSelect = document.createElement('select');
+				  
+					  // Optionally copy attributes from the input to the select
+					  Array.from(destInput.attributes).forEach(attr => {
+						  newSelect.setAttribute(attr.name, attr.value);
+					  });
+				  
+					  // Replace the input with the select in the DOM
+					  destInput.parentNode.replaceChild(newSelect, destInput);
+				  
+					  // Update the reference to point to the new select
+					  destInput = newSelect;
+				  }
+				  // Clear existing options
+				  destInput.innerHTML = "";
+				  // Populate the select with new options
+				  let foundSelected = false;
+				  columns.forEach(column => {
+					  let option = document.createElement("option");
+					  option.value = column.id;
+					  option.textContent = column.name;
+					  destInput.appendChild(option);
+					  // Preserve selection if the value exists in the new options
+					  if (column.id === currentlySelectedValue) {
+						  option.selected = true;
+						  foundSelected = true;
+					  }
+				  });
+  
+				  // Ensure no selection if the current value isn't valid
+				  if (!foundSelected) {
+					  destSelect.value = ""; // Clear selection
+				  }
+			  }
+		  }
+	  };
+  
+	  let url = "?action=getrecordsfromassociatedtable&command_type_id=" + commandTypeId;
+	  xmlhttp.open("GET", url, true);
+	  xmlhttp.send();
+  
+  
+  }
+  
+  function getColumnsForTable(sourceTableSelectName, destColumnSelectName, dest2ColumnSelectName) {
+	  // Get the source select element and retrieve its value
+	  let sourceSelect = document.querySelector(`select[name="${sourceTableSelectName}"]`);
+	  let tableName = sourceSelect ? sourceSelect.value : null;
+	  if (!tableName) {
+		  console.error("Source table select element not found or no value selected.");
+		  return;
+	  }
+	  // Get the destination select element
+	  let destSelect = document.querySelector(`select[name="${destColumnSelectName}"]`);
+	  if (!destSelect) {
+		  console.error("Destination column select element not found.");
+		  return;
+	  }
+	  let dest2Select;
+	  if(dest2ColumnSelectName){
+		  dest2Select = document.querySelector(`select[name="${dest2ColumnSelectName}"]`);
+	  }
+	  let xmlhttp = new XMLHttpRequest();
+	  xmlhttp.onreadystatechange = function () {
+		  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+			  let columns = JSON.parse(xmlhttp.responseText);
+			  
+			  // Remember the currently selected option
+			  let currentlySelectedValue = destSelect.value;
+			  let currently2SelectedValue;
+			  if(dest2ColumnSelectName) {
+				  currently2SelectedValue = dest2Select.value;
+			  }
+   
+			  // Clear existing options
+			  destSelect.innerHTML = "";
+			  if(dest2Select){
+				  dest2Select.innerHTML = "";
+			  }
+			  // Populate the select with new options
+			  let foundSelected = false;
+			  let found2Selected = false;
+			  columns.forEach(column => {
+				  let option = document.createElement("option");
+				  let option2 = document.createElement("option");
+				  option.value = column;
+				  option.textContent = column;
+				  option2.value = column;
+				  option2.textContent = column;
+				  destSelect.appendChild(option);
+				  if(dest2Select){
+					  dest2Select.appendChild(option2);
+				  }
+				  // Preserve selection if the value exists in the new options
+				  if (column === currentlySelectedValue) {
+					  option.selected = true;
+					  foundSelected = true;
+				  }
+				  if (currently2SelectedValue && column === currently2SelectedValue) {
+					  option2.selected = true;
+					  found2Selected = true;
+				  }
+			  });
+  
+			  // Ensure no selection if the current value isn't valid
+			  if (!foundSelected) {
+				  destSelect.value = ""; // Clear selection
+			  }
+			  if (!found2Selected && dest2Select) {
+				  dest2Select.value = ""; // Clear selection
+			  }
+		  }
+	  };
+  
+	  let url = "?action=getcolumns&table=" + encodeURIComponent(tableName);
+	  xmlhttp.open("GET", url, true);
+	  xmlhttp.send();
+  }
+  
+  let managementToolTableName = "";
+  let managementToolColumnName = "";
+  let managementToolTableHasLocationIdColumn = false;
+  
+  function managementRuleTableChange() {
+	managementToolTableName = document.getElementById("tableNameForManagementRule")[document.getElementById("tableNameForManagementRule").selectedIndex].value;
+	let xmlhttp = new XMLHttpRequest();
+	let mrColumn =  document.getElementById("mr_column");
+	let mrAggregator =  document.getElementById("mr_aggregator");
+	let mrTimespan =  document.getElementById("mr_timespan");
+	let mrTimeColumn =  document.getElementById("mr_timeColumn");
+	xmlhttp.onreadystatechange = function() {
+	  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+		//alert(xmlhttp.responseText);
+		let columns = JSON.parse(xmlhttp.responseText);
+		managementToolTableHasLocationIdColumn = columns.includes("device_id");
+		mrColumn.innerHTML = "<span>Column:</span><span> " + genericSelect("columnNameForManagementRule", "columnNameForManagementRule", "", columns, "onchange", "managementRuleColumnChange()"  )  + "</span>";
+		mrAggregator.innerHTML = "<span>Aggregator function:</span><span> " + genericSelect("aggregatorForManagementRule", "aggregatorForManagementRule", "", ["AVG","INTEGRAL","MAX","MIN","SUM"], "onchange", "managementRuleColumnChange()"  )  + "</span>";
+		mrTimespan.innerHTML = "<span>Timespan:</span><span> " + genericSelect("timespanForManagementRule", "timespanForManagementRule", "", ["latest","today","yesterday"], "onchange", "managementRuleColumnChange()"  )  + "</span>";
+		mrTimeColumn.innerHTML = "<span>Time column:</span><span> " + genericSelect("timeColumnForManagementRule", "timeColumnForManagementRule", "", columns, "onchange", "managementRuleColumnChange()"  )  + "</span>";
+	
+	  
+	  }
+	}
+  
+	let url = "?action=getcolumns&table=" + encodeURIComponent(managementToolTableName); 
+	xmlhttp.open("GET", url, true);
+	xmlhttp.send();
+  }
+  
+  function managementRuleColumnChange() {
+    managementToolColumnName = document.getElementById("columnNameForManagementRule")[document.getElementById("columnNameForManagementRule").selectedIndex].value;
+    let xmlhttp = new XMLHttpRequest();
+    let mrLocation =  document.getElementById("mr_location");
+    let mrLocationValue = 0;
+    if(document.getElementById("locationForManagementRule")){
+      mrLocationValue = document.getElementById("locationForManagementRule")[document.getElementById("locationForManagementRule").selectedIndex].value;
+    }
+    let mrAggregator =  document.getElementById("aggregatorForManagementRule")[document.getElementById("aggregatorForManagementRule").selectedIndex].value;
+    let mrTimespan =  document.getElementById("timespanForManagementRule")[document.getElementById("timespanForManagementRule").selectedIndex].value;
+   	let mrTimeColumn =  document.getElementById("timeColumnForManagementRule")[document.getElementById("timeColumnForManagementRule").selectedIndex].value;
+    
+    
+    if(!managementToolTableHasLocationIdColumn){
+      tag = "<"  + managementToolTableName + "[]." + managementToolColumnName + "/>";
+      managementRuleDisplayTag(tag);
+    } else {
+      xmlhttp.onreadystatechange = function() {
+      if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+        console.log(xmlhttp.responseText);
+        let crudeLocations = JSON.parse(xmlhttp.responseText);
+        let locations = crudeLocations.map(row => {
+        return {
+          value: row.device_id,
+          text: row.name
+        };
+        });
+
+        let lastTagScript =  "makeManagementRuleTagFromLocation(document.getElementById('locationForManagementRule')[document.getElementById('locationForManagementRule').selectedIndex].value"  + ",'" + mrAggregator + "','" + mrTimespan + "','" + mrTimeColumn + "')";
+        mrLocation.innerHTML = "<span>Location:</span><span>" + genericSelect("locationForManagementRule", "locationForManagementRule", mrLocationValue,  locations, "onchange", lastTagScript ) + "</span>";
+    
+      }
+      }
+    
+      let url = "?action=getdevices"; 
+      xmlhttp.open("GET", url, true);
+      xmlhttp.send();
+    
+    }
+  }
+
+  function unescapeHtml(html) {
+	let textArea = document.createElement('textarea');
+	textArea.innerHTML = html;
+	return textArea.value;
+  }
+  
+  function managementRuleDisplayTag(tag) {
+	let mrTag =  document.getElementById("mr_tag");
+	mrTag.innerHTML = tag.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+	let mrButton =  document.getElementById("mr_button");
+	mrButton.style.display = 'block';
+  }
+  
+  function makeManagementRuleTagFromLocation(location, mrAggregator, mrTimespan, mrTimeColumn) {
+	let mrTag =  document.getElementById("mr_tag");
+	let aggregatorPart = "";
+	if(mrAggregator != "") {
+		aggregatorPart = mrAggregator + ":";
+	}
+	let timespanPart = "";
+	let timeColumnPart = "";
+	if(mrTimespan != "") {
+		timespanPart =  ":" + mrTimespan;
+	}
+	if(mrTimeColumn != "") {
+    timeColumnPart = "/" + mrTimeColumn;
+	}
+	let tag = "<"  + aggregatorPart + managementToolTableName + "[" + location + "]." + managementToolColumnName + timeColumnPart + timespanPart +  "/>";
+	mrTag.innerHTML = tag.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+	let mrButton =  document.getElementById("mr_button");
+	mrButton.style.display = 'block';
+  }
+  
+  function managementConditionsAddTag() {
+	let mrTag =  document.getElementById("mr_tag");
+	let tag = unescapeHtml(mrTag.innerHTML);
+	let formItemName = "conditions";
+	let textareas = document.getElementsByName(formItemName);
+	if (textareas.length > 0) {
+	  let textarea = textareas[0];
+  
+	  // Append the text to the existing content
+	  textarea.value += tag;
+	  /*
+	  let textareaCM = document.getElementById("id-" + formItemName);
+	  console.log(textareaCM);
+	  const allCodeMirrorInstances = document.querySelectorAll('.CodeMirror');
+	  console.log(allCodeMirrorInstances);
+	  for(let cmi of allCodeMirrorInstances){
+		  const cmInstance = cmi.CodeMirror || CodeMirror.fromTextArea(cmi.previousSibling);
+		  console.log(cmInstance);
+		  cmInstance.save();
+	  }
+	  console.log(allCodeMirrorInstances);
+	  if(textareaCM && textareaCM.CodeMirror) {
+		  textareaCM.CodeMirror.save();
+	  }
+	  */
+	} else {
+		console.warn(`Textarea with name "${formItemName}" not found.`);
+	}
+  }
+  
+  function cancelInstantCommand(commandLogId) {
+     const payload = {
+        action: "cancelinstantcommand",
+        command_log_id: commandLogId
+    };
+    const xmlhttp = new XMLHttpRequest();
+	  xmlhttp.onreadystatechange = function() {
+		  //console.log("did" + xmlhttp.readyState + " " +xmlhttp.status  );
+		  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+			  const data = xmlhttp.responseText;
+			  dateInfo = JSON.parse(data);
+		  }
+	  }
+    xmlhttp.open("POST", "tool.php", true);
+    // Tell the server we�re sending JSON
+    xmlhttp.setRequestHeader("Content-Type", "application/json");
+    xmlhttp.send(JSON.stringify(payload));
+	  
+  }
+  
+  function instantCommandFrontend() {
+	  let xmlhttp = new XMLHttpRequest();
+	  const div = document.getElementById('utilityDiv');
+	  let out = "";
+	  out += "<div id='commandline' style='display:none'>Command: <input id='command_text' style='width:380px'/>";
+	  out += "&nbsp;&nbsp;Data: <input id='command_data' style='width:200px'/>";
+	  
+  
+	  out += "<button type='button' onclick='instantCommand()'>Run</button></div>";
+	  out += "<div>Device: <span style='margin-left:17px' id='deviceDropdown'/></div>";
+   
+	  //out += "<div>Responses: <textarea id='command_response' style='width:680px;height:400px'/></textarea></div>";
+	  out += "<div>Interactive Command Log: <div id='instantcommandlog'></div></div>";
+	  div.innerHTML = out;
+	  xmlhttp.onreadystatechange = function() {
+		  //console.log("did" + xmlhttp.readyState + " " +xmlhttp.status  );
+		  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+			  const data = xmlhttp.responseText;
+			  selectData = JSON.parse(data);
+			  let selectedString = "\n<select onchange='instantCommand(true)' name='device_id' id='device_id'>\n";
+			  selectedString += '\n<option value="">none</option>\n';
+			  for(let item of selectData){
+				  selectedString += '\n<option value="' + item["device_id"] + '">' + item["name"] + '</option>\n';
+			  }
+			  selectedString += '\n</select>\n'
+			  document.getElementById("deviceDropdown").innerHTML = selectedString;
+		  }
+	  }
+	  let url = "?action=getdevices";
+	  xmlhttp.open("GET", url, true);
+	  xmlhttp.send();
+	  
+	  console.log(url);
+   
+  }
+  
+  
+let startedUpdatingInstantCommand = false;
+let resultRecorded = {};
+let greatestResultRecorded = "";
+ 
+
+function populateInstantCommandForm(command_log_id) {
+	const commandTextFormItem = document.getElementById("command_text");
+	const commandDataFormItem = document.getElementById("command_data");
+	const deviceIdFormItem = document.getElementById("device_id");
+	let xmlhttp = new XMLHttpRequest();
+	const commandResponseTextArea = document.getElementById('command_response'); //document.querySelector(`textarea[name="command_response"]`);
+	xmlhttp.onreadystatechange = function() {
+		//console.log("did" + xmlhttp.readyState + " " +xmlhttp.status  );
+		if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+			const jsonData = xmlhttp.responseText;
+			const recordedData = JSON.parse(jsonData);
+			commandTextFormItem.value = recordedData["command_text"];
+			commandDataFormItem.value = recordedData["command_data"];
+			const deviceId = recordedData["device_id"];
+			for (let i = 0; i < deviceIdFormItem.options.length; i++) {
+				const option = deviceIdFormItem.options[i];
+				if (parseInt(option.value) === parseInt(deviceId)) {
+					option.selected = true;
+					break;
+				}
+			}
+		}
+		instantCommand(true);
+	};
+	let url = "?action=json&table=command_log&command_log_id=" + command_log_id; 
+	xmlhttp.open("GET", url, true);
+	xmlhttp.send();
+}
+
+  function instantCommand(nodata) {
+		const params = new URLSearchParams();
+		const commandTextInput = document.getElementById('command_text');//document.querySelector(`textarea[name="command_text"]`);
+		const commandDataInput = document.getElementById('command_data');
+		const commandText = commandTextInput.value;
+		const commandData = commandDataInput.value;
+		const commandLine = document.getElementById('commandline');
+ 
+		const deviceDropdown = document.querySelector(`select[name="device_id"]`);
+		let deviceId = 0;
+		if(deviceDropdown){
+			deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
+		}
+		commandLine.style.display = 'block';
+		if(!deviceId) {
+			commandLine.style.display = 'none';
+		}
+		const logPlace = document.getElementById('instantcommandlog');
+		
+		let xmlhttp = new XMLHttpRequest();
+		xmlhttp.onreadystatechange = function() {
+			//console.log(xmlhttp.responseText);
+			if(xmlhttp.responseText){
+				let data = JSON.parse(xmlhttp.responseText);
+				//console.log(xmlhttp.responseText.length); // Check full size matches expected
+        //console.log(xmlhttp.responseText.slice(7950, 8020)); // Peek near the reported error
+				let html = "<div class='list'>";
+				html += "<div class='listrow'><span>recorded</span><span>command</span><span>results</span>";
+ 
+				if(deviceId == "NULL") {
+					html += "<span>device</span>";
+				}
+				html += "<span>response time</span>";
+				html += "<span>action</span>";
+				html += "</div>";
+ 
+				for(let datum of data) {
+					if(!deviceId) {
+						deviceId = 0;
+					}
+					//console.log(datum["result_recorded"]);
+					if(!resultRecorded[deviceId]) {
+						resultRecorded[deviceId] = "";
+					}
+					
+					if(datum["result_recorded"] > resultRecorded[deviceId] || resultRecorded[deviceId] == "") {
+						//resultRecorded is a global
+						resultRecorded[deviceId] = datum["result_recorded"]; //we want to know what the largest resultRecorded is for update reasons
+					}
+					if( datum["result_recorded"] > greatestResultRecorded) {
+						greatestResultRecorded = datum["result_recorded"];
+					}
+					let loader = "<div class=\"dot-loader\"><span></span><span></span><span></span></div>";
+					html += "<div class='listrow'><span>" + datum['recorded'] + "</span><span style='cursor:pointer' onclick=\"populateInstantCommandForm(" + datum['command_log_id'] + ")\">" + datum['command_text']  + "</span>";
+					html += "<span>";
+					if(datum["result_text"] != "" && datum["result_text"] != null){
+						html += datum["result_text"];
+					} else if(parseInt(datum["canceled"]) == 1){
+            html += "<em>canceled</em>";
+					} else if(timeAgo(datum["recorded"],  null, true) > 200){
+							html += "<em>data never returned</em>";
+					} else {
+						html +=  loader;
+					}
+					html +=  "</span>";
+					if(deviceId == "NULL") {
+						html +=  "<span>" + datum["device_name"]  + " </span>";
+					}
+					//console.log(datum["result_recorded"]);
+					let timeToResult = loader;
+					if(datum["result_recorded"] ) {
+            timeToResult = timeAgo(datum["recorded"], datum["result_recorded"], false, true);
+					}
+					html +=  "<span>" +  timeToResult  + " </span>";
+					html +=  "<span>";
+					if(!datum["result_recorded"]) {
+            html +=  "<button onclick='cancelInstantCommand(" +  datum["command_log_id"] + ")'>cancel</button></span>";
+          }
+          html +=  "</span>";
+          html +=  "</div>";
+				}
+				html += "</div>";
+				logPlace.innerHTML = html;
+			}
+			if(!startedUpdatingInstantCommand){
+				startedUpdatingInstantCommand = true;
+				setTimeout(()=>{
+					updateInstantCommandResponse();
+					instantCommand(true);
+					
+				}, 2000);
+			}
+		}
+		
+
+		let url = "?table=utilities&action=instantcommand"; 
+		
+		if(!nodata){
+			params.append("command_text", commandText);
+		}
+		if(!nodata){
+			params.append("command_data", commandData);
+		}
+		if(!deviceId) {
+      deviceId = "NULL"
+		}
+    
+		params.append("device_id", deviceId);
+		
+		xmlhttp.open("POST", url, true);
+		xmlhttp.send(params);
+
+	  	return false;
+  }
+  
+  
+
+  function updateInstantCommandResponse() {
+	  //console.log("update command");
+	  let xmlhttp = new XMLHttpRequest();
+	  const commandResponseTextArea = document.getElementById('command_response'); //document.querySelector(`textarea[name="command_response"]`);
+	  //if(commandResponseTextArea) {
+		xmlhttp.onreadystatechange = function() {
+			//console.log("did" + xmlhttp.readyState + " " +xmlhttp.status  );
+			if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+				//const data = xmlhttp.responseText;
+				//console.log(data);
+
+				/*
+							echo '{"localCommand": "refresh"}';
+				unlink($possibleTemporaryCommandFileName);
+				} else {
+				echo '{"localCommand": "none"}';
+				*/
+				//commandResponseTextArea.value += data;
+				if(xmlhttp.responseText){
+					let data = JSON.parse(xmlhttp.responseText);
+					if(data["status"] == "new"){
+						instantCommand(true);
+					}
+				}
+			}
+		}
+		const deviceDropdown = document.querySelector(`select[name="device_id"]`);
+		const deviceId = deviceDropdown[deviceDropdown.selectedIndex].value;
+		//resultRecorded has to be a global!
+		let lastGotDataTime = resultRecorded[deviceId];
+		if (!deviceId) {
+      lastGotDataTime = greatestResultRecorded;
+    }
+    //console.log(greatestResultRecorded);
+		let url = "?action=commandpoll&result_recorded=" + encodeURIComponent(lastGotDataTime) + "&device_id=" + deviceId; 
+		xmlhttp.open("GET", url, true);
+		xmlhttp.send();
+		//console.log(url);
+		setTimeout(()=>updateInstantCommandResponse(), 5000);
+	  //}
+  }
+  
+  
+  //report-related graphing:
+  ///////////////////////////////////////
+  
+  function displayReport(reportId, canvasId, reportData, reportOutput) {
+	displayViewOption(canvasId, reportData, reportOutput , reportId);
+  
+  }
+  
+  function initGoogleMap() {
+	  //don't do anything
+  }
+  
+  //does adjustments to colors based on plot parameters and record data
+  //this allows data to change colors dynamically in graphs and maps
+  function manipulateColor(plotColor, plot, record) {
+	  //do color effects from data if specified
+	  var darkenByDivisor = 1;
+	  var lightenByDivisor = 1;
+	  var saturateByDivisor = 1;
+	  var desaturateByDivisor = 1;
+  
+	  if(plot.darkenByDivisor) {
+		  darkenByDivisor = plot.darkenByDivisor;
+	  }
+	  if(plot.lightenByDivisor) {
+		  lightenByDivisor = plot.lightenByDivisor;
+	  }
+	  if(plot.saturateByDivisor) {
+		  saturateByDivisor = plot.saturateByDivisor;
+	  }
+	  if(plot.desaturateByDivisor) {
+		  desaturateByDivisor = plot.desaturateByDivisor;
+	  }
+	  if(plot.darkenBy) {
+		  //console.log(plotLineColor + " " + tinycolor(plotLineColor).darken(30) + " "+ record[plot.darkenBy]);
+		  plotColor = tinycolor(plotColor.toString()).darken(parseInt(record[plot.darkenBy]/darkenByDivisor)).toHexString()
+	  }
+	  if(plot.lightenBy) {
+		  //console.log(plotLineColor + " " + tinycolor(plotLineColor).darken(30) + " "+ record[plot.darkenBy]);
+		  plotColor = tinycolor(plotColor.toString()).lighten(parseInt(record[plot.lightenBy]/lightenByDivisor)).toHexString()
+	  }
+	  if(plot.saturateBy) {
+		  //console.log(plotLineColor + " " + tinycolor(plotLineColor).darken(30) + " "+ record[plot.darkenBy]);
+		  plotColor = tinycolor(plotColor.toString()).saturate(parseInt(record[plot.saturateBy]/saturateByDivisor)).toHexString()
+	  }
+	  if(plot.desaturateBy) {
+		  //console.log(plotLineColor + " " + tinycolor(plotLineColor).darken(30) + " "+ record[plot.darkenBy]);
+		  plotColor = tinycolor(plotColor.toString()).desaturate(parseInt(record[plot.desaturateBy]/desaturateByDivisor)).toHexString()
+	  }
+	  return plotColor;
+  }
+  
+  function reportsDivSet(divToShow, reportId) {
+	  var allDivs = ["googleMapsDiv","reportVisualization", "searchResults-" . reportId, "searchResults"];
+	  //console.log(allDivs.length);
+	  if(reportId) {
+		  for(var i=0; i<allDivs.length; i++) {
+			  var divInQuestion = document.getElementById(allDivs[i]);
+			  if(divInQuestion) {
+				  //console.log(divInQuestion);
+				  if(allDivs[i] != divToShow) {
+					  //console.log(allDivs[i]);
+					  divInQuestion.style.display = 'none';
+				  } else {
+					  //console.log("ok:" + allDivs[i]);
+					  divInQuestion.style.display = 'block';
+				  }
+			  }
+		  }
+	  }
+  }
+  
+  
+  
+  //values can be a reportId if you want to read a live form
+  function genericParamReplace(stringIn, values, paramPrefix) {
+	  if(!paramPrefix) {
+		  paramPrefix = "@";
+	  }
+	  if((typeof values == "string")){
+		  var formIn;
+		  //values is actually a reportId, so read the live values off the form
+		  if(document.getElementById("reportForm-" + values)) {
+			  formIn = document.getElementById("reportForm-" + values).elements;
+		  } else if(document.getElementById("searchForm")) {
+			  formIn = document.getElementById("searchForm").elements;
+		  } else {
+			  return stringIn;
+		  }
+		  values = new Array();
+		  //console.log(formIn.length);
+		  for(var i=0; i<formIn.length; i++) {
+			  var element = formIn[i];
+			  //console.log(element);
+			  //if(formItem["name"]) {
+				  values[element.name] = decodeURIComponent(element.value);
+			  //}
+		  }
+	  }
+	  for(var key in values) {
+		  var value = values[key];
+		  if(key.trim() != "") {
+			  //console.log(value);
+			  //apparently there are errors in this process at times, so:
+			  try {
+				  var decodedUriComponent = decodeURIComponent(value);
+				  stringIn = stringIn.replace(paramPrefix + key, decodedUriComponent);
+				  //console.log(decodedJsonData);
+			  }
+			  catch (err) { 
+				  //dont bother
+			  }
+			   
+		   }
+	  }
+	  return stringIn;
+  }
+  
+  function isHexDec(inVal) {
+	  var re = /[0-9A-Fa-f]{6}/g;
+	  if(re.test(inVal)) {
+		  return true;
+	  } else {
+		  return false;
+	  }
+  }
+  
+  //returns either a string beginning with # or a possibly-acceptable color name based on the input. 
+  //returns an array if given one or if the colors are a string list 
+  function colorFix(strIn) {
+	  //console.log(strIn);
+	  if(strIn) {
+		  if((typeof strIn == "string")){
+			  strIn = strIn.replace('#', '').trim();
+			  if(strIn.indexOf(" ")) {
+				  strIn = strIn.split(" "); //handle below
+			  } else {
+				  if(isHexDec(strIn)) {
+					  return "#" + strIn.trim();
+				  } else {
+  
+					  return strIn.trim();
+				  }
+			  }
+		  } 
+		  if (strIn instanceof Array) {
+			  for(var i=0; i<strIn.length; i++) {
+				  //console.log(strIn[i]);
+				  strIn[i] = strIn[i].replace('#', '');
+				  if(isHexDec(strIn)) {
+					  strIn[i] = "#" + strIn[i].trim();
+				  } else {
+  
+					  strIn[i] = strIn[i].trim();
+				  }
+			  }
+			  return strIn;
+		  }
+	  }
+  
+  }
+  
+  function formatJSON(jsonString, indent = 2) {
+    try {
+      // Parse the JSON string into an object
+      const jsonObj = JSON.parse(jsonString);
+      
+      // Convert the object back into a formatted JSON string
+      return JSON.stringify(jsonObj, null, indent);
+    } catch (error) {
+      // Handle errors in case of invalid JSON
+      //console.error("Invalid JSON string:", error);
+      return jsonString; //but then just return whatever it was, because we don't want to just throw out the baby with the bathwater
+    }
+  }
+  
+
+function formatSQL(sql) {
+  const keywords = [
+    'SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT',
+    'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'OUTER JOIN', 'JOIN',
+    'ON', 'HAVING'
+  ];
+  const newlineKeywords = new Set([
+    'SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT',
+    'JOIN', 'ON', 'HAVING'
+  ]);
+  const indentKeywords = new Set([
+    'SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT'
+  ]);
+
+  // --- 1. Extract XML blocks ---
+  let xmlBlocks = [];
+  sql = sql.replace(/<[^>]+>/gms, match => {
+    let index = xmlBlocks.length;
+    xmlBlocks.push(match);
+    return `__XML_BLOCK_${index}__`;
+  });
+
+  // --- 2. Format the SQL normally ---
+  let formatted = '';
+  let indentLevel = 0;
+
+  const tokens = sql.match(
+    /(--.*?$)|('[^']*'|"[^"]*")|<=|>=|<>|!=|[=<>!]|[\w.*]+|[(),+\-/*;]/gms
+  ) || [];
+
+
+  function addNewline(level = indentLevel) {
+    formatted += '\n' + '  '.repeat(level);
+  }
+
+  for (let i = 0; i < tokens.length; i++) {
+    let token = tokens[i];
+    let upperToken = token.toUpperCase().trim();
+
+    if (token.startsWith('--')) {
+      addNewline(0);
+      formatted += token.trim();
+    } else if (newlineKeywords.has(upperToken)) {
+      indentLevel = 0;
+      addNewline();
+      formatted += upperToken;
+      if (indentKeywords.has(upperToken)) indentLevel = 1;
+    } else if (token === ',') {
+      formatted += ',';
+      addNewline();
+    } else if (token === ';') {
+      formatted += ';';
+      addNewline();
+      addNewline();
+    } else if (token === '(' || token === ')') {
+      formatted += token;
+    } else {
+      if (formatted && !/\s$/.test(formatted)) formatted += ' ';
+      formatted += token.trim();
+    }
+  }
+
+  formatted = formatted.trim();
+
+  // --- 3. Restore XML blocks ---
+  formatted = formatted.replace(/__XML_BLOCK_(\d+)__/g, (_, idx) => xmlBlocks[idx]);
+
+  return formatted;
+}
+
+
+
+function formatSQL(sql) {
+  // Keywords that trigger a newline
+  const newlineKeywords = [
+    'SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'LIMIT',
+    'JOIN', 'ON', 'HAVING', 'WITH', 'UNION', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END'
+  ];
+
+  // --- 1. Extract quoted strings and XML placeholders ---
+  const literals = [];
+  sql = sql.replace(/('[^']*')|("[^"]*")|<[^>]+\/>/gms, match => {
+    const idx = literals.length;
+    literals.push(match);
+    return `__LIT_${idx}__`;
+  });
+
+  // --- 2. Add newlines before keywords ---
+  const keywordRegex = new RegExp(`\\b(${newlineKeywords.join('|')})\\b`, 'gi');
+  sql = sql.replace(keywordRegex, match => '\n' + match.toUpperCase());
+
+  // --- 3. Normalize spacing around commas ---
+  sql = sql.replace(/\s*,\s*/g, ', ');
+
+  // --- 4. Restore literals ---
+  sql = sql.replace(/__LIT_(\d+)__/g, (_, i) => literals[i]);
+
+  // --- 5. Clean up extra spaces/newlines ---
+  sql = sql.replace(/\n\s+/g, '\n  ');  // indent 2 spaces after newlines
+  sql = sql.replace(/[ \t]+/g, ' ');    // normalize spaces
+
+  return sql.trim();
+}
+
+  //the result of a productive back-and-forth with ChatGPT:
+  function xsmoothArray(intArray, windowSize, weightFactor) {
+	  // Create a new array to store the smoothed values
+	  let smoothedArray = [];
+	  
+	  // Precompute the weights
+	  let fullWeightSum = 0;
+	  let weights = [];
+	  if(!windowSize){
+		  windowSize = 10;
+	  }
+	  if(!weightFactor){
+		  weightFactor = 1;
+	  }
+	  // Generate weights based on weightFactor
+	  for (let i = -windowSize; i <= windowSize; i++) { //originally ChatGPT offered a fixed window of only three data points, which was far too small
+		let distance = Math.abs(i);
+		let weight = Math.pow(weightFactor, windowSize - distance); //this kinda defeats the purpose of large windows for weightFactors bigger than one, but it might be useful
+		weights.push(weight);
+		fullWeightSum += weight;
+	  }
+	
+	  // Iterate over each element in the array
+	  for (let i = 0; i < intArray.length; i++) {
+		let weightedSum = 0;
+		let actualWeightSum = 0;
+	
+		// Calculate the weighted sum of values within the window
+		for (let j = -windowSize; j <= windowSize; j++) {
+		  let index = i + j;
+	
+		  // Check if index is within bounds
+		  if (index >= 0 && index < intArray.length) {
+			let weight = weights[j + windowSize];
+			weightedSum += intArray[index] * weight;
+			actualWeightSum += weight;
+		  }
+		}
+	
+		// Calculate the weighted average and round to two decimal places
+		let smoothedValue = (weightedSum / actualWeightSum).toFixed(2);
+		smoothedArray.push(Number(smoothedValue));
+	  }
+	
+	  return smoothedArray;
+  }
+  
+  function linearInterpolate(start, end, steps) {
+	  let stepArray = [];
+	  let increment = (end - start) / (steps - 1); // Adjust increment to fit exactly
+	  for (let i = 0; i < steps; i++) { // Now only generate 'steps' points
+		  stepArray.push(start + increment * i);
+	  }
+	  return stepArray;
+  }
+  
+  function findInflectionPoints(values, tolerance) {
+	  let inflectionPoints = [];
+	  let slopes = [];
+	  
+	  for (let i = 1; i < values.length; i++) {
+		  slopes.push(values[i] - values[i - 1]);
+	  }
+	  
+	  let oldInflectionPoint = 0;
+	  for (let i = 1; i < slopes.length; i++) {
+		  let slopeChange = Math.abs(slopes[i] - slopes[i - 1]);
+		  let maxSlope = Math.max(Math.abs(slopes[i]), Math.abs(slopes[i - 1]));
+		  
+		  if (maxSlope > 0 && (slopeChange / maxSlope) * 100 > tolerance) {
+			  if ((i + 1) - oldInflectionPoint > 1) {
+				  inflectionPoints.push(i + 1);
+			  }
+			  oldInflectionPoint = i + 1;
+		  }
+	  }
+	  inflectionPoints.push(values.length - 1);
+  
+	  return inflectionPoints;
+  }
+  
+  function smoothArray(intArray, minimumWindowSize, weightFactor) {
+	  let inflectionPoints = findInflectionPoints(intArray, 0.5);
+	  let smoothedArray = [];
+	  
+	  if (!minimumWindowSize) {
+		  minimumWindowSize = 10;
+	  }
+	  if (!weightFactor) {
+		  weightFactor = 1;
+	  }
+	  
+	  let oldInflectionPoint = 0;
+  
+	  for (let inflectionPoint of inflectionPoints) {
+		  let windowSize = inflectionPoint - oldInflectionPoint;
+		  if (windowSize < minimumWindowSize) {
+			  windowSize = minimumWindowSize;
+		  }
+		  
+		  // Smooth between inflection points using linear interpolation
+		  let interpolatedValues = linearInterpolate(intArray[oldInflectionPoint], intArray[inflectionPoint], inflectionPoint - oldInflectionPoint);
+		  smoothedArray.push(...interpolatedValues);
+		  
+		  oldInflectionPoint = inflectionPoint;
+	  }
+	  
+	  return smoothedArray;
+  }
+  
+  // Cubic spline interpolation
+  function cubicSpline(x, y) {
+	  const n = x.length - 1;
+	  const a = [...y];
+	  const b = new Array(n).fill(0);
+	  const d = new Array(n).fill(0);
+	  const h = [];
+	  const alpha = [];
+  
+	  // Step 1: Calculate h and alpha
+	  for (let i = 0; i < n; i++) {
+		  h[i] = x[i + 1] - x[i];
+		  alpha[i] = (3 / h[i]) * (a[i + 1] - a[i]) - (3 / h[i - 1]) * (a[i] - a[i - 1]);
+	  }
+  
+	  // Step 2: Solve the tridiagonal system
+	  const c = new Array(n + 1).fill(0);
+	  const l = new Array(n + 1).fill(1);
+	  const mu = new Array(n + 1).fill(0);
+	  const z = new Array(n + 1).fill(0);
+  
+	  for (let i = 1; i < n; i++) {
+		  l[i] = 2 * (x[i + 1] - x[i - 1]) - h[i - 1] * mu[i - 1];
+		  mu[i] = h[i] / l[i];
+		  z[i] = (alpha[i] - h[i - 1] * z[i - 1]) / l[i];
+	  }
+  
+	  for (let j = n - 1; j >= 0; j--) {
+		  c[j] = z[j] - mu[j] * c[j + 1];
+		  b[j] = (a[j + 1] - a[j]) / h[j] - h[j] * (c[j + 1] + 2 * c[j]) / 3;
+		  d[j] = (c[j + 1] - c[j]) / (3 * h[j]);
+	  }
+  
+	  // The cubic spline coefficients for each segment are now a, b, c, d
+	  return { a, b, c, d, x };
+  }
+  
+  // Spline interpolation at a given point
+  function splineInterpolate(spline, xi) {
+	  const { a, b, c, d, x } = spline;
+	  let i = 0;
+  
+	  // Find the right interval for xi
+	  for (let j = 1; j < x.length; j++) {
+		  if (xi < x[j]) {
+			  i = j - 1;
+			  break;
+		  }
+	  }
+  
+	  const dx = xi - x[i];
+	  return a[i] + b[i] * dx + c[i] * Math.pow(dx, 2) + d[i] * Math.pow(dx, 3);
+  }
+  
+  // Function to smooth the array using cubic splines between inflection points
+  function wsmoothArray(values, minimumWindowSize, weightFactor) {
+	  let inflectionPoints = findInflectionPoints(values, 90);
+	  let smoothedArray = [];
+  
+	  let x = [];
+	  let y = [];
+  
+	  for (let i = 0; i < inflectionPoints.length; i++) {
+		  x.push(inflectionPoints[i]);
+		  y.push(values[inflectionPoints[i]]);
+	  }
+  
+	  const spline = cubicSpline(x, y);
+  
+	  // Generate smoothed values
+	  for (let i = 0; i < values.length; i++) {
+		  smoothedArray.push(splineInterpolate(spline, i));
+	  }
+  
+	  return smoothedArray;
+  }
+  
+  //uses charts.js library to make all sorts of graphs. also a serves as the launch point for other viewOptions like google maps and calendar
+  function displayViewOption(canvasId, records, viewOptionInfo, reportId) {
+	  if(!viewOptionInfo) {
+		  return;
+	  }
+	  //allow us to manipulate the graphing process with report form inputs (just put @variables in the JSON anywhere JSON will allow it)
+	  if(reportId) {
+		  var encodedViewOptions = genericParamReplace(JSON.stringify(viewOptionInfo), reportId, "@");
+		  //console.log(encodedViewOptions);
+		  viewOptionInfo =  JSON.parse(encodedViewOptions);
+	  }
+	  var type = viewOptionInfo.type;
+	  if(!type) {
+		  type = "line";
+	  }
+  
+	  //map is handled by google maps, not charts.js, so catch that here:
+	  if(type == "map") {
+		  reportsDivSet("googleMapsDiv", reportId);
+		  return plotOnMap(globalMap, records, viewOptionInfo);
+	  } else if(type == "email") {
+		  reportsDivSet("searchResults-" + reportId, reportId);
+		  return sendEmailConfirm(records, viewOptionInfo, reportId);
+	  }	if(type == "calendar") {
+		  reportsDivSet("searchResults-" + reportId, reportId);
+		  return displayCalendar(records, viewOptionInfo, reportId);
+	  }
+  
+	  reportsDivSet("reportVisualization", reportId);
+	  //in case we need to draw pie charts and no colors were supplied in the root of the viewOptionInfo:
+	  var strStockColors = "ff0099,ff9900,99ff99,9999ff,990099,00ff00,00ffff,ffff00,0000ff,999900,990000,ff0000,000000,ffffff,330000,990033";
+	  if(viewOptionInfo.colors) {
+		  strStockColors = viewOptionInfo.colors;
+	  }
+  
+	  if(viewOptionInfo.colors) {
+		  strStockColors = viewOptionInfo.colors;
+	  }
+	  var stockColors = strStockColors.split(",");
+	  var defaultColor = stockColors[0];
+	  var noAxes = ["doughnut", "pie"];
+	  var plots = viewOptionInfo.plots;
+	  var caption = viewOptionInfo.caption;
+	  var dataSets = new Array();
+	  var labels = new Array();
+	  var labelsMade = false;
+	  var colorIndex = 0;
+  
+	if(!caption){
+	  caption = "";
+	}
+	  
+	  var borderColor;
+	  if(plots) {
+		  for(var i=0; i<plots.length; i++) {
+			  var plot = plots[i];
+			  var colorsForPies = new Array();
+			  defaultWeight = 1;
+			  if(plot.lineWeight) {
+				  defaultWeight = plot.lineWeight;
+  
+			  }
+			  if(!plot.lineWeight && viewOptionInfo.lineWeight) {
+				  defaultWeight = viewOptionInfo.lineWeight;
+			  }
+  
+			  //console.log(plot);
+			  //narrow the data:
+			  var narrowedData = new Array();
+			  var colorToUse = new Array();
+			  if(records && records.length) {
+				  for(var j=0; j<records.length; j++) {
+					  var record = records[j];
+					  if(!viewOptionInfo.excludeValue || (viewOptionInfo.excludeValue && viewOptionInfo.excludeValue!=record[viewOptionInfo.labelColumn])) {
+						  //console.log(colorFix(thisColor));
+						  if(!labelsMade) {
+							  labels.push(record[viewOptionInfo.labelColumn]);
+							  var thisColor = stockColors[colorIndex];
+  
+							  //console.log((thisColor));
+							  if(colorFix(thisColor) instanceof Array) {
+								  colorsForPies.push(colorFix(thisColor)[0]);
+								  
+							  } else {
+								  colorsForPies.push(colorFix(thisColor));
+							  }
+							  colorIndex++;
+							  if(colorIndex >= stockColors.length) {
+								  colorIndex = 0;
+							  }
+						  }
+						  if(plot.column) {
+							  narrowedData.push(parseFloat(record[plot.column]));
+						  }
+					  }
+					  //need a default in case color is not set
+					  var plotLineColor = stockColors[colorIndex];
+					  if(plot.color) {
+						  plotLineColor = plot.color;
+					  }
+  
+					  plotLineColor = manipulateColor(plotLineColor, plot, record);
+  
+					  if(!(plotLineColor instanceof Array)) {
+						  colorToUse.push(plotLineColor);
+					  }
+			   
+					  //borderColor = colorToUse;
+					  if (viewOptionInfo.color) {
+						  borderColor = viewOptionInfo.color;
+					  }
+  
+				  }
+			  }
+			  labelsMade = true;
+  
+			  if (noAxes.indexOf(type) > -1) {
+				  console.log(colorsForPies);
+				  
+				  colorToUse = colorsForPies;
+			  }
+  
+			  //colorToUse = colorsForPies;
+			  //console.log(colorFix(colorToUse));
+			  //
+			  borderColor = colorFix(borderColor);
+			  //console.log(colorFix(borderColor));
+			  if ((borderColor instanceof Array)) {
+				  borderColor = borderColor[0];
+			  }
+			  if(!borderColor) {
+				  borderColor = colorFix(defaultColor);
+			  }
+			  //borderColor = '#000000';
+			  //colorToUse = '#ff0000';
+			  //console.log(colorToUse[0]);
+	   
+			  if(type == 'line' && colorToUse instanceof Array) {
+				  colorToUse = colorToUse[0];
+			  }
+			  //console.log(colorToUse);
+			  var plotShape = "circle";
+			  var radius = 4;
+			  if(plot["shape"]) {
+				  if(plot["shape"].type) {
+					  plotShape = plot["shape"].type;
+				  }
+				  if(plot["shape"].radius) {
+					  radius = plot["shape"].radius;
+				  }
+				  //allows the circle size to be changed by data
+				  if(plot["shape"].alternativeMagnitude) {
+					  //i also want to have a synonymn for alternativeMagnitude
+					  //harmonize how this works with gooogle maps
+					  radius = record[plot["shape"].alternativeMagnitude];
+				  }
+			
+				  radius = parseFloat(radius);
+				  if(plot.shape && plot.shape.alternativeMagnitudeDivisor) {
+					  radius = radius/plot.shape.alternativeMagnitudeDivisor;
+				  }
+  
+			  }
+			  dataSets.push(
+			  {
+				  label: plot.label,
+				  backgroundColor: colorFix(colorToUse),
+				  borderColor: colorFix(colorToUse), //had been borderColor, which was so wrong
+				  data: narrowedData,
+				  borderWidth: defaultWeight,
+				  pointStyle : plotShape,
+				  radius : radius,
+				  fill: false,
+			  });
+		  }
+	  }
+	  var scaleDisplay = true;
+	  if (noAxes.indexOf(type) > -1) {
+			 scaleDisplay = false;
+		 }
+    let xScaleType = "time";
+    if(viewOptionInfo.xScaleType) {
+      xScaleType = viewOptionInfo.xScaleType;
+    }
+    yAxisLabel = "";
+    if(viewOptionInfo.yAxisLabel) {
+      yAxisLabel = viewOptionInfo.yAxisLabel;
+    }
+	  var scales = {
+		  
+		  x: {
+				type: xScaleType,
+				title: {
+				display: scaleDisplay,
+				text: viewOptionInfo.labelColumn
+				}
+			},
+			y: {
+				type: 'linear',
+				position: 'left',
+				title: {
+				display: scaleDisplay,
+				text: yAxisLabel
+				}
+			}
+	  }
+  
+	  var config = {
+		  type: type,
+		  data: {
+			  labels: labels,
+			  datasets: dataSets
+		  },
+		  options: {
+			  responsive: true,
+			  title:{
+				  display:true,
+				  text: caption
+			  },
+			  tooltips: {
+				  mode: 'index',
+				  intersect: false,
+			  },
+			  hover: {
+				  mode: 'nearest',
+				  intersect: true
+			  },
+			  scales: scales
+		  }
+	  };
+	
+	  // console.log(config);
+	  var canvas = false;
+	  if(document.getElementById(canvasId)) {
+		  canvas = document.getElementById(canvasId).getContext("2d");
+	  }
+	  //var canvas = document.getElementById(canvasId);
+	  if(canvas) {
+		  //canvas.style.display='block';
+	  } else {
+		  return;
+	  }
+	  window.graphics = null;
+	  window.graphics = new Chart(canvas, config);
+	  /*
+	  if(typeof(viewOptionInfo["width"]) != "undefined") {
+		  canvas.style.width= viewOptionInfo.width + "px";
+	  }
+	  if(viewOptionInfo.height) {
+		  canvas.style.height= viewOptionInfo.height + "px";
+	  }
+	  */
+  
+	  window.graphics.update();
+  }
+  
+  function plotOnMap(map, records, viewOptionInfo) {
+	  var place = document.getElementById("googleMapper");
+	  if(!place) {
+		  return;
+	  }
+	  /*
+	  setTimeout(function() {
+	  google.maps.event.trigger(map, "resize");
+  
+	  }, 4000);
+	  */
+	  place.style.display = 'block';
+  
+	  if(typeof(viewOptionInfo["width"]) != "undefined") {
+		  place.style.width = viewOptionInfo.width + "px";
+	  } else {
+		  //place.style.width = "1000px";
+	  }
+	  if(viewOptionInfo.height) {
+		  canvas.style.height= viewOptionInfo.height + "px";
+	  } else {
+  
+		  //place.style.height = "600px";
+	  }
+	  var degreeWiggle = 0;
+	  var degreeWiggleLatColumn = null;
+	  var degreeWiggleLonColumn = null;
+	  var markerArray = new Array();
+	  var markerCursor = 0;
+	  var defaultOpacity = "0.1";
+	  
+	  var reportVisualization = document.getElementById("reportVisualization");
+	  if(reportVisualization) {
+		  reportVisualization.style.display = 'none';
+	  }
+	  var strStockColors = "ff0099,ff9900,99ff99,9999ff,990099,00ff00,00ffff,ffff00,0000ff,999900,990000,ff0000,000000,ffffff,330000,990033";
+	  
+	  if(viewOptionInfo.colors) {
+		  strStockColors = viewOptionInfo.colors;
+	  }
+	  var colorArray = strStockColors.split(",");
+	  var defaultColor = colorArray[0];
+	  if(viewOptionInfo.color) {
+		  defaultColor = viewOptionInfo.color;
+  
+	  }
+   
+	  var zoom = 0;
+	  if(viewOptionInfo.zoom) {
+		  zoom = viewOptionInfo.zoom;
+	  }
+	  if(viewOptionInfo.degreeWiggle) {
+		  degreeWiggle = viewOptionInfo.degreeWiggle;
+	  }
+  
+	  if(viewOptionInfo.degreeWiggleLatColumn) {
+		  degreeWiggleLatColumn = viewOptionInfo.degreeWiggleLatColumn;
+	  }	
+	  if(viewOptionInfo.degreeWiggleLonColumn) {
+		  degreeWiggleLonColumn = viewOptionInfo.degreeWiggleLonColumn;
+	  }	
+	  var mapType = 'terrain';
+	  if(viewOptionInfo.mapType) {
+		  mapType = viewOptionInfo.mapType;
+	  }
+	  var lat = viewOptionInfo.lat;
+	  var lon = viewOptionInfo.lon;
+	  if(!lat || !lon || !zoom) {
+		  var center = centerOfGeoPlot(viewOptionInfo, records);
+		  //console.log(viewOptionInfo.plots[0]);
+		  console.log(center);
+		  if(!lat) {
+			  lat = center.lat;
+		  }
+		  if(!lon) {
+			  lon = center.lon;
+		  }
+		  if(!zoom) {
+			  zoom = center.estimatedScale;
+		  }
+		  if(!zoom) {
+			  zoom = 5;
+		  }
+  
+	  }
+   
+  
+	   map = new google.maps.Map(place, {
+			zoom: zoom,
+			center: new google.maps.LatLng(lat, lon),
+			mapTypeId: mapType
+		  });
+  
+  
+	  //console.log(viewOptionInfo);
+	  for (var j = 0; j < viewOptionInfo.plots.length; j++) {
+	   
+		  var plot = viewOptionInfo.plots[j];
+		  if(plot.degreeWiggle) {
+			  degreeWiggle = plot.degreeWiggle;
+		  }
+		  if(plot.degreeWiggleLatColumn) {
+			  degreeWiggleLatColumn = plot.degreeWiggleLatColumn;
+		  }	
+		  if(plot.degreeWiggleLonColumn) {
+			  degreeWiggleLonColumn = plot.degreeWiggleLonColumn;
+		  }
+  
+		  var defaultWeight = 1;
+		  if(plot.lineWeight) {
+			  defaultWeight = plot.lineWeight;
+		  }
+		  if(!plot.lineWeight && viewOptionInfo.lineWeight) {
+			  defaultWeight = viewOptionInfo.lineWeight;
+		  }
+  
+		  var latColumn = plot.latColumn;
+		  var lonColumn = plot.lonColumn;
+		  var iconName = plot.iconName;
+		 var plotColor = defaultColor;
+		  var plotOpacity = defaultOpacity;
+		  var magnitudeColumn = plot.magnitudeColumn;
+		  var labelTemplate = plot.labelTemplate;
+		  var linkTemplate = plot.linkTemplate;
+		  var infoWindowTemplate = plot.infoWindowTemplate;
+		  if(plot.color) {
+			  plotColor = plot.color;
+		  }
+		  if(plot.opacity) {
+			  plotOpacity = plot.opacity;
+		  }
+  
+		  for (var i = 0; i < records.length; i++) {
+			  var didPlot = false;
+			  var record = records[i];
+			  var iconPath = "icons/default.png";
+			  var markerUrl = null;
+			  if(plot[iconName]) {
+				  iconPath = "icons/" + plot[iconName] + ".png";
+			  }
+  
+			  //lat/lon wiggle make sure that not all the map
+			  //markers don't stack on top of each other if all
+			  //the addresses in a zipcode get the same lat/lon
+			  //values.  degreeWiggleLatColumn/degreeWiggleLonColumn
+			  //make it so the markers always end up in the same random
+			  //place on the map
+			  var latWiggleAmount = 0;
+			  var lonWiggleAmount = 0;
+			  if(degreeWiggleLatColumn  && record[degreeWiggleLatColumn]) {
+				  latWiggleAmount = (record[degreeWiggleLatColumn] % 1000)/1000;
+			  } else if(degreeWiggle) {
+				  latWiggleAmount = Math.random();
+			  }
+			  if(degreeWiggleLonColumn && record[degreeWiggleLonColumn]) {
+				  lonWiggleAmount = (record[degreeWiggleLonColumn] % 1000)/1000 ;
+			  } else if(degreeWiggle) {
+				  lonWiggleAmount = Math.random();
+			  } 
+  
+			  var degreeWiggleDeltaLat = degreeWiggle * latWiggleAmount - (0.5 * degreeWiggle);
+			  var degreeWiggleDeltaLon = degreeWiggle * lonWiggleAmount - (0.5 * degreeWiggle);
+				//console.log(degreeWiggleDeltaLat + ' ' + degreeWiggleDeltaLon);
+				var latLng = new google.maps.LatLng(parseFloat(record[latColumn]) + degreeWiggleDeltaLat,parseFloat(record[lonColumn]) + degreeWiggleDeltaLon);
+				//console.log(latLng);
+				
+				var markerConfig = {
+				  position: latLng,
+				  map: map
+				}
+				if(plot[iconName]) {
+					markerConfig["icon"] = iconPath;
+				}
+				var quantity =  record[magnitudeColumn]; 
+			  if(!quantity) {
+				  quantity=0;
+			  } else {
+				  quantity = parseFloat(quantity);
+			  }
+			  if(plot.quantityDivisor) {
+				  quantity = quantity/plot.quantityDivisor;
+			  }
+			  if(labelTemplate) {
+				  markerConfig["label"] = genericParamReplace(labelTemplate, record, "@");
+			  }
+			  if(linkTemplate) {
+				  markerUrl = genericParamReplace(linkTemplate, record, "@");
+			  }
+  
+			  plotColor = manipulateColor(plotColor, plot, record);
+  
+			  //console.log(defaultColor);
+			  var marker = null;
+			  var mapShape = null;
+				if(plot["shape"]) {
+					if(plot["shape"].radius) {
+						quantity = plot["shape"].radius;
+					}
+					if(plot["shape"].type) {
+						if(plot["shape"].type == "circle") {
+							circleConfig = {
+  
+							  strokeColor: colorFix(plotColor), //had been defaultColor
+							  strokeOpacity: defaultOpacity,
+							  strokeWeight: defaultWeight,
+  
+							  fillColor: colorFix(plotColor),
+							  fillOpacity: plotOpacity,
+							  center: latLng,
+							  map: map,
+							  icon: "default",
+							  radius: quantity
+  
+							}
+							//console.log(circleConfig);
+							mapShape = new google.maps.Circle(circleConfig);
+							 
+							var didPlot = true;
+						}
+					}
+				}
+				if(!didPlot || plot["alwaysShowIcon"]) {
+  
+					markerArray[markerCursor] = new google.maps.Marker(markerConfig);
+					if(markerUrl) {
+						//console.log(markerUrl);
+						//markerArray[markerCursor].addListener("click", function() {navigateToPage(markerUrl)});
+						attachHyperlinkToMapMarker(markerArray[markerCursor], markerUrl);
+  
+					}
+					if(plot["infoWindowTemplate"]) {
+					 
+						//markerArray[markerCursor].addListener("mouseover", function() {console.log(markerCursor)});
+						attachHoverMapMarker(markerArray[markerCursor], plot["infoWindowTemplate"], record);
+					}
+					var didPlot = true;
+					markerCursor++;
+			   }
+		  }
+	  }
+  }
+  
+  //looks at records and tries to find the center of the data, as well as a zoom for google maps to use
+  //plots can now be viewOption to get the center of all plots
+  function centerOfGeoPlot(plot, records) {
+	  var latSum = 0;
+	  var lonSum = 0;
+	  var count = 0;
+	  var minLat = 100;
+	  var minLon = 400;
+	  var maxLat = 0;
+	  var maxLon = -300;
+	  var plots = [plot];
+	  if(plot.plots) {
+		  plots = plot.plots;
+	  }
+	  for(var j=0; j<plots.length; j++) {
+		  var plot = plots[j];
+		  if(plot) {
+			  //console.log(plot);
+			  for (var i = 0; i < records.length; i++) {
+				  var record = records[i];
+				  if(isNumeric(record[plot.latColumn]) && isNumeric(record[plot.lonColumn])) {
+					  var lat = parseFloat(record[plot.latColumn]);
+					  var lon = parseFloat(record[plot.lonColumn]);
+					  //console.log(lat + " " + lon);
+						latSum += lat;
+						lonSum += lon;
+						if(lon < minLon) {
+							minLon = lon;
+						}
+						if(lon > maxLon) {
+							maxLon = lon;
+						}
+						if(lat < minLat) {
+							minLat = lat;
+						}
+						if(lat > maxLat) {
+							maxLat = lat;
+						}
+						count++;
+					}
+			   }
+			   //12 is about 15 miles wide 12 diag
+			  //8 is about 200 miles wide   150 diag
+			  //6 is about 1200 miles wide  900 diag
+			  //4 is about 4000 miles across 3000 diag
+			  //basic pythagorean stuff here:
+			  var diagonalLength = Math.pow(Math.pow((maxLon-minLon), 2) + Math.pow((maxLat-minLat), 2), 0.5);
+			  //i know, 60 miles per degree is only true of latitude, but for these purposes this is close enough:
+			  var estimatedDiagonalInMiles = parseFloat(diagonalLength) * 60;
+			  var estimatedScale = 2;
+			  //var estimatedDiagonalInMiles = diagonalLength * 60;
+			  //after some experimentation, i've found this calculates a good Google Maps zoom factor from a max quadrangle diagonal length:
+			  estimatedScale = parseInt(16-(Math.log2(estimatedDiagonalInMiles * 1.20)));
+			  if(estimatedScale < 1) {
+				  estimatedScale = 1;
+			  }
+			  return {"lat": latSum/count, "lon":lonSum/count,  "maxLat": maxLat, "maxLon": maxLon,  "minLat": minLat, "minLon": minLon, "diagonalLength":diagonalLength, "distanceInMiles":estimatedDiagonalInMiles, "estimatedScale":estimatedScale}
+		  }
+	  }
+  
+  }
+  
+  function buildUploadPath(table, pkValue,  fieldName, filename) {
+    // Extract the file extension (including the dot, e.g., ".jpg")
+    const dotIndex = filename.lastIndexOf('.');
+    const extension = dotIndex !== -1 ? filename.slice(dotIndex) : '';
+
+    // Construct and return the path
+    return `uploads/${table}/${fieldName}-${pkValue}${extension}`;
+  }
+  
+
+  function createTimescalePeriodDropdown(scales, thisPeriod, scaleName, currentStartDate, event, eventAction, tableName, deviceId) {
+    const scale = scales.find(s => s.value === scaleName);
+    let numberOfPeriods = 200;
+    let loader = "<div class=\"dot-loader\"><span></span><span></span><span></span></div>";
+     document.getElementById('placeforscaledropdown').innerHTML = loader;
+    if (!scale) {
+      console.error("Scale not found!");
+      return;
+    }
+
+    const periodSize = scale.period_size;
+    const periodScale = scale.period_scale;
+    const initialOffset = scale.initial_offset || 0;
+
+    // Helper function to create dropdown once we have minimalDate
+    function buildDropdown(minimalDate) {
+      const dropdown = document.createElement('select');
+      dropdown.id = 'startDateDropdown';
+      
+      if(event){
+        dropdown.addEventListener(event, function(event) {
+          if(eventAction){
+            eval(eventAction);
+          }
+        });
+      }
+
+      let setByTimespanSwitch = false;
+      let closestOption = null;
+      let closestDiff = Infinity;
+
+      const now = new Date();
+      const nowMinusOnePeriod = pastStepper(periodScale, periodSize, 0, initialOffset); 
+      console.log(now, periodScale, periodSize, nowMinusOnePeriod);
+      const cutoff = new Date(nowMinusOnePeriod);
+
+      for (let i = 0; i < numberOfPeriods; i++) {
+        const option = document.createElement('option');
+        let label = pastStepper(periodScale, periodSize, i, initialOffset);
+        let labelDate = new Date(label);
+
+        if (labelDate <= cutoff) {
+          option.text = label;
+          option.value = i;
+
+          if (currentStartDate) {
+            let diff = Math.abs(labelDate - new Date(currentStartDate));
+            if (diff < closestDiff) {
+              closestDiff = diff;
+              closestOption = option;
+            }
+          }
+
+          if (minimalDate <= label || i === 0) {
+            dropdown.appendChild(option);
+          }
+        }
+      }
+
+      if (closestOption && !setByTimespanSwitch) {
+        closestOption.selected = true;
+      } else if (thisPeriod !== false) {
+        let match = [...dropdown.options].find(o => o.value == thisPeriod);
+        if (match) match.selected = true;
+      }
+
+      document.getElementById('placeforscaledropdown').innerHTML = '';
+      document.getElementById('placeforscaledropdown').appendChild(dropdown);
+    }
+
+    // If we already have cached value, use it
+    if (cachedEarliestRecord !== null) {
+      buildDropdown(cachedEarliestRecord);
+      return;
+    }
+
+    // Otherwise, fetch it via AJAX
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.onreadystatechange = function() {
+      if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+        let jsonData = xmlhttp.responseText;
+        recordedData = JSON.parse(jsonData);
+        cachedEarliestRecord = recordedData["recorded"]; // cache it
+        buildDropdown(cachedEarliestRecord);
+      }
+    }
+
+    let url = "server.php?mode=getEarliestRecorded&table=" + tableName + "&device_id=" + deviceId; 
+    xmlhttp.open("GET", url, true);
+    xmlhttp.send();
+  }
+ 
+ 
+ 
+ 
+  
+  function calculateRevisedTimespanPeriod(scales, thisPeriod, scaleName, currentStartDate){
+	  //does what the preceding function does, but only outputs a number of steps of scaleName to get back to currentStartDate instead of option dropdowns
+	  const scale = scales.find(s => s.value === scaleName);
+	  let numberOfPeriods = 200;
+	  //let's find how far back data goes
+	  if (!scale) {
+		  console.error("Scale not found!");
+		  return;
+	  }
+	  const periodSize = scale.period_size;
+	  const periodScale = scale.period_scale;
+	  let setByTimespanSwitch = false;
+	  
+	  //const currentDate = new Date(now);
+	  for (let i = 0; i < numberOfPeriods; i++) {
+		  let dateTimeBoundary = pastStepper(periodScale, periodSize, i);
+		  //console.log(periodSize, scaleName, periodScale, timeUnitMap[periodScale], i, dateTimeBoundary, currentStartDate);
+		  if(dateTimeBoundary <= currentStartDate  && !setByTimespanSwitch) {
+			  setByTimespanSwitch = true;
+			  //console.log("movement happened", i, dateTimeBoundary)
+			  return i
+		  }
+		  if(thisPeriod !== false && thisPeriod == i  && !setByTimespanSwitch){
+			  //console.log("movement nope", i, dateTimeBoundary)
+			  return i;
+		  }
+	  }
+	  return 0;
+  }
+  
+  function toMySQLDatetime(date = new Date()) {
+    const pad = (n) => n.toString().padStart(2, '0');
+
+    const year = date.getFullYear();
+    const month = pad(date.getMonth() + 1); // Months are zero-based
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    const seconds = pad(date.getSeconds());
+
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+  
+  function pastStepper(periodScale, periodSize, ordinal, initialOffset) {
+    if(!initialOffset) {
+      initialOffset = 0;
+    }
+    //console.log(sqlDateTime, compareTo);
+	  // Parse the dates into `Date` objects in the specified timezone
+	  const currentDate = new Date();
+    if (periodScale === 'day') {
+      currentDate.setDate(currentDate.getDate() - ((ordinal + 1) * periodSize + initialOffset));
+    } else if (periodScale === 'month') {
+      currentDate.setMonth(currentDate.getMonth() - ((ordinal + 1) * periodSize + initialOffset));
+    } else if (periodScale === 'year') {
+      currentDate.setFullYear(currentDate.getFullYear() - ((ordinal + 1) * periodSize + initialOffset));
+    } else if (periodScale === 'hour') {
+      currentDate.setHours(currentDate.getHours() - ((ordinal + 1) * periodSize + initialOffset));
+    }
+
+    // ✅ Snap to cusps only if checkbox is checked
+	let cuspAlign = null;
+	if(document.getElementById('atc_id')){
+    	cuspAlign = document.getElementById('atc_id').checked;
+	}
+
+    if (cuspAlign) {
+      if (periodScale === 'hour') {
+        // Snap to 0,3,6,... hours
+        const h = currentDate.getHours();
+        currentDate.setHours(h - (h % periodSize));
+        currentDate.setMinutes(0, 0, 0);
+      } else if (periodScale === 'day') {
+        // Snap to midnight
+        currentDate.setHours(0, 0, 0, 0);
+      } else if (periodScale === 'week') {
+        // Snap to Sunday (start of week)
+        const day = currentDate.getDay(); // 0 = Sunday
+        currentDate.setDate(currentDate.getDate() - day);
+        currentDate.setHours(0, 0, 0, 0);
+      } else if (periodScale === 'month') {
+        // Snap to first of month
+        currentDate.setDate(1);
+        currentDate.setHours(0, 0, 0, 0);
+      } else if (periodScale === 'year') {
+        // Snap to Jan 1
+        currentDate.setMonth(0, 1);
+        currentDate.setHours(0, 0, 0, 0);
+      }
+    }
+
+    return (periodScale === 'hour')
+      ? currentDate.toLocaleString("sv-SE").replace('T',' ').substring(0,16) // yyyy-mm-dd hh:mm
+      : currentDate.toLocaleDateString("sv-SE"); // yyyy-mm-dd
+
+  }
+    function timeAgoMillis(diffInMillis, suffix) {
+		if (diffInMillis === null || diffInMillis === undefined || isNaN(diffInMillis)) {
+			return "not found";
+		}
+		if(!suffix) {
+			suffix = "";
+		}
+		const diffInSeconds = Math.floor(diffInMillis / 1000);
+
+		const seconds = diffInSeconds % 60;
+		const minutes = Math.floor(diffInSeconds / 60) % 60;
+		const hours   = Math.floor(diffInSeconds / 3600) % 24;
+		const days    = Math.floor(diffInSeconds / 86400);
+
+		if (days > 0) {
+			return days + (days === 1 ? " day" : " days" + suffix);
+		}
+		if (hours > 0) {
+			return hours + (hours === 1 ? " hour" : " hours" + suffix);
+		}
+		if (minutes > 0) {
+			return minutes + (minutes === 1 ? " minute" : " minutes" + suffix);
+		}
+		return seconds + (seconds === 1 ? " second" : " seconds" + suffix);
+	}
+  
+  function timeAgo(sqlDateTime, compareTo, returnDiffInSeconds, noEndWord) {
+	  sqlDateTime = sqlDateTime.replace(" ", "T"); // Fix for Safari 11
+	  // Define the timezone globally or set a default
+	  const timezone = window.timezone || "UTC";
+    //console.log(sqlDateTime, compareTo);
+	  // Parse the dates into `Date` objects in the specified timezone
+	  const past = new Date(new Date(sqlDateTime).toLocaleString("en-US", { timeZone: timezone }));
+    const now = compareTo
+      ? new Date(compareTo.replace(" ", "T"))
+      : new Date();
+
+      
+	  // Calculate the difference in seconds
+	  let diffInSeconds = Math.floor((now - past) / 1000);
+	  if(returnDiffInSeconds){
+		return diffInSeconds;
+	  }
+	  diffInSeconds = Math.max(0, diffInSeconds);
+	
+	  // Calculate units of time
+	  const seconds = diffInSeconds % 60;
+	  const minutes = Math.floor(diffInSeconds / 60) % 60;
+	  const hours = Math.floor(diffInSeconds / 3600) % 24;
+	  const days = Math.floor(diffInSeconds / 86400);
+	  if(isNaN(seconds)){
+		  return "";
+	  }
+	  let endWord = "ago";
+	  if(noEndWord) {
+      endWord = "";
+	  }
+	  // Return the appropriate message
+	  if (days > 0) {
+		return days === 1 ? "1 day " + endWord : `${days} days ` + endWord;
+	  }
+	  if (hours > 0) {
+		return hours === 1 ? "1 hour " + endWord : `${hours} hours ` + endWord;
+	  }
+	  if (minutes > 0) {
+		return minutes === 1 ? "1 minute " + endWord : `${minutes} minutes ` + endWord;
+	  }
+	  return seconds === 1 ? "1 second " + endWord : `${seconds} seconds  ` + endWord;
+	}
+	
+  function backendDataUrl(mode, deviceId, allData, liveData, maxRecorded, scale, absoluteTimespanCusps, periodAgo, absoluteTimeAgo, yearsAgo){
+    absoluteTimeAgo = adjustToScale(scale, absoluteTimeAgo);
+    let extraUrlData = "&mode=" + mode + "&all_data=" + allData; 
+    if(deviceId) {
+      extraUrlData += "&device_id=" + deviceId;
+    }
+    if(liveData) {
+      extraUrlData += "&max_recorded=" + maxRecorded;
+    }
+    if(yearsAgo > 0) {
+      extraUrlData += "&years_ago=" + yearsAgo;
+    }
+    let url = "server.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&period_ago=" + periodAgo + extraUrlData;
+
+    if(absoluteTimeAgo) {
+      url = "server.php?scale=" + scale + "&absolute_timespan_cusps=" + absoluteTimespanCusps + "&absolute_time_ago=" + absoluteTimeAgo + extraUrlData + "&period_ago=" + periodAgo;
+    }
+    return url;
+  }
+	
+	function adjustToScale(scaleValue, dateTimeStr) {
+    // Parse the input datetime
+    if(!dateTimeStr) {
+      return;
+    }
+    let inputDate = new Date(dateTimeStr.replace(" ", "T"));
+    let now = new Date();
+
+    // Find the scale config
+    const scale = scaleConfig.find(s => s.value === scaleValue);
+    if (!scale) {
+      throw new Error("Scale not found: " + scaleValue);
+    }
+
+    // Determine the most recent beginning of this scale relative to 'now'
+    let boundary = new Date(now);
+
+    switch (scale.period_scale) {
+      case "hour":
+        boundary.setMinutes(0, 0, 0);
+        boundary.setHours(boundary.getHours() - (boundary.getHours() % scale.period_size));
+        break;
+
+      case "day":
+        boundary.setHours(0, 0, 0, 0);
+        boundary.setDate(boundary.getDate() - ((boundary.getDate() - 1) % scale.period_size));
+        break;
+
+      case "week":
+        boundary.setHours(0, 0, 0, 0);
+        let day = boundary.getDay(); // Sunday=0
+        let diff = (day + 7 - 1) % 7; // Align to Monday (or adjust for week start)
+        boundary.setDate(boundary.getDate() - diff);
+        break;
+
+      case "month":
+        boundary.setDate(1);
+        boundary.setHours(0, 0, 0, 0);
+        boundary.setMonth(boundary.getMonth() - ((boundary.getMonth()) % scale.period_size));
+        break;
+
+      case "year":
+        boundary.setMonth(0, 1); // January 1
+        boundary.setHours(0, 0, 0, 0);
+        boundary.setFullYear(boundary.getFullYear() - ((boundary.getFullYear()) % scale.period_size));
+        break;
+
+      default:
+        throw new Error("Unsupported period scale: " + scale.period_scale);
+    }
+
+  // If inputDate is later than boundary, snap it back by one full period
+  if (inputDate > boundary) {
+    switch (scale.period_scale) {
+      case "hour":
+        boundary.setHours(boundary.getHours() - scale.period_size);
+        break;
+      case "day":
+        boundary.setDate(boundary.getDate() - scale.period_size);
+        break;
+      case "week":
+        boundary.setDate(boundary.getDate() - 7 * scale.period_size);
+        break;
+      case "month":
+        boundary.setMonth(boundary.getMonth() - scale.period_size);
+        break;
+      case "year":
+        boundary.setFullYear(boundary.getFullYear() - scale.period_size);
+        break;
+    }
+    return boundary.toISOString().slice(0, 19).replace("T", " ");
+  }
+
+  // Otherwise, return the original input
+  return dateTimeStr;
+}
+  function expandArray(arr, n) {
+	  const originalLength = arr.length;
+	  const result = [...arr]; // Start with a copy of the original array
+	  // Calculate where to place duplicates by spacing out n items evenly
+	  if(n > 0){
+		  for (let i = 0; i < n; i++) {
+			  // Position to insert a duplicate item
+			  const insertIndex = Math.floor((i + 1) * (result.length - 1) / (n + 1));
+			  result.splice(insertIndex, 0, result[insertIndex]); // Duplicate adjacent item
+		  }
+	  } else {
+		  // Removing items evenly
+		  const itemsToRemove = Math.min(-n, result.length); // Limit removals to array length
+		  for (let i = 0; i < itemsToRemove; i++) {
+			  const removeIndex = Math.floor((i + 1) * (result.length - 1) / (itemsToRemove + 1));
+			  result.splice(removeIndex, 1); // Remove item at calculated index
+		  }
+	  }
+	  return result;
+  }
+  
+  function timeConverter(UNIX_timestamp){
+    var a = new Date(UNIX_timestamp * 1000);
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var year = a.getFullYear();
+    var month = months[a.getMonth()];
+    var date = a.getDate();
+    var hour = a.getHours();
+    var min = a.getMinutes();
+    var sec = a.getSeconds();
+    var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
+    return time;
+  }
+
+ 
+
+// Be sure to include our submit button in the data
+let form = document.querySelector("form");
+
+if (form) {
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    const submitter = e.submitter;
+
+    let formData;
+
+    // Feature-detect support for the 2-argument FormData constructor
+    try {
+      formData = new FormData(form, submitter);
+    } catch (err) {
+      formData = new FormData(form);
+      if (submitter && submitter.name) {
+        formData.append(submitter.name, submitter.value);
+      }
+    }
+
+    const jsonObject = {};
+
+    for (const [key, value] of formData.entries()) {
+      if (jsonObject.hasOwnProperty(key)) {
+        if (!Array.isArray(jsonObject[key])) {
+          jsonObject[key] = [jsonObject[key]];
+        }
+        jsonObject[key].push(value);
+      } else {
+        jsonObject[key] = value;
+      }
+    }
+
+    const targetUrl = form.action || window.location.href;
+
+    // Use XMLHttpRequest instead of fetch for compatibility
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", targetUrl, true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.withCredentials = true; // mimic credentials: "same-origin"
+
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === 4) {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            var data = JSON.parse(xhr.responseText);
+            console.log("Success:", data);
+          } catch (err) {
+            console.error("Invalid JSON response:", err);
+          }
+        } else {
+          console.error("Submission failed: HTTP " + xhr.status);
+        }
+      }
+    };
+
+    xhr.onerror = function () {
+      console.error("Submission failed: Network error");
+    };
+
+    xhr.send(JSON.stringify(jsonObject));
+  });
+}
+
+
+window.onload = function() {
+	const commandTextInput = document.getElementById('command_text');
+	if(commandTextInput) { //if we are on instant command, load all the recent instant commands, no matter what device
+		instantCommand(true);
+	}
+};
+  
+  
