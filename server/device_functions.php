@@ -585,7 +585,7 @@ function editUser($error){
     [
       'label' => 'full name',
       'name' => 'full_name',
-      'value' => gvfa("full_name", $_POST), 
+      'value' => gvfa("full_name", $source), 
       'error' => gvfa('full_name', $error)
     ],
 		[
