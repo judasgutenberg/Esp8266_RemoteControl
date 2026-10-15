@@ -2609,9 +2609,9 @@ function specifiedEntities($sql, $valuesRecord, $config = ""){
   $configItems = explode(";", $config);
   foreach($configItems as $configItem) {
     $configDetails = explode(",", $configItem);
-    $table = trim($configDetails[0]);
-    $pk = trim($configDetails[1]);
-    $humanReadable = trim($configDetails[2]);
+    $table = filterStringForSqlEntities(trim($configDetails[0]), true);
+    $pk = filterStringForSqlEntities(trim($configDetails[1]), true);
+    $humanReadable = filterStringForSqlEntities(trim($configDetails[2]), true);
     $pkValInSql = getSqlParameter($sql, $pk);
     $lookupSql = "SELECT " . $humanReadable . " FROM " . $table . " WHERE " . $pk . "='" . $pkValInSql . "'";
     for($additionalCount = 3; $additionalCount < count($configDetails); $additionalCount++) {
