@@ -56,6 +56,8 @@ function plotTypePicker($type, $handler){
 
 <body>
 <?php
+
+  //echo gvfw("device_id") . "+" . $deviceId  . "-" . defaultFailDown(gvfw("device_id"), $deviceId) ."!<BR>";
   $out .= topmostNav();
   $out .= "<div class='logo'>Weather Data</div>";
   		
@@ -115,7 +117,7 @@ function plotTypePicker($type, $handler){
 					if($result) {
 						$selectData = mysqli_fetch_all($result, MYSQLI_ASSOC); 
 					}
-
+      
 					//$selectData = json_decode('[{"text":"Outside Cabin","value":1},{"text":"Cabin Downstairs","value":2},{"text":"Cabin Watchdog","value":3}]');
 					//var_dump($selectData);
 					//echo  json_last_error_msg();
@@ -145,7 +147,7 @@ function plotTypePicker($type, $handler){
 </div>
 </div>
 <script>
-let defaultdeviceId = <?php echo $deviceId?>;
+let defaultdeviceId = <?php echo getConfigItem($user, "device_id");?>;
 let columnsWeCareAbout = <?php echo json_encode($weatherColumns)?>;
 
 </script>
