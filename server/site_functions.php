@@ -376,7 +376,9 @@ function camelCaseToWords($input) { //thanks, chatgpt!
 }
 
 function generateSubFormFromJson($parentKey, $jsonString, $template) {
+  //echo $template . "<BR>";
   $templateArray = (array)json_decode($template, true);
+  //var_dump($templateArray);
   //var_dump($templateArray);
   // Decode the JSON string
   $data = (array)json_decode($jsonString, true);
@@ -389,10 +391,10 @@ function generateSubFormFromJson($parentKey, $jsonString, $template) {
   // Generate form elements recursively
   //var_dump($data);
   //var_dump($template);
-  return generateFormElements($parentKey, $data);
+  return generateFormElements($parentKey, $data, $templateArray);
 }
 
-function generateFormElements($parentKey, $data) {
+function generateFormElements($parentKey, $data, $templateArray = []) {
   $formDataArray = [];
   $formElements = '<div class="genericform">';
   if(!array_is_list($data)) { //this means our template is very simple
@@ -407,16 +409,33 @@ function generateFormElements($parentKey, $data) {
     $formDataArray = $data;
   }
   foreach ($formDataArray as $item) {
-       $key = $item["name"];
-       $value = $item["value"];
+      
+  
+  
+       $key = gvfa("name", $item);
+       $value = gvfa("value", $item);
       //$formElements .= '<div>';
       // Create a label based on the key
-      $formElements .= '<div class="genericformelementlabel" for="' . $key . '">' . camelCaseToWords($key) . '</div>';
+      
       if (is_array($value)) {
           // Recursively generate form elements for arrays
-          $formElements .= generateFormElements($key, $value);
+          $formElements .= '<div class="genericformelementlabel" for="' . $key . '">' . camelCaseToWords($key) . '</div>';
+          $templateArray = arrayFromJson(gvfa("template", $data));
+          $formElements .= generateFormElements($key, $value, $templateArray);
       } else {
+          $columnCount = 0;
+          $guessAtTable = "";
+          $guessAtPk = "";
+          $user = [];
+          $textAreaIds = [];
+          //templateArray contains info about all preferences, but we just need info for our item
+          $templateForItem = findRecordByKey($templateArray, "name",  $item["name"]);
+          unset($templateForItem['value']);//don't want to overwrite value with default!
+          $item = array_merge($item, $templateForItem);
+          //var_dump($item);
+          $formElements .= genericFormItem($item, $columnCount, $guessAtTable, $guessAtPk, $textAreaIds, $user, $parentKey . "|");
           // Create an input field for non-array values
+          /*
           $calculatedWidth = strlen($value) * 8;
           if($calculatedWidth < 150){
             $calculatedWidth = 150;
@@ -429,11 +448,20 @@ function generateFormElements($parentKey, $data) {
             $formElements .= '<input style="width:' . $calculatedWidth. 'px"  type="text" name="' . $parentKey . "|" . $key . '" id="' . $key . '" value="' . htmlspecialchars($value) . '">';
           }
           $formElements .= "</div>";
+          */
       }
       //$formElements .= '</div>';
   }
   $formElements .= '</div>';
   return $formElements;
+}
+
+function arrayFromJson($json) {
+  if($json) {
+    $result = json_decode($json, true);
+    return $result;
+  }
+  return [];
 }
 
 //also returns pk by reference, and it is an array
@@ -691,6 +719,7 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
         $error = mysqli_error($conn);
 				if($error != ""){
           //die($sql);
+          //die($error);
           return array($pk[0]=>$error, "_sql"=>$sql);
           echo $sql;
           echo "\n<hr/>\n";
@@ -766,6 +795,290 @@ function setFormDataErrorByName(array &$data, $name, $error) {
     return false; // no matching record found
 }
 
+function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$textareaIds, $user, $formItemNamePrefix = "") {
+    global $conn;
+    $out = "";
+    $label = gvfa("label", $datum);
+    $frontendValidation = gvfa("frontend_validation", $datum);
+    $validationString = "";
+    if($frontendValidation){
+      $validationString = ' onblur="' . $frontendValidation . '"';
+    }
+		$value = str_replace("\\\\", "\\", gvfa("value", $datum)); 
+    //var_dump($datum);
+		$name = gvfa("name", $datum); 
+    $changeFunction = gvfa("change-function", $datum); 
+		$type = strtolower(gvfa("type", $datum)); 
+		$range = strtolower(gvfa("range", $datum)); 
+    $accentColor = gvfa("accent_color", $datum, "#66eeee");
+    //echo $name .  " " . $accentColor . "<BR>";
+    $width = 200;
+ 
+    if($formItemNamePrefix == ""  && endsWith($name, "_id") && $columnCount == 0  && ($type == "" || $type == "number" || $type == "int" || $type == "read_only")) { //make first column read-only if it's an _id, but not if it's in a json-produced sub-editor
+    //if($type == "read_only") {
+      //var_dump($datum);
+      //echo "<HR>";
+      $extra = gvfa("extra", $datum);
+      //var_dump($extra);
+      if(gvfa("autogenerated", $datum) && strpos($extra, "auto_increment") !== false || !gvfa("autogenerated", $datum)) {
+        $type = "read_only";
+      }
+      $guessAtTable = str_replace("_id", "", $name);
+      $guessAtPk = $value;
+    }
+ 
+    if(gvfa("width", $datum)){
+      $width = gvfa("width", $datum);
+    }
+    $height = '';
+    if(gvfa("height", $datum)){
+      $height = gvfa("height", $datum);
+    }
+    $noSyntaxHighlighting = false;
+    $noSyntaxHighlighting =gvfa("no_syntax_highlighting", $datum); 
+    $values =gvfa("values", $datum); 
+		$error = gvfa("error", $datum); 
+    //this code automatically displays SQL errors on the form at the input that caused the error.
+    //it does this using an error parser at extractErrorColumnName and then moves the actual error to the right
+    //place in the $data array
+    if($error  && strpos($error, " at row ") !== false) {  
+      $columnForError = extractErrorColumnName($error);
+      //echo "*" . $columnForError . "*" . $error . "<br>";
+      setFormDataErrorByName($data, $columnForError, $error);
+      if($columnForError != $name) {
+        $error = "";
+      }
+      
+    }
+		if($label == "") {
+			$label = $name;
+		}
+		if($type == "") {
+			$type = "text";
+		}
+    $idString = "";
+		if($type == "file") {
+			$idString = "id='file'";
+      $waitingMesasage = "Uploading...";
+		}
+		if($type == "hidden") {
+      $out .= "<input name='" . $formItemNamePrefix  . $name . "' value=\"" .  ($value) . "\" type='" . $type . "'/>";
+		} else {
+      $out .= "<div class='genericformelementlabel'>" . $label . ": </div>";
+      $out .= "<div class='genericformelementinput'>";
+      $out .= "<div class='genericformerror'>" . $error . "</div>";
+      $template = gvfa("template", $datum);
+      //echo $name . "<BR>";
+      //var_dump($template);
+      //echo "<P>";
+      if($type == 'json') {
+        if($value) {
+          $out .= generateSubFormFromJson($name, $value, $template);
+        } else {
+          
+          $out .= generateSubFormFromJson($name, $template, $template);
+
+        }
+      } else if($type == 'multiselect') {
+        foreach($values as $specificValue){
+          $checkPart = "";
+          if(is_array($value)) {
+            foreach($value as $selectedValue){
+              if($selectedValue == $specificValue){
+                $checkPart  = " checked='checked'";
+              }
+            }
+
+          }
+          $out .= "<input style='accent-color:" .  $accentColor . "' type='checkbox' name='" . $formItemNamePrefix  . $name . "[]' value='" . $specificValue . " " . $checkPart . "'/> " . $specificValue . "<br/>";
+        }
+      } else if($type == 'select') {
+        //echo $values;
+        if($range  && strpos($range, "...") !== false) {
+          $rangeParts = explode("...", $range);
+          $bottomRangePart = $rangeParts[0];
+          $topRangePart = $rangeParts[1];
+          $increment = 1;
+          if(count($rangeParts) > 2) {
+            $increment = intval($rangeParts[2]);
+          }
+          $values = [];
+          for($rangeCounter = intval($bottomRangePart); $rangeCounter <= $topRangePart; $rangeCounter =  $rangeCounter + $increment) {
+            $values[] = $rangeCounter;
+          }
+        }
+        $onChangePart = "";
+        if($changeFunction) {
+          $onChangePart = " onchange=\"" . $changeFunction . "\" ";
+        }
+        $out .= "<select " . str_replace("onblur=", "onchange=", $validationString) . " " . $onChangePart. " name='" . $formItemNamePrefix  . $name . "' />";
+        if(is_string($values)) {
+          $out .= "<option value='0'>none</option>";
+          //var_dump($user);
+          if($user) {
+            $values = tokenReplace($values, $user); //I'd has something embarrassingly hardcoded here until I had $user available
+          }
+ 
+          $result = mysqli_query($conn, $values); //REALLY NEED TO SANITIZE $values since it contains RAW SQL!!!
+          
+   
+          if($result){
+            $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+  
+            if($rows){
+              foreach($rows as $row){
+                $selected = "";
+                if(!$value){
+                  $value = gvfw($name);
+                }
+                if($row[$name] === $value) {
+                  $selected = " selected='selected' ";
+
+                }
+                $out .= "<option " . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>\n";
+
+              }
+          }
+        }
+          
+
+        } else if(is_array($values)){
+          $out .= "<option value=''>none</option>";
+          foreach($values as &$optionValue) {
+            $selected = "";
+            if($value == $optionValue  && $optionValue != ""){
+              $selected = "selected";
+
+            }
+            $out .= "<option ". $selected . ">" . $optionValue . "</option/>\n";
+          }
+        }
+        $out .= "</select>";
+      } else if ($type == "many-to-many") {
+        //echo $values;
+        $result = mysqli_query($conn, $values); //REALLY NEED TO SANITIZE $values since it contains RAW SQL!!!
+        $rows = null;
+        $itemTool = gvfa("item_tool", $datum);
+        //might want to do this at some point:
+        //$itemTool =  tokenReplace($itemTool, $row, $guessAtTable) . ";"; 
+        
+        $itemToolString = "";
+        if($itemTool){
+          $itemToolString = " onmouseup='" . $itemTool . "' ";
+        }
+        if($result) {
+          $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        }
+        $out .= "<div class='destinationitems'>\n";
+        $out .= "attached:<br/>";
+        if($height == ""){
+          $height = 5;
+        }
+        $out .= "<select " . str_replace("onblur=", "onchange=", $validationString) . " style='accent-color:" .  $accentColor . "'  multiple='multiple' name='" . $formItemNamePrefix  . $name . "[]' id='dest_" . $formItemNamePrefix  . $name . "' size='" . intval($height) . "'>";
+        if($rows) {
+          foreach($rows as $row){
+            $selected = "";
+            if(!$value){
+              $value = gvfw($name);
+            }
+            if($row[$name] == $value) {
+              $selected = " selected='selected' ";
+
+            }
+
+            if($row["has"] ){
+              $out .= "<option " . $itemToolString . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option>\n";
+            }
+
+          }
+        }
+        $out .= "</select>";
+        $onSubmitManyToManyItems[] = $formItemNamePrefix  . $name;
+        $out .= "</div>\n"; 
+        $out .= "<div class='manytomanytools'>\n";
+        $out .= "<input id='havechangedmanytomany' name='_have_changed_many_to_many' value=0 type='hidden' />";
+        $out .= "<input id='_dest_" . $formItemNamePrefix  . $name ."_old_many_to_many' name='_dest" . $formItemNamePrefix  .$name ."_old_many_to_many' value='' type='hidden' />";
+        $out .= "<button onclick='return copyManyToMany(\"source_" . $formItemNamePrefix  . $name ."\", \"dest_" . $formItemNamePrefix  .$name ."\")'>&lt;</button>";
+        $out .= "<button onclick='return copyManyToMany(\"dest_" . $formItemNamePrefix  . $name ."\", \"source_" . $formItemNamePrefix  .$name ."\")'>&gt;</button>";
+        $out .= "</div>\n"; 
+        $out .= "<div class='sourceitems'>\n";
+        $out .= "available:<br/>";
+        $out .= "<select " . str_replace("onblur=", "onchange=", $validationString)  . " style='accent-color:" . $accentColor . "' name='source_" . $formItemNamePrefix  .$name . "' id='source_" . $formItemNamePrefix  .$name . "' size='" . intval($height) . "'/>";
+        if($rows) {
+          foreach($rows as $row){
+            $selected = "";
+            if(!$value){
+              $value = gvfw($name);
+            }
+            if($row[$name] == $value) {
+              $selected = " selected='selected' ";
+
+            }
+            if(!$row["has"] ){
+              $out .= "<option " . $itemToolString . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>\n";
+            }
+
+          }
+        }
+        $out .= "</select>";
+        $out .= "</div>\n"; 
+        $out .= "<div class='toolpanel' id='panel_" . $formItemNamePrefix  . $name . "'>\n"; 
+        $out .= "</div>\n"; 
+
+      } else if ($type == "bool" || $type == "checkbox"){
+        $checked = "";
+          if($value) {
+
+            $checked = "checked";
+          }
+        $out .= "<input style='accent-color:" .  $accentColor . "' value='1' name='" . $formItemNamePrefix  .$name . "'  " . $checked . " type='checkbox'/>\n";
+      } else if ($type == "read_only"){
+        $out .= $value . "\n";
+      } else {
+        if($height){
+          $textAreaId = "id-" . $formItemNamePrefix  . $name;
+          $idString = "id='" . $textAreaId  . "'";
+          if(!$noSyntaxHighlighting) {
+            array_push($textareaIds, $textAreaId);
+          }
+          $codeLanguage = gvfa("code_language", $datum, "html");
+          $out .= "<textarea " . $validationString . " " .  $idString . " style='width:" . $width . "px;height:" . $height . "px;accent-color:" . $accentColor . "' name='" .  $formItemNamePrefix  . $name . "'  />" .  $value  . "</textarea>\n";
+        } else {
+          $specialNumberAttribs = "";
+          if ($type == "number") {
+            $specialNumberAttribs = " step='0.0000000000001' ";
+          }
+          if ($type == "int") {
+            $type == "number";
+            $specialNumberAttribs = " step='1' ";
+          }
+          $inputJavascript = "";
+          if($type == "plaintext_password") {
+            $inputJavascript = "onchange=\"document.getElementById('_new_password').checked=true\"";
+          }
+          $out .= "<input " . $inputJavascript  . " " . $validationString . " style='width:" . $width . "px;accent-color:" . $accentColor . "' " . $idString. " " . $specialNumberAttribs . "  name='" . $formItemNamePrefix  . $name . "' value=\"" .  $value . "\" type='" . $type . "'/>\n";
+          if($type == "file") {
+            $out .= $value;
+            $extension = pathinfo($value, PATHINFO_EXTENSION);
+            //if only we knew $table and pkValue, we could display a thumbnail.  we can kinda figure it out in most cases
+            $possibleImagePath = "./" . buildUploadPath($guessAtTable, $guessAtPk, $formItemNamePrefix  .$name, $extension);
+            //echo $possibleImagePath;
+            if(file_exists($possibleImagePath) && isImage($possibleImagePath)) {
+              $out .= "<a href='" .$possibleImagePath  . "' target='_new'><img style='width:100px;padding-left:10px;' src='" . $possibleImagePath  . "'/></a>\n";
+            }
+          }
+          if($type == "plaintext_password") {
+            $out .= "<input id='_new_password' name='_new_password' value='1' type='checkbox'>\n password not yet encrypted";
+          }
+        }
+      }
+        
+      $out .= "</div>\n";
+  }
+  
+  return $out;
+}
+
 function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user = null, $onload = "", $forceUpdate = false) { //$data also includes any errors
   Global $conn;
   //var_dump($data);
@@ -785,7 +1098,8 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
   $guessAtPk = "";
 
 	foreach($data as &$datum) {
-		$label = gvfa("label", $datum);
+    $out .= genericFormItem($datum, $columnCount, $guessAtTable, $guessAtPk, $textareaIds, $user, "");
+		/*$label = gvfa("label", $datum);
     $frontendValidation = gvfa("frontend_validation", $datum);
     $validationString = "";
     if($frontendValidation){
@@ -1059,8 +1373,9 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
         
       }
       
-      $out .= "</div>\n";
+      
     }
+    */
     $columnCount++;
 	}
 	$out .= "<div class='genericformelementlabel'><input name='action' id='action' value='" .  $submitLabel. "' type='submit'/></div>\n";
@@ -1077,17 +1392,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
   if(count($textareaIds) > 0){
     
     $out .= "<script src=\"./tinymce/tinymce.min.js\" referrerpolicy=\"origin\"></script>\n";
-    /*
-    $out .= "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css\">\n";
-    $out .= "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js\"></script>\n";
-       */
-      /*
-    $out .= "<link href=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/themes/prism.min.css\" rel=\"stylesheet\" />\n";
-    $out .= "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/prism.min.js\"></script>\n";
-    $out .= "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/plugins/line-numbers/prism-line-numbers.min.js\"></script>\n";
-    $out .= "<link href=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/plugins/line-numbers/prism-line-numbers.min.css\" rel=\"stylesheet\" />\n";
-    $out .= "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/components/prism-sql.min.js\"></script>\n";
-    */
+
     $out .= "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css\">\n";
     $out .= "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js\"></script>\n";
     $out .= "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/sql/sql.min.js\"></script>\n";
@@ -1140,59 +1445,9 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
 
 
     //$out.= "setTimeout(()=>{\n";
-      /*
-    $out .= "\ntextareaIds.forEach(id => {\n";
-      $out .= "\n  tinymce.init({\n";
-        $out .= "\nselector: `#$" . "{id}`,\n";
-        $out .= "\nbranding: false,\n";
-        $out .= "\nforce_br_newlines : true,\n";
-        $out .= "\nlicense_key: 'gpl' ,\n";
-        $out .= "\npromotion: false,\n";
-
-        $out .= "\nplugins: 'codesample code',\n";
-        $out .= "\ntoolbar: 'codesample code',\n";
  
-        $out .= "codesample_languages: [
-          {text: 'HTML/XML', value: 'markup'},
-          {text: 'JavaScript', value: 'javascript'},
-          {text: 'CSS', value: 'css'},
-          {text: 'PHP', value: 'php'},
-          {text: 'Ruby', value: 'ruby'},
-          {text: 'Python', value: 'python'},
-          {text: 'Java', value: 'java'},
-          {text: 'C', value: 'c'},
-          {text: 'C#', value: 'csharp'},
-          {text: 'C++', value: 'cpp'},
-          {text: 'SQL', value: 'sql'}
-      ],";
-      */
-            /*
-        $out .= "\nsetup: function(editor) {\n";
-          $out .= "\neditor.on('change', function() {\n";
-            $out .= "\neditor.save();\n";
-            $out .= "\n  document.querySelectorAll('pre code').forEach((block) => {\n";
-              $out .= "\n   hljs.highlightElement(block);\n";
-              $out .= "\n  });\n";
-              $out .= "\n});\n";
-              $out .= "\n }\n";
-              $out .= "\n});\n";
-              $out .= "\n });\n";
-        
-    */
-    /*
-        $out .= "\nsetup: function(editor) {\n";
-          $out .= "\n  editor.on('init', function() {\n";
-            $out .= "\n  editor.on('NodeChange', function(e) {\n";
-              $out .= "\nconsole.log('cccc');\n";
-              $out .= "\n  // Highlight the code block using Prism.js when the editor content changes\n";
-              $out .= "\n  Prism.highlightAllUnder(editor.getBody());\n";
-              $out .= "\n });\n";
-              $out .= "\n});\n";
-              $out .= "\n}\n";
-              $out .= "\n});\n";
-              $out .= "\n });\n";
-
-              */
+ 
+ 
         //$out.= "\n}, 8000)\n";
     $out .= "\n</script>\n";
   }
@@ -1215,11 +1470,12 @@ function assembledJsonData($template, $parentName, $sourceData){
       $dataArray[] = $datum;
     }
   } else {
-    $dataArray = $data;
+    $dataArray = $template;
   }
+  $out = [];
   foreach($dataArray  as $item){
-    $key = $item["name"];
-    $value = $item["value"];
+    $key = gvfa("name", $item);
+    $value = gvfa("value", $item);
     //echo $ky . "<P>";
     if (is_array($value)) {
       $out[$key] = assembledJsonData($template[$key], $key, $sourceData);
