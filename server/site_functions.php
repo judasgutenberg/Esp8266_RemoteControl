@@ -376,7 +376,7 @@ function camelCaseToWords($input) { //thanks, chatgpt!
 }
 
 function generateSubFormFromJson($parentKey, $jsonString, $template) {
-  $templateArray = (array)json_decode($template);
+  $templateArray = (array)json_decode($template, true);
   //var_dump($templateArray);
   // Decode the JSON string
   $data = (array)json_decode($jsonString, true);
@@ -393,8 +393,22 @@ function generateSubFormFromJson($parentKey, $jsonString, $template) {
 }
 
 function generateFormElements($parentKey, $data) {
+  $formDataArray = [];
   $formElements = '<div class="genericform">';
-  foreach ($data as $key => $value) {
+  if(!array_is_list($data)) { //this means our template is very simple
+    
+    $datum = [];
+    foreach ($data as $key=>$value) {
+      $datum["name"] = $key;
+      $datum["value"] = $value;
+      $formDataArray[] = $datum;
+    }
+  } else {
+    $formDataArray = $data;
+  }
+  foreach ($formDataArray as $item) {
+       $key = $item["name"];
+       $value = $item["value"];
       //$formElements .= '<div>';
       // Create a label based on the key
       $formElements .= '<div class="genericformelementlabel" for="' . $key . '">' . camelCaseToWords($key) . '</div>';
@@ -1192,7 +1206,20 @@ function assembledJsonData($template, $parentName, $sourceData){
   //var_dump($template);
   //echo gettype($sourceData);
   //echo $sourceData["config|excludeNumbers"] . "^";
-  foreach($template  as $key => $value){
+  $dataArray  = [];
+  if(!array_is_list($template)) { //this means our template is very simple
+    $datum = [];
+    foreach ($template as $key=>$value) {
+      $datum["name"] = $key;
+      $datum["value"] = $value;
+      $dataArray[] = $datum;
+    }
+  } else {
+    $dataArray = $data;
+  }
+  foreach($dataArray  as $item){
+    $key = $item["name"];
+    $value = $item["value"];
     //echo $ky . "<P>";
     if (is_array($value)) {
       $out[$key] = assembledJsonData($template[$key], $key, $sourceData);
@@ -1215,7 +1242,7 @@ function reassembleFormJson($formData, $sourceData){
 		$error = gvfa("error", $datum); 
     if($type == "json"){
       if($datum["template"]) {
-        $out = json_encode(assembledJsonData(json_decode($datum["template"]), $name,  $sourceData));
+        $out = json_encode(assembledJsonData(json_decode($datum["template"], true), $name,  $sourceData));
 
         return $out;
         //foreach($formData["template"]  as $key => $value){
@@ -1775,7 +1802,7 @@ function tokenReplace($template, $data,  $tableName = "", $strDelimiterBegin = "
 }
 
 if (!function_exists('array_is_list')) {
-  function array_is_list(array $arr)
+  function array_is_list($arr)
   {
       if ($arr === []) {
           return true;
@@ -2282,7 +2309,7 @@ function insertUpdateSql($conn, $tableName, $primaryKey, $data) {
         } else if($column == "expired"  && $value == ""){
         } else if($type == "time" && $value == "") {
         } else if($type == "json") {
-          $jsonData = assembledJsonData(json_decode($template), $column, $_POST);
+          $jsonData = assembledJsonData(json_decode($template, true), $column, $_POST);
           //var_dump($column);
           //var_dump($template);
           //var_dump($jsonData);
@@ -2598,6 +2625,7 @@ function getConfigItem($data, $key, $jsonColumn = "preferences"){
 }
 
 //looks at SQL and pulls out the human-readable names of entities mentioned in it if they are properly defined in $config
+//it might make sense to cache the results of the SQL queries this performs, because they can hammer a DB on a long list of report records
 function specifiedEntities($sql, $valuesRecord, $config = ""){
   global $conn;
   //var_dump($valuesRecord);
