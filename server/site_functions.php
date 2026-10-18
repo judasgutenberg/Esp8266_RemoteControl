@@ -382,7 +382,7 @@ function generateSubFormFromJson($parentKey, $jsonString, $template) {
   //var_dump($templateArray);
   // Decode the JSON string
   $data = (array)json_decode($jsonString, true);
-  if($templateArray && false){
+  if($templateArray && false){ //hmm, didn't end up doing this i guess
     $keysToAdd = array_diff_key($data, $templateArray);
   
     $data = $data + $keysToAdd;
@@ -678,8 +678,15 @@ function genericEntitySave($user, $table, $forceUpdate = false) {
       }
     }
   }
-  
-  $pkSpec = populateDictionaryFromSource($pk, $_REQUEST, $user); //this used to work from $_POST but no longer does
+  if($table != "tenant") {
+    $pkSpec = populateDictionaryFromSource($pk, $_REQUEST, $user); //this used to work from $_POST but no longer does
+  } else {
+    if(canUserDoThing($user, "super")) {
+      $pkSpec = populateDictionaryFromSource($pk, $_REQUEST, $_REQUEST); //make sure our user is a superuser!
+    } else {
+      return array($pk[0]=>"insufficient permissions", "_sql"=>"");
+    }
+  }
   //var_dump($pkSpec);
   $savedPk = implode("-", array_values($pkSpec));
   unset($data['action']);
@@ -859,7 +866,7 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
     $idString = "";
 		if($type == "file") {
 			$idString = "id='file'";
-      $waitingMesasage = "Uploading...";
+      $waitingMesasage = "Uploading..."; //doesn't actually make it out of here but whatevs
 		}
 		if($type == "hidden") {
       $out .= "<input name='" . $formItemNamePrefix  . $name . "' value=\"" .  ($value) . "\" type='" . $type . "'/>";

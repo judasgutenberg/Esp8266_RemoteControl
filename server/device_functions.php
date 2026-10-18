@@ -6,7 +6,7 @@ function allDeviceFeatures($tenantId) {
               df.enabled, df.device_type_feature_id, df.device_feature_id, df.created, 
               last_known_device_value, 
               last_known_device_modified, 
-              df.value,
+              df.value,f
               digest_bit_position, 
               color
             FROM device_feature df 
@@ -580,6 +580,7 @@ function editUser($error){
 	    'label' => 'id',
       'name' => $table . "_id",
       'type' => 'read_only',
+      'value' => gvfa($table . "_id", $source),
       'error' => gvfa($table . "_id", $error)
 	  ],
     [
@@ -730,7 +731,7 @@ function editTenant($error, $user){
 	    'label' => 'id',
       'name' => $table . "_id",
       'type' => 'read_only',
-      'error' => gvfa($table . "_id", $error),
+      'value' => gvfa($table . "_id", $source),
       'error' => gvfa($table . "_id", $error)
 	  ],
  
