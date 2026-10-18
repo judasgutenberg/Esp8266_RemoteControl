@@ -783,7 +783,7 @@ function editTenant($error, $user){
       'name' => 'preferences',
       'type' => 'json',
       'value' => gvfa("preferences", $source),
-      'template'=>" [ {\"name\":\"device_id\", \"type\":\"number\", \"value\":1, \"label\":\"default device id\"}, {\"name\":\"specific_entities\",\"label\":\"specific entities config\",\"width\":500,\"height\":100}   ]"
+      'template'=>" [ {\"name\":\"device_id\", \"type\":\"number\", \"label\":\"default device id\"}, {\"name\":\"specific_entities\",\"label\":\"specific entities config\",\"width\":500,\"height\":100}   ]"
     ]
     
 
