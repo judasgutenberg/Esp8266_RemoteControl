@@ -6,7 +6,7 @@ function allDeviceFeatures($tenantId) {
               df.enabled, df.device_type_feature_id, df.device_feature_id, df.created, 
               last_known_device_value, 
               last_known_device_modified, 
-              df.value,f
+              df.value,
               digest_bit_position, 
               color
             FROM device_feature df 
