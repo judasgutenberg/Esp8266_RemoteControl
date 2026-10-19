@@ -446,6 +446,7 @@ void cmdWifiInfo(String* param, int argCount, bool deferred) {
 }
 
 //ADC_MODE(ADC_VCC); //to read the VCC, you would need to uncomment this. but then A0 cannot be measured
+//Apparently ADC_MODE cannot be changed during runtime
 
 void cmdChipInfo(String* param, int argCount, bool deferred) {
   textOut(F("Flash chip size: ") + String(ESP.getFlashChipSize()));
