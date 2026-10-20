@@ -422,10 +422,7 @@ function generateFormElements($parentKey, $data, $templateArray = []) {
           $guessAtPk = "";
           $user = [];
           $textAreaIds = [];
-          //templateArray contains info about all preferences, but we just need info for our item
-          //$templateForItem = findRecordByKey($templateArray, "name",  $item["name"]);
-          //unset($templateForItem['value']);//don't want to overwrite value with default!
-          //$item = array_merge($item, $templateForItem);
+          //templateArray contains info about all preferences, but we just need info for our item, which we get from $data
           if(array_key_exists($key, $data)) {
             $item["value"] = $value;
           }
