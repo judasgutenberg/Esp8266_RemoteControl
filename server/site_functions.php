@@ -419,7 +419,7 @@ function generateFormElements($parentKey, $data, $templateArray = []) {
       
       if (is_array($value)) {
           // Recursively generate form elements for arrays
-          $formElements .= '<div class="genericformelementlabel" for="' . $key . '">' . camelCaseToWords($key) . '</div>';
+          $formElements .= '<div class="genericformelementlabel" for="' . $key . '">' . camelCaseToWords($key) . "</div>\n";
           $templateArray = arrayFromJson(gvfa("template", $data));
           $formElements .= generateFormElements($key, $value, $templateArray);
       } else {
@@ -452,7 +452,7 @@ function generateFormElements($parentKey, $data, $templateArray = []) {
       }
       //$formElements .= '</div>';
   }
-  $formElements .= '</div>';
+  $formElements .= "</div>\n";
   return $formElements;
 }
 
@@ -871,9 +871,9 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
 		if($type == "hidden") {
       $out .= "<input name='" . $formItemNamePrefix  . $name . "' value=\"" .  ($value) . "\" type='" . $type . "'/>";
 		} else {
-      $out .= "<div class='genericformelementlabel'>" . $label . ": </div>";
-      $out .= "<div class='genericformelementinput'>";
-      $out .= "<div class='genericformerror'>" . $error . "</div>";
+      $out .= "\n<div class='genericformelementlabel'>" . $label . ": \n</div>";
+      $out .= "\n\t<div class='genericformelementinput'>";
+      $out .= "\n\t<div class='genericformerror'>" . $error . "\n\t</div>";
       $template = gvfa("template", $datum);
       //echo $name . "<BR>";
       //var_dump($template);
@@ -897,7 +897,7 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
             }
 
           }
-          $out .= "<input style='accent-color:" .  $accentColor . "' type='checkbox' name='" . $formItemNamePrefix  . $name . "[]' value='" . $specificValue . " " . $checkPart . "'/> " . $specificValue . "<br/>";
+          $out .= "\n\t\t<input style='accent-color:" .  $accentColor . "' type='checkbox' name='" . $formItemNamePrefix  . $name . "[]' value='" . $specificValue . " " . $checkPart . "'/> " . $specificValue . "<br/>";
         }
       } else if($type == 'select') {
         //echo $values;
@@ -918,9 +918,9 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
         if($changeFunction) {
           $onChangePart = " onchange=\"" . $changeFunction . "\" ";
         }
-        $out .= "<select " . str_replace("onblur=", "onchange=", $validationString) . " " . $onChangePart. " name='" . $formItemNamePrefix  . $name . "' />";
+        $out .= "\n\t\t<select " . str_replace("onblur=", "onchange=", $validationString) . " " . $onChangePart. " name='" . $formItemNamePrefix  . $name . "' />";
         if(is_string($values)) {
-          $out .= "<option value='0'>none</option>";
+          $out .= "\n\t\t\t<option value='0'>none</option>";
           //var_dump($user);
           if($user) {
             $values = tokenReplace($values, $user); //I'd has something embarrassingly hardcoded here until I had $user available
@@ -942,7 +942,7 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
                   $selected = " selected='selected' ";
 
                 }
-                $out .= "<option " . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>\n";
+                $out .= "\n\t\t\t<option " . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>";
 
               }
           }
@@ -950,17 +950,17 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
           
 
         } else if(is_array($values)){
-          $out .= "<option value=''>none</option>";
+          $out .= "\n\t\t\t<option value=''>none</option>";
           foreach($values as &$optionValue) {
             $selected = "";
             if($value == $optionValue  && $optionValue != ""){
               $selected = "selected";
 
             }
-            $out .= "<option ". $selected . ">" . $optionValue . "</option/>\n";
+            $out .= "\n\t\t\t<option ". $selected . ">" . $optionValue . "</option/>";
           }
         }
-        $out .= "</select>";
+        $out .= "\n\t\t</select>";
       } else if ($type == "many-to-many") {
         //echo $values;
         $result = mysqli_query($conn, $values); //REALLY NEED TO SANITIZE $values since it contains RAW SQL!!!
@@ -976,12 +976,12 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
         if($result) {
           $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
         }
-        $out .= "<div class='destinationitems'>\n";
+        $out .= "\n\t\t<div class='destinationitems'>";
         $out .= "attached:<br/>";
         if($height == ""){
           $height = 5;
         }
-        $out .= "<select " . str_replace("onblur=", "onchange=", $validationString) . " style='accent-color:" .  $accentColor . "'  multiple='multiple' name='" . $formItemNamePrefix  . $name . "[]' id='dest_" . $formItemNamePrefix  . $name . "' size='" . intval($height) . "'>";
+        $out .= "\n\t\t<select " . str_replace("onblur=", "onchange=", $validationString) . " style='accent-color:" .  $accentColor . "'  multiple='multiple' name='" . $formItemNamePrefix  . $name . "[]' id='dest_" . $formItemNamePrefix  . $name . "' size='" . intval($height) . "'>";
         if($rows) {
           foreach($rows as $row){
             $selected = "";
@@ -994,12 +994,12 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
             }
 
             if($row["has"] ){
-              $out .= "<option " . $itemToolString . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option>\n";
+              $out .= "\n\t\t\t<option " . $itemToolString . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option>";
             }
 
           }
         }
-        $out .= "</select>";
+        $out .= "\n\t\t</select>";
         $onSubmitManyToManyItems[] = $formItemNamePrefix  . $name;
         $out .= "</div>\n"; 
         $out .= "<div class='manytomanytools'>\n";
@@ -1007,8 +1007,8 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
         $out .= "<input id='_dest_" . $formItemNamePrefix  . $name ."_old_many_to_many' name='_dest" . $formItemNamePrefix  .$name ."_old_many_to_many' value='' type='hidden' />";
         $out .= "<button onclick='return copyManyToMany(\"source_" . $formItemNamePrefix  . $name ."\", \"dest_" . $formItemNamePrefix  .$name ."\")'>&lt;</button>";
         $out .= "<button onclick='return copyManyToMany(\"dest_" . $formItemNamePrefix  . $name ."\", \"source_" . $formItemNamePrefix  .$name ."\")'>&gt;</button>";
-        $out .= "</div>\n"; 
-        $out .= "<div class='sourceitems'>\n";
+        $out .= "\n\t</div>"; 
+        $out .= "\n\t<div class='sourceitems'>";
         $out .= "available:<br/>";
         $out .= "<select " . str_replace("onblur=", "onchange=", $validationString)  . " style='accent-color:" . $accentColor . "' name='source_" . $formItemNamePrefix  .$name . "' id='source_" . $formItemNamePrefix  .$name . "' size='" . intval($height) . "'/>";
         if($rows) {
@@ -1022,15 +1022,15 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
 
             }
             if(!$row["has"] ){
-              $out .= "<option " . $itemToolString . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>\n";
+              $out .= "\n\t\t\t<option " . $itemToolString . $selected . " value='". $row[$name] . "'>" . $row["text"]  . "</option/>";
             }
 
           }
         }
-        $out .= "</select>";
-        $out .= "</div>\n"; 
+        $out .= "\n\t\t</select>";
+        $out .= "\n\t</div>"; 
         $out .= "<div class='toolpanel' id='panel_" . $formItemNamePrefix  . $name . "'>\n"; 
-        $out .= "</div>\n"; 
+        $out .= "\n\t</div>"; 
 
       } else if ($type == "bool" || $type == "checkbox"){
         $checked = "";
@@ -1038,7 +1038,7 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
 
             $checked = "checked";
           }
-        $out .= "<input style='accent-color:" .  $accentColor . "' value='1' name='" . $formItemNamePrefix  .$name . "'  " . $checked . " type='checkbox'/>\n";
+        $out .= "\n\t\t<input style='accent-color:" .  $accentColor . "' value='1' name='" . $formItemNamePrefix  .$name . "'  " . $checked . " type='checkbox'/>\n";
       } else if ($type == "read_only"){
         $out .= $value . "\n";
       } else {
@@ -1049,7 +1049,7 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
             array_push($textareaIds, $textAreaId);
           }
           $codeLanguage = gvfa("code_language", $datum, "html");
-          $out .= "<textarea " . $validationString . " " .  $idString . " style='width:" . $width . "px;height:" . $height . "px;accent-color:" . $accentColor . "' name='" .  $formItemNamePrefix  . $name . "'  />" .  $value  . "</textarea>\n";
+          $out .= "\n\t\t<textarea " . $validationString . " " .  $idString . " style='width:" . $width . "px;height:" . $height . "px;accent-color:" . $accentColor . "' name='" .  $formItemNamePrefix  . $name . "'  />" .  $value  . "</textarea>\n";
         } else {
           $specialNumberAttribs = "";
           if ($type == "number") {
@@ -1063,7 +1063,7 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
           if($type == "plaintext_password") {
             $inputJavascript = "onchange=\"document.getElementById('_new_password').checked=true\"";
           }
-          $out .= "<input " . $inputJavascript  . " " . $validationString . " style='width:" . $width . "px;accent-color:" . $accentColor . "' " . $idString. " " . $specialNumberAttribs . "  name='" . $formItemNamePrefix  . $name . "' value=\"" .  $value . "\" type='" . $type . "'/>\n";
+          $out .= "\n\t\t<input " . $inputJavascript  . " " . $validationString . " style='width:" . $width . "px;accent-color:" . $accentColor . "' " . $idString. " " . $specialNumberAttribs . "  name='" . $formItemNamePrefix  . $name . "' value=\"" .  $value . "\" type='" . $type . "'/>\n";
           if($type == "file") {
             $out .= $value;
             $extension = pathinfo($value, PATHINFO_EXTENSION);
@@ -1075,12 +1075,12 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
             }
           }
           if($type == "plaintext_password") {
-            $out .= "<input id='_new_password' name='_new_password' value='1' type='checkbox'>\n password not yet encrypted";
+            $out .= "\n\t\t<input id='_new_password' name='_new_password' value='1' type='checkbox'>\n password not yet encrypted";
           }
         }
       }
         
-      $out .= "</div>\n";
+      $out .= "\n\t</div>";
   }
   
   return $out;
@@ -1103,7 +1103,6 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
   }
   $guessAtTable = "";
   $guessAtPk = "";
-
 	foreach($data as &$datum) {
     $out .= genericFormItem($datum, $columnCount, $guessAtTable, $guessAtPk, $textareaIds, $user, "");
     $columnCount++;
@@ -1111,18 +1110,14 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
 	$out .= "<div class='genericformelementlabel'><input name='action' id='action' value='" .  $submitLabel. "' type='submit'/></div>\n";
   $out .= "<input  name='_data' value=\"" . htmlspecialchars(json_encode($data)) . "\" type='hidden'/>";
   $out .= "<input type='hidden' name='_forceupdate' value='" . $forceUpdate . "'/>\n";
-  
 	$out .= "</div>\n";
 	$out .= "</form>\n";
   $out .= "\n<script>let onSubmitManyToManyItems=['" . implode("','", $onSubmitManyToManyItems) . "'];</script>\n";
-  
   $onSubmit = "onsubmit='formSubmitTasks();startWaiting(\"" . $waitingMesasage . "\")'";
- 
+  //prepend the <form> tag
   $out = "<form name='genericForm' " . $onSubmit . " method='post' name='genericform' id='genericform' enctype='multipart/form-data'>\n" . $out;
   if(count($textareaIds) > 0){
-    
     $out .= "<script src=\"./tinymce/tinymce.min.js\" referrerpolicy=\"origin\"></script>\n";
-
     $out .= "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css\">\n";
     $out .= "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js\"></script>\n";
     $out .= "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/sql/sql.min.js\"></script>\n";
