@@ -306,8 +306,7 @@ function getWeatherData(yearsAgo) {
 	let atcCheckbox = document.getElementById("atc_id");
 	let yearsAgoToShow = queryParams.get('years_ago');
 	let greatestTime = "2000-01-01 00:00:00";
-  let absoluteTimeAgo = queryParams.get('absolute_time_ago');
-  
+	let absoluteTimeAgo = queryParams.get('absolute_time_ago');
 	let url = new URL(window.location.href);
 
 	if(yearsAgo > 0 && pastYearsViewed.indexOf(yearsAgo) < 0){
