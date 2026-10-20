@@ -408,15 +408,9 @@ function generateFormElements($parentKey, $data, $templateArray = []) {
   } else {
     $formDataArray = $data;
   }
-  foreach ($formDataArray as $item) {
-      
-  
-  
-       $key = gvfa("name", $item);
-       $value = gvfa("value", $item);
-      //$formElements .= '<div>';
-      // Create a label based on the key
-      
+  foreach ($templateArray as $item) {
+      $key = gvfa("name", $item);
+      $value = gvfa($key, $data);
       if (is_array($value)) {
           // Recursively generate form elements for arrays
           $formElements .= '<div class="genericformelementlabel" for="' . $key . '">' . camelCaseToWords($key) . "</div>\n";
@@ -429,9 +423,12 @@ function generateFormElements($parentKey, $data, $templateArray = []) {
           $user = [];
           $textAreaIds = [];
           //templateArray contains info about all preferences, but we just need info for our item
-          $templateForItem = findRecordByKey($templateArray, "name",  $item["name"]);
-          unset($templateForItem['value']);//don't want to overwrite value with default!
-          $item = array_merge($item, $templateForItem);
+          //$templateForItem = findRecordByKey($templateArray, "name",  $item["name"]);
+          //unset($templateForItem['value']);//don't want to overwrite value with default!
+          //$item = array_merge($item, $templateForItem);
+          if(array_key_exists($key, $data)) {
+            $item["value"] = $value;
+          }
           //var_dump($item);
           $formElements .= genericFormItem($item, $columnCount, $guessAtTable, $guessAtPk, $textAreaIds, $user, $parentKey . "|");
           // Create an input field for non-array values
@@ -871,9 +868,9 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
 		if($type == "hidden") {
       $out .= "<input name='" . $formItemNamePrefix  . $name . "' value=\"" .  ($value) . "\" type='" . $type . "'/>";
 		} else {
-      $out .= "\n<div class='genericformelementlabel'>" . $label . ": \n</div>";
+      $out .= "\n\t<div class='genericformelementlabel'>" . $label . ": \n\t</div>";
       $out .= "\n\t<div class='genericformelementinput'>";
-      $out .= "\n\t<div class='genericformerror'>" . $error . "\n\t</div>";
+      $out .= "\n\t\t<div class='genericformerror'>" . $error . "\n\t\t</div>";
       $template = gvfa("template", $datum);
       //echo $name . "<BR>";
       //var_dump($template);
