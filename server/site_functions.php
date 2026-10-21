@@ -375,12 +375,13 @@ function camelCaseToWords($input) { //thanks, chatgpt!
   return $result;
 }
 
-function generateSubFormFromJson($parentKey, $jsonString, $template) {
+function generateSubFormFromJson($parentKey, $jsonString, $template, $prefix = "") {
   //echo $template . "<BR>";
   $templateArray = (array)json_decode($template, true);
   //var_dump($templateArray);
   //var_dump($templateArray);
   // Decode the JSON string
+  //var_dump($jsonString);
   $data = (array)json_decode($jsonString, true);
   if($templateArray && false){ //hmm, didn't end up doing this i guess
     $keysToAdd = array_diff_key($data, $templateArray);
@@ -391,31 +392,50 @@ function generateSubFormFromJson($parentKey, $jsonString, $template) {
   // Generate form elements recursively
   //var_dump($data);
   //var_dump($template);
-  return generateFormElements($parentKey, $data, $templateArray);
+  return generateFormElements($parentKey, $data, $templateArray, $prefix);
 }
 
-function generateFormElements($parentKey, $data, $templateArray = []) {
-  $formDataArray = [];
+function generateFormElements($parentKey, $data, $templateArray = [], $prefix = "") {
+  //echo "<BR>prefix:" . $prefix . "<BR>";
+  //var_dump($templateArray);
   $formElements = '<div class="genericform">';
-  if(!array_is_list($data)) { //this means our template is very simple
-    
-    $datum = [];
-    foreach ($data as $key=>$value) {
-      $datum["name"] = $key;
-      $datum["value"] = $value;
-      $formDataArray[] = $datum;
-    }
-  } else {
-    $formDataArray = $data;
-  }
   foreach ($templateArray as $item) {
+      //echo "<BR>";
+      //var_dump($item);
+      //echo "<BR>";
       $key = gvfa("name", $item);
       $value = gvfa($key, $data);
-      if (is_array($value)) {
+      $count = 0;
+      //var_dump($item);
+      //echo "<P>";
+      if(gvfa("template", $item)) {
+        //ugh!!
+          //echo $key . "^" . $prefix . "<BR>";
+          if(array_key_exists($key, $data)) {
+            if(is_array($data[$key])) {
+              
+              foreach($data[$key] as $dataArrayItem) {
+                $item["value"] = $dataArrayItem;
+                
+                $formElements .= genericFormItem($item, null, $guessAtTable, $guessAtPk, $textAreaIds, null, $prefix  . $parentKey . "|" . $count . "|");
+                $count++;
+              }
+            }
+          }
+          $item["value"] = null; //also provide a form element to make a new one
+          //echo "<BR>X<BR>" . $key;
+          //echo "<BR>";
+          //var_dump($item);
+          //echo "<P>";
+          //echo"<HR>";
+          //var_dump(gvfa("template", $item));
+          $formElements .= genericFormItem($item, null, $guessAtTable, $guessAtPk, $textAreaIds, null, $prefix  . $parentKey . "|" . $count . "|");
+      } else if (is_array($value)) {
           // Recursively generate form elements for arrays
           $formElements .= '<div class="genericformelementlabel" for="' . $key . '">' . camelCaseToWords($key) . "</div>\n";
           $templateArray = arrayFromJson(gvfa("template", $data));
-          $formElements .= generateFormElements($key, $value, $templateArray);
+          $formElements .= generateFormElements($key, $value, $templateArray, $prefix);
+
       } else {
           $columnCount = 0;
           $guessAtTable = "";
@@ -423,11 +443,13 @@ function generateFormElements($parentKey, $data, $templateArray = []) {
           $user = [];
           $textAreaIds = [];
           //templateArray contains info about all preferences, but we just need info for our item, which we get from $data
-          if(array_key_exists($key, $data)) {
-            $item["value"] = $value;
+          if($key) {
+            if(array_key_exists($key, $data)) {
+              $item["value"] = $value;
+            }
           }
           //var_dump($item);
-          $formElements .= genericFormItem($item, $columnCount, $guessAtTable, $guessAtPk, $textAreaIds, $user, $parentKey . "|");
+          $formElements .= genericFormItem($item, $columnCount, $guessAtTable, $guessAtPk, $textAreaIds, $user,  $prefix  . $parentKey . "|");
           // Create an input field for non-array values
           /*
           $calculatedWidth = strlen($value) * 8;
@@ -872,12 +894,17 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
       //echo $name . "<BR>";
       //var_dump($template);
       //echo "<P>";
-      if($type == 'json') {
+      if($type == 'array') { //if perfectly recursive
+        $template = json_encode([$template]);
+        //echo "!:" . $name . "<BR>";
+        //var_dump($template);
+        $out .= generateSubFormFromJson($name, json_encode($value), $template, $formItemNamePrefix );
+      } else if($type == 'json') {
         if($value) {
-          $out .= generateSubFormFromJson($name, $value, $template);
+          $out .= generateSubFormFromJson($name, $value, $template, $formItemNamePrefix );
         } else {
           
-          $out .= generateSubFormFromJson($name, $template, $template);
+          $out .= generateSubFormFromJson($name, $template, $template, $formItemNamePrefix );
 
         }
       } else if($type == 'multiselect') {
@@ -1169,7 +1196,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
 	return $out;
 }
 
-function assembledJsonData($template, $parentName, $sourceData){
+function assembledJsonData($template, $parentName, $sourceData, $prefix = ""){
   //var_dump($template);
   //echo gettype($sourceData);
   //echo $sourceData["config|excludeNumbers"] . "^";
@@ -1188,12 +1215,76 @@ function assembledJsonData($template, $parentName, $sourceData){
   foreach($dataArray  as $item){
     $key = gvfa("name", $item);
     $value = gvfa("value", $item);
-    //echo $ky . "<P>";
-    if (is_array($value)) {
-      $out[$key] = assembledJsonData($template[$key], $key, $sourceData);
-    } else {
-      $out[$key] = $sourceData[$parentName . "|" .  $key];
+    $subTemplate = gvfa("template", $item);
+    $arrayDataBeingFound = true;
+    $arrayedDataIndex = 0;
+    //echo $key . "<-<BR>";
+    while($arrayDataBeingFound){
+      
+      if (is_array($value)) {
+        $out[$key] = assembledJsonData($template[$key], $key, $sourceData, $prefix . $parentName . "|" .  $key);
+      } else if ($subTemplate) {
+        //var_dump($template);
+        //echo "<BR>". $key . "XXXXX<BR>";
+        $foundData = assembledJsonData([$subTemplate], $key, $sourceData,  $prefix . $parentName . "|" . strval($arrayedDataIndex) . "|");
+        if($foundData ){
+          if(!is_null($foundData)) {
+            var_dump($foundData);
+            echo "<BR>";
+            $out[$key][$arrayedDataIndex] = $foundData;
+          }
+        } else {
+      
+            //return $out;
+            $arrayDataBeingFound = false;
+          
+        }
+        if($arrayedDataIndex > 10){
+          //temporary hack!
+          //$arrayDataBeingFound = false;
+        }
+      } else {
+        $keyToTry = $prefix .  $parentName . "|" .  $key;
+        //var_dump($_POST);
+        //echo "\n<BR>\n";
+        //die($keyToTry );
+        if(array_key_exists($keyToTry, $sourceData)){
+            $valueToTry = $sourceData[$keyToTry];
+            if($valueToTry) {
+              $out[$key] = $sourceData[$keyToTry];
+            }
+        }
+        $arrayDataBeingFound = false;
+      }
+      if($arrayedDataIndex > 10){
+        //temporary hack!
+        //$arrayDataBeingFound = false;
+      }
+      /*
+      $proposedArrayKey = $parentName . "|"  . strval($arrayedDataIndex) .  "|" . $key;
+      if(array_key_exists($proposedArrayKey, $sourceData)) {
+        if($sourceData[$proposedArrayKey]) {
+          $out[$key][$arrayedDataIndex] = $sourceData[$proposedArrayKey];
+        }
+      } else {
+        $arrayDataBeingFound = false;
+      }
+      */
+      $arrayedDataIndex++;
     }
+    $keyToTry = $parentName . "|" .  $key;
+    //echo $keyToTry . "\n<BR>\n";
+    //var_dump($_REQUEST);
+    if(array_key_exists($keyToTry, $sourceData)) {
+      $out[$key] = $sourceData[$keyToTry];
+    }
+  }
+  //echo $parentName ;
+  if( $prefix == "") {
+    //var_dump($_REQUEST);
+    //echo "\n<HR>\n";
+    //var_dump($out);
+    //die();
   }
   return $out;
 }
@@ -1210,7 +1301,7 @@ function reassembleFormJson($formData, $sourceData){
 		$error = gvfa("error", $datum); 
     if($type == "json"){
       if($datum["template"]) {
-        $out = json_encode(assembledJsonData(json_decode($datum["template"], true), $name,  $sourceData));
+        $out = json_encode(assembledJsonData(json_decode($datum["template"], true), $name,  $sourceData, ""));
 
         return $out;
         //foreach($formData["template"]  as $key => $value){
