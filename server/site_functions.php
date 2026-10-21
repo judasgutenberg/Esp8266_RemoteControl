@@ -1347,12 +1347,24 @@ function getUser($email, $tenantId = null) {
         $tenant = $tenants[0];
         $tenant["role"] = $role;//a temporary hack that will probably be good for awhile -- overwrite the mapping table role with the user role;
         $user["tenants"] = $tenants;
-        $user  = array_merge($user, $tenant);
+        $user  = smartArrayMerge($tenant, $user);
       }
     }
   }
   //var_dump($user);
   return $user;
+}
+
+function smartArrayMerge($lowerPriority, $higherPriority){
+    $result = $lowerPriority;
+    foreach ($higherPriority as $key => $value) {
+        if ($value !== null && $value !== '') {
+            $result[$key] = $value;
+        } elseif (!array_key_exists($key, $result)) {
+            $result[$key] = $value;
+        }
+    }
+    return $result;
 }
 
 function impersonateUser($impersonatedUserId) {

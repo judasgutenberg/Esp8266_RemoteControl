@@ -9,7 +9,8 @@ if($user){
 		$deviceId = $_REQUEST["device_id"];
 	} else {
 		if($devices  && $devices[0]){
-			$deviceId = $devices[0]["device_id"]; //picking the first device now, but this could be in the tenant config
+			//$deviceId = $devices[0]["device_id"]; //picking the first device now, but this could be in the tenant config BAH THAT WAS THE OLD WAY!!
+			$deviceId =  getConfigItem($user, "device_id");
 		}
 	}
 }
