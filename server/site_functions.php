@@ -2703,6 +2703,15 @@ function getConfigItem($data, $key, $jsonColumn = "preferences"){
     }
 }
 
+function getPreferencesTemplateJson() {
+  $content = file_get_contents(__DIR__ . '/preferences_template.json');
+
+  if ($content === false) {
+      return '{"error": "No template found!"}';
+  }
+  return $content;
+}
+
 //looks at SQL and pulls out the human-readable names of entities mentioned in it if they are properly defined in $config
 //it might make sense to cache the results of the SQL queries this performs, because they can hammer a DB on a long list of report records
 function specifiedEntities($sql, $valuesRecord, $config = ""){

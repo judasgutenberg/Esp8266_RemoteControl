@@ -625,8 +625,7 @@ function editUser($error){
       'name' => 'preferences',
       'type' => 'json',
       'value' => gvfa("preferences", $source),
-      'template'=>" [{\"name\":\"test\", \"label\":\"DDDD\",\"type\":\"array\",\"template\":{\"name\":\"value\"}}, {\"name\":\"device_id\", \"type\":\"select\",\"values\":\"SELECT device_id, name AS text FROM device ORDER BY name\", \"label\":\"default device\"}, {\"name\":\"specific_entities\",\"label\":\"specific entities config\",\"width\":500,\"height\":100}   ]"
-    
+      'template'=>getPreferencesTemplateJson()
       //'template'=>" [{\"name\":\"test\", \"label\":\"DDDD\",\"type\":\"array\",\"template\":{\"name\":\"schmalue\",\"label\":\"stencg\",\"type\":\"array\",\"template\":{\"name\":\"valuee\"}}}, {\"name\":\"device_id\", \"type\":\"select\",\"values\":\"SELECT device_id, name AS text FROM device ORDER BY name\", \"label\":\"default device\"}, {\"name\":\"specific_entities\",\"label\":\"specific entities config\",\"width\":500,\"height\":100}   ]"
     ],
     [
@@ -793,8 +792,8 @@ function editTenant($error, $user){
       'name' => 'preferences',
       'type' => 'json',
       'value' => gvfa("preferences", $source),
-      'template'=>" [{\"name\":\"test\", \"label\":\"DDDD\",\"type\":\"array\",\"template\":{\"name\":\"value\"}}, {\"name\":\"device_id\", \"type\":\"select\",\"values\":\"SELECT device_id, name AS text FROM device ORDER BY name\", \"label\":\"default device\"}, {\"name\":\"specific_entities\",\"label\":\"specific entities config\",\"width\":500,\"height\":100}   ]"
-    
+      'template'=> getPreferencesTemplateJson()
+
       //'template'=>" [{\"name\":\"test\", \"label\":\"DDDD\",\"type\":\"array\",\"template\":{\"name\":\"schmalue\",\"label\":\"stencg\",\"type\":\"array\",\"template\":{\"name\":\"valuee\"}}}, {\"name\":\"device_id\", \"type\":\"select\",\"values\":\"SELECT device_id, name AS text FROM device ORDER BY name\", \"label\":\"default device\"}, {\"name\":\"specific_entities\",\"label\":\"specific entities config\",\"width\":500,\"height\":100}   ]"
     ]
     
