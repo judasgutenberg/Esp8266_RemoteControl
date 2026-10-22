@@ -182,18 +182,7 @@ function bodyWrap($content, $user, $deviceId, $poser = null) {
   $out .= "<div class='waitingouter' id='waitingouter'><div class='waiting' id='waiting'><img width='200' height='200' src='./images/signs.gif'></div><div id='waitingmessage' class='waitingmessage'>Waiting...</div></div>\n";
   $out .= "<div class='outercontent'>\n";
   
-  $poserString = "";
-  if($user) {
-    if($poser) {
-      $poserString = " posing as <span class='poserindication'>" . userDisplayText($poser) . "</span> (<a href='?action=disimpersonate'>unpose</a>)";
-
-    }
-    $out .= "<div class='loggedin'>You are logged in as <b>" . userDisplayText($user) . "</b>" .  $poserString . "  on " . $user["name"] . " <div class='basicbutton'><a href=\"?action=logout\">logout</a></div></div>\n";
-	}
-	else
-	{
-    //$out .= "<div class='loggedin'>You are logged out.  </div>\n";
-	} 
+  $out .= loginIndication($user, $poser);
 	$out .= "<div>\n";
  
   $out .= "<div class='devicedescription'>";
@@ -209,6 +198,24 @@ function bodyWrap($content, $user, $deviceId, $poser = null) {
   $out .= "</body>\n";
   $out .= "</html>\n";
   return $out;
+}
+
+function loginIndication($user, $poser) {
+  $out = "";
+  $poserString = "";
+  if($user) {
+    if($poser) {
+      $poserString = " posing as <span class='poserindication'>" . userDisplayText($poser) . "</span> (<a href='?action=disimpersonate'>unpose</a>)";
+
+    }
+    $out .= "<div class='loggedin'>You are logged in as <b><a href='?table=user&user_id=" . $user["user_id"] . "'>" . userDisplayText($user) . "</a></b>" .  $poserString . "  on " . $user["name"] . " <div class='basicbutton'><a href=\"?action=logout\">logout</a></div></div>\n";
+	}
+	else
+	{
+    //$out .= "<div class='loggedin'>You are logged out.  </div>\n";
+	} 
+  return $out;
+
 }
 
 function filterCommasAndDigits($input) {

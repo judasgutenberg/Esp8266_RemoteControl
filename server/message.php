@@ -19,18 +19,9 @@ if($deviceId == ""){
 <?php
 	$out .= topmostNav();
 	$out .= "<div class='logo'>Map</div>\n";
-	if($user) {
-		$out .= "<div class='outercontent'>";
-		if($poser) {
-			$poserString = " posing as <span class='poserindication'>" . userDisplayText($poser) . "</span> (<a href='?action=disimpersonate'>unpose</a>)";
-		}
-		$out .= "<div class='loggedin'>You are logged in as <b>" . userDisplayText($user) . "</b>" .  $poserString . "  on " . $user["name"] . " <div class='basicbutton'><a href=\"?action=logout\">logout</a></div></div>\n";
-	}
-		else
-  {
-		//$out .= "<div class='loggedin'>You are logged out.  </div>\n";
-	} 
-	  $out .= "<div class='waitingouter' id='waitingouter'><div class='waiting' id='waiting'><img width='200' height='200' src='./images/signs.gif'></div><div id='waitingmessage' class='waitingmessage'>Waiting...</div></div>\n";
+	$out .= "<div class='outercontent'>";
+	$out .= loginIndication($user, $poser);
+  $out .= "<div class='waitingouter' id='waitingouter'><div class='waiting' id='waiting'><img width='200' height='200' src='./images/signs.gif'></div><div id='waitingmessage' class='waitingmessage'>Waiting...</div></div>\n";
   $out .= "<div>\n";
   $out .= "<div class='documentdescription'>";
   $out .= "</div>";
