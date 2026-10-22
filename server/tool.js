@@ -2860,11 +2860,79 @@ if (form) {
 }
 
 
+
+ 
+
+
+  ///////////////////////////
+
+
+
 window.onload = function() {
 	const commandTextInput = document.getElementById('command_text');
 	if(commandTextInput) { //if we are on instant command, load all the recent instant commands, no matter what device
 		instantCommand(true);
 	}
+   const tooltips = [...document.querySelectorAll(".help-wrap")].map((wrap) => {
+      const button = wrap.querySelector(".help-button");
+      const popup = wrap.querySelector(".help-popup");
+      let pinned = false;
+      let hideTimer;
+
+      function open() {
+        clearTimeout(hideTimer);
+        wrap.classList.add("is-open");
+        button.setAttribute("aria-expanded", "true");
+        popup.setAttribute("aria-hidden", "false");
+      }
+
+      function close() {
+        wrap.classList.remove("is-open");
+        button.setAttribute("aria-expanded", "false");
+        popup.setAttribute("aria-hidden", "true");
+      }
+
+      function scheduleClose() {
+        clearTimeout(hideTimer);
+        if (!pinned) hideTimer = setTimeout(close, 120);
+      }
+
+      wrap.addEventListener("mouseenter", open);
+      wrap.addEventListener("mouseleave", scheduleClose);
+      button.addEventListener("focus", open);
+      button.addEventListener("blur", scheduleClose);
+
+      button.addEventListener("click", () => {
+        pinned = !pinned;
+        if (pinned) open();
+        else close();
+      });
+
+      return {
+        wrap,
+        close,
+        unpin: () => { pinned = false; }
+      };
+    });
+
+    document.addEventListener("click", (event) => {
+      for (const tooltip of tooltips) {
+        if (!tooltip.wrap.contains(event.target)) {
+          tooltip.unpin();
+          tooltip.close();
+        }
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        for (const tooltip of tooltips) {
+          tooltip.unpin();
+          tooltip.close();
+        }
+      }
+    });
+
 };
   
   

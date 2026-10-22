@@ -3,12 +3,14 @@
     "name":"device_id", 
     "type":"select",
     "values":"SELECT device_id, name AS text FROM device ORDER BY name", 
+    "help_text": "Chooses which device's weather data to show by default on the weather tab.",
     "label":"default device"
   }, 
 
   {
     "name":"specific_entities",
     "label":"specific entities config",
+    "help_text": "You can specify entities to look up by primary key in the database. Each record here is separated by semi-colons and is a comma-separated list of table (such as 'device'), primary key (such as 'device_id'), human readable column (such as 'name'), and any other columns that are required for lookup (such as tenant_id).",
     "width":500,
     "height":100
   } 

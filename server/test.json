@@ -1,0 +1,23 @@
+[
+  {
+  "name":"test", 
+  "label":"DDDD",
+  "type":"array",
+  "template":
+    {
+      "name":"value"
+    }
+  }, 
+  {
+    "name":"device_id", 
+    "type":"select",
+    "values":"SELECT device_id, name AS text FROM device ORDER BY name", 
+    "label":"default device"
+  }, 
+  {
+    "name":"specific_entities",
+    "label":"specific entities config",
+    "width":500,
+    "height":100
+  }   
+]

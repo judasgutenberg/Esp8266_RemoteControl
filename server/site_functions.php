@@ -841,6 +841,7 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
 		$type = strtolower(gvfa("type", $datum)); 
 		$range = strtolower(gvfa("range", $datum)); 
     $accentColor = gvfa("accent_color", $datum, "#66eeee");
+    $helpText = gvfa("help_text", $datum);
     //echo $name .  " " . $accentColor . "<BR>";
     $width = 200;
  
@@ -894,7 +895,12 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
 		if($type == "hidden") {
       $out .= "<input name='" . $formItemNamePrefix  . $name . "' value=\"" .  ($value) . "\" type='" . $type . "'/>";
 		} else {
-      $out .= "\n\t<div class='genericformelementlabel'>" . $label . ": \n\t</div>";
+      $helpLink = "";
+      if($helpText){
+        $helpLink =  '<div class="help-wrap"><button  class="help-button" type="button" aria-label="Help" aria-expanded="false"  >?</button>';
+        $helpLink .= '<div class="help-popup"  role="tooltip" aria-hidden="true">'. $helpText . '</div></div>';
+      }
+      $out .= "\n\t<div class='genericformelementlabel'>" . $helpLink  . $label . ": \n\t</div>";
       $out .= "\n\t<div class='genericformelementinput'>";
       $out .= "\n\t\t<div class='genericformerror'>" . $error . "\n\t\t</div>";
       $template = gvfa("template", $datum);
@@ -2703,8 +2709,8 @@ function getConfigItem($data, $key, $jsonColumn = "preferences"){
     }
 }
 
-function getPreferencesTemplateJson() {
-  $content = file_get_contents(__DIR__ . '/preferences_template.json');
+function getPreferencesTemplateJson($path = "./preferences_template.json") {
+  $content = file_get_contents($path);
 
   if ($content === false) {
       return '{"error": "No template found!"}';

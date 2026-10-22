@@ -273,6 +273,50 @@ body
 
 
 
+  .help-wrap {
+    position: relative;
+    display: inline-block;
+  }
+
+  .help-button {
+    width: .5rem;
+    height: .7rem;
+    border: 1px solid #9999;
+    border-radius: 50%;
+    background: #eeeeee;
+    color: #333;
+    font: bold 8px sans-serif;
+ 
+    cursor: help;
+  }
+
+  .help-popup {
+    position: absolute;
+    z-index: 10;
+    top: calc(100% + 0.5rem);
+    left: 50%;
+    width: 16rem;
+    padding: 0.75rem;
+    border-radius: 0.4rem;
+    background: #222;
+    color: white;
+    box-shadow: 0 4px 12px #0003;
+    font: 0.9rem/1.4 sans-serif;
+
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, -4px);
+    transition: opacity 180ms ease, transform 180ms ease, visibility 180ms;
+  }
+
+  .help-wrap.is-open .help-popup {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+  }
+
+
+
 .tooltip {
     position: relative;
     cursor: pointer;
