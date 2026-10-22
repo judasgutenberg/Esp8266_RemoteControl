@@ -1355,6 +1355,7 @@ function getUser($email, $tenantId = null) {
   return $user;
 }
 
+//merge the parts of two arrays, prioritizing the higherPriority values unless those values are empty
 function smartArrayMerge($lowerPriority, $higherPriority){
     $result = $lowerPriority;
     foreach ($higherPriority as $key => $value) {
