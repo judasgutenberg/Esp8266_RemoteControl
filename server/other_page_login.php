@@ -8,6 +8,7 @@ include("device_functions.php");
 //error_reporting(E_ALL);
 
 $version = 1.2;
+//poser is used for an admin to simulate have the experience of a user. i used it for debugging once on an early version of this code
 $poser = null;
 $poserString = "";
 $out = "";
