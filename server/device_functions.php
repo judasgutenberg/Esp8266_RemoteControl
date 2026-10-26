@@ -2074,10 +2074,12 @@ function getCurrentWeatherConditionId($tenant) {
     }
     //var_dump($credential);
     $apiKey = $credential["password"];
-    $weatherData = getWeatherDataByCoordinates($tenant["latitude"], $tenant["longitude"], $apiKey);
-    //var_dump($weatherData);
-    $weatherDescription = $weatherData["weather"][0]["description"];
-    writeMemoryCache($weatherDescriptionKey, $weatherDescription);
+    if(gvfa("latitude", $tenant)) {
+      $weatherData = getWeatherDataByCoordinates($tenant["latitude"], $tenant["longitude"], $apiKey);
+      //var_dump($weatherData);
+      $weatherDescription = gvfa("description", gvfa(0, gvfa("weather", $weatherData)));
+      writeMemoryCache($weatherDescriptionKey, $weatherDescription);
+    }
     //a little hook here to do unrelated things on a regular basis, that is, every ten minutes
     doVariousThingsRegularly($tenant);
   }
