@@ -3687,59 +3687,61 @@ function gatherAnyTractiveGpsData($tenant, $debug = false){
   //{time, latlong, alt, speed, pos_uncertainty, sensor_used}...
   //so we can just pump these into a device_log using a device_id for a new device
   if($data) {
-    $data = $data[0];  //i know, stupid
-    //var_dump($data);
-    foreach($data as $datum){
-      $rawSensorUsed= $datum["sensor_used"];
-      $sensorUsed = 0;
-      $batteryLevel = 0;
-      $temperatureState = 0;
-      $hwStatus = 0;
-      if($data2){
-        $batteryLevel = $data2["battery_level"];
-        $temperatureState = intval($data2["temperature_state"]);
-        $hwStatus = intval($data2["hw_status"]);
+    if(count($data) > 0) {
+      $data = $data[0];  //i know, stupid
+      //var_dump($data);
+      foreach($data as $datum){
+        $rawSensorUsed= $datum["sensor_used"];
+        $sensorUsed = 0;
+        $batteryLevel = 0;
+        $temperatureState = 0;
+        $hwStatus = 0;
+        if($data2){
+          $batteryLevel = $data2["battery_level"];
+          $temperatureState = intval($data2["temperature_state"]);
+          $hwStatus = intval($data2["hw_status"]);
+        }
+        if($rawSensorUsed == "KNOWN_WIFI"){
+          $sensorUsed = 1;
+        } else if($rawSensorUsed == "PHONE"){
+          $sensorUsed = 2;
+        } else if($rawSensorUsed == "GPS"){
+          $sensorUsed = 3;
+        }
+  
+        $latlong = $datum["latlong"];
+        $dt = new DateTime('@' . $datum["time"]); // '@' treats it as a Unix timestamp in UTC
+        $dt->setTimezone(new DateTimeZone($timezone));
+        $recorded = $dt->format('Y-m-d H:i:s');
+        $sql = "
+          INSERT INTO device_log (
+              recorded, latitude, longitude, elevation, voltage, temperature, wind_speed, reserved1, reserved2, reserved3, reserved4, device_id
+          )
+          SELECT
+            '"  . $recorded . "',
+              " . $latlong[0] . ",
+              " . $latlong[1] . ",
+              " . $datum["alt"] . ",
+              " . $batteryLevel  . ",
+              " . $temperatureState  . ",
+              " . floatval($datum["speed"]) . ",
+              " . floatval($datum["speed"]) . ",
+              " . $datum["pos_uncertainty"] . ",
+              " . $sensorUsed . ",
+              " . $hwStatus  . ",
+              " . $deviceId . "
+          WHERE NOT EXISTS (
+              SELECT 1
+              FROM device_log
+              WHERE device_id = " . $deviceId . "
+                AND recorded = '" . $recorded . "'
+          )
+        ";
+        if($debug) {
+          echo "<br/>" . $sql;
+        }
+        $result = mysqli_query($conn, $sql);
       }
-      if($rawSensorUsed == "KNOWN_WIFI"){
-        $sensorUsed = 1;
-      } else if($rawSensorUsed == "PHONE"){
-        $sensorUsed = 2;
-      } else if($rawSensorUsed == "GPS"){
-        $sensorUsed = 3;
-      }
- 
-      $latlong = $datum["latlong"];
-      $dt = new DateTime('@' . $datum["time"]); // '@' treats it as a Unix timestamp in UTC
-      $dt->setTimezone(new DateTimeZone($timezone));
-      $recorded = $dt->format('Y-m-d H:i:s');
-      $sql = "
-        INSERT INTO device_log (
-            recorded, latitude, longitude, elevation, voltage, temperature, wind_speed, reserved1, reserved2, reserved3, reserved4, device_id
-        )
-        SELECT
-          '"  . $recorded . "',
-            " . $latlong[0] . ",
-            " . $latlong[1] . ",
-            " . $datum["alt"] . ",
-            " . $batteryLevel  . ",
-            " . $temperatureState  . ",
-            " . floatval($datum["speed"]) . ",
-            " . floatval($datum["speed"]) . ",
-            " . $datum["pos_uncertainty"] . ",
-            " . $sensorUsed . ",
-            " . $hwStatus  . ",
-            " . $deviceId . "
-        WHERE NOT EXISTS (
-            SELECT 1
-            FROM device_log
-            WHERE device_id = " . $deviceId . "
-              AND recorded = '" . $recorded . "'
-        )
-      ";
-      if($debug) {
-        echo "<br/>" . $sql;
-      }
-      $result = mysqli_query($conn, $sql);
     }
   }
 }

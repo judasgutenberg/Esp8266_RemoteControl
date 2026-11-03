@@ -9,6 +9,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
 ini_set('display_errors', 0);
+$noUserOrLoginRequired = array("logGpsData");
 $deviceFreeAcceptableModes = array("getInverterData", "getEarliestRecorded");
 $userAcceptableModes = array("getOfficialWeatherData", "getInverterData", "getWeatherData", "getEarliestRecorded", "getMap");
 
@@ -163,11 +164,11 @@ if($_REQUEST) {
 		$storagePassword = simpleDecrypt2($encryptedKey2, $data,  $timeString, $encryptionScheme);
 	}
 	//die($storagePassword . " : " . time() . " ; " . $checksum . "?=" . $x  . " : " . urlencode($data));
-	
-	if($user && !$storagePassword) {
+	//var_dump($user);
+	if($user && !$storagePassword  && !in_array($mode, $noUserOrLoginRequired)) {
 		$storagePassword  = $user['storage_password'];
 		if(!in_array($mode, $userAcceptableModes)){ //keeps certain kinds of hacks from working
-			die(json_encode(["error"=>$user["email"] + ": your brilliant hack has failed"]));
+			die(json_encode(["error"=>$user["email"]  . ": your brilliant hack has failed"]));
 		}
 	}
 	
@@ -180,7 +181,8 @@ if($_REQUEST) {
 		$deviceIds = deriveDeviceIdsFromStoragePassword($storagePassword);
 	}
 
-	$canAccessData = array_search($deviceId, $deviceIds) !== false  || ($user  && in_array($mode, $deviceFreeAcceptableModes)) ;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
+	$canAccessData = array_search($deviceId, $deviceIds) !== false  || ($user  && in_array($mode, $deviceFreeAcceptableModes)  || canLogLocation($mode)) ;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
+	//var_dump($canAccessData);
 	if($canAccessData) {	
 		$tenant = deriveTenantFromStoragePassword($storagePassword);
 		$tenantId = $tenant["tenant_id"];
@@ -200,6 +202,7 @@ if($_REQUEST) {
 			$out = ["error"=>"bad database connection"];
 		} else {
 			$latestCommandData = getLatestCommandData($deviceId, $tenant["tenant_id"]);
+			$error = mysqli_error($conn);
 			if(!$loraId) {
 				$loraId = "NULL";
 			} else {
@@ -261,93 +264,113 @@ if($_REQUEST) {
 				$latency = 0;
          
  
-					if(count($lines) > 1) {
-						$whereAndWhen = explode("*", $lines[1]); 
-						//$whereAndWhen: numericTimestamp|millis|transmissionTimestamp|averageLatency|latitude|longitude|elevation|velocity|uncertainty
-						//first numeric timestamp is ONLY for timestamping old data stored locally
-						if(count($whereAndWhen)>0) {
-							$numericTimestamp = defaultFailDown($whereAndWhen[0], "NULL"); //if a device has been offline, it might decide to timestamp the data it is sending from local storage
-							if(is_numeric($numericTimestamp) && $numericTimestamp > 0){
-								$dt = new DateTime();
-								$dt->setTimestamp($numericTimestamp);
-								$storageDateTime = $dt->format('Y-m-d H:i:s'); //set this to whatever was in the timestamp
-							}
-						}
-            $millis = arrayDefaultFailDown($whereAndWhen, 1, "NULL");
-            $transmissionTimestamp = arrayDefaultFailDown($whereAndWhen, 2, "NULL");
-            $averageLatency = arrayDefaultFailDown($whereAndWhen, 3, "NULL");
-            $latitude = arrayDefaultFailDown($whereAndWhen, 4, "NULL");
-            $longitude = arrayDefaultFailDown($whereAndWhen, 5, "NULL");
-            $elevation = arrayDefaultFailDown($whereAndWhen, 6, "NULL");
-            $velocity = arrayDefaultFailDown($whereAndWhen, 7, "NULL");
-            $uncertainty = arrayDefaultFailDown($whereAndWhen, 8, "NULL");
-            $slaveMillis = arrayDefaultFailDown($whereAndWhen, 9, "NULL");
-            $latency = time() - intval($transmissionTimestamp);
-            if($averageLatency) {
-              writeMemoryCache("latency-" . $deviceId, $averageLatency);
-            }
+			if(count($lines) > 1) {
+				$whereAndWhen = explode("*", $lines[1]); 
+				//$whereAndWhen: numericTimestamp|millis|transmissionTimestamp|averageLatency|latitude|longitude|elevation|velocity|uncertainty
+				//first numeric timestamp is ONLY for timestamping old data stored locally
+				if(count($whereAndWhen)>0) {
+					$numericTimestamp = defaultFailDown($whereAndWhen[0], "NULL"); //if a device has been offline, it might decide to timestamp the data it is sending from local storage
+					if(is_numeric($numericTimestamp) && $numericTimestamp > 0){
+						$dt = new DateTime();
+						$dt->setTimestamp($numericTimestamp);
+						$storageDateTime = $dt->format('Y-m-d H:i:s'); //set this to whatever was in the timestamp
 					}
-					if(count($lines) > 2) {
-						$devicePowerInfo = explode("*", $lines[2]);
-						$energyPercentage = arrayDefaultFailDown($devicePowerInfo, 0, "NULL");
-            $measuredVoltage = arrayDefaultFailDown($devicePowerInfo, 1, "NULL");
-            $measuredAmpage = arrayDefaultFailDown($devicePowerInfo, 2, "NULL");
-					}
-
-					if(count($lines) > 6) {
-						$extraInfo = explode("*", $lines[6]);
-						//extraInfo: lastCommandId*pinCursor*localSource*ipAddressToUse*requestNonJsonPinInfo*justDeviceJson*changeSourceId*outputMode
-						if(count($extraInfo)>0){
-							$lastCommandId = $extraInfo[0];
-							markCommandDone($lastCommandId, $tenantId);
-							if(count($extraInfo)>1){
-                $specificPin = $extraInfo[1]; //don't do this if $nonJsonPinData
-							}
-						}
-						//apparently we do not care about pinCursor:
-						//var_dump($extraInfo);
-						$mustSaveLastKnownDeviceValueAsValue = arrayDefaultFailDown($extraInfo, 2, false);
-						$deviceOutputMode = arrayDefaultFailDown($extraInfo, 7, 0);
-            $ipAddress = arrayDefaultFailDown($extraInfo, 3, "NULL");
-            if(count($extraInfo)>4) {
-              $saveDeviceInfo = true;
-            }
-            $nonJsonPinData = arrayDefaultFailDown($extraInfo, 4, "NULL");
-						if(count($extraInfo)>5) {
-							$justGetDeviceInfo = arrayDefaultFailDown($extraInfo, 5, "NULL");
-							if($justGetDeviceInfo == '1'){
-								$specificPin = -1; //this should always be -1 if justGetDeviceInfo is 1
-							}
-						}
-						//don't care about changeSourceId either
-					}
-					if(count($lines) > 7) {
-						$pinValuesKnownToDevice = explode("*", $lines[7]);
-						//var_dump($pinValuesKnownToDevice);
-					}
-          if(count($lines) > 8) {
-            $recentReboots = explode("*", $lines[8]);
-            foreach($recentReboots as $rebootOccasion) {
-              if(intval($rebootOccasion) > 0 && $canAccessData) {
-
-                $dt = new DateTime('now', new DateTimeZone($timezone)); // set to your time
-                $dt->setTimestamp($rebootOccasion);
-                $rebootOccasionSql = $dt->format('Y-m-d H:i:s');
-
-                $rebootLogSql = "INSERT INTO reboot_log(device_id, recorded, server_recorded) SELECT " . intval($deviceId) . ",'" .$rebootOccasionSql . "','" . $formattedDateTime . "' 
-                  FROM DUAL WHERE NOT EXISTS (SELECT * FROM reboot_log WHERE device_id=" . intval($deviceId) . " AND recorded='" . $rebootOccasionSql . "' LIMIT 1)";
-                
-                $result = mysqli_query($conn, $rebootLogSql);
-              }
-            }
 				}
+				$millis = arrayDefaultFailDown($whereAndWhen, 1, "NULL");
+				$transmissionTimestamp = arrayDefaultFailDown($whereAndWhen, 2, "NULL");
+				$averageLatency = arrayDefaultFailDown($whereAndWhen, 3, "NULL");
+				$latitude = arrayDefaultFailDown($whereAndWhen, 4, "NULL");
+				$longitude = arrayDefaultFailDown($whereAndWhen, 5, "NULL");
+				$elevation = arrayDefaultFailDown($whereAndWhen, 6, "NULL");
+				$velocity = arrayDefaultFailDown($whereAndWhen, 7, "NULL");
+				$uncertainty = arrayDefaultFailDown($whereAndWhen, 8, "NULL");
+				$slaveMillis = arrayDefaultFailDown($whereAndWhen, 9, "NULL");
+				$latency = time() - intval($transmissionTimestamp);
+				if($averageLatency) {
+              		writeMemoryCache("latency-" . $deviceId, $averageLatency);
+            	}
+			}
+			if(count($lines) > 2) {
+				$devicePowerInfo = explode("*", $lines[2]);
+				$energyPercentage = arrayDefaultFailDown($devicePowerInfo, 0, "NULL");
+				$measuredVoltage = arrayDefaultFailDown($devicePowerInfo, 1, "NULL");
+				$measuredAmpage = arrayDefaultFailDown($devicePowerInfo, 2, "NULL");
+			}
+
+			if(count($lines) > 6) {
+				$extraInfo = explode("*", $lines[6]);
+				//extraInfo: lastCommandId*pinCursor*localSource*ipAddressToUse*requestNonJsonPinInfo*justDeviceJson*changeSourceId*outputMode
+				if(count($extraInfo)>0){
+					$lastCommandId = $extraInfo[0];
+					markCommandDone($lastCommandId, $tenantId);
+					if(count($extraInfo)>1){
+						$specificPin = $extraInfo[1]; //don't do this if $nonJsonPinData
+					}
+				}
+				//apparently we do not care about pinCursor:
+				//var_dump($extraInfo);
+				$mustSaveLastKnownDeviceValueAsValue = arrayDefaultFailDown($extraInfo, 2, false);
+				$deviceOutputMode = arrayDefaultFailDown($extraInfo, 7, 0);
+				$ipAddress = arrayDefaultFailDown($extraInfo, 3, "NULL");
+				if(count($extraInfo)>4) {
+					$saveDeviceInfo = true;
+				}
+				$nonJsonPinData = arrayDefaultFailDown($extraInfo, 4, "NULL");
+				if(count($extraInfo)>5) {
+					$justGetDeviceInfo = arrayDefaultFailDown($extraInfo, 5, "NULL");
+					if($justGetDeviceInfo == '1'){
+						$specificPin = -1; //this should always be -1 if justGetDeviceInfo is 1
+					}
+				}
+				//don't care about changeSourceId either
+			}
+			if(count($lines) > 7) {
+				$pinValuesKnownToDevice = explode("*", $lines[7]);
+				//var_dump($pinValuesKnownToDevice);
+			}
+			if(count($lines) > 8) {
+				$recentReboots = explode("*", $lines[8]);
+				foreach($recentReboots as $rebootOccasion) {
+					if(intval($rebootOccasion) > 0 && $canAccessData) {
+
+					$dt = new DateTime('now', new DateTimeZone($timezone)); // set to your time
+					$dt->setTimestamp($rebootOccasion);
+					$rebootOccasionSql = $dt->format('Y-m-d H:i:s');
+
+					$rebootLogSql = "INSERT INTO reboot_log(device_id, recorded, server_recorded) SELECT " . intval($deviceId) . ",'" .$rebootOccasionSql . "','" . $formattedDateTime . "' 
+						FROM DUAL WHERE NOT EXISTS (SELECT * FROM reboot_log WHERE device_id=" . intval($deviceId) . " AND recorded='" . $rebootOccasionSql . "' LIMIT 1)";
+					
+					$result = mysqli_query($conn, $rebootLogSql);
+					}
+				}
+			}
 				////////
 
-				$out["transmission_timestamp"] = $transmissionTimestamp;
-				$out["backend_timestamp"] =  time();
-				//logSql("timediff: for device# " . $deviceId . ": " . intval(intval($transmissionTimestamp)-intval(time())));
-
-			if($mode=="saveIrData") { //data was captured from an irRecorder, so store it in the database!
+			$out["transmission_timestamp"] = $transmissionTimestamp;
+			$out["backend_timestamp"] =  time();
+			//logSql("timediff: for device# " . $deviceId . ": " . intval(intval($transmissionTimestamp)-intval(time())));
+			if($mode=="logGpsData" && $deviceId > 0) {  //specifically for logging GPS data from the fieldlog app
+				$gpsData = explode("*", $lines[0]);
+			
+				$latitude = $gpsData[0];
+				$longitude = $gpsData[1];
+				$elevation = intval($gpsData[2]);
+				$accuracy = $gpsData[3];
+				$rawDate = $gpsData[4];
+				$recorded = (new DateTimeImmutable($rawDate))
+					->setTimezone(new DateTimeZone($timezone))
+					->format('Y-m-d H:i:s.v');
+				$caption = $gpsData[5]; //gotta either grab everything after the fourth * or filter *s out of the caption
+				$sql = "INSERT INTO device_log SET device_id=" . $deviceId . ", recorded='" . $recorded . "', latitude=" . $latitude . ", longitude=" . $longitude . ", elevation=" . $elevation . ", uncertainty=" . $accuracy . ", caption='" .  mysqli_real_escape_string($conn, $caption) ."'";
+				$result = mysqli_query($conn, $sql);
+				//echo $irSql;
+				$error = mysqli_error($conn);
+				if($error){
+					$out["error"] = $error;
+				} else {
+					$out["result"] = "save";
+				}
+			} else if($mode=="saveIrData") { //data was captured from an irRecorder, so store it in the database!
 				$irData = str_replace("*", ",", $lines[0]); //probably unnecessary now
 				$irData = removeTrailingChar($irData, ","); //remove trailing commas from the sequence if it is there
 				$irSql = "INSERT INTO 
@@ -1841,4 +1864,16 @@ function handleIncomingParsedData($deviceInfo, $dataLine, $formattedDateTime){
 		return true;
 	}
 
+}
+
+
+function canLogLocation($mode){
+
+	if($_SERVER['HTTPS'] == "on"  && $mode == "logGpsData" ){//&& $_SERVER['REMOTE_ADDR'] ==  $_SERVER['HTTP_HOST']) {
+		//if we have a device claiming to be from our domain that wants to log gps data and is using https, we will log that data
+		//die("dead");
+		return true;
+	}
+	//die("alive");
+	return false;
 }
