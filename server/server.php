@@ -9,7 +9,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
 ini_set('display_errors', 0);
-$noUserOrLoginRequired = array("logGpsData");
+ 
 $deviceFreeAcceptableModes = array("getInverterData", "getEarliestRecorded");
 $userAcceptableModes = array("getOfficialWeatherData", "getInverterData", "getWeatherData", "getEarliestRecorded", "getMap");
 
@@ -165,7 +165,7 @@ if($_REQUEST) {
 	}
 	//die($storagePassword . " : " . time() . " ; " . $checksum . "?=" . $x  . " : " . urlencode($data));
 	//var_dump($user);
-	if($user && !$storagePassword  && !in_array($mode, $noUserOrLoginRequired)) {
+	if($user && !$storagePassword) {
 		$storagePassword  = $user['storage_password'];
 		if(!in_array($mode, $userAcceptableModes)){ //keeps certain kinds of hacks from working
 			die(json_encode(["error"=>$user["email"]  . ": your brilliant hack has failed"]));
@@ -181,7 +181,7 @@ if($_REQUEST) {
 		$deviceIds = deriveDeviceIdsFromStoragePassword($storagePassword);
 	}
 
-	$canAccessData = array_search($deviceId, $deviceIds) !== false  || ($user  && in_array($mode, $deviceFreeAcceptableModes)  || canLogLocation($mode)) ;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
+	$canAccessData = array_search($deviceId, $deviceIds) !== false  || ($user  && in_array($mode, $deviceFreeAcceptableModes) ) ;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
 	//var_dump($canAccessData);
 	if($canAccessData) {	
 		$tenant = deriveTenantFromStoragePassword($storagePassword);
@@ -1866,7 +1866,7 @@ function handleIncomingParsedData($deviceInfo, $dataLine, $formattedDateTime){
 
 }
 
-
+//not actually used
 function canLogLocation($mode){
 
 	if($_SERVER['HTTPS'] == "on"  && $mode == "logGpsData" ){//&& $_SERVER['REMOTE_ADDR'] ==  $_SERVER['HTTP_HOST']) {
