@@ -10,6 +10,7 @@ ini_set('display_startup_errors', 1);
 //error_reporting(E_ALL);
 ini_set('display_errors', 0);
  
+$requireHttps = array("logGpsData");
 $deviceFreeAcceptableModes = array("getInverterData", "getEarliestRecorded");
 $userAcceptableModes = array("getOfficialWeatherData", "getInverterData", "getWeatherData", "getEarliestRecorded", "getMap");
 
@@ -182,6 +183,8 @@ if($_REQUEST) {
 	}
 
 	$canAccessData = array_search($deviceId, $deviceIds) !== false  || ($user  && in_array($mode, $deviceFreeAcceptableModes) ) ;//old way: array_key_exists("storagePassword", $_REQUEST) && $storagePassword == $_REQUEST["storagePassword"];
+	//also make sure we are using https if required
+	$canAccessData = $canAccessData && (in_array($mode, $requireHttps) && $_SERVER['HTTPS'] == "on"  || !in_array($mode, $requireHttps));
 	//var_dump($canAccessData);
 	if($canAccessData) {	
 		$tenant = deriveTenantFromStoragePassword($storagePassword);
@@ -1866,14 +1869,4 @@ function handleIncomingParsedData($deviceInfo, $dataLine, $formattedDateTime){
 
 }
 
-//not actually used
-function canLogLocation($mode){
-
-	if($_SERVER['HTTPS'] == "on"  && $mode == "logGpsData" ){//&& $_SERVER['REMOTE_ADDR'] ==  $_SERVER['HTTP_HOST']) {
-		//if we have a device claiming to be from our domain that wants to log gps data and is using https, we will log that data
-		//die("dead");
-		return true;
-	}
-	//die("alive");
-	return false;
-}
+ 
