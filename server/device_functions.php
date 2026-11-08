@@ -3687,7 +3687,7 @@ function gatherAnyTractiveGpsData($tenant, $debug = false){
   //{time, latlong, alt, speed, pos_uncertainty, sensor_used}...
   //so we can just pump these into a device_log using a device_id for a new device
   if($data) {
-    if(count($data) > 0) {
+    if(count($data) > 0  && isset($data[0])) {
       $data = $data[0];  //i know, stupid
       //var_dump($data);
       foreach($data as $datum){
