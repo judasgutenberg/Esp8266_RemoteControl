@@ -2309,7 +2309,7 @@ function saveSolarData($tenant, $gridPower, $batteryPercent,  $batteryPower, $lo
    $dataSourceId  .
    ")";
    if(gvfw("solarkapitest")>9){
-    echo "<P>" .$loggingSql;
+    echo "<HR><HR><P>" .$loggingSql;
    }
   $loggingResult = mysqli_query($conn, $loggingSql);
   $error = mysqli_error($conn);
@@ -2543,7 +2543,9 @@ function getCurrentSolarDataFromCloud($tenant, $alwaysReturnData = false) {
     } 
     $dataBody = json_decode($dataResponse, true);
     if(gvfw("solarkapitest")){
+      echo "<p><font color=blue>";
       var_dump($dataBody);
+      echo "<p></font>";
     }
     $data = $dataBody["data"];
     
@@ -2560,39 +2562,61 @@ function getCurrentSolarDataFromCloud($tenant, $alwaysReturnData = false) {
     $dataResponse = curl_exec($ch);
     curl_close($ch);
     $dataBodyRealtime = json_decode($dataResponse, true);
-    $dataRealtime = $dataBodyRealtime["data"];
-    $pac = $dataRealtime["pac"];
-    $pvPower = $data["pvPower"];
-    if($pvPower == 0) {
-      $pvPower = $pac;
+    $dataRealtime = gvfa("data", $dataBodyRealtime);
+    /*
+    echo "<p><font color=red>";
+    var_dump($dataBodyRealtime);
+    echo "<p></font>";
+    echo "<p><font color=green>";
+    var_dump($dataRealtime);
+    echo "<p></font>";
+    */
+    //looks like the solark cloud is now returning plant data on auth as of Nov 14 2026
+    if(gvfa("data", $dataBody) && !$dataRealtime) {
+      $dataRealtime =  gvfa("data",$dataBody);
     }
-    if(gvfw("solarkapitest")){
-      echo "<p>\n";
-      var_dump($dataBodyRealtime);
-    }
-    $batteryPower = $data["battPower"];
-    if($data["toBat"] == true) {
-      $batteryPower = -$batteryPower;
-    }
+    if($dataRealtime) {
+      /*
+      echo "<p><font color=orange>";
+      var_dump($dataRealtime);
+      echo "<p></font>";
+      */
+      $pac = gvfa("pac", $dataRealtime);
+      $pvPower = $data["pvPower"];
+      if($pvPower == 0) {
+        $pvPower = $pac;
+      }
+      if(gvfw("solarkapitest")){
+        echo "<p>\n<font color=purple>";
+        var_dump($dataBodyRealtime);
+        echo "<p></font>";
+      }
+      $batteryPower = $data["battPower"];
+      if($data["toBat"] == true) {
+        $batteryPower = -$batteryPower;
+      }
 
-    saveSolarData($tenant, $data["gridOrMeterPower"], $data["soc"],  $batteryPower, $data["loadOrEpsPower"] , 
-      intval($pvPower)/2, intval($pvPower)/2, NULL, 
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      1 //tag the data from this with data_source_id of 1, which means API
-    );
-    $out = Array("tenant_id"=>$tenant["tenant_id"], "recorded" => $formatedDateTime, "solar_power" => $pvPower, "load_power" => $data["loadOrEpsPower"] ,
-    "grid_power" =>  $data["gridOrMeterPower"], "battery_percentage" => $data["soc"], "battery_power" => $batteryPower); 
-    //var_dump($out);
-    return $out;
+      saveSolarData($tenant, $data["gridOrMeterPower"], $data["soc"],  $batteryPower, $data["loadOrEpsPower"] , 
+        intval($pvPower)/2, intval($pvPower)/2, NULL, 
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        1 //tag the data from this with data_source_id of 1, which means API
+      );
+      $out = Array("tenant_id"=>$tenant["tenant_id"], "recorded" => $formatedDateTime, "solar_power" => $pvPower, "load_power" => $data["loadOrEpsPower"] ,
+      "grid_power" =>  $data["gridOrMeterPower"], "battery_percentage" => $data["soc"], "battery_power" => $batteryPower); 
+      //var_dump($out);
+      return $out;
+    } else {
+       return false;
+    }
   } else {
     return $mostRecentInverterRecord;
 
