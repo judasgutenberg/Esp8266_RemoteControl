@@ -341,8 +341,10 @@
   }
   
  //update the genericTable data
-function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotDoAgain) {
+function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotDoAgain, additionalParams) {
   const decodedHeaderData = JSON.parse(headerData);
+  //console.log(headerData);
+  console.log(additionalParams);
   const xmlhttp = new XMLHttpRequest();
 
   xmlhttp.onreadystatechange = function() {
@@ -388,8 +390,11 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
           let newColumnData = dataRecord[key];
 
           if ("function" in column) {
-            const stringToEval = tokenReplace(column["function"], dataRecord);
+			
+            let stringToEval = tokenReplace(column["function"], dataRecord);
+			stringToEval = stringToEval.replace("$row", "dataRecord");
             const originalValue = newColumnData;
+			console.log(stringToEval);
             newColumnData = eval(stringToEval);
             spans[cellIndex].setAttribute("value", originalValue);
           }
@@ -463,10 +468,11 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
 	params.append("direction", ascending);
 	params.append("sortColumn", currentSortColumn);
 	params.append("action", "runencryptedsql");
+	params.append("additional_params", JSON.stringify(additionalParams));
 	params.append("headerData",  headerData.replace(/'/g, "\\'"));
 	params.append("value",  encryptedSql);
-  params.append("pk",  pkName);
-  params.append("table",  tableName);
+	params.append("pk",  pkName);
+	params.append("table",  tableName);
 	let url = "tool.php"; 
 	//console.log(url);
 	xmlhttp.open("POST", url, true);
@@ -2936,3 +2942,208 @@ window.onload = function() {
 };
   
   
+//////////////////////////////
+function colorizeByHash(mode, text, limit, property = "color", colorPartOne = 65, colorPartTwo = 65) {
+  const hash = md5(text);
+  let out = `<div title="${escapeHtml(text)}" style="cursor:help;${property}`;
+
+  if (mode == 0) {
+    // Hash determines hue, colorPartOne is saturation, colorPartTwo is lightness
+    const hue = parseInt(hash.substring(0, 6), 16) % 360;
+    out += `:hsl(${hue}, ${colorPartOne}%, ${colorPartTwo}%)"`;
+  } else if (mode == 1) {
+    // colorPartOne is hue, hash determines saturation, colorPartTwo is lightness
+    const sat = parseInt(hash.substring(0, 2), 16) % 100;
+    out += `:hsl(${colorPartOne}, ${sat}%, ${colorPartTwo}%)"`;
+  } else if (mode == 2) {
+    // colorPartOne is hue, colorPartTwo is saturation, hash determines lightness
+    const light = parseInt(hash.substring(0, 2), 16) % 100;
+    out += `:hsl(${colorPartOne}, ${colorPartTwo}%, ${light}%)"`;
+  } else {
+    // colorPartOne and colorPartTwo are ignored; hash directly determines color
+    out += `:#${parseInt(hash.substring(0, 6), 16)}"`;
+  }
+
+  out += `>${escapeHtml(text.substring(0, limit))}</div>`;
+  return out;
+}
+
+// Replicates PHP's htmlspecialchars($str, ENT_COMPAT)
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// Compact MD5 implementation matching PHP's md5()
+function md5(str) {
+  function cmn(q, a, b, x, s, t) {
+    a = add32(add32(a, q), add32(x, t));
+    return add32((a << s) | (a >>> (32 - s)), b);
+  }
+  function ff(a, b, c, d, x, s, t) { return cmn((b & c) | (~b & d), a, b, x, s, t); }
+  function gg(a, b, c, d, x, s, t) { return cmn((b & d) | (c & ~d), a, b, x, s, t); }
+  function hh(a, b, c, d, x, s, t) { return cmn(b ^ c ^ d, a, b, x, s, t); }
+  function ii(a, b, c, d, x, s, t) { return cmn(c ^ (b | ~d), a, b, x, s, t); }
+  function add32(a, b) { return (a + b) & 0xffffffff; }
+
+  const utf8 = unescape(encodeURIComponent(String(str)));
+  const n = utf8.length;
+  const state = [1732584193, -271733879, -1732584194, 271733878];
+  let i;
+
+  for (i = 64; i <= n; i += 64) {
+    md5cycle(state, md5blk(utf8.substring(i - 64, i)));
+  }
+  const tail = new Array(16).fill(0);
+  const rem = utf8.substring(i - 64);
+  for (i = 0; i < rem.length; i++) {
+    tail[i >> 2] |= rem.charCodeAt(i) << ((i % 4) << 3);
+  }
+  tail[i >> 2] |= 0x80 << ((i % 4) << 3);
+  if (i > 55) {
+    md5cycle(state, tail);
+    tail.fill(0);
+  }
+  tail[14] = n * 8;
+  md5cycle(state, tail);
+
+  function md5blk(s) {
+    const md5blks = [];
+    for (let j = 0; j < 64; j += 4) {
+      md5blks[j >> 2] = s.charCodeAt(j) + (s.charCodeAt(j + 1) << 8) + (s.charCodeAt(j + 2) << 16) + (s.charCodeAt(j + 3) << 24);
+    }
+    return md5blks;
+  }
+
+  function md5cycle(x, k) {
+    let [a, b, c, d] = x;
+    a = ff(a, b, c, d, k[0], 7, -680876936);  d = ff(d, a, b, c, k[1], 12, -389564586);
+    c = ff(c, d, a, b, k[2], 17, 606105819);   b = ff(b, c, d, a, k[3], 22, -1044525330);
+    a = ff(a, b, c, d, k[4], 7, -176418897);   d = ff(d, a, b, c, k[5], 12, 1200080426);
+    c = ff(c, d, a, b, k[6], 17, -1473231341); b = ff(b, c, d, a, k[7], 22, -45705983);
+    a = ff(a, b, c, d, k[8], 7, 1770035416);   d = ff(d, a, b, c, k[9], 12, -1958414417);
+    c = ff(c, d, a, b, k[10], 17, -42063);     b = ff(b, c, d, a, k[11], 22, -1990404162);
+    a = ff(a, b, c, d, k[12], 7, 1804603682);  d = ff(d, a, b, c, k[13], 12, -40341101);
+    c = ff(c, d, a, b, k[14], 17, -1502002290);b = ff(b, c, d, a, k[15], 22, 1236535329);
+    a = gg(a, b, c, d, k[1], 5, -165796510);   d = gg(d, a, b, c, k[6], 9, -1069501632);
+    c = gg(c, d, a, b, k[11], 14, 643717713);  b = gg(b, c, d, a, k[0], 20, -373897302);
+    a = gg(a, b, c, d, k[5], 5, -701558691);   d = gg(d, a, b, c, k[10], 9, 38016083);
+    c = gg(c, d, a, b, k[15], 14, -660478335); b = gg(b, c, d, a, k[4], 20, -405537848);
+    a = gg(a, b, c, d, k[9], 5, 568446438);    d = gg(d, a, b, c, k[14], 9, -1019803690);
+    c = gg(c, d, a, b, k[3], 14, -187363961);  b = gg(b, c, d, a, k[8], 20, 1163531501);
+    a = gg(a, b, c, d, k[13], 5, -1444681467); d = gg(d, a, b, c, k[2], 9, -51403784);
+    c = gg(c, d, a, b, k[7], 14, 1735328473);  b = gg(b, c, d, a, k[12], 20, -1926607734);
+    a = hh(a, b, c, d, k[5], 4, -378558);      d = hh(d, a, b, c, k[8], 11, -2022574463);
+    c = hh(c, d, a, b, k[11], 16, 1839030562); b = hh(b, c, d, a, k[14], 23, -35309556);
+    a = hh(a, b, c, d, k[1], 4, -1530992060);  d = hh(d, a, b, c, k[4], 11, 1272893353);
+    c = hh(c, d, a, b, k[7], 16, -155497632);  b = hh(b, c, d, a, k[10], 23, -1094730640);
+    a = hh(a, b, c, d, k[13], 4, 681279174);   d = hh(d, a, b, c, k[0], 11, -358537222);
+    c = hh(c, d, a, b, k[3], 16, -722521979);  b = hh(b, c, d, a, k[6], 23, 76029189);
+    a = hh(a, b, c, d, k[9], 4, -640364487);   d = hh(d, a, b, c, k[12], 11, -421815835);
+    c = hh(c, d, a, b, k[15], 16, 530742520);  b = hh(b, c, d, a, k[2], 23, -995338651);
+    a = ii(a, b, c, d, k[0], 6, -198630844);   d = ii(d, a, b, c, k[7], 10, 1126891415);
+    c = ii(c, d, a, b, k[14], 15, -1416354905);b = ii(b, c, d, a, k[5], 21, -57434055);
+    a = ii(a, b, c, d, k[12], 6, 1700485571);  d = ii(d, a, b, c, k[3], 10, -1894986606);
+    c = ii(c, d, a, b, k[10], 15, -1051523);   b = ii(b, c, d, a, k[1], 21, -2054922799);
+    a = ii(a, b, c, d, k[8], 6, 1873313359);   d = ii(d, a, b, c, k[15], 10, -30611744);
+    c = ii(c, d, a, b, k[6], 15, -1560198380); b = ii(b, c, d, a, k[13], 21, 1309151649);
+    a = ii(a, b, c, d, k[4], 6, -145523070);   d = ii(d, a, b, c, k[11], 10, -1120210379);
+    c = ii(c, d, a, b, k[2], 15, 718787259);   b = ii(b, c, d, a, k[9], 21, -343485551);
+    x[0] = add32(a, x[0]); x[1] = add32(b, x[1]);
+    x[2] = add32(c, x[2]); x[3] = add32(d, x[3]);
+  }
+
+  const hex = "0123456789abcdef";
+  let out = "";
+  for (let j = 0; j < 4; j++) {
+    for (let k = 0; k < 4; k++) {
+      out += hex.charAt((state[j] >> (k * 8 + 4)) & 0x0f) + hex.charAt((state[j] >> (k * 8)) & 0x0f);
+    }
+  }
+  return out;
+}
+
+
+function specifiedEntities(conn, sql, valuesRecord, config = "") {
+  let out = "";
+
+  if (config === "") {
+    // config is defined as table_name,primary_key,human_readable_column,extra_lookup_parameter,other_lookup_parameter,...;...
+    config = "device,device_id,name;device_feature,device_feature_id,name,tenant_id";
+  }
+
+  const configItems = config.split(";");
+
+  for (const configItem of configItems) {
+    if (!configItem.trim()) continue;
+
+    const configDetails = configItem.split(",");
+    const table = filterStringForSqlEntities(configDetails[0].trim(), true);
+    const pk = filterStringForSqlEntities(configDetails[1].trim(), true);
+    const humanReadable = filterStringForSqlEntities(configDetails[2].trim(), true);
+
+    const pkValInSql = getSqlParameter(sql, pk);
+    let lookupSql = `SELECT ${humanReadable} FROM ${table} WHERE ${pk}='${pkValInSql}'`;
+
+    for (let additionalCount = 3; additionalCount < configDetails.length; additionalCount++) {
+      const additionalParameter = configDetails[additionalCount].trim();
+      if (additionalParameter) {
+        lookupSql += ` AND ${additionalParameter}='<${additionalParameter}/>'`;
+      }
+    }
+
+    lookupSql = tokenReplace(lookupSql, valuesRecord, table);
+
+    // for debugging:
+    // out += "|" + lookupSql;
+
+    if (pkValInSql) {
+      const [rows] = conn.query(lookupSql);
+      if (rows && rows.length > 0) {
+        const lookedUpValue = rows[0][humanReadable];
+        out += `<div>${table}: ${lookedUpValue}</div>`;
+      }
+    }
+  }
+
+  return out;
+}
+
+function filterStringForSqlEntities(input, strict = false) {
+  // Ensure input is treated as a string (matching PHP's preg_replace behavior on null/numbers)
+  const str = input == null ? "" : String(input);
+
+  // Replace characters that are not letters, numbers, dashes, underscores, commas, or parentheses with an empty string
+  let filtered = str.replace(/[^a-zA-Z0-9_]/g, "");
+  if (!strict) {
+    filtered = str.replace(/[^a-zA-Z0-9\-_(),]/g, "");
+  }
+  return filtered;
+}
+
+function getSqlParameter(sql, parameter) {
+  if (!sql || !parameter) return null;
+
+  // Replicates PHP's preg_quote($parameter, '/')
+  const escapedParam = String(parameter).replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+  const pattern = new RegExp(
+    `\\b${escapedParam}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s,)\\r\\n]+))`,
+    'i'
+  );
+
+  const matches = String(sql).match(pattern);
+  if (matches) {
+    if (matches[1] !== undefined && matches[1] !== '') {
+      return matches[1];
+    }
+    if (matches[2] !== undefined && matches[2] !== '') {
+      return matches[2];
+    }
+    return matches[3] !== undefined ? matches[3] : null;
+  }
+
+  return null;
+}

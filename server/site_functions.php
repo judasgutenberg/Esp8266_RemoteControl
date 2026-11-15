@@ -1705,7 +1705,7 @@ function etcTabNav($user) {
     return $out;
 
 }
- 
+
 
 function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools = '') { //aka genericList
   Global $encryptionPassword;
@@ -1720,7 +1720,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
   }
   $tableId = "list-" . $tableName;
   $out = "";
-
+  //var_dump($searchData);
   if($searchData) {
     $out .=  "<form>\n";
     $out .=  "<input type='hidden' id='action' name='action' value='" . $searchData["action"] . "' />\n";
@@ -2622,11 +2622,14 @@ function canUserDoThing($user, $thingRole){
 }
 
 function previousReportRuns($user, $reportId) {
-  Global $conn;
+  global $conn, $encryptionPassword;
+  $tableName = "report_log";
+  $pkName = "report_log_id";
   //var_dump($user);
   $sql = "SELECT report_log_id, report_id, run, records_returned, runtime, `sql`, tenant_id FROM report_log WHERE report_id=" . intval($reportId) . " AND tenant_id=" . intval($user["tenant_id"]) . " AND user_id=" . intval($user["user_id"]) . " ORDER BY run DESC";
   $result = mysqli_query($conn, $sql);
   $out = "";
+  
   if($result) {
     $reportRuns = mysqli_fetch_all($result, MYSQLI_ASSOC);
     $toolsTemplate = "<a href='?action=rerun&table=report&report_log_id=<report_log_id/>'>Re-Run</a> ";
@@ -2695,8 +2698,30 @@ function previousReportRuns($user, $reportId) {
       ]
         
     );
+  $searchSql = "SELECT * FROM report_log WHERE report_id=<report_id/> AND `sql` LIKE '%<sql/>%' AND tenant_id=" . $user["tenant_id"] . " AND user_id=" . $user["user_id"] . " ORDER BY `run` DESC LIMIT 0,100";
+  $encryptedSql = encryptLongString($searchSql, $encryptionPassword);
+  $onKeyUp = sprintf(
+      "autoUpdate(%s, %s, %s, %s, %s, true, %s)",
+      json_encode($encryptedSql),
+      json_encode(json_encode($headerData)),
+      json_encode("list-" . $tableName),
+      json_encode($tableName),
+      json_encode($pkName),
+      '{"sql":document.getElementById("sql").value, "report_id": ' . $reportId . '}'
+  );
+  $safeOnKeyUp = htmlspecialchars($onKeyUp, ENT_QUOTES, 'UTF-8');
+  $searchData = [
+        "action"=>"run",
+        "table" => "report_log",
+        "searchTerm"=>"sql",
+        "onkeyup" =>$safeOnKeyUp,
+        "extraData"=>[
+          "report_id"=>$reportId,
+        ]
 
-    $out = genericTable($reportRuns, $headerData, $toolsTemplate, null);
+  ];
+
+    $out = genericTable($reportRuns, $headerData, $toolsTemplate, $searchData, $tableName);
   }
   return $out;
 }

@@ -285,7 +285,7 @@ if ($user) {
   } else if ($action == "runencryptedsql") { //this is secure because the sql is very hard to decrypt if you don't know the encryption key
  
     $headerData = json_decode(gvfw('headerData'), true);
-    
+    $additionalParams = gvfw('additional_params');
     $currentSortColumn = gvfw('sortColumn');
     $sortClause = "";
     if($currentSortColumn  > -1){
@@ -296,11 +296,17 @@ if ($user) {
         $sortClause .= " DESC";
       }
     }
+
     $sql = decryptLongString(gvfw('value'), $encryptionPassword);
     $sql = setOrderByClause($sql, $sortClause);
+    if($additionalParams) {
+      $parsedAdditionalParams = json_decode($additionalParams, true);
+      $sql = tokenReplace($sql, $parsedAdditionalParams);
+    }
     //echo $sql . "\n\n";
     //die();
     $result = replaceTokensAndQuery($sql, $user);
+    //var_dump($result);
     if($result) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
       foreach ($rows as &$row) {
@@ -586,6 +592,10 @@ if ($user) {
     }
   }
 }
+
+
+
+
 
 echo bodyWrap($out, $user, $deviceId, $poser);
 
