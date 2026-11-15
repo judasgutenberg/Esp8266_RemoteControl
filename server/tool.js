@@ -341,10 +341,10 @@
   }
   
  //update the genericTable data
-function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotDoAgain, additionalParams) {
+function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotDoAgain, toolsTemplate, additionalParams) {
   const decodedHeaderData = JSON.parse(headerData);
   //console.log(headerData);
-  console.log(additionalParams);
+  //console.log(additionalParams);
   const xmlhttp = new XMLHttpRequest();
 
   xmlhttp.onreadystatechange = function() {
@@ -390,11 +390,10 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
           let newColumnData = dataRecord[key];
 
           if ("function" in column) {
-			
             let stringToEval = tokenReplace(column["function"], dataRecord);
 			stringToEval = stringToEval.replace("$row", "dataRecord");
             const originalValue = newColumnData;
-			console.log(stringToEval);
+			//console.log(stringToEval);
             newColumnData = eval(stringToEval);
             spans[cellIndex].setAttribute("value", originalValue);
           }
@@ -423,8 +422,8 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
               
             }
           } else {
-            if (span.textContent !== newColumnData) {
-              span.textContent = newColumnData;
+            if (span.innerHTML !== newColumnData) {
+              span.innerHTML = newColumnData;
             }
           }
           if(input) {
@@ -450,14 +449,21 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
 
           
         }
-        if(decodedHeaderData.length < spans.length) {
-          let span = spans[decodedHeaderData.length];
-          let links = span.querySelectorAll("a");
-          if(links) {
-            const match = Array.from(links).find(a => a.textContent.trim() === "Delete");
-            updateDeleteEntityHandler(match, pk, hashedEntities);
-          }
-        }
+		console.log(decodedHeaderData.length, spans.length);
+		if(decodedHeaderData.length < spans.length) {
+			let span = spans[decodedHeaderData.length];
+			let newContent = tokenReplace(toolsTemplate, dataRecord);
+			span.innerHTML = newContent;
+			console.log(newContent);
+			/*
+
+			let links = span.querySelectorAll("a");
+			if(links) {
+				const match = Array.from(links).find(a => a.textContent.trim() === "Delete");
+				updateDeleteEntityHandler(match, pk, hashedEntities);
+			}
+				*/
+		}
       }
     }
   };
@@ -514,6 +520,10 @@ function updateGenericListHandler(inputElement, newPk, newHash) {
 
 function updateDeleteEntityHandler(deleteHref, newPk, newHash) {
     // Extract the handler text (deleteEntity is usually onclick)
+	if (!deleteHref || typeof deleteHref.getAttribute !== "function") {
+		return;
+	}
+
     let handlerText = deleteHref.getAttribute("onclick");
 
     if (!handlerText) return;

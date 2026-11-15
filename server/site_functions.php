@@ -1848,8 +1848,21 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
   //var_dump(count($rows));
   if($autoRefreshSql) {
     $encryptedSql = encryptLongString($autoRefreshSql, $encryptionPassword);
-    $out .= "<script>\nfunction updateGridNow(doNotDoAgain){\nautoUpdate('" . $encryptedSql . "','" . addslashes(json_encode($headerData)) . "','" . $tableId . "','" . $tableName . "','" . $primaryKeyName . "',doNotDoAgain)\n};\nupdateGridNow();\n</script>";
 
+    $autoUpdateCall = sprintf(
+      "autoUpdate(%s, %s, %s, %s, %s, true, %s, false)",
+      json_encode($encryptedSql),
+      json_encode(json_encode($headerData)),
+      json_encode($tableId),
+      json_encode($tableName),
+      json_encode($primaryKeyName),
+      json_encode($toolsTemplate)
+  );
+  $autoUpdateCallSafe = htmlspecialchars($autoUpdateCall, ENT_QUOTES, 'UTF-8');
+
+
+    //$out .= "<script>\nfunction updateGridNow(doNotDoAgain){\nautoUpdate('" . $encryptedSql . "','" . addslashes(json_encode($headerData)) . "','" . $tableId . "','" . $tableName . "','" . $primaryKeyName . "',doNotDoAgain,'" .  json_encode(str_replace("'", '"', $toolsTemplate))  . "')\n};\nupdateGridNow();\n</script>";
+    $out .= "<script>\nfunction updateGridNow(doNotDoAgain){\n" . $autoUpdateCallSafe  . "\n};\nupdateGridNow();\n</script>";
   }
   return $out;
 }
@@ -2701,12 +2714,13 @@ function previousReportRuns($user, $reportId) {
   $searchSql = "SELECT * FROM report_log WHERE report_id=<report_id/> AND `sql` LIKE '%<sql/>%' AND tenant_id=" . $user["tenant_id"] . " AND user_id=" . $user["user_id"] . " ORDER BY `run` DESC LIMIT 0,100";
   $encryptedSql = encryptLongString($searchSql, $encryptionPassword);
   $onKeyUp = sprintf(
-      "autoUpdate(%s, %s, %s, %s, %s, true, %s)",
+      "autoUpdate(%s, %s, %s, %s, %s, true, %s, %s)",
       json_encode($encryptedSql),
       json_encode(json_encode($headerData)),
       json_encode("list-" . $tableName),
       json_encode($tableName),
       json_encode($pkName),
+      json_encode($toolsTemplate),
       '{"sql":document.getElementById("sql").value, "report_id": ' . $reportId . '}'
   );
   $safeOnKeyUp = htmlspecialchars($onKeyUp, ENT_QUOTES, 'UTF-8');
