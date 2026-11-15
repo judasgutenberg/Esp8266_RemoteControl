@@ -1850,7 +1850,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
     $encryptedSql = encryptLongString($autoRefreshSql, $encryptionPassword);
 
     $autoUpdateCall = sprintf(
-      "autoUpdate(%s, %s, %s, %s, %s, true, %s, false)",
+      "autoUpdate(%s, %s, %s, %s, %s, doNotDoAgain, %s, false)",
       json_encode($encryptedSql),
       json_encode(json_encode($headerData)),
       json_encode($tableId),
@@ -1858,7 +1858,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
       json_encode($primaryKeyName),
       json_encode($toolsTemplate)
   );
-  $autoUpdateCallSafe = htmlspecialchars($autoUpdateCall, ENT_QUOTES, 'UTF-8');
+  $autoUpdateCallSafe = $autoUpdateCall;//htmlspecialchars($autoUpdateCall, ENT_QUOTES, 'UTF-8');
 
 
     //$out .= "<script>\nfunction updateGridNow(doNotDoAgain){\nautoUpdate('" . $encryptedSql . "','" . addslashes(json_encode($headerData)) . "','" . $tableId . "','" . $tableName . "','" . $primaryKeyName . "',doNotDoAgain,'" .  json_encode(str_replace("'", '"', $toolsTemplate))  . "')\n};\nupdateGridNow();\n</script>";
