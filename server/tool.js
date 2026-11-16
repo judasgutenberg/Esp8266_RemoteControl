@@ -316,29 +316,46 @@
     }
   }
   
-  function tokenReplace(template, data, strDelimiterBegin = "<", strDelimiterEnd = "/>") {
-	  for (const key in data) {
-		  const value = data[key];
-  
-		  if (!Array.isArray(value)) {
-		  // Replace single values
-		  template = template.replace(
-			  new RegExp(`${strDelimiterBegin}${key}${strDelimiterEnd}`, "g"),
-			  value
-		  );
-		  } else {
-		  // Handle list values
-		  if (value.length > 0 && typeof value[0] !== "object") {
-			  const values = value.join(",");
-			  template = template.replace(
-			  new RegExp(`${strDelimiterBegin}${key}${strDelimiterEnd}`, "g"),
-			  values
-			  );
-		  }
-		  }
-	  }
-	  return template;
+function tokenReplace(
+  template,
+  data,
+  strDelimiterBegin = "<",
+  strDelimiterEnd = "/>",
+  escapeDoubleQuotesInValues = false
+) {
+  for (const key in data) {
+    const value = data[key];
+
+    if (!Array.isArray(value)) {
+      // Replace single values
+      let replacement = value ?? "";
+		if (escapeDoubleQuotesInValues) {
+		replacement = String(replacement)
+			.replace(/\\/g, "\\\\")  // Turns \" into \\"
+			.replace(/"/g, '\\"');   // Turns \\" into \\\" (escaped backslash + escaped quote)
+		}
+
+      template = template.replace(
+        new RegExp(`${strDelimiterBegin}${key}${strDelimiterEnd}`, "g"),
+        () => replacement
+      );
+    } else {
+      // Handle list values
+      if (value.length > 0 && typeof value[0] !== "object") {
+        let values = value.join(",");
+        if (escapeDoubleQuotesInValues) {
+          values = values.replace(/"/g, '\\"');
+        }
+
+        template = template.replace(
+          new RegExp(`${strDelimiterBegin}${key}${strDelimiterEnd}`, "g"),
+          () => values
+        );
+      }
+    }
   }
+  return template;
+}
   
  //update the genericTable data
 function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotDoAgain, toolsTemplate, additionalParams) {
@@ -378,95 +395,117 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
       // Update all rows
       const updatedRows = table.getElementsByClassName("listrow");
       for (let rowIndex = 0; rowIndex < dataCount; rowIndex++) {
-        const htmlRow = updatedRows[rowIndex];
+        let htmlRow = updatedRows[rowIndex];
         const dataRecord = data[rowIndex];
-        const spans = htmlRow.getElementsByTagName("span");
-        const pk = dataRecord[pkName];
-        const hashedEntities = dataRecord["_hashed_entities"];
-        for (let cellIndex = 0; cellIndex < decodedHeaderData.length; cellIndex++) {
-          const column = decodedHeaderData[cellIndex];
-          const key = column["name"];
-          
-          //console.log(dataRecord["_components"]);
-          
-          let newColumnData = dataRecord[key];
-
-          if ("function" in column) {
-            let stringToEval = tokenReplace(column["function"], dataRecord);
-			stringToEval = stringToEval.replace("$row", "dataRecord");
-            const originalValue = newColumnData;
-			//console.log(stringToEval);
-            newColumnData = eval(stringToEval);
-            spans[cellIndex].setAttribute("value", originalValue);
-          }
-
-          // Update span content or input value
-          const span = spans[cellIndex];
-          const input = span.querySelector("input, select, textarea");
-          if (input) {
-            // Skip updating if a .noupdate input is focused
-            if (input.classList.contains("noupdate") && document.activeElement === input) {
-              continue; // skip this input entirely
-            }
-
-            if (input.type === "checkbox") {
-              const newChecked = newColumnData === true || newColumnData === 1 || newColumnData === "1" || newColumnData === "true";
-              if (input.checked !== newChecked) input.checked = newChecked;
-            } else if (input.tagName === "SELECT") {
-              if (input.value !== newColumnData) input.value = newColumnData;
-            } else if (input.tagName === "TEXTAREA" || input.type === "text" || input.type === "number" || input.type === "hidden") {
-              if (input.value !== newColumnData) input.value = newColumnData;
-            } else {
-              input.value = newColumnData;
-            }
-            if(hashedEntities && pk) { //if we have a compound pk or a multi-table query, this could fail. but we'd probably also have no inputs
-              updateGenericListHandler(input, pk, hashedEntities); //update the instant update form, particularly if we have a pk that didn't exist before
-              
-            }
-          } else {
-            if (span.innerHTML !== newColumnData) {
-              span.innerHTML = newColumnData;
-            }
-          }
-          if(input) {
-            if (input.type === "checkbox") {
-              // Normalize: treat truthy/1/"1"/"true" as checked
-              const newChecked = newColumnData === true || newColumnData === 1 || newColumnData === "1" || newColumnData === "true";
-              if (input.checked !== newChecked) {
-                input.checked = newChecked;
-               }
-            } else if (input.tagName === "SELECT") {
-              if (input.value !== newColumnData) {
-                input.value = newColumnData;
-              }
-            } else if (input.tagName === "TEXTAREA" || input.type === "text" || input.type === "number" || input.type === "hidden") {
-              if (input.value !== newColumnData) {
-                input.value = newColumnData;
-              }
-            } else {
-              // catch-all for other input types
-              input.value = newColumnData;
-            }
-          }
-
-          
-        }
-		//console.log(decodedHeaderData.length, spans.length);
-		if(decodedHeaderData.length < spans.length) {
-			let span = spans[decodedHeaderData.length];
-			//console.log(toolsTemplate);
-			let newContent = tokenReplace(toolsTemplate, dataRecord);
-			span.innerHTML = newContent;
-			//console.log(newContent);
-			/*
-
-			let links = span.querySelectorAll("a");
-			if(links) {
-				const match = Array.from(links).find(a => a.textContent.trim() === "Delete");
-				updateDeleteEntityHandler(match, pk, hashedEntities);
+		if(!htmlRow){
+			htmlRow = document.createElement("div");
+			htmlRow.className = "listrow";
+			for(let i =0; i<decodedHeaderData.length; i++) {
+				const span = document.createElement("span");
+				htmlRow.appendChild(span);
 			}
-				*/
+			const span = document.createElement("span");
+			htmlRow.appendChild(span);
+			table.appendChild(htmlRow);
 		}
+			const spans = htmlRow.getElementsByTagName("span");
+			const pk = dataRecord[pkName];
+			const hashedEntities = dataRecord["_hashed_entities"];
+			for (let cellIndex = 0; cellIndex < decodedHeaderData.length; cellIndex++) {
+				const column = decodedHeaderData[cellIndex];
+				const key = column["name"];
+				
+				//console.log(dataRecord["_components"]);
+				
+				let newColumnData = dataRecord[key];
+
+				if ("function" in column) {
+					let stringToEval = tokenReplace(column["function"], dataRecord, "<", "/>", true);
+					stringToEval = stringToEval.replace("$row", "dataRecord");
+					const originalValue = newColumnData;
+					stringToEval = stringToEval.replace(/[\r\n]+/g, '');
+		
+					//console.log(stringToEval);
+					try {
+						newColumnData = eval(stringToEval);
+					} catch (error) {
+						console.error("Eval failed with error:", error.message);
+						console.log("Problematic stringToEval:", stringToEval);
+						
+						// Optional: rethrow the error if you still want execution to stop
+						// throw error; 
+					}
+					spans[cellIndex].setAttribute("value", originalValue);
+				}
+
+				// Update span content or input value
+				const span = spans[cellIndex];
+				const input = span.querySelector("input, select, textarea");
+				if (input) {
+					// Skip updating if a .noupdate input is focused
+					if (input.classList.contains("noupdate") && document.activeElement === input) {
+					continue; // skip this input entirely
+					}
+
+					if (input.type === "checkbox") {
+					const newChecked = newColumnData === true || newColumnData === 1 || newColumnData === "1" || newColumnData === "true";
+					if (input.checked !== newChecked) input.checked = newChecked;
+					} else if (input.tagName === "SELECT") {
+					if (input.value !== newColumnData) input.value = newColumnData;
+					} else if (input.tagName === "TEXTAREA" || input.type === "text" || input.type === "number" || input.type === "hidden") {
+					if (input.value !== newColumnData) input.value = newColumnData;
+					} else {
+					input.value = newColumnData;
+					}
+					if(hashedEntities && pk) { //if we have a compound pk or a multi-table query, this could fail. but we'd probably also have no inputs
+					updateGenericListHandler(input, pk, hashedEntities); //update the instant update form, particularly if we have a pk that didn't exist before
+					
+					}
+				} else {
+					if (span.innerHTML !== newColumnData) {
+					span.innerHTML = newColumnData;
+					}
+				}
+				if(input) {
+					if (input.type === "checkbox") {
+					// Normalize: treat truthy/1/"1"/"true" as checked
+					const newChecked = newColumnData === true || newColumnData === 1 || newColumnData === "1" || newColumnData === "true";
+					if (input.checked !== newChecked) {
+						input.checked = newChecked;
+					}
+					} else if (input.tagName === "SELECT") {
+					if (input.value !== newColumnData) {
+						input.value = newColumnData;
+					}
+					} else if (input.tagName === "TEXTAREA" || input.type === "text" || input.type === "number" || input.type === "hidden") {
+					if (input.value !== newColumnData) {
+						input.value = newColumnData;
+					}
+					} else {
+					// catch-all for other input types
+					input.value = newColumnData;
+					}
+				}
+
+			
+			}
+			//console.log(decodedHeaderData.length, spans.length);
+			if(decodedHeaderData.length < spans.length) {
+				let span = spans[decodedHeaderData.length];
+				//console.log(toolsTemplate);
+				let newContent = tokenReplace(toolsTemplate, dataRecord);
+				span.innerHTML = newContent;
+				//console.log(newContent);
+				/*
+
+				let links = span.querySelectorAll("a");
+				if(links) {
+					const match = Array.from(links).find(a => a.textContent.trim() === "Delete");
+					updateDeleteEntityHandler(match, pk, hashedEntities);
+				}
+					*/
+			}
+		
       }
     }
   };
