@@ -408,103 +408,103 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
 			htmlRow.appendChild(span);
 			table.appendChild(htmlRow);
 		}
-			const spans = htmlRow.getElementsByTagName("span");
-			const pk = dataRecord[pkName];
-			const hashedEntities = dataRecord["_hashed_entities"];
-			for (let cellIndex = 0; cellIndex < decodedHeaderData.length; cellIndex++) {
-				const column = decodedHeaderData[cellIndex];
-				const key = column["name"];
-				
-				//console.log(dataRecord["_components"]);
-				
-				let newColumnData = dataRecord[key];
-
-				if ("function" in column) {
-					let stringToEval = tokenReplace(column["function"], dataRecord, "<", "/>", true);
-					stringToEval = stringToEval.replace("$row", "dataRecord");
-					const originalValue = newColumnData;
-					stringToEval = stringToEval.replace(/[\r\n]+/g, '');
-		
-					//console.log(stringToEval);
-					try {
-						newColumnData = eval(stringToEval);
-					} catch (error) {
-						console.error("Eval failed with error:", error.message);
-						console.log("Problematic stringToEval:", stringToEval);
-						
-						// Optional: rethrow the error if you still want execution to stop
-						// throw error; 
-					}
-					spans[cellIndex].setAttribute("value", originalValue);
-				}
-
-				// Update span content or input value
-				const span = spans[cellIndex];
-				const input = span.querySelector("input, select, textarea");
-				if (input) {
-					// Skip updating if a .noupdate input is focused
-					if (input.classList.contains("noupdate") && document.activeElement === input) {
-					continue; // skip this input entirely
-					}
-
-					if (input.type === "checkbox") {
-					const newChecked = newColumnData === true || newColumnData === 1 || newColumnData === "1" || newColumnData === "true";
-					if (input.checked !== newChecked) input.checked = newChecked;
-					} else if (input.tagName === "SELECT") {
-					if (input.value !== newColumnData) input.value = newColumnData;
-					} else if (input.tagName === "TEXTAREA" || input.type === "text" || input.type === "number" || input.type === "hidden") {
-					if (input.value !== newColumnData) input.value = newColumnData;
-					} else {
-					input.value = newColumnData;
-					}
-					if(hashedEntities && pk) { //if we have a compound pk or a multi-table query, this could fail. but we'd probably also have no inputs
-					updateGenericListHandler(input, pk, hashedEntities); //update the instant update form, particularly if we have a pk that didn't exist before
-					
-					}
-				} else {
-					if (span.innerHTML !== newColumnData) {
-					span.innerHTML = newColumnData;
-					}
-				}
-				if(input) {
-					if (input.type === "checkbox") {
-					// Normalize: treat truthy/1/"1"/"true" as checked
-					const newChecked = newColumnData === true || newColumnData === 1 || newColumnData === "1" || newColumnData === "true";
-					if (input.checked !== newChecked) {
-						input.checked = newChecked;
-					}
-					} else if (input.tagName === "SELECT") {
-					if (input.value !== newColumnData) {
-						input.value = newColumnData;
-					}
-					} else if (input.tagName === "TEXTAREA" || input.type === "text" || input.type === "number" || input.type === "hidden") {
-					if (input.value !== newColumnData) {
-						input.value = newColumnData;
-					}
-					} else {
-					// catch-all for other input types
-					input.value = newColumnData;
-					}
-				}
-
+		const spans = htmlRow.getElementsByTagName("span");
+		const pk = dataRecord[pkName];
+		const hashedEntities = dataRecord["_hashed_entities"];
+		for (let cellIndex = 0; cellIndex < decodedHeaderData.length; cellIndex++) {
+			const column = decodedHeaderData[cellIndex];
+			const key = column["name"];
 			
-			}
-			//console.log(decodedHeaderData.length, spans.length);
-			if(decodedHeaderData.length < spans.length) {
-				let span = spans[decodedHeaderData.length];
-				//console.log(toolsTemplate);
-				let newContent = tokenReplace(toolsTemplate, dataRecord);
-				span.innerHTML = newContent;
-				//console.log(newContent);
-				/*
+			//console.log(dataRecord["_components"]);
+			
+			let newColumnData = dataRecord[key];
 
-				let links = span.querySelectorAll("a");
-				if(links) {
-					const match = Array.from(links).find(a => a.textContent.trim() === "Delete");
-					updateDeleteEntityHandler(match, pk, hashedEntities);
+			if ("function" in column) {
+				let stringToEval = tokenReplace(column["function"], dataRecord, "<", "/>", true);
+				stringToEval = stringToEval.replace("$row", "dataRecord");
+				const originalValue = newColumnData;
+				stringToEval = stringToEval.replace(/[\r\n]+/g, ' ');
+	
+				//console.log(stringToEval);
+				try {
+					newColumnData = eval(stringToEval);
+				} catch (error) {
+					console.error("Eval failed with error:", error.message);
+					console.log("Problematic stringToEval:", stringToEval);
+					
+					// Optional: rethrow the error if you still want execution to stop
+					// throw error; 
 				}
-					*/
+				spans[cellIndex].setAttribute("value", originalValue);
 			}
+
+			// Update span content or input value
+			const span = spans[cellIndex];
+			const input = span.querySelector("input, select, textarea");
+			if (input) {
+				// Skip updating if a .noupdate input is focused
+				if (input.classList.contains("noupdate") && document.activeElement === input) {
+				continue; // skip this input entirely
+				}
+
+				if (input.type === "checkbox") {
+				const newChecked = newColumnData === true || newColumnData === 1 || newColumnData === "1" || newColumnData === "true";
+				if (input.checked !== newChecked) input.checked = newChecked;
+				} else if (input.tagName === "SELECT") {
+				if (input.value !== newColumnData) input.value = newColumnData;
+				} else if (input.tagName === "TEXTAREA" || input.type === "text" || input.type === "number" || input.type === "hidden") {
+				if (input.value !== newColumnData) input.value = newColumnData;
+				} else {
+				input.value = newColumnData;
+				}
+				if(hashedEntities && pk) { //if we have a compound pk or a multi-table query, this could fail. but we'd probably also have no inputs
+				updateGenericListHandler(input, pk, hashedEntities); //update the instant update form, particularly if we have a pk that didn't exist before
+				
+				}
+			} else {
+				if (span.innerHTML !== newColumnData) {
+				span.innerHTML = newColumnData;
+				}
+			}
+			if(input) {
+				if (input.type === "checkbox") {
+				// Normalize: treat truthy/1/"1"/"true" as checked
+				const newChecked = newColumnData === true || newColumnData === 1 || newColumnData === "1" || newColumnData === "true";
+				if (input.checked !== newChecked) {
+					input.checked = newChecked;
+				}
+				} else if (input.tagName === "SELECT") {
+				if (input.value !== newColumnData) {
+					input.value = newColumnData;
+				}
+				} else if (input.tagName === "TEXTAREA" || input.type === "text" || input.type === "number" || input.type === "hidden") {
+				if (input.value !== newColumnData) {
+					input.value = newColumnData;
+				}
+				} else {
+				// catch-all for other input types
+				input.value = newColumnData;
+				}
+			}
+
+		
+		}
+		//console.log(decodedHeaderData.length, spans.length);
+		if(decodedHeaderData.length < spans.length) {
+			let span = spans[decodedHeaderData.length];
+			//console.log(toolsTemplate);
+			let newContent = tokenReplace(toolsTemplate, dataRecord);
+			span.innerHTML = newContent;
+			//console.log(newContent);
+			/*
+
+			let links = span.querySelectorAll("a");
+			if(links) {
+				const match = Array.from(links).find(a => a.textContent.trim() === "Delete");
+				updateDeleteEntityHandler(match, pk, hashedEntities);
+			}
+				*/
+		}
 		
       }
     }
@@ -3119,7 +3119,7 @@ function md5(str) {
 }
 
 
-function specifiedEntities(conn, sql, valuesRecord, config = "") {
+function specifiedEntities(sql, valuesRecord, config = "") {
   let out = "";
 
   if (config === "") {
@@ -3152,13 +3152,16 @@ function specifiedEntities(conn, sql, valuesRecord, config = "") {
     // for debugging:
     // out += "|" + lookupSql;
 
-    if (pkValInSql) {
-      const [rows] = conn.query(lookupSql);
-      if (rows && rows.length > 0) {
-        const lookedUpValue = rows[0][humanReadable];
-        out += `<div>${table}: ${lookedUpValue}</div>`;
-      }
-    }
+	if (pkValInSql) {
+		//this shit don't work but someday i might implement some way to do this in javascript, probably with lots of caching
+		/*
+		const [rows] = conn.query(lookupSql);
+		if (rows && rows.length > 0) {
+			const lookedUpValue = rows[0][humanReadable];
+			out += `<div>${table}: ${lookedUpValue}</div>`;
+		}
+		*/
+	}
   }
 
   return out;
