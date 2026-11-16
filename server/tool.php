@@ -303,6 +303,7 @@ if ($user) {
       $parsedAdditionalParams = json_decode($additionalParams, true);
       $sql = tokenReplace($sql, $parsedAdditionalParams);
     }
+    $sql .= " LIMIT 0, 100";
     //echo $sql . "\n\n";
     //die();
     $result = replaceTokensAndQuery($sql, $user);

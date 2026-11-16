@@ -2711,7 +2711,7 @@ function previousReportRuns($user, $reportId) {
       ]
         
     );
-  $searchSql = "SELECT * FROM report_log WHERE report_id=<report_id/> AND `sql` LIKE '%<sql/>%' AND tenant_id=" . $user["tenant_id"] . " AND user_id=" . $user["user_id"] . " ORDER BY `run` DESC LIMIT 0,100";
+  $searchSql = "SELECT * FROM report_log WHERE report_id=<report_id/> AND `sql` LIKE '%<sql/>%' AND tenant_id=" . $user["tenant_id"] . " AND user_id=" . $user["user_id"] . " ";
   $encryptedSql = encryptLongString($searchSql, $encryptionPassword);
   $onKeyUp = sprintf(
       "autoUpdate(%s, %s, %s, %s, %s, true, %s, %s)",
