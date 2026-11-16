@@ -493,6 +493,7 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
 		if(decodedHeaderData.length < spans.length) {
 			let span = spans[decodedHeaderData.length];
 			//console.log(toolsTemplate);
+			dataRecord["hashed_entities"] = hashedEntities;
 			let newContent = tokenReplace(toolsTemplate, dataRecord);
 			span.innerHTML = newContent;
 			//console.log(newContent);
@@ -754,8 +755,9 @@ function copy(id){
           }
         }
       };
+	  console.log(payload);
       xhr.open("POST", "tool.php", true);
-      // Tell the server we�re sending JSON
+      // Tell the server we are sending JSON
       xhr.setRequestHeader("Content-Type", "application/json");
       xhr.send(JSON.stringify(payload));
     }

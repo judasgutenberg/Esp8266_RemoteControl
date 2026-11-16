@@ -415,6 +415,7 @@ function generateFormElements($parentKey, $data, $templateArray = [], $prefix = 
       $count = 0;
       //var_dump($item);
       //echo "<P>";
+ 
       if(gvfa("template", $item)) {
         //ugh!!
           //echo $key . "^" . $prefix . "<BR>";
@@ -424,7 +425,7 @@ function generateFormElements($parentKey, $data, $templateArray = [], $prefix = 
               foreach($data[$key] as $dataArrayItem) {
                 $item["value"] = $dataArrayItem;
                 
-                $formElements .= genericFormItem($item, null, $guessAtTable, $guessAtPk, $textAreaIds, null, $prefix  . $parentKey . "|" . $count . "|");
+                $formElements .= genericFormItem($item, null, $guessAtTable, $guessAtPk, $textAreaIds, null, $prefix  . $parentKey . "|" . $count . "|", $data);
                 $count++;
               }
             }
@@ -436,7 +437,7 @@ function generateFormElements($parentKey, $data, $templateArray = [], $prefix = 
           //echo "<P>";
           //echo"<HR>";
           //var_dump(gvfa("template", $item));
-          $formElements .= genericFormItem($item, null, $guessAtTable, $guessAtPk, $textAreaIds, null, $prefix  . $parentKey . "|" . $count . "|");
+          $formElements .= genericFormItem($item, null, $guessAtTable, $guessAtPk, $textAreaIds, null,  $data, $prefix . $parentKey . "|" . $count . "|");
       } else if (is_array($value)) {
           // Recursively generate form elements for arrays
           $formElements .= '<div class="genericformelementlabel" for="' . $key . '">' . camelCaseToWords($key) . "</div>\n";
@@ -456,7 +457,7 @@ function generateFormElements($parentKey, $data, $templateArray = [], $prefix = 
             }
           }
           //var_dump($item);
-          $formElements .= genericFormItem($item, $columnCount, $guessAtTable, $guessAtPk, $textAreaIds, $user,  $prefix  . $parentKey . "|");
+          $formElements .= genericFormItem($item, $columnCount, $guessAtTable, $guessAtPk, $textAreaIds, $user, $data, $prefix . $parentKey . "|");
           // Create an input field for non-array values
           /*
           $calculatedWidth = strlen($value) * 8;
@@ -825,7 +826,7 @@ function setFormDataErrorByName(array &$data, $name, $error) {
     return false; // no matching record found
 }
 
-function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$textareaIds, $user, $formItemNamePrefix = "") {
+function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$textareaIds, $user, &$data, $formItemNamePrefix = "") {
     global $conn;
     $out = "";
     $label = gvfa("label", $datum);
@@ -1138,7 +1139,7 @@ function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user 
   $guessAtTable = "";
   $guessAtPk = "";
 	foreach($data as &$datum) {
-    $out .= genericFormItem($datum, $columnCount, $guessAtTable, $guessAtPk, $textareaIds, $user, "");
+    $out .= genericFormItem($datum, $columnCount, $guessAtTable, $guessAtPk, $textareaIds, $user, $data, "");
     $columnCount++;
 	}
 	$out .= "<div class='genericformelementlabel'><input name='action' id='action' value='" .  $submitLabel. "' type='submit'/></div>\n";
@@ -1798,6 +1799,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
       }
 
       //echo $value . "=<P>";
+
       if (gvfa("changeable", $headerItem)) {
         $includeForInsert = gvfa("include_for_insert", $headerItem);
         $includeForInsertArray = explode(",", $includeForInsert);
@@ -1818,7 +1820,9 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
           $checkedString = " checked ";
           
         }
+       
         $hashedEntities =  hash_hmac('sha256', $tableName . $primaryKeyName . $row[$primaryKeyName], $encryptionPassword);
+        $row["hashed_entities"] = $hashedEntities;
         $elementId = $tableName  . "-" . $row[$primaryKeyName];
         if(($type == "color"  || $type == "text"  || $type == "number" || $type == "string") &&  $primaryKeyName != $name){
           $out .= "<input id='" . $elementId  .  "' class='noupdate' style='width:" . $width  . "px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",  this.value ,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\",\"" . $extraForInsert . "\")' value='" . $value . "'  name='" . $name . "' type='" . $type . "' />\n";
@@ -1857,6 +1861,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
       json_encode($tableName),
       json_encode($primaryKeyName),
       json_encode($toolsTemplate)
+
   );
   $autoUpdateCallSafe = $autoUpdateCall;//htmlspecialchars($autoUpdateCall, ENT_QUOTES, 'UTF-8');
 
@@ -2711,7 +2716,9 @@ function previousReportRuns($user, $reportId) {
       ]
         
     );
-  $searchSql = "SELECT * FROM report_log WHERE report_id=<report_id/> AND `sql` LIKE '%<sql/>%' AND tenant_id=" . $user["tenant_id"] . " AND user_id=" . $user["user_id"] . " ";
+  //$searchSql = "SELECT * FROM report_log WHERE report_id=<report_id/> AND `sql` LIKE '%<sql/>%' AND tenant_id=" . $user["tenant_id"] . " AND user_id=" . $user["user_id"] . " ";
+  $searchCondition = " `sql` LIKE '%<sql/>%'";
+  $searchSql = addWhereAndCondition($sql, $searchCondition);
   $encryptedSql = encryptLongString($searchSql, $encryptionPassword);
   $onKeyUp = sprintf(
       "autoUpdate(%s, %s, %s, %s, %s, true, %s, %s)",
@@ -2836,6 +2843,72 @@ function colorizeByHash($mode, $text, $limit, $property = "color", $colorPartOne
   return $out;
 }
   
+////////////////////////////////////
+//SQL manipulation functions///////
+//////////////////////////////////
+
+function addWhereAndCondition($sql, $newCondition) {
+    if (!$newCondition) {
+        return $sql;
+    }
+    $sql = trim($sql);
+    // Strip trailing semicolon temporarily if present
+    $hasSemicolon = endsWith($sql, ';');
+    if ($hasSemicolon) {
+        $sql = rtrim($sql, ';');
+    }
+    // Trailing clauses that must come AFTER a WHERE clause
+    $trailingPattern = '/\b(GROUP\s+BY|HAVING|ORDER\s+BY|LIMIT)\b/i';
+    // Check if a top-level WHERE clause already exists
+    if (preg_match('/\bWHERE\b/i', $sql)) {
+        // Match everything from WHERE up to the next major clause or the end of the query
+        $wherePattern = '/(\bWHERE\b\s*)(.*?)(?=\s*\b(?:GROUP\s+BY|HAVING|ORDER\s+BY|LIMIT)\b|\Z)/is';
+        
+        $sql = preg_replace_callback($wherePattern, function($matches) use ($newCondition) {
+            $whereKeyword = $matches[1];
+            $existingConditions = trim($matches[2]);
+            // Wrapping existing conditions in () prevents bugs if they contain 'OR'
+            return "{$whereKeyword}({$existingConditions}) AND ({$newCondition})";
+        }, $sql, 1);
+    } else {
+        // No WHERE clause exists: insert before GROUP BY, HAVING, ORDER BY, or LIMIT
+        if (preg_match($trailingPattern, $sql)) {
+            $sql = preg_replace($trailingPattern, "WHERE ($newCondition) $1", $sql, 1);
+        } else {
+            // Append to the end
+            $sql .= " WHERE ($newCondition)";
+        }
+    }
+    return trim($sql) . ($hasSemicolon ? ';' : '');
+}
+
+function setLimitClause($sql, $newLimit) {
+    if ($newLimit === null || $newLimit === '') {
+        return $sql;
+    }
+
+    $sql = trim($sql);
+
+    // Strip trailing semicolon temporarily if present
+    $hasSemicolon = endsWith($sql, ';');
+    if ($hasSemicolon) {
+        $sql = rtrim($sql, ';');
+    }
+
+    // Matches LIMIT 10, LIMIT 10, 20, or LIMIT 10 OFFSET 20 at the end of the query
+    $patternLimit = '/\bLIMIT\b\s+\d+(?:\s*(?:,|\bOFFSET\b)\s*\d+)?\s*$/i';
+
+    if (preg_match($patternLimit, $sql)) {
+        // Replace existing LIMIT clause
+        $sql = preg_replace($patternLimit, "LIMIT $newLimit", $sql);
+    } else {
+        // Append LIMIT to the end
+        $sql .= " LIMIT $newLimit";
+    }
+
+    return trim($sql) . ($hasSemicolon ? ';' : '');
+}
+
 
 function setOrderByClause($sql, $newOrderBy) {
     if(!$newOrderBy) {
@@ -2858,7 +2931,6 @@ function setOrderByClause($sql, $newOrderBy) {
         // Append ORDER BY to the end
         $sql .= " ORDER BY $newOrderBy";
     }
-
     return trim($sql);
 }
 
@@ -2888,7 +2960,6 @@ function splitSqlCommands($sql) {
           $buffer .= $char;
           continue;
       }
-
       // Handle start of single-line comment
       if (!$in_string && $char === '-' && $next_char === '-') {
           $in_single_line_comment = true;
@@ -2896,7 +2967,6 @@ function splitSqlCommands($sql) {
           $i++;
           continue;
       }
-
       // Handle start of multi-line comment
       if (!$in_string && $char === '/' && $next_char === '*') {
           $in_multi_line_comment = true;
@@ -2904,7 +2974,6 @@ function splitSqlCommands($sql) {
           $i++;
           continue;
       }
-
       // Handle start of string
       if (!$in_string && ($char === '\'' || $char === '"')) {
           $in_string = true;
@@ -2922,7 +2991,6 @@ function splitSqlCommands($sql) {
               $in_string = false;
           }
       }
-
       // Split on semicolon if not inside a string or comment
       if (!$in_string && !$in_single_line_comment && !$in_multi_line_comment && $char === ';') {
           $trimmed = trim($buffer);
@@ -2970,6 +3038,9 @@ function splitSqlCommandsWithComments($sql){
 
     return $out;
 }
+////////////////////////////////////
+//END SQL manipulation functions///
+//////////////////////////////////
 
 function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
   Global $conn;
