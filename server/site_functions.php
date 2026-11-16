@@ -2717,7 +2717,9 @@ function previousReportRuns($user, $reportId) {
         
     );
   //$searchSql = "SELECT * FROM report_log WHERE report_id=<report_id/> AND `sql` LIKE '%<sql/>%' AND tenant_id=" . $user["tenant_id"] . " AND user_id=" . $user["user_id"] . " ";
-  $searchCondition = " `sql` LIKE '%<sql/>%'";
+  $searchTermName = "search_term";
+  $searchCondition = " `sql` LIKE '%<" . $searchTermName . "/>%' ";
+  /*
   $searchSql = addWhereAndCondition($sql, $searchCondition);
   $encryptedSql = encryptLongString($searchSql, $encryptionPassword);
   $onKeyUp = sprintf(
@@ -2728,23 +2730,59 @@ function previousReportRuns($user, $reportId) {
       json_encode($tableName),
       json_encode($pkName),
       json_encode($toolsTemplate),
-      '{"sql":document.getElementById("sql").value, "report_id": ' . $reportId . '}'
+      '{"' . $searchTermName . '":document.getElementById("' . $searchTermName . '").value, "report_id": ' . $reportId . '}'
   );
   $safeOnKeyUp = htmlspecialchars($onKeyUp, ENT_QUOTES, 'UTF-8');
   $searchData = [
         "action"=>"run",
         "table" => "report_log",
-        "searchTerm"=>"sql",
+        "searchTerm"=> $searchTermName,
         "onkeyup" =>$safeOnKeyUp,
         "extraData"=>[
           "report_id"=>$reportId,
         ]
 
   ];
-
+  */
+    $additionalSearchParams = ["report_id"=>$reportId];
+    $searchData = produceSearchData($sql, $searchCondition, $tableName, $pkName, $headerData, $toolsTemplate, $additionalSearchParams);
     $out = genericTable($reportRuns, $headerData, $toolsTemplate, $searchData, $tableName);
   }
   return $out;
+}
+
+
+function produceSearchData($sql, $searchCondition, $tableName, $pkName, $headerData, $toolsTemplate, $additionalSearchParams){
+  global $encryptionPassword;
+  $searchTermName = "search_term";
+  $extraData = $additionalSearchParams;
+  $searchSql = addWhereAndCondition($sql, $searchCondition);
+  $encryptedSql = encryptLongString($searchSql, $encryptionPassword);
+  $additionalSearchParamJSON = '{"' . $searchTermName . '":document.getElementById("' . $searchTermName . '").value';
+  foreach($additionalSearchParams as $key=>$value){
+    $additionalSearchParamJSON .= ',"'. $key .'":"' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '"';
+  }
+  $additionalSearchParamJSON .= "}";
+  $onKeyUp = sprintf(
+      "autoUpdate(%s, %s, %s, %s, %s, true, %s, %s)",
+      json_encode($encryptedSql),
+      json_encode(json_encode($headerData)),
+      json_encode("list-" . $tableName),
+      json_encode($tableName),
+      json_encode($pkName),
+      json_encode($toolsTemplate),
+      $additionalSearchParamJSON
+  );
+  $safeOnKeyUp = htmlspecialchars($onKeyUp, ENT_QUOTES, 'UTF-8');
+  $searchData = [
+        "action"=>"run",
+        "table" => "report_log",
+        "searchTerm"=> $searchTermName,
+        "onkeyup" =>$safeOnKeyUp,
+        "extraData"=> $extraData
+
+  ];
+  return $searchData;
 }
 
 function getConfigItem($data, $key, $jsonColumn = "preferences"){
