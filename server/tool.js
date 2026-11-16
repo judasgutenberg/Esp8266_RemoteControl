@@ -342,9 +342,11 @@
   
  //update the genericTable data
 function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotDoAgain, toolsTemplate, additionalParams) {
+//if you change the signature above, be sure to also change the call of this function near the bottom of this page
   const decodedHeaderData = JSON.parse(headerData);
   //console.log(headerData);
   //console.log(additionalParams);
+  //console.log(toolsTemplate);
   const xmlhttp = new XMLHttpRequest();
 
   xmlhttp.onreadystatechange = function() {
@@ -449,12 +451,13 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
 
           
         }
-		console.log(decodedHeaderData.length, spans.length);
+		//console.log(decodedHeaderData.length, spans.length);
 		if(decodedHeaderData.length < spans.length) {
 			let span = spans[decodedHeaderData.length];
+			//console.log(toolsTemplate);
 			let newContent = tokenReplace(toolsTemplate, dataRecord);
 			span.innerHTML = newContent;
-			console.log(newContent);
+			//console.log(newContent);
 			/*
 
 			let links = span.querySelectorAll("a");
@@ -486,7 +489,7 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
 	xmlhttp.send(params);
 	if(!doNotDoAgain){
 		setTimeout(function() { 
-		autoUpdate(encryptedSql, headerData, tableId, tableName, pkName);
+		autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, false, toolsTemplate, additionalParams);
 		}, 7000);
 	}
   

@@ -1850,7 +1850,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
     $encryptedSql = encryptLongString($autoRefreshSql, $encryptionPassword);
 
     $autoUpdateCall = sprintf(
-      "autoUpdate(%s, %s, %s, %s, %s, doNotDoAgain, %s, false)",
+      "autoUpdate(%s, %s, %s, %s, %s, doNotDoAgain,   %s)",
       json_encode($encryptedSql),
       json_encode(json_encode($headerData)),
       json_encode($tableId),
