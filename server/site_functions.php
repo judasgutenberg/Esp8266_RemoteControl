@@ -1881,12 +1881,15 @@ function replaceTokensAndQuery($sql, $data) {
   return $result;
 }
 
-function tokenReplace($template, $data,  $tableName = "", $strDelimiterBegin = "<", $strDelimiterEnd = "/>"){
+function tokenReplace($template, $data,  $tableName = "", $strDelimiterBegin = "<", $strDelimiterEnd = "/>", $escapeValues = false){
   Global $encryptionPassword;
   //var_dump($data);
   if($data && count($data) > 0) {
     foreach($data as $key => $value) {
       if(!is_array($value)) {
+        if($escapeValues){
+          $value = str_replace('"', '\"', $value);
+        }
         $template = str_replace($strDelimiterBegin . $key . $strDelimiterEnd, $value, $template);
       } else {
         if(array_is_list($value) && count($value) > 0 && is_array($value[0]) == false) {
@@ -2717,8 +2720,7 @@ function previousReportRuns($user, $reportId) {
         
     );
  
-    $searchTermName = "search_term";
-    $searchCondition = " `sql` LIKE '%<" . $searchTermName . "/>%' ";
+    $searchCondition = " `sql` LIKE '%<search_term/>%' ";
     $additionalSearchParams = ["report_id"=>$reportId];
     $searchData = produceSearchData($sql, $searchCondition, $tableName, $pkName, $headerData, $toolsTemplate, $additionalSearchParams);
     $out = genericTable($reportRuns, $headerData, $toolsTemplate, $searchData, $tableName);
@@ -2751,7 +2753,7 @@ function produceSearchData($sql, $searchCondition, $tableName, $pkName, $headerD
   $safeOnKeyUp = htmlspecialchars($onKeyUp, ENT_QUOTES, 'UTF-8');
   $searchData = [
         "action"=>"run",
-        "table" => "report_log",
+        "table" =>  $tableName,
         "searchTerm"=> $searchTermName,
         "onkeyup" =>$safeOnKeyUp,
         "extraData"=> $extraData

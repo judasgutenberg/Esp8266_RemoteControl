@@ -414,11 +414,15 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
 		for (let cellIndex = 0; cellIndex < decodedHeaderData.length; cellIndex++) {
 			const column = decodedHeaderData[cellIndex];
 			const key = column["name"];
-			
+			let label = column["label"];
+			if(!label){
+				label = key;
+			}
 			//console.log(dataRecord["_components"]);
 			
-			let newColumnData = dataRecord[key];
-
+			let newColumnData = dataRecord[label];
+			//we can do everything in PHP it turns out, so i do not need to have JS equivalents of PHP functions
+			/*
 			if ("function" in column) {
 				let stringToEval = tokenReplace(column["function"], dataRecord, "<", "/>", true);
 				stringToEval = stringToEval.replace("$row", "dataRecord");
@@ -437,7 +441,7 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
 				}
 				spans[cellIndex].setAttribute("value", originalValue);
 			}
-
+			*/
 			// Update span content or input value
 			const span = spans[cellIndex];
 			const input = span.querySelector("input, select, textarea");

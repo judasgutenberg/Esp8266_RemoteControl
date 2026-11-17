@@ -314,6 +314,32 @@ if ($user) {
           $componentsOfHash = gvfw("table") . gvfw("pk") . $row[gvfw("pk")];
           $row['_components'] = $componentsOfHash;
           $row['_hashed_entities'] = hash_hmac('sha256', $componentsOfHash, $encryptionPassword);
+          //new experiement:
+          foreach($headerData as $headerDatum){
+            $function = gvfa("function", $headerDatum);
+            $key = $headerDatum['name'];
+            $label = $headerDatum['label'];
+ 
+            $value = $row[$key];
+           
+            if($function){ //allows us to have columns with values that are calculated from PHP
+
+              $function =  tokenReplace($function, $row, "","<", "/>", true) . ";"; 
+              //echo $function . "\n";
+              try{
+                $oldErrorReporting = error_reporting(0);
+                eval('$value = ' . $function . ";");
+                error_reporting($oldErrorReporting);
+              }
+              catch(Throwable  $err){
+                echo $err;
+                $value = substr($value, 0, 40);
+              }
+              
+            }
+            $row[$label] = $value;
+          }
+
       }
       unset($row); 
       echo json_encode($rows);
