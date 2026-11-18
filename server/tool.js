@@ -383,7 +383,7 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
       if(data.length > 0) {
         let dataRecord = data[0];
         const returnedAutoUpdateLevel = dataRecord["auto_update_level"];
-        console.log(returnedAutoUpdateLevel, autoUpdateLevel);
+        //console.log(returnedAutoUpdateLevel, autoUpdateLevel);
         if(returnedAutoUpdateLevel < autoUpdateLevel) {
           return; //stale data!
         }
@@ -411,13 +411,6 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
       for (let rowIndex = 0; rowIndex < dataCount; rowIndex++) {
         let htmlRow = updatedRows[rowIndex];
         let dataRecord = data[rowIndex];
-        /*
-        const returnedAutoUpdateLevel = dataRecord["auto_update_level"];
-        console.log(returnedAutoUpdateLevel, autoUpdateLevel);
-        if(returnedAutoUpdateLevel < autoUpdateLevel) {
-          return; //stale data!
-        }
-        */
         if(!htmlRow){
             htmlRow = document.createElement("div");
             htmlRow.className = "listrow";
