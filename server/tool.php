@@ -287,6 +287,7 @@ if ($user) {
  
     $headerData = json_decode(gvfw('headerData'), true);
     $additionalParams = gvfw('additional_params');
+    $autoUpdateLevel = gvfw('auto_update_level');
     $currentSortColumn = gvfw('sortColumn');
     $sortClause = "";
     if($currentSortColumn  > -1){
@@ -341,6 +342,7 @@ if ($user) {
               
             }
             $row[$label] = $value;
+            $row["auto_update_level"] = $autoUpdateLevel;
           }
 
       }

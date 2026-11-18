@@ -357,6 +357,8 @@ function tokenReplace(
   return template;
 }
   
+let autoUpdateLevel = 0;  
+  
  //update the genericTable data
 function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotDoAgain, toolsTemplate, additionalParams, internalAutoUpdateLevel) {
 //if you change the signature above, be sure to also change the call of this function near the bottom of this page
@@ -377,6 +379,15 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
 
       const rowCount = tableRows.length;
       const dataCount = data.length;
+      
+      if(data.length > 0) {
+        let dataRecord = data[0];
+        const returnedAutoUpdateLevel = dataRecord["auto_update_level"];
+        console.log(returnedAutoUpdateLevel, autoUpdateLevel);
+        if(returnedAutoUpdateLevel < autoUpdateLevel) {
+          return; //stale data!
+        }
+      }
 
       // Add missing rows if new data has more records
       if (dataCount > rowCount  && rowCount > 0) {
@@ -399,34 +410,42 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
       const updatedRows = table.getElementsByClassName("listrow");
       for (let rowIndex = 0; rowIndex < dataCount; rowIndex++) {
         let htmlRow = updatedRows[rowIndex];
-        const dataRecord = data[rowIndex];
-		if(!htmlRow){
-			htmlRow = document.createElement("div");
-			htmlRow.className = "listrow";
-			for(let i =0; i<decodedHeaderData.length; i++) {
-				const span = document.createElement("span");
-				htmlRow.appendChild(span);
-			}
-			const span = document.createElement("span");
-			htmlRow.appendChild(span);
-			table.appendChild(htmlRow);
-		}
-		const spans = htmlRow.getElementsByTagName("span");
-		const pk = dataRecord[pkName];
-		const hashedEntities = dataRecord["_hashed_entities"];
-		for (let cellIndex = 0; cellIndex < decodedHeaderData.length; cellIndex++) {
-			const column = decodedHeaderData[cellIndex];
-			const key = column["name"];
-			let label = column["label"];
-			if(!label){
-				label = key;
-			}
-			//console.log(dataRecord["_components"]);
-			
-			let newColumnData = dataRecord[label];
-			//we can do everything in PHP it turns out, so i do not need to have JS equivalents of PHP functions
-			/*
-			if ("function" in column) {
+        let dataRecord = data[rowIndex];
+        /*
+        const returnedAutoUpdateLevel = dataRecord["auto_update_level"];
+        console.log(returnedAutoUpdateLevel, autoUpdateLevel);
+        if(returnedAutoUpdateLevel < autoUpdateLevel) {
+          return; //stale data!
+        }
+        */
+        if(!htmlRow){
+            htmlRow = document.createElement("div");
+            htmlRow.className = "listrow";
+          for(let i =0; i<decodedHeaderData.length; i++) {
+            const span = document.createElement("span");
+            htmlRow.appendChild(span);
+          }
+          const span = document.createElement("span");
+          htmlRow.appendChild(span);
+          table.appendChild(htmlRow);
+        }
+        const spans = htmlRow.getElementsByTagName("span");
+        const pk = dataRecord[pkName];
+
+        const hashedEntities = dataRecord["_hashed_entities"];
+        for (let cellIndex = 0; cellIndex < decodedHeaderData.length; cellIndex++) {
+          const column = decodedHeaderData[cellIndex];
+          const key = column["name"];
+          let label = column["label"];
+          if(!label){
+            label = key;
+          }
+          //console.log(dataRecord["_components"]);
+          
+          let newColumnData = dataRecord[label];
+        //we can do everything in PHP it turns out, so i do not need to have JS equivalents of PHP functions
+        /*
+        if ("function" in column) {
 				let stringToEval = tokenReplace(column["function"], dataRecord, "<", "/>", true);
 				stringToEval = stringToEval.replace("$row", "dataRecord");
 				const originalValue = newColumnData;
@@ -521,7 +540,7 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
 
 
 	const params = new URLSearchParams();
-	
+	params.append("auto_update_level", internalAutoUpdateLevel);
 	params.append("direction", ascending);
 	params.append("sortColumn", currentSortColumn);
 	params.append("action", "runencryptedsql");
@@ -543,7 +562,7 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
   
 }
 
-let autoUpdateLevel = 0;
+
 
 
 function updateGenericListHandler(inputElement, newPk, newHash) {
