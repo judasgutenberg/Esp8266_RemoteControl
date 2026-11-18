@@ -311,9 +311,11 @@ if ($user) {
     if($result) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
       foreach ($rows as &$row) {
-          $componentsOfHash = gvfw("table") . gvfw("pk") . $row[gvfw("pk")];
-          $row['_components'] = $componentsOfHash;
-          $row['_hashed_entities'] = hash_hmac('sha256', $componentsOfHash, $encryptionPassword);
+          if(gvfw("pk")) {
+            $componentsOfHash = gvfw("table") . gvfw("pk") . $row[gvfw("pk")];
+            $row['_components'] = $componentsOfHash;
+            $row['_hashed_entities'] = hash_hmac('sha256', $componentsOfHash, $encryptionPassword);
+          }
           //new experiement:
           foreach($headerData as $headerDatum){
             $function = gvfa("function", $headerDatum);

@@ -1708,7 +1708,7 @@ function etcTabNav($user) {
 }
 
 
-function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools = '') { //aka genericList
+function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools = '') { //aka genericList
   Global $encryptionPassword;
   if($headerData == NULL  && $rows  && $rows[0]) {
     $headerData = [];
@@ -1722,19 +1722,43 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchD
   $tableId = "list-" . $tableName;
   $out = "";
   //var_dump($searchData);
-  if($searchData) {
-    $out .=  "<form>\n";
-    $out .=  "<input type='hidden' id='action' name='action' value='" . $searchData["action"] . "' />\n";
-    $out .=  "<input type='hidden' name='table' value='" . $searchData["table"] . "' />\n";
-    //"extraData" => array("word_list_id"=>$wordListId)
-    if($searchData["extraData"]){
-      foreach($searchData["extraData"] as $key=>$value){
-        $out .=  "<input type='hidden' name='" . htmlspecialchars($key) . "' value='" . htmlspecialchars($value). "' />\n";
-      }
+  
+  foreach($headerData as $headerItem) {
+    $haveASearchCondition = false;
+    $searchCondition = " (";
+    $searchType = gvfa("search_type", $headerItem);
+    $key = gvfa("name", $headerItem);
+    if($searchType) {
       
-    }
-    $out .= " Search: <input value='" . htmlspecialchars(gvfw($searchData["searchTerm"])) . "' id='" . $searchData["searchTerm"] . "' name='" . $searchData["searchTerm"] . "' onkeyup=\"" . str_replace("<id/>", "document.getElementById('" . $searchData["searchTerm"] . "').value", $searchData["onkeyup"] ). "\"></form>"; 
+        if(!$haveASearchCondition) {
+          $searchCondition .= " OR ";
+        }
+        if($searchType == "start") {
+          $haveASearchCondition = true;
+        }
+        $searchCondition .= " `" . $key . "`";
+        if($searchType == "start") {
+          $searchCondition .= " LIKE '<search_term>s%'";
+        } else if($searchType == "equal") {
+          $searchCondition .= " = '<search_term>'";
+        } else {
+          $searchCondition .= " = '%<search_term>%'";
+        }
+        $searchCondition .= ") ";
+     }
+  }
+  //i build search sql entirely from the sql used to produce the list and any headerData items with a search_type
+  $searchCondition = " `sql` LIKE '%<search_term/>%' ";
+  if($sql) {
+    $searchData = produceSearchData($sql, $searchCondition, $tableName, $primaryKeyName, $headerData, $toolsTemplate);
+    if($searchData) {
+      $out .=  "<form>\n";
+      $out .=  "<input type='hidden' id='action' name='action' value='" . $searchData["action"] . "' />\n";
+      $out .=  "<input type='hidden' name='table' value='" . $searchData["table"] . "' />\n";
+      //"extraData" => array("word_list_id"=>$wordListId)
+      $out .= " Search: <input value='" . htmlspecialchars(gvfw($searchData["searchTerm"])) . "' id='" . $searchData["searchTerm"] . "' name='" . $searchData["searchTerm"] . "' onkeyup=\"" . str_replace("<id/>", "document.getElementById('" . $searchData["searchTerm"] . "').value", $searchData["onkeyup"] ). "\"></form>"; 
 
+    }
   }
   $out .= "\n<div class='list' id='" . $tableId . "'>\n";
 
@@ -2683,6 +2707,7 @@ function previousReportRuns($user, $reportId) {
         'label' => 'sql',
         'name' => 'sql',
         'changeable' => false,
+        'search_type' => 'anywhere',
         'raw'=> true,
         'function' => 'colorizeByHash(0, "<sql/>", 40, "background-color", 50, 70)',
         //'function' => 'colorizeAndTooltipify("<sql/>")',
@@ -2719,26 +2744,21 @@ function previousReportRuns($user, $reportId) {
       ]
         
     );
- 
-    $searchCondition = " `sql` LIKE '%<search_term/>%' ";
-    $additionalSearchParams = ["report_id"=>$reportId];
-    $searchData = produceSearchData($sql, $searchCondition, $tableName, $pkName, $headerData, $toolsTemplate, $additionalSearchParams);
-    $out = genericTable($reportRuns, $headerData, $toolsTemplate, $searchData, $tableName);
+    //where i used to make an out-of-genericTable call to produceSearchData();
+    $restrictiveSearchParams = null;//["report_id"=>$reportId];
+    $out = genericTable($reportRuns, $headerData, $toolsTemplate, $sql, $tableName);
   }
   return $out;
 }
 
 
-function produceSearchData($sql, $searchCondition, $tableName, $pkName, $headerData, $toolsTemplate, $additionalSearchParams){
+function produceSearchData($sql, $searchCondition, $tableName, $pkName, $headerData, $toolsTemplate){
   global $encryptionPassword;
   $searchTermName = "search_term";
-  $extraData = $additionalSearchParams;
+  $extraData = [];
   $searchSql = addWhereAndCondition($sql, $searchCondition);
   $encryptedSql = encryptLongString($searchSql, $encryptionPassword);
   $additionalSearchParamJSON = '{"' . $searchTermName . '":document.getElementById("' . $searchTermName . '").value';
-  foreach($additionalSearchParams as $key=>$value){
-    $additionalSearchParamJSON .= ',"'. $key .'":"' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '"';
-  }
   $additionalSearchParamJSON .= "}";
   $onKeyUp = sprintf(
       "autoUpdate(%s, %s, %s, %s, %s, true, %s, %s)",
@@ -2755,8 +2775,7 @@ function produceSearchData($sql, $searchCondition, $tableName, $pkName, $headerD
         "action"=>"run",
         "table" =>  $tableName,
         "searchTerm"=> $searchTermName,
-        "onkeyup" =>$safeOnKeyUp,
-        "extraData"=> $extraData
+        "onkeyup" =>$safeOnKeyUp
   ];
   return $searchData;
 }
@@ -3290,7 +3309,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
                 //need to do the rest outside the loop
               } else {
                 //$tableTools 
-                //function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $searchData = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools) { //aka genericList
+                //function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools) { //aka genericList
                 //echo "'" . $outputFormat . "'<BR>";
 
                 $outputIfThereIsOne = getOutputIfThereIsOne($outputFormat, $output, $unfoundName, $comment);
