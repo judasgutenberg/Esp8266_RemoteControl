@@ -358,9 +358,12 @@ function tokenReplace(
 }
   
  //update the genericTable data
-function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotDoAgain, toolsTemplate, additionalParams) {
+function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotDoAgain, toolsTemplate, additionalParams, internalAutoUpdateLevel) {
 //if you change the signature above, be sure to also change the call of this function near the bottom of this page
   const decodedHeaderData = JSON.parse(headerData);
+  if(!internalAutoUpdateLevel) {
+    internalAutoUpdateLevel = 0;
+  }
   //console.log(headerData);
   //console.log(additionalParams);
   //console.log(toolsTemplate);
@@ -518,6 +521,7 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
 
 
 	const params = new URLSearchParams();
+	
 	params.append("direction", ascending);
 	params.append("sortColumn", currentSortColumn);
 	params.append("action", "runencryptedsql");
@@ -531,13 +535,16 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
 	xmlhttp.open("POST", url, true);
 	xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
 	xmlhttp.send(params);
-	if(!doNotDoAgain){
+	if(!doNotDoAgain && autoUpdateLevel <= internalAutoUpdateLevel){
 		setTimeout(function() { 
-		autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, false, toolsTemplate, additionalParams);
+		autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, false, toolsTemplate, additionalParams, internalAutoUpdateLevel);
 		}, 7000);
 	}
   
 }
+
+let autoUpdateLevel = 0;
+
 
 function updateGenericListHandler(inputElement, newPk, newHash) {
     // Extract current handler text

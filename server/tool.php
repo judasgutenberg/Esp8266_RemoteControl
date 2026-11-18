@@ -270,6 +270,7 @@ if ($user) {
     if($user["role"] != "viewer" && ($table != "user"  &&  $table != "report") || $user["role"] == "super") { //can't have just anybody do this
       //echo "$$$$";
       $result = mysqli_query($conn, $sql); 
+      
     } else {
       echo "You lack permissions.<br/>";
     }

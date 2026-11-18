@@ -119,7 +119,7 @@ function deviceFeatures($user, $deviceId) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
       
       if($rows) {
-        $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id", $sql);
+        $out .= genericTable($rows, $headerData, $toolsTemplate, $sql, $table, $table . "_id", false);
       }
     }
     return $out;  
@@ -206,7 +206,7 @@ function codeTemplates($user) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
       //var_dump($rows);
       if($rows) {
-        $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id", $sql);
+        $out .= genericTable($rows, $headerData, $toolsTemplate, $sql, $table, $table . "_id", false);
       }
     }
     return $out;
@@ -279,7 +279,7 @@ function devices($user) {
     if($result) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
       if($rows) {
-        $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id", $sql);
+        $out .= genericTable($rows, $headerData, $toolsTemplate, $sql, $table, $table . "_id", false);
       }
     }
     return $out;
@@ -327,7 +327,7 @@ function reports($user) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
       
       if($rows) {
-        $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id", $sql);
+        $out .= genericTable($rows, $headerData, $toolsTemplate, $sql, $table, $table . "_id", false);
       }
     }
     return $out;
@@ -377,7 +377,7 @@ function weatherConditions($user) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
       
       if($rows) {
-        $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id", $sql);
+        $out .= genericTable($rows, $headerData, $toolsTemplate, $sql, $table, $table . "_id", false);
       }
     }
     return $out;
@@ -547,8 +547,8 @@ function users(){
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     //var_dump($rows);
     if($rows) {
-      // genericTable($rows, $headerData, $toolsTemplate, null,  $table, $table . "_id", $sql);
-      $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id");
+      // genericTable($rows, $headerData, $toolsTemplate, null,  $table, $table . "_id", false);
+      $out .= genericTable($rows, $headerData, $toolsTemplate, $sql, $table, $table . "_id");
     }
     
   }
@@ -702,7 +702,7 @@ function tenants($user){
     //var_dump($rows);
     if($rows) {
       // genericTable($rows, $headerData, $toolsTemplate, null,  $table, $table . "_id", $sql);
-      $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id");
+      $out .= genericTable($rows, $headerData, $toolsTemplate, $sql, $table, $table . "_id");
     }
     
   }
@@ -1192,7 +1192,7 @@ function commandTypes($user, $deviceId){
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
       //var_dump($rows);
       if($rows) {
-        $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id", $sql);
+        $out .= genericTable($rows, $headerData, $toolsTemplate, $sql, $table, $table . "_id", false);
       }
       
     }
@@ -1325,7 +1325,7 @@ function commands($tenantId, $deviceId){
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     //var_dump($rows);
     if($rows) {
-      $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id", $sql);
+      $out .= genericTable($rows, $headerData, $toolsTemplate, $sql, $table, $table . "_id", false);
     }
     
   }
@@ -1392,7 +1392,7 @@ function deviceColumnMaps($deviceId, $user){
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     //var_dump($rows);
     if($rows) {
-      $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id", $sql);
+      $out .= genericTable($rows, $headerData, $toolsTemplate, $sql, $table, $table . "_id", false);
     }
     
   }
@@ -1663,7 +1663,7 @@ function configurationValues($user) {
     if($result) {
       $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
       if($rows) {
-        $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id", $sql);
+        $out .= genericTable($rows, $headerData, $toolsTemplate, $sql, $table, $table . "_id", false);
       }
     }
     return $out;
@@ -1958,7 +1958,7 @@ function managementRules($user, $deviceId){
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     //var_dump($rows);
     if($rows) {
-      $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id");
+      $out .= genericTable($rows, $headerData, $toolsTemplate, $sql, $table, $table . "_id");
     }
     
   }
@@ -2677,7 +2677,7 @@ function currentSensorData($tenant){
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     //var_dump($rows);
     if($rows) {
-      $out.= genericTable($rows, $energyInfo, null, null, "inverter_log", "inverter_log_id", $sql);
+      $out.= genericTable($rows, $energyInfo, null, $sql, "inverter_log", "inverter_log_id", false);
     }
   }
   $sql = "SELECT
@@ -2748,7 +2748,7 @@ function currentSensorData($tenant){
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
     //var_dump($rows);
     if($rows) {
-      $out.= genericTable($rows, $weatherInfo, null, null, "device_log", "device_log_id", $sql);
+      $out.= genericTable($rows, $weatherInfo, null, $sql, "device_log", "device_log_id", false);
     }
   }
   return $out;
@@ -3543,7 +3543,7 @@ function showLatestMessages($tenantId) {
    );
   if($result) {
     $rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
-    $out .= genericTable($rows, $headerData, $toolsTemplate, null, $table, $table . "_id", $sql);
+    $out .= genericTable($rows, $headerData, $toolsTemplate, $sql, $table, $table . "_id", false);
   }
   return $out;
 }

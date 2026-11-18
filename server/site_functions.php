@@ -1708,8 +1708,8 @@ function etcTabNav($user) {
 }
 
 
-function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = null, $tableName = "", $primaryKeyName = "", $autoRefreshSql = null, $tableTools = '') { //aka genericList
-  Global $encryptionPassword;
+function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = null, $tableName = "", $primaryKeyName = "", $doNotRefresh = true, $tableTools = '') { //aka genericList
+  global $encryptionPassword;
   if($headerData == NULL  && $rows  && $rows[0]) {
     $headerData = [];
     foreach(array_keys($rows[0]) as &$key) {
@@ -1725,32 +1725,30 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = n
   
   foreach($headerData as $headerItem) {
     $haveASearchCondition = false;
-    $searchCondition = " (";
     $searchType = gvfa("search_type", $headerItem);
     $key = gvfa("name", $headerItem);
-    if($searchType) {
-      
-        if(!$haveASearchCondition) {
+    if($searchType  || $key == "name") {
+        $searchCondition = "";
+        if($haveASearchCondition) {
           $searchCondition .= " OR ";
         }
+        $haveASearchCondition = true;
+        $searchColumn = extractSelectColumn($sql, $key);
+        $searchCondition .= " " . $searchColumn;
         if($searchType == "start") {
-          $haveASearchCondition = true;
-        }
-        $searchCondition .= " `" . $key . "`";
-        if($searchType == "start") {
-          $searchCondition .= " LIKE '<search_term>s%'";
+          $searchCondition .= " LIKE '<search_term/>s%'";
         } else if($searchType == "equal") {
-          $searchCondition .= " = '<search_term>'";
+          $searchCondition .= " = '<search_term/>'";
         } else {
-          $searchCondition .= " = '%<search_term>%'";
+          $searchCondition .= " LIKE '%<search_term/>%'";
         }
-        $searchCondition .= ") ";
+        $searchCondition .= " ";
      }
   }
   //i build search sql entirely from the sql used to produce the list and any headerData items with a search_type
-  $searchCondition = " `sql` LIKE '%<search_term/>%' ";
+  //$searchCondition = " `sql` LIKE '%<search_term/>%' ";
   if($sql) {
-    $searchData = produceSearchData($sql, $searchCondition, $tableName, $primaryKeyName, $headerData, $toolsTemplate);
+    $searchData = produceSearchData($sql, $searchCondition, $tableName, $primaryKeyName, $headerData, $toolsTemplate, $doNotRefresh);
     if($searchData) {
       $out .=  "<form>\n";
       $out .=  "<input type='hidden' id='action' name='action' value='" . $searchData["action"] . "' />\n";
@@ -1874,11 +1872,15 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = n
   //$out .= "</div>\n";
   $out .= "</div>\n";
   //var_dump(count($rows));
-  if($autoRefreshSql) {
-    $encryptedSql = encryptLongString($autoRefreshSql, $encryptionPassword);
-
+  if($sql) {
+    $encryptedSql = encryptLongString($sql, $encryptionPassword);
+    if($doNotRefresh) {
+      $doNotRefresh = "true";
+    } else {
+      $doNotRefresh = "false";
+    }
     $autoUpdateCall = sprintf(
-      "autoUpdate(%s, %s, %s, %s, %s, doNotDoAgain,   %s)",
+      "autoUpdate(%s, %s, %s, %s, %s, " . $doNotRefresh . ",   %s)",
       json_encode($encryptedSql),
       json_encode(json_encode($headerData)),
       json_encode($tableId),
@@ -2752,7 +2754,7 @@ function previousReportRuns($user, $reportId) {
 }
 
 
-function produceSearchData($sql, $searchCondition, $tableName, $pkName, $headerData, $toolsTemplate){
+function produceSearchData(&$sql, $searchCondition, $tableName, $pkName, $headerData, $toolsTemplate, $doNotRefresh){
   global $encryptionPassword;
   $searchTermName = "search_term";
   $extraData = [];
@@ -2760,8 +2762,13 @@ function produceSearchData($sql, $searchCondition, $tableName, $pkName, $headerD
   $encryptedSql = encryptLongString($searchSql, $encryptionPassword);
   $additionalSearchParamJSON = '{"' . $searchTermName . '":document.getElementById("' . $searchTermName . '").value';
   $additionalSearchParamJSON .= "}";
+  if($doNotRefresh) {
+    $doNotRefresh = "true";
+  } else {
+    $doNotRefresh = "false";
+  }
   $onKeyUp = sprintf(
-      "autoUpdate(%s, %s, %s, %s, %s, true, %s, %s)",
+      "autoUpdateLevel++;\nautoUpdate(%s, %s, %s, %s, %s, " . $doNotRefresh . ", %s, %s, autoUpdateLevel)",
       json_encode($encryptedSql),
       json_encode(json_encode($headerData)),
       json_encode("list-" . $tableName),
@@ -2879,6 +2886,65 @@ function colorizeByHash($mode, $text, $limit, $property = "color", $colorPartOne
 ////////////////////////////////////
 //SQL manipulation functions///////
 //////////////////////////////////
+
+
+function extractSelectColumn($sql, $column) {
+    // 1. Isolate the top-level SELECT clause (ignoring nested subqueries)
+    $selectClause = extractTopLevelSelect($sql);
+    if ($selectClause === null) {
+        return null;
+    }
+    // 2. Build regex to match the column with an optional table alias
+    // Handles optional backticks around both the alias and the column name
+    $escapedCol = preg_quote($column, '/');
+    $pattern = '/(?:`?([a-zA-Z0-9_]+)`?\s*\.\s*)?`?\b' . $escapedCol . '\b`?/i';
+
+    if (preg_match($pattern, $selectClause, $matches)) {
+        $alias = $matches[1] ?? '';
+
+        if ($alias !== '') {
+            return "`{$alias}`.`{$column}`";
+        }
+
+        return "`{$column}`";
+    }
+
+    return null;
+}
+
+/**
+ * Helper to extract everything between the first SELECT and its matching FROM,
+ * safely skipping over any parentheses (like subqueries or functions).
+ */
+function extractTopLevelSelect($sql) {
+    // Find the start of the first SELECT keyword
+    if (!preg_match('/\bSELECT\b/i', $sql, $match, PREG_OFFSET_CAPTURE)) {
+        return null;
+    }
+
+    $startPos = $match[0][1] + strlen($match[0][0]);
+    $length = strlen($sql);
+    $depth = 0;
+
+    for ($i = $startPos; $i < $length; $i++) {
+        $char = $sql[$i];
+
+        if ($char === '(') {
+            $depth++;
+        } elseif ($char === ')') {
+            $depth = max(0, $depth - 1);
+        } elseif ($depth === 0) {
+            // Check for top-level FROM keyword
+            if (preg_match('/^\bFROM\b/i', substr($sql, $i))) {
+                return substr($sql, $startPos, $i - $startPos);
+            }
+        }
+    }
+
+    // Fallback if there is no FROM clause (e.g., "SELECT 1 AS id")
+    return substr($sql, $startPos);
+}
+
 
 function addWhereAndCondition($sql, $newCondition) {
     if (!$newCondition) {
