@@ -1723,12 +1723,11 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = n
   $out = "";
   $searchCondition = "";
   //var_dump($searchData);
-  
+  $searchCondition = "";
   foreach($headerData as $headerItem) {
     $haveASearchCondition = false;
     $searchType = gvfa("search_type", $headerItem);
     $key = gvfa("name", $headerItem);
-    $searchCondition = "";
     if($searchType  || $key == "name") {
         //echo "<p><font color=009999>" . $key . "</font><p>";
         $searchCondition = "";
