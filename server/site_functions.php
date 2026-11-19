@@ -1721,6 +1721,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = n
   }
   $tableId = "list-" . $tableName;
   $out = "";
+  $searchCondition = "";
   //var_dump($searchData);
   
   foreach($headerData as $headerItem) {
@@ -1733,8 +1734,10 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = n
           $searchCondition .= " OR ";
         }
         $haveASearchCondition = true;
+      
         $searchColumn = extractSelectColumn($sql, $key);
         $searchCondition .= " " . $searchColumn;
+        //echo "sql:" . $sql . " search column:" . $searchColumn;
         if($searchType == "start") {
           $searchCondition .= " LIKE '<search_term/>s%'";
         } else if($searchType == "equal") {
@@ -2909,7 +2912,7 @@ function extractSelectColumn($sql, $column) {
         return "`{$column}`";
     }
 
-    return null;
+    return "`{$column}`";
 }
 
 /**
