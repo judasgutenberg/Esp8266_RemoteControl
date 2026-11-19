@@ -270,7 +270,7 @@ function devices($user) {
     );
     $toolsTemplate = "<div class='listtools' style='border-color:<color/>'>";
     $toolsTemplate .= "<a href='?table=" . $table . "&" . $table . "_id=<" . $table . "_id/>'>Edit</a> ";
-    $toolsTemplate .= " | <a href='?table=device_feature&device_id=<" . $table . "_id/>ss'>Features</a>";
+    $toolsTemplate .= " | <a href='?table=device_feature&device_id=<" . $table . "_id/>'>Features</a>";
     $toolsTemplate .= " | <a href='?table=configuration_value&device_id=<" . $table . "_id/>'>Config</a>";
     $toolsTemplate .= " | <a href='index.php?location_id=<" . $table . "_id/>'>Weather Graph</a>";
     $toolsTemplate .= " | <a href='?table=device_column_map&device_id=<" . $table . "_id/>'>Graph Columns</a>";
