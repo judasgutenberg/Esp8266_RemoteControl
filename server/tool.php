@@ -335,8 +335,11 @@ if ($user) {
                 eval('$value = ' . $function . ";");
                 error_reporting($oldErrorReporting);
               }
-              catch(Throwable  $err){
+              catch(Exception  $err){
                 echo $err;
+                echo "\n\n";
+                echo $function;
+                echo "\n\n";
                 $value = substr($value, 0, 40);
               }
               

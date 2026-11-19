@@ -1728,30 +1728,36 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = n
     $haveASearchCondition = false;
     $searchType = gvfa("search_type", $headerItem);
     $key = gvfa("name", $headerItem);
+    $searchCondition = "";
     if($searchType  || $key == "name") {
+        //echo "<p><font color=009999>" . $key . "</font><p>";
         $searchCondition = "";
         if($haveASearchCondition) {
           $searchCondition .= " OR ";
         }
         $haveASearchCondition = true;
-      
+        $searchTokenName = $tableName . ".search_term";
         $searchColumn = extractSelectColumn($sql, $key);
         $searchCondition .= " " . $searchColumn;
         //echo "sql:" . $sql . " search column:" . $searchColumn;
         if($searchType == "start") {
-          $searchCondition .= " LIKE '<search_term/>s%'";
+          $searchCondition .= " LIKE '<" . $searchTokenName . "/>s%'";
         } else if($searchType == "equal") {
-          $searchCondition .= " = '<search_term/>'";
+          $searchCondition .= " = '<" . $searchTokenName . "/>'";
         } else {
-          $searchCondition .= " LIKE '%<search_term/>%'";
+          $searchCondition .= " LIKE '%<" . $searchTokenName . "/>%'";
         }
         $searchCondition .= " ";
      }
   }
   //i build search sql entirely from the sql used to produce the list and any headerData items with a search_type
   //$searchCondition = " `sql` LIKE '%<search_term/>%' ";
-  if($sql) {
+  //echo "\n<p><font color=purple>" . $searchCondition . "</font><p>\n";
+  //echo "\n<p><font color=green>" . $sql . "</font><p>\n";
+  if($sql  && $searchCondition) {
     $searchData = produceSearchData($sql, $searchCondition, $tableName, $primaryKeyName, $headerData, $toolsTemplate, $doNotRefresh);
+    //echo "\n<p><font color=red>" . $sql . "</font><p>\n";
+    //var_dump($searchData);
     if($searchData) {
       $out .=  "<form>\n";
       $out .=  "<input type='hidden' id='action' name='action' value='" . $searchData["action"] . "' />\n";
@@ -2759,7 +2765,8 @@ function previousReportRuns($user, $reportId) {
 
 function produceSearchData(&$sql, $searchCondition, $tableName, $pkName, $headerData, $toolsTemplate, $doNotRefresh){
   global $encryptionPassword;
-  $searchTermName = "search_term";
+  //echo "<p><font color=orange>" . $searchCondition . "</font><P>";
+  $searchTermName = $tableName . ".search_term";
   $extraData = [];
   $searchSql = addWhereAndCondition($sql, $searchCondition);
   $encryptedSql = encryptLongString($searchSql, $encryptionPassword);
