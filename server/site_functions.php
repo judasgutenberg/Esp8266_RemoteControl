@@ -2500,7 +2500,6 @@ function blendColors($color1, $color2) {
   // Convert hex colors to RGB
   $rgb1 = sscanf($color1, "#%02x%02x%02x");
   $rgb2 = sscanf($color2, "#%02x%02x%02x");
-
   // Blend the colors
   $result = "#";
   for ($i = 0; $i < 3; $i++) {
@@ -2519,19 +2518,15 @@ function generateCurrentUrl() {
   return $fullUrl;
 }
 
- 
 function encryptLongString($plaintext, $password) {
     // Generate a random initialization vector
     $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('aes-256-cbc'));
-    
     // Encrypt the plaintext using AES-256-CBC algorithm
     $ciphertext = openssl_encrypt($plaintext, 'aes-256-cbc', $password, 0, $iv);
- 
     $iv = str_pad($iv, 16, "\0");
     // Encode the ciphertext and IV as base64 strings
     $ivBase64 = base64_encode($iv);
     $ciphertextBase64 = base64_encode($ciphertext);
-    
     // Concatenate IV and ciphertext with a separator
     return $ivBase64 . ':' . $ciphertextBase64;
 }
@@ -2539,15 +2534,12 @@ function encryptLongString($plaintext, $password) {
 function decryptLongString($encryptedData, $password) {
     // Split the IV and ciphertext from the encrypted data
     list($ivBase64, $ciphertextBase64) = explode(':', $encryptedData, 2);
-    
     // Decode the IV and ciphertext from base64 strings
     $iv = base64_decode($ivBase64);
     $ciphertext = base64_decode($ciphertextBase64);
     $iv = str_pad($iv, 16, "\0");
-    //echo($iv . "|" . strlen($iv));
     // Decrypt the ciphertext using AES-256-CBC algorithm
     $plaintext = openssl_decrypt($ciphertext, 'aes-256-cbc', $password, 0, $iv);
-    
     // Return the decrypted plaintext
     return $plaintext;
 }
@@ -2558,10 +2550,8 @@ function sanitizeForJson($input) {
   // \x20-\x7E covers the visible ASCII characters excluding control characters
   // \u0800-\uFFFF covers additional Unicode characters
   $illegalCharsPattern = '/[^\x20-\x7E\x80-\xFF\u0100-\uFFFF]/u';
-
   // Replace illegal characters with spaces
   $sanitizedInput = preg_replace($illegalCharsPattern, ' ', $input);
-
   return $sanitizedInput;
 }
 
@@ -2570,15 +2560,12 @@ function isValidPHP($code) {
   if (strpos($code, '<?php') === false) {
       $code = '<?php ' . $code;
   }
-  
   // Use token_get_all to tokenize the PHP code
   $tokens = token_get_all($code);
-  
   // Remove the first token if it's T_OPEN_TAG, to allow parsing in a block
   if ($tokens[0][0] === T_OPEN_TAG) {
       array_shift($tokens);
   }
-  
   // Rebuild the code without the opening PHP tag
   $codeWithoutTags = '';
   foreach ($tokens as $token) {
@@ -2588,7 +2575,6 @@ function isValidPHP($code) {
           $codeWithoutTags .= $token;
       }
   }
-
   // Use linting to check if the code is valid
   $tempFile = "gottaHaveSomething1";
   $tempDir = sys_get_temp_dir();
@@ -2601,12 +2587,11 @@ function isValidPHP($code) {
   file_put_contents($tempFile, '<?php ' . $codeWithoutTags);
   $result = shell_exec('php -l ' . escapeshellarg($tempFile));
   unlink($tempFile);
-
   return strpos($result, 'No syntax errors detected') !== false;
 }
 
 function getColumns($tableName) {
-  Global $conn;
+  global $conn;
   $sql = "SHOW COLUMNS FROM " . filterStringForSqlEntities($tableName) . ";"; //watch out for sql injection!
   $result = mysqli_query($conn, $sql);
  
@@ -2620,7 +2605,7 @@ function getColumns($tableName) {
 
 
 function getAssociatedRecords($commandTypeId, $tenantId){
-  Global $conn;
+  global $conn;
   //first figure out if we have an associated table: 
   $sql = "SELECT associated_table, value_column, name_column FROM command_type WHERE command_type_id=" . intval($commandTypeId) . " AND tenant_id=" . intval($tenantId);
   //echo $sql;
@@ -2677,7 +2662,7 @@ function canUserDoThing($user, $thingRole){
 }
 
 function previousReportRuns($user, $reportId) {
-  global $conn, $encryptionPassword;
+  global $conn;
   $tableName = "report_log";
   $pkName = "report_log_id";
   //var_dump($user);
@@ -2717,33 +2702,12 @@ function previousReportRuns($user, $reportId) {
         'label' => 'sql',
         'name' => 'sql',
         'changeable' => false,
-        'search_type' => 'anywhere',
+        'search_type' => 'anywhere', //how one puts a search form looking at a column in genericTable
         'raw'=> true,
         'function' => 'colorizeByHash(0, "<sql/>", 40, "background-color", 50, 70)',
         //'function' => 'colorizeAndTooltipify("<sql/>")',
         'type' => 'string'
       ],
-      /*
-      //replaced by specified entities
-      [
-        'label' => 'likely device',
-        'name' => 'sql',
-        'changeable' => false,
-        'function' => 'getDevice(getSqlParameter("<sql/>", "device_id"))["name"]',
-        'type' => 'string'
-      ],
-      */
-      //did not work because genericTable does not know tenant_id, but then it did when i added it to the SQL query
-      //but supplanted by specified entities
-      /*
-      [
-        'label' => 'likely device feature',
-        'name' => 'sql',
-        'changeable' => false,
-        'function' => 'getDeviceFeature(getSqlParameter("<sql/>", "device_feature_id"), <tenant_id/>)["name"]',
-        'type' => 'string'
-      ],
-      */
       [
         'label' => 'specified entities',
         'name' => 'sql',
@@ -2755,7 +2719,6 @@ function previousReportRuns($user, $reportId) {
         
     );
     //where i used to make an out-of-genericTable call to produceSearchData();
-    $restrictiveSearchParams = null;//["report_id"=>$reportId];
     $out = genericTable($reportRuns, $headerData, $toolsTemplate, $sql, $tableName);
   }
   return $out;
@@ -2764,7 +2727,6 @@ function previousReportRuns($user, $reportId) {
 
 function produceSearchData(&$sql, $searchCondition, $tableName, $pkName, $headerData, $toolsTemplate, $doNotRefresh){
   global $encryptionPassword;
-  //echo "<p><font color=orange>" . $searchCondition . "</font><P>";
   $searchTermName = $tableName . ".search_term";
   $extraData = [];
   $searchSql = addWhereAndCondition($sql, $searchCondition);
