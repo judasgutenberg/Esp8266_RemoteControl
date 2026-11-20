@@ -357,7 +357,7 @@ function tokenReplace(
   return template;
 }
   
-let autoUpdateLevel = 0;  
+let autoUpdateLevel = 0;  //i use this to make sure the frontend is only refreshing using the latest search and sort parameters
   
  //update the genericTable data
 function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotDoAgain, toolsTemplate, additionalParams, internalAutoUpdateLevel) {
@@ -382,7 +382,7 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
       
       if(data.length > 0) {
         let dataRecord = data[0];
-        const returnedAutoUpdateLevel = dataRecord["auto_update_level"];
+        const returnedAutoUpdateLevel = dataRecord["auto_update_level"]; //i get autoUpdateLevel of the JS when the data was sent and if it is old, the resulting data is ignored
         //console.log(returnedAutoUpdateLevel, autoUpdateLevel);
         if(returnedAutoUpdateLevel < autoUpdateLevel) {
           return; //stale data!

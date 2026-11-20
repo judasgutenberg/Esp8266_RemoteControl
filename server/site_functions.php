@@ -1750,20 +1750,13 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = n
      }
   }
   //i build search sql entirely from the sql used to produce the list and any headerData items with a search_type
-  //$searchCondition = " `sql` LIKE '%<search_term/>%' ";
-  //echo "\n<p><font color=purple>" . $searchCondition . "</font><p>\n";
-  //echo "\n<p><font color=green>" . $sql . "</font><p>\n";
   if($sql  && $searchCondition) {
     $searchData = produceSearchData($sql, $searchCondition, $tableName, $primaryKeyName, $headerData, $toolsTemplate, $doNotRefresh);
     //echo "\n<p><font color=red>" . $sql . "</font><p>\n";
     //var_dump($searchData);
     if($searchData) {
       $out .=  "<form>\n";
-      $out .=  "<input type='hidden' id='action' name='action' value='" . $searchData["action"] . "' />\n";
-      $out .=  "<input type='hidden' name='table' value='" . $searchData["table"] . "' />\n";
-      //"extraData" => array("word_list_id"=>$wordListId)
       $out .= " Search: <input value='" . htmlspecialchars(gvfw($searchData["searchTerm"])) . "' id='" . $searchData["searchTerm"] . "' name='" . $searchData["searchTerm"] . "' onkeyup=\"" . str_replace("<id/>", "document.getElementById('" . $searchData["searchTerm"] . "').value", $searchData["onkeyup"] ). "\"></form>"; 
-
     }
   }
   $out .= "\n<div class='list' id='" . $tableId . "'>\n";
