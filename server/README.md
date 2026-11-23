@@ -8,4 +8,4 @@ Wherever you end up placing your server backend, the firmware will need to be fl
 
 Note: none of these files require compilation or other framework-mandated hassles.  If you're anything like me, you often abandon potential code solutions that seem useful the moment they start requiring Node.js or Composer.  Why should a simple app require a gigabyte of Javascript libraries? It's madness!
 
-There is, though, a framework in this code of a sort. It makes it a breeze for me to create editors for database entities or to display HTML lists from SQL queries.  These queries can even be made to refire periodically to automatically update frontend data displays.
+There is, though, a framework in this code of a sort. It makes it easy for me to create editors for database entities or to display HTML lists from SQL queries.  These queries can even be made to refire periodically to automatically update frontend data displays and can include live searches, all configurable via a PHP object.
