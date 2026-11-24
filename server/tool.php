@@ -582,7 +582,7 @@ if ($user) {
       $out .=  editUser($errors);
     } else {
       if($user["role"]  == "super"){
-        $out .= users();
+        $out .= users($user);
       }
     }
 	} else if($table == "tenant") {

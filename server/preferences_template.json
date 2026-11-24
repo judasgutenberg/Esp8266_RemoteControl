@@ -13,5 +13,13 @@
     "help_text": "You can specify entities to look up by primary key in the database. Each record here is separated by semi-colons and is a comma-separated list of table (such as 'device'), primary key (such as 'device_id'), human readable column (such as 'name'), and any other columns that are required for lookup (such as tenant_id).",
     "width":500,
     "height":100
+  } , 
+
+  {
+    "name":"auto_search",
+    "label":"auto provide search columns",
+    "help_text": "Names of columns that are always searchable.",
+    "width":500,
+    "height":100
   } 
 ]

@@ -1708,7 +1708,7 @@ function etcTabNav($user) {
 }
 
 
-function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = null, $tableName = "", $primaryKeyName = "", $doNotRefresh = true, $tableTools = '') { //aka genericList
+function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = null, $tableName = "", $primaryKeyName = "", $doNotRefresh = true, $tableTools = '', $user = null) { //aka genericList
   global $encryptionPassword;
   if($headerData == NULL  && $rows  && $rows[0]) {
     $headerData = [];
@@ -1728,7 +1728,12 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = n
     $haveASearchCondition = false;
     $searchType = gvfa("search_type", $headerItem);
     $key = gvfa("name", $headerItem);
-    if($searchType  || $key == "name") {
+    $otherPossibleSearchItems = [];
+    if($user){
+      $otherPossibleSearchItems = explode(",", getConfigItem($user, "auto_search"));
+    }
+    //var_dump($otherPossibleSearchItems);
+    if($searchType  || array_search($key, $otherPossibleSearchItems)) {
         //echo "<p><font color=009999>" . $key . "</font><p>";
         $searchCondition = "";
         if($haveASearchCondition) {
@@ -2712,7 +2717,8 @@ function previousReportRuns($user, $reportId) {
         
     );
     //where i used to make an out-of-genericTable call to produceSearchData();
-    $out = genericTable($reportRuns, $headerData, $toolsTemplate, $sql, $tableName);
+    //genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = null, $tableName = "", $primaryKeyName = "", $doNotRefresh = true, $tableTools = '', $user = null)
+    $out = genericTable($reportRuns, $headerData, $toolsTemplate, $sql, $tableName, "", true, "", $user);
   }
   return $out;
 }
@@ -2743,8 +2749,8 @@ function produceSearchData(&$sql, $searchCondition, $tableName, $pkName, $header
   );
   $safeOnKeyUp = htmlspecialchars($onKeyUp, ENT_QUOTES, 'UTF-8');
   $searchData = [
-        "action"=>"run",
-        "table" =>  $tableName,
+        //"action"=>"run",
+        //"table" =>  $tableName,
         "searchTerm"=> $searchTermName,
         "onkeyup" =>$safeOnKeyUp
   ];
