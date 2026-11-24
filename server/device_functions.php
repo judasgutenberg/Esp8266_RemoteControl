@@ -31,7 +31,8 @@ function allWeatherConditions($tenantId) {
   }
 }
 
-function deviceFeatures($user, $deviceId) {
+function deviceFeatures($deviceId) {
+  global $user;
   $table = "device_feature";
   $sql = "SELECT df.name as name, color, digest_bit_position, pin_number, allow_automatic_management, df.enabled, df.device_type_feature_id, df.device_feature_id, df.created, last_known_device_value, last_known_device_modified, df.value  
           FROM " . $table . " df 
@@ -138,7 +139,8 @@ function timeScales() {
   return $out;
 }
 
-function codeTemplates($user) {
+function codeTemplates() {
+  global $user;
   $tenantId = $user["tenant_id"];
   $table = "code_template";
   $pk = gvfw($table . "_id");
@@ -213,7 +215,8 @@ function codeTemplates($user) {
 }
 
 
-function devices($user) {
+function devices() {
+  global $user;
   $table = "device";
   $sql = "SELECT *   FROM " . $table . " d  WHERE tenant_id=<tenant_id/>";
   
@@ -286,7 +289,8 @@ function devices($user) {
 
 }
 
-function reports($user) {
+function reports() {
+  global $user;
   $table = "report";
   $sql = "SELECT *  FROM " . $table . "  WHERE tenant_id=<tenant_id/>";
   //echo $sql;
@@ -334,7 +338,8 @@ function reports($user) {
 
 }
 
-function weatherConditions($user) {
+function weatherConditions() {
+  global $users;
   $table = "weather_condition";
   $sql = "SELECT *  FROM " . $table . "  WHERE tenant_id=<tenant_id/>";
   //echo $sql;
@@ -383,7 +388,8 @@ function weatherConditions($user) {
     return $out;
 }
 
-function editWeatherCondition($error,  $user) {
+function editWeatherCondition($error) {
+  global $user;
   $table = "weather_condition";
   $pk = gvfw($table . "_id");
   
@@ -510,8 +516,8 @@ function copyValuesFromSourceToDest($dest, $source) {
   return $dest;
 }
 
-function users($user){
-  global $conn;
+function users(){
+  global $conn, $user;
   $table = "user";
   $out = "<div class='listheader'>Users</div>";
   $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a new user</div>\n";
@@ -658,8 +664,8 @@ function editUser($error){
   return $form;
 }
 
-function tenants($user){
-  global $conn;
+function tenants(){
+  global $conn, $user;
   $table = "tenant";
   $out = "<div class='listheader'>Users</div>";
   $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a new user</div>\n";
@@ -709,8 +715,8 @@ function tenants($user){
   return $out;
 }
 
-function editTenant($error, $user){
-  global $conn;
+function editTenant($error){
+  global $conn, $user;
   $table = "tenant";
   $pk = gvfw($table . "_id");
   $source = null;
@@ -833,7 +839,8 @@ function editTenant($error, $user){
   return $form;
 }
 
-function editDeviceFeature($error,  $user) {
+function editDeviceFeature($error) {
+  global $user;
   $tenantId = $user["tenant_id"];
   $table = "device_feature";
   $pk = gvfw($table . "_id");
@@ -1001,7 +1008,8 @@ function editDeviceFeature($error,  $user) {
   return $form;
 }
 
-function editCodeTemplate($error,  $user) {
+function editCodeTemplate($error) {
+  global $user;
   $tenantId = $user["tenant_id"];
   $table = "code_template";
   $pk = gvfw($table . "_id");
@@ -1086,7 +1094,8 @@ function editCodeTemplate($error,  $user) {
   return $form;
 }
 
-function editCommandType($error,  $user) {
+function editCommandType($error) {
+  global $user;
   $tenantId = $user["tenant_id"];
   $table = "command_type";
   $pk = gvfw($table . "_id");
@@ -1200,7 +1209,8 @@ function commandTypes($user, $deviceId){
 }
 
 
-function editCommand($error,  $user) {
+function editCommand($error) {
+  global $user;
   $tenantId = $user["tenant_id"];
   $table = "command";
   $pk = gvfw($table . "_id");
@@ -1271,7 +1281,7 @@ function editCommand($error,  $user) {
       'error' => gvfa('done', $error)
 	  ],
     );
-  $form = genericForm($formData, $submitLabel, "Saving command...", $user, $script);
+  $form = genericForm($formData, $submitLabel, "Saving command...", $script);
   return $form;
 }
 
@@ -1332,7 +1342,8 @@ function commands($tenantId, $deviceId){
   return $out;
 }
 
-function deviceColumnMaps($deviceId, $user){
+function deviceColumnMaps($deviceId){
+  global $user;
   $table = "device_column_map";
   $out = "<div class='listheader'>Device Column Maps</div>";
   $out .= "<div class='listtools'>";
@@ -1400,7 +1411,8 @@ function deviceColumnMaps($deviceId, $user){
   return $out;
 }
 
-function editDeviceColumnMap($error, $deviceId, $user) {
+function editDeviceColumnMap($error, $deviceId) {
+  global $user;
   $table = "device_column_map";
   $tenantId  = $user["tenant_id"];
   $pk = gvfw($table . "_id");
@@ -1514,7 +1526,8 @@ function editDeviceColumnMap($error, $deviceId, $user) {
 }
 
 
-function editReport($error,  $user) {
+function editReport($error) {
+  global $user;
   $table = "report";
   $pk = gvfw($table . "_id");
   
@@ -1671,7 +1684,8 @@ function configurationValues($user) {
 }
   
 
-function editDevice($error,  $user) {
+function editDevice($error) {
+  global $user;
   $table = "device";
   $tenantId = $user["tenant_id"];
   $pk = gvfw($table . "_id");
@@ -1847,7 +1861,8 @@ function editDevice($error,  $user) {
   return $form;
 }
 
-function editManagementRule($error, $user) {
+function editManagementRule($error) {
+  global $user;
   $table = "management_rule";
   $pk = gvfw($table . "_id");
   
@@ -1930,7 +1945,8 @@ function editManagementRule($error, $user) {
   return $form;
 }
 
-function managementRules($user, $deviceId){
+function managementRules($deviceId){
+  global $user;
   $table = "management_rule";
   $out = "<div class='listheader'>Management Rules</div>";
   $out .= "<div class='listtools'><div class='basicbutton'><a href='?action=startcreate&table=" . $table  . "'>Create</a></div> a management rule</div>\n";
@@ -2633,10 +2649,11 @@ function getMostRecentInverterRecord($tenant){
 	}
 }
 
-function currentSensorData($tenant){
+function currentSensorData(){
+  global $user;
   $out = "";
   $sql = "SELECT w.name as weather, solar_power, load_power, grid_power, battery_percentage,  battery_power, battery_voltage, recorded, inverter_log_id FROM inverter_log i JOIN weather_condition w ON i.weather_condition_id=w.weather_condition_id AND w.tenant_id=i.tenant_id WHERE inverter_log_id = (SELECT MAX(inverter_log_id) FROM inverter_log WHERE tenant_id=<tenant_id/>) ";
-  $result = replaceTokensAndQuery($sql, $tenant);
+  $result = replaceTokensAndQuery($sql, $user);
   $out .= "<div class='listheader'>Inverter </div>";
   $energyInfo = array(
     [
@@ -2706,7 +2723,7 @@ function currentSensorData($tenant){
     WHERE d.tenant_id = <tenant_id/> AND location_name IS NOT NULL AND location_name <>  ''
     ORDER BY wd.device_log_id ASC
     ";
-  $result = replaceTokensAndQuery($sql, $tenant);
+  $result = replaceTokensAndQuery($sql, $user);
   $out .= "<div class='listheader'>Weather </div>";
 
   $weatherInfo = array(
@@ -3008,8 +3025,8 @@ function schemaTables() {
  
 }
 
-function utilities($user, $viewMode = "list") {
-  Global $database;
+function utilities($viewMode = "list") {
+  Global $database, $user;
   Global $backupLocation;
   $utilitiesData = array(
     [

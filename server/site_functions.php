@@ -9,7 +9,7 @@ function utilityForm($user, $foundData) {
     $mergedData =  $foundData["form"];
     
 
-    $form = genericForm($mergedData, "Run", "Running " . $foundData["label"], $user);
+    $form = genericForm($mergedData, "Run", "Running " . $foundData["label"]);
     $confirmJs = "";
     if(gvfa("skip_confirmation", $foundData) === false) {
       $confirmJs  = "onclick=\"return(confirm('Are you sure you want to run " . $foundData["label"] . "?'))\"";
@@ -145,7 +145,8 @@ function doesUserHaveRole($user, $role) {
   return false;
 }
 
-function getUtilityInfo($user, $key){
+function getUtilityInfo($key){
+  global $user;
   //echo $key;
   $data =  utilities($user, "data");
   //var_dump($data);
@@ -651,7 +652,7 @@ function genericEntityForm($tenantId, $table, $errors){
   }
   //function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user = null, $onload = "") { //$data also includes any errors
  
-  return genericForm($schema, "Save " . $table, "Saving...", null, "", $forceUpdate);
+  return genericForm($schema, "Save " . $table, "Saving...", "", $forceUpdate);
 }
 
 function setPropertyInSchema($data, &$schema, $property){
@@ -672,8 +673,8 @@ function setErrorsInSchema($data, &$schema){
   return setPropertyInSchema($data, $schema, "error");
 }
  
-function genericEntitySave($user, $table, $forceUpdate = false) {
-  global $conn;
+function genericEntitySave($table, $forceUpdate = false) {
+  global $conn, $user;
   global $encryptionPassword;
  
   $filename = "";
@@ -1121,8 +1122,8 @@ function genericFormItem($datum, $columnCount, &$guessAtTable, &$guessAtPk, &$te
   return $out;
 }
 
-function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user = null, $onload = "", $forceUpdate = false) { //$data also includes any errors
-  Global $conn;
+function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $onload = "", $forceUpdate = false) { //$data also includes any errors
+  global $conn, $user;
   //var_dump($data);
   $textareaIds = [];
 	$out = "";
@@ -3110,8 +3111,8 @@ function splitSqlCommandsWithComments($sql){
 //END SQL manipulation functions///
 //////////////////////////////////
 
-function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
-  Global $conn;
+function doReport($reportId, $reportLogId = null, $outputFormat = ""){
+  Global $conn, $user;
   $tenantId = $user["tenant_id"];
   $historicDataObject = null;
   $count = 0;
@@ -3235,7 +3236,7 @@ function doReport($user, $reportId, $reportLogId = null, $outputFormat = ""){
       ];
 
 
-      $out .= genericForm($decodedFormToUse, "Run", "Running Report...", $user);
+      $out .= genericForm($decodedFormToUse, "Run", "Running Report...");
       $out .= "<div class='listtitle'>Past Runs:</div>";
       $out .= previousReportRuns($user, $reportId);
     } else if (count($errors) > 0) {

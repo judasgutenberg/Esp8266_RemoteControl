@@ -111,7 +111,7 @@ if($_POST || gvfw("table")) { //gvfw("table")
     //oh, we're a utility, though we never get here
   } else if(beginsWith(strtolower($action), "save") || beginsWith(strtolower($action), "create")) {
     if($user["role"] != "viewer" && ($table != "user"  &&  $table != "report") || $user["role"] == "super") {
-      $errors = genericEntitySave($user, $table, $forceUpdate);
+      $errors = genericEntitySave($table, $forceUpdate);
       if(is_array($errors)){
         //var_dump($errors);
         $action =  "startcreate"; //show the form again
@@ -358,12 +358,12 @@ if ($user) {
     die();
   }
   if ($table == "sensors") {//a pseudo-table, as sensors are either one-to-a-device or a device_feature
-    $out .= currentSensorData($user);
+    $out .= currentSensorData();
   } else if ($table == "utilities") {
     $action = gvfa('action', $_GET); //$_POST will have this as "run"
     
     $data = json_decode(gvfw("_data")); //don't actually need this
-    $foundData = getUtilityInfo($user, $action); 
+    $foundData = getUtilityInfo($action); 
  
     if ($foundData) {
       $role = gvfa("role", $foundData);
@@ -440,7 +440,7 @@ if ($user) {
    }  
 
    if(!$action) {
-    $out .= utilities($user, "list");
+    $out .= utilities("list");
    } else if(!$foundData && false) {
     $out .= "<div class='generalerror'>Utility not yet developed.</div>";
    }
@@ -516,18 +516,18 @@ if ($user) {
   //this is the section for conditionals related to specially-written editors and listers
 	} else if($table == "report") {
     if ($action == "rerun" || $action == "fetch" || beginsWith(strtolower($action), "run")) {
-      $out .= doReport($user, gvfw("report_id"), gvfw("report_log_id"), $outputFormat);
+      $out .= doReport(gvfw("report_id"), gvfw("report_log_id"), $outputFormat);
     
     } else if ($action == "startcreate" || gvfw("report_id") != "") {
-      $out .=  editReport($errors,  $user);
+      $out .=  editReport($errors);
     } else {
-      $out .= reports($user);
+      $out .= reports();
     }
 	} else if($table == "device") {
     if ($action == "startcreate" || gvfw("device_id") != "") {
-      $out .=  editDevice($errors,  $user);
+      $out .=  editDevice($errors);
     } else {
-     $out .= devices($user);
+     $out .= devices();
     }
 	} else if($table == "configuration_value") {
     if ($action == "startcreate") {
@@ -537,60 +537,60 @@ if ($user) {
     }
 	} else if($table == "code_template") {
     if ($action == "startcreate" || gvfw("code_template_id") != "") {
-      $out .=  editCodeTemplate($errors,  $user);
+      $out .=  editCodeTemplate($errors);
     } else {
-     $out .= codeTemplates($user);
+     $out .= codeTemplates();
     }
 	} else if($table == "device_column_map") {
     if ($action == "startcreate" || gvfw("device_column_map_id") != "") {
-      $out .=  editDeviceColumnMap($errors, $deviceId, $user);
+      $out .=  editDeviceColumnMap($errors, $deviceId);
     } else {
-     $out .= deviceColumnMaps($deviceId, $user);
+     $out .= deviceColumnMaps($deviceId);
     }
 	} else if($table == "device_feature") {
     if ($action == "startcreate" || gvfw("device_feature_id") != "") {
-      $out .=  editDeviceFeature($errors,  $user);
+      $out .=  editDeviceFeature($errors);
     } else {
-      $out .= deviceFeatures($user, $deviceId);
+      $out .= deviceFeatures($deviceId);
     }
 	} else if($table == "management_rule") {
     if ($action == "startcreate" || gvfw("management_rule_id") != "") {
-      $out .=  editManagementRule($errors,  $user);
+      $out .=  editManagementRule($errors);
     } else {
-      $out .= managementRules($user, $deviceId);
+      $out .= managementRules($deviceId);
     }
 	} else if($table == "command") {
     if ($action == "startcreate" || gvfw("command_id") != "") {
-      $out .=  editCommand($errors,  $user);
+      $out .=  editCommand($errors);
     } else {
       $out .= commands($tenantId, $deviceId);
     }
   } else if($table == "command_type") {
     if ($action == "startcreate" || gvfw("command_type_id") != "") {
-      $out .=  editCommandType($errors,  $user);
+      $out .=  editCommandType($errors);
     } else {
-      $out .= commandTypes($user, $deviceId);
+      $out .= commandTypes($deviceId);
     }
   } else if($table == "weather_condition") {
     if ($action == "startcreate" || gvfw("weather_condition_id") != "") {
-      $out .=  editWeatherCondition($errors,  $user);
+      $out .=  editWeatherCondition($errors);
     } else {
-      $out .= weatherConditions($user);
+      $out .= weatherConditions();
     }
 	} else if($table == "user") {
     if ($action == "startcreate" || gvfw("user_id") != "") {
       $out .=  editUser($errors);
     } else {
       if($user["role"]  == "super"){
-        $out .= users($user);
+        $out .= users();
       }
     }
 	} else if($table == "tenant") {
     if ($action == "startcreate" || gvfw("tenant_id") != "") {
-      $out .=  editTenant($errors, $user);
+      $out .=  editTenant($errors);
     } else {
       if($user["role"]  == "super" || $user["role"]  == "admin"){
-        $out .= tenants($user);
+        $out .= tenants();
       }
     }
   } else if ($action == "startcreate") {
