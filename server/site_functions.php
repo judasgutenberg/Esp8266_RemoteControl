@@ -1708,8 +1708,8 @@ function etcTabNav($user) {
 }
 
 
-function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = null, $tableName = "", $primaryKeyName = "", $doNotRefresh = true, $tableTools = '', $user = null) { //aka genericList
-  global $encryptionPassword;
+function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = null, $tableName = "", $primaryKeyName = "", $doNotRefresh = true, $tableTools = '') { //aka genericList
+  global $encryptionPassword, $user;
   if($headerData == NULL  && $rows  && $rows[0]) {
     $headerData = [];
     foreach(array_keys($rows[0]) as &$key) {
@@ -1722,20 +1722,19 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = n
   $tableId = "list-" . $tableName;
   $out = "";
   $searchCondition = "";
-  //var_dump($searchData);
-  $searchCondition = "";
+  $otherPossibleSearchItems = [];
+  if($user){
+    $otherPossibleSearchItems = explode(",", getConfigItem($user, "auto_search"));
+    foreach($otherPossibleSearchItems as &$value){
+      $value = strtolower(trim($value));
+    }
+  }
+  
   foreach($headerData as $headerItem) {
     $haveASearchCondition = false;
     $searchType = gvfa("search_type", $headerItem);
     $key = gvfa("name", $headerItem);
-    $otherPossibleSearchItems = [];
-    if($user){
-      $otherPossibleSearchItems = explode(",", getConfigItem($user, "auto_search"));
-    }
-    //var_dump($otherPossibleSearchItems);
-    if($searchType  || array_search($key, $otherPossibleSearchItems)) {
-        //echo "<p><font color=009999>" . $key . "</font><p>";
-        $searchCondition = "";
+    if($searchType  || array_search($key, $otherPossibleSearchItems) !== false) {
         if($haveASearchCondition) {
           $searchCondition .= " OR ";
         }
@@ -1743,7 +1742,6 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = n
         $searchTokenName = $tableName . ".search_term";
         $searchColumn = extractSelectColumn($sql, $key);
         $searchCondition .= " " . $searchColumn;
-        //echo "sql:" . $sql . " search column:" . $searchColumn;
         if($searchType == "start") {
           $searchCondition .= " LIKE '<" . $searchTokenName . "/>s%'";
         } else if($searchType == "equal") {
@@ -1754,6 +1752,7 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = n
         $searchCondition .= " ";
      }
   }
+  //echo $sql . "*" . $searchCondition;
   //i build search sql entirely from the sql used to produce the list and any headerData items with a search_type
   if($sql  && $searchCondition) {
     $searchData = produceSearchData($sql, $searchCondition, $tableName, $primaryKeyName, $headerData, $toolsTemplate, $doNotRefresh);
@@ -2717,8 +2716,8 @@ function previousReportRuns($user, $reportId) {
         
     );
     //where i used to make an out-of-genericTable call to produceSearchData();
-    //genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = null, $tableName = "", $primaryKeyName = "", $doNotRefresh = true, $tableTools = '', $user = null)
-    $out = genericTable($reportRuns, $headerData, $toolsTemplate, $sql, $tableName, "", true, "", $user);
+    //genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = null, $tableName = "", $primaryKeyName = "", $doNotRefresh = true, $tableTools = '')
+    $out = genericTable($reportRuns, $headerData, $toolsTemplate, $sql, $tableName, "", true, "");
   }
   return $out;
 }
