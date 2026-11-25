@@ -148,7 +148,7 @@ function doesUserHaveRole($user, $role) {
 function getUtilityInfo($key){
   global $user;
   //echo $key;
-  $data =  utilities($user, "data");
+  $data =  utilities("data");
   //var_dump($data);
   //echo "$" . $key . "$";
  

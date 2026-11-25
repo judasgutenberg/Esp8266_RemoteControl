@@ -3215,9 +3215,6 @@ function utilities($viewMode = "list") {
     ]
   );
 
- 
- 
-
   $filteredData = array_filter($utilitiesData, function ($subData) use ($user) {
     return canUserDoThing($user, gvfa("role", $subData));
     //return doesUserHaveRole($tenant, gvfa("role", $subData));
@@ -3234,9 +3231,7 @@ function utilities($viewMode = "list") {
 
     die();
   }
-  
   return $out;
-      
 }
 
 //tables is a comma-delimited string
