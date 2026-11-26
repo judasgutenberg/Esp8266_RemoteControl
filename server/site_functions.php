@@ -633,7 +633,7 @@ function genericEntityForm($tenantId, $table, $errors){
 
   }
   $whereClause = substr($whereClause, 0, -4);
-  $thisDataSql = "SELECT * FROM " . $table . " WHERE " .$whereClause;
+  $thisDataSql = "SELECT * FROM " . $table . " WHERE " . $whereClause;
   //echo $table;
   //var_dump($data);
   if($table != "user"  && $table != "tenant") {
@@ -643,15 +643,13 @@ function genericEntityForm($tenantId, $table, $errors){
   $forceUpdate = false;
   $thisDataResult = mysqli_query($conn, $thisDataSql);
   if($thisDataResult) {
-    
     $thisDataRows = mysqli_fetch_all($thisDataResult, MYSQLI_ASSOC);
     if($thisDataRows && count($thisDataRows) > 0) {
       $schema = setValuesInSchema($thisDataRows[0], $schema);
       $forceUpdate = true;
     }
   }
-  //function genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user = null, $onload = "") { //$data also includes any errors
- 
+  //genericForm($data, $submitLabel, $waitingMesasage = "Saving...", $user = null, $onload = "") { //$data also includes any errors
   return genericForm($schema, "Save " . $table, "Saving...", "", $forceUpdate);
 }
 
@@ -1853,6 +1851,9 @@ function genericTable($rows, $headerData = NULL, $toolsTemplate = NULL, $sql = n
         $row["hashed_entities"] = $hashedEntities;
         $elementId = $tableName  . "-" . $row[$primaryKeyName];
         if(($type == "color"  || $type == "text"  || $type == "number" || $type == "string") &&  $primaryKeyName != $name){
+          if($type == "color" && $value == "") {
+            $value = "#000000";
+          }
           $out .= "<input id='" . $elementId  .  "' class='noupdate' style='width:" . $width  . "px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",  this.value ,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\",\"" . $extraForInsert . "\")' value='" . $value . "'  name='" . $name . "' type='" . $type . "' />\n";
         } else if(($type == "checkbox" || $type == "bool")  &&  $primaryKeyName != $name) {
           $out .= "<input id='" . $elementId  .  "' class='noupdate' style='width:" . $width  . "px;accent-color:" . $accentColor. "' onchange='genericListActionBackend(\"" . $name . "\",this.checked,\"" . $tableName  . "\",\"" . $primaryKeyName  . "\",\"" . $row[$primaryKeyName] . "\",\""  . $hashedEntities . "\",\"" . $extraForInsert . "\")' name='" . $name . "' type='checkbox' value='1' " . $checkedString . "/>\n";

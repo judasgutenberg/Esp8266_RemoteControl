@@ -328,7 +328,10 @@ function tokenReplace(
 
     if (!Array.isArray(value)) {
       // Replace single values
-      let replacement = value ?? "";
+      let replacement = value;
+	  if(!value) {
+		replacement = "";
+	  }
 		if (escapeDoubleQuotesInValues) {
 		replacement = String(replacement)
 			.replace(/\\/g, "\\\\")  // Turns \" into \\"
@@ -435,26 +438,26 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
           }
           //console.log(dataRecord["_components"]);
           
-          let newColumnData = dataRecord[label];
-        //we can do everything in PHP it turns out, so i do not need to have JS equivalents of PHP functions
-        /*
-        if ("function" in column) {
-				let stringToEval = tokenReplace(column["function"], dataRecord, "<", "/>", true);
-				stringToEval = stringToEval.replace("$row", "dataRecord");
-				const originalValue = newColumnData;
-				stringToEval = stringToEval.replace(/[\r\n]+/g, ' ');
-	
-				//console.log(stringToEval);
-				try {
-					newColumnData = eval(stringToEval);
-				} catch (error) {
-					console.error("Eval failed with error:", error.message);
-					console.log("Problematic stringToEval:", stringToEval);
-					
-					// Optional: rethrow the error if you still want execution to stop
-					// throw error; 
-				}
-				spans[cellIndex].setAttribute("value", originalValue);
+          	let newColumnData = dataRecord[label];
+			//we can do everything in PHP it turns out, so i do not need to have JS equivalents of PHP functions
+			/*
+			if ("function" in column) {
+					let stringToEval = tokenReplace(column["function"], dataRecord, "<", "/>", true);
+					stringToEval = stringToEval.replace("$row", "dataRecord");
+					const originalValue = newColumnData;
+					stringToEval = stringToEval.replace(/[\r\n]+/g, ' ');
+		
+					//console.log(stringToEval);
+					try {
+						newColumnData = eval(stringToEval);
+					} catch (error) {
+						console.error("Eval failed with error:", error.message);
+						console.log("Problematic stringToEval:", stringToEval);
+						
+						// Optional: rethrow the error if you still want execution to stop
+						// throw error; 
+					}
+					spans[cellIndex].setAttribute("value", originalValue);
 			}
 			*/
 			// Update span content or input value
@@ -474,6 +477,9 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
 				} else if (input.tagName === "TEXTAREA" || input.type === "text" || input.type === "number" || input.type === "hidden") {
 				if (input.value !== newColumnData) input.value = newColumnData;
 				} else {
+					if((newColumnData == "" || newColumnData == null)  && input.type == "color"){
+						newColumnData ="#000000";
+					}
 				input.value = newColumnData;
 				}
 				if(hashedEntities && pk) { //if we have a compound pk or a multi-table query, this could fail. but we'd probably also have no inputs
@@ -502,6 +508,9 @@ function autoUpdate(encryptedSql, headerData, tableId, tableName, pkName, doNotD
 				}
 				} else {
 				// catch-all for other input types
+				if((newColumnData == "" || newColumnData == null)  && input.type == "color"){
+					newColumnData ="#000000";
+				}
 				input.value = newColumnData;
 				}
 			}
